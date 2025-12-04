@@ -79,8 +79,8 @@ mcp-servers: |
         "context7":{
           "transport":"http",
           "url":"https://mcp.context7.com/mcp"
-        }      
-      }   
+        }
+      }
   }
 ```
 
@@ -104,7 +104,7 @@ The current priorities are to improve core capabilities and user experience of t
 
 2. **Repo Map Accuracy** - [Discussion](https://github.com/dwash96/aider-ce/issues/45)
   * [x] [Bias page ranking toward active/editable files in repo map parsing](https://github.com/Aider-AI/aider/issues/2405)
-  * [x] [Include import information in repo map for richer context](https://github.com/Aider-AI/aider/issues/2688)  
+  * [x] [Include import information in repo map for richer context](https://github.com/Aider-AI/aider/issues/2688)
   * [x] [Handle non-unique symbols that break down in large codebases](https://github.com/Aider-AI/aider/issues/2341)
 
 3. **Context Discovery** - [Discussion](https://github.com/dwash96/aider-ce/issues/46)
@@ -115,7 +115,7 @@ The current priorities are to improve core capabilities and user experience of t
 
 4. **Context Delivery** - [Discussion](https://github.com/dwash96/aider-ce/issues/47)
   * [ ] Use workflow for internal discovery to better target file snippets needed for specific tasks
-  * [ ] Add support for partial files and code snippets in model completion messages   
+  * [ ] Add support for partial files and code snippets in model completion messages
 
 5. **TUI Experience** - [Discussion](https://github.com/dwash96/aider-ce/issues/48)
   * [ ] Add a full TUI (probably using textual) to have a visual interface competitive with the other coding agent terminal programs
