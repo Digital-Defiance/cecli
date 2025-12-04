@@ -686,7 +686,8 @@ class Coder:
     def get_abs_fnames_content(self):
         # Sort files by last modified time (earliest first, latest last)
         sorted_fnames = sorted(
-            self.abs_fnames, key=lambda fname: os.path.exists(fname) and os.path.getmtime(fname)
+            list(filter(lambda f: os.path.exists(f), self.abs_fnames)),
+            key=lambda fname: os.path.getmtime(fname),
         )
 
         for fname in sorted_fnames:
@@ -844,8 +845,8 @@ class Coder:
         prompt = ""
         # Sort read-only files by last modified time (earliest first, latest last)
         sorted_fnames = sorted(
-            self.abs_read_only_fnames,
-            key=lambda fname: os.path.exists(fname) and os.path.getmtime(fname),
+            list(filter(lambda f: os.path.exists(f), self.abs_read_only_fnames)),
+            key=lambda fname: os.path.getmtime(fname),
         )
 
         # Handle regular read-only files
@@ -896,8 +897,8 @@ class Coder:
 
         # Sort stub files by last modified time (earliest first, latest last)
         sorted_stub_fnames = sorted(
-            self.abs_read_only_stubs_fnames,
-            key=lambda fname: os.path.exists(fname) and os.path.getmtime(fname),
+            list(filter(lambda f: os.path.exists(f), self.abs_read_only_stubs_fnames)),
+            key=lambda fname: os.path.getmtime(fname),
         )
 
         # Handle stub files
