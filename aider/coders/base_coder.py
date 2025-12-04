@@ -685,7 +685,10 @@ class Coder:
 
     def get_abs_fnames_content(self):
         # Sort files by last modified time (earliest first, latest last)
-        sorted_fnames = sorted(self.abs_fnames, key=lambda fname: os.path.getmtime(fname))
+        sorted_fnames = sorted(
+            list(filter(lambda f: os.path.exists(f), self.abs_fnames)),
+            key=lambda fname: os.path.getmtime(fname),
+        )
 
         for fname in sorted_fnames:
             content = self.io.read_text(fname)
@@ -743,8 +746,9 @@ class Coder:
             file_times = []
             for fname in fnames:
                 try:
-                    mtime = os.path.getmtime(fname)
-                    file_times.append((fname, mtime))
+                    if os.path.exists(fname):
+                        mtime = os.path.getmtime(fname)
+                        file_times.append((fname, mtime))
                 except OSError:
                     # Skip files that can't be accessed
                     continue
@@ -840,7 +844,10 @@ class Coder:
     def get_read_only_files_content(self):
         prompt = ""
         # Sort read-only files by last modified time (earliest first, latest last)
-        sorted_fnames = sorted(self.abs_read_only_fnames, key=lambda fname: os.path.getmtime(fname))
+        sorted_fnames = sorted(
+            list(filter(lambda f: os.path.exists(f), self.abs_read_only_fnames)),
+            key=lambda fname: os.path.getmtime(fname),
+        )
 
         # Handle regular read-only files
         for fname in sorted_fnames:
@@ -890,7 +897,8 @@ class Coder:
 
         # Sort stub files by last modified time (earliest first, latest last)
         sorted_stub_fnames = sorted(
-            self.abs_read_only_stubs_fnames, key=lambda fname: os.path.getmtime(fname)
+            list(filter(lambda f: os.path.exists(f), self.abs_read_only_stubs_fnames)),
+            key=lambda fname: os.path.getmtime(fname),
         )
 
         # Handle stub files
@@ -3829,6 +3837,10 @@ class Coder:
             command = command.strip()
             if not command or command.startswith("#"):
                 continue
+
+            if command and getattr(self.args, "command_prefix", None):
+                command_prefix = getattr(self.args, "command_prefix", None)
+                command = f"{command_prefix} {command}"
 
             self.io.tool_output()
             self.io.tool_output(f"Running {command}")
