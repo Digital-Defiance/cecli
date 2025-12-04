@@ -1149,7 +1149,7 @@ class Commands:
                     matched_files = [
                         self.coder.get_rel_fname(f)
                         for f in self.coder.abs_fnames
-                        if expanded_word in f
+                        if self.coder.abs_root_path(expanded_word) in f
                     ]
 
                 if not matched_files:
