@@ -1,12 +1,12 @@
 ## Why `aider-ce`?
 
-Not only are there too many reasons to list here, the list is constantly growing,
-because aider-ce (aka cecli) is constantly growing.
+`aider-ce` (aka `cecli`) is a community-driven fork of the excellent [Aider](https://aider.chat/) AI pair programming tool.
 
-Aider-ce/`cecli` is an active and growing community project, and believes in genuine
-FOSS principles.
+Our mission is to foster an open, collaborative ecosystem where new features, experiments, and improvements can be developed and shared rapidly. We believe in genuine FOSS principles and actively welcome contributors of all skill levels.
 
-You can see a selection of the improvements by compparing the help output:
+If you are looking for bleeding-edge features or want to get your hands dirty with the internals of an AI coding agent, join us!
+
+You can see a selection of the improvements by comparing the help output:
 ```bash
 aider --help > aider.help.txt
 cecli --help > cecli.help.txt
