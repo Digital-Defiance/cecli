@@ -1,10 +1,27 @@
-## Documentation and Other Notes
+## Why `aider-ce`?
+
+Not only are there too many reasons to list here, the list is constantly growing,
+because aider-ce (aka cecli) is constantly growing.
+
+Aider-ce/`cecli` is an active and growing community project, and believes in genuine
+FOSS principles.
+
+You can see a selection of the improvements by compparing the help output:
+```bash
+aider --help > aider.help.txt
+cecli --help > cecli.help.txt
+diff aider.help.txt cecli.help.txt -uw --color
+```
+Some of the bigger enhancements are:
+
 * [Agent Mode](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/agent-mode.md)
 * [MCP Configuration](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/mcp.md)
 * [Session Management](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/sessions.md)
 * [Aider Original Documentation (still mostly applies)](https://aider.chat/)
-* [Changelog](https://github.com/dwash96/aider-ce/blob/main/CHANGELOG.md)
-* [Discord Community](https://discord.gg/McwdCRuqkJ)
+
+For a full list, check out the [Changelog](https://github.com/dwash96/aider-ce/blob/main/CHANGELOG.md)
+Please drop by the [Discord Community](https://discord.gg/McwdCRuqkJ)
+or [issue queue](https://github.com/dwash96/aider-ce/issues) to get involved.
 
 ## Installation Instructions
 This project can be installed using several methods:
