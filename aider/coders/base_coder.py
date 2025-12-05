@@ -191,8 +191,9 @@ class Coder:
             done_messages = from_coder.done_messages
             if edit_format != from_coder.edit_format and done_messages and summarize_from_coder:
                 try:
+                    io.tool_warning("Summarizing messages, please wait...")
                     done_messages = await from_coder.summarizer.summarize_all(done_messages)
-                except ValueError:
+                except (KeyboardInterrupt, ValueError):
                     # If summarization fails, keep the original messages and warn the user
                     io.tool_warning(
                         "Chat history summarization failed, continuing with full history"
