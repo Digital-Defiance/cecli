@@ -2160,6 +2160,13 @@ class Commands:
         session_manager = sessions.SessionManager(self.coder, self.io)
         session_manager.load_session(args.strip())
 
+    def cmd_command_prefix(self, args=""):
+        """Change Command Prefix For All Running Commands"""
+        if not args.strip():
+            setattr(self.coder.args, "command_prefix", "")
+
+        setattr(self.coder.args, "command_prefix", args.strip())
+
     def cmd_copy_context(self, args=None):
         """Copy the current chat context as markdown, suitable to paste into a web UI"""
 
