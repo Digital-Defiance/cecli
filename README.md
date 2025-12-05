@@ -10,7 +10,7 @@ LLMs are a part of our lives from here on out so join us in learning about and c
 
 ### Links
 
-[Discord Chat](https://discord.gg/McwdCRuqkJ) 🞄
+[Discord Chat](https://discord.gg/AX9ZEA7nJn) 🞄
 [Changelog](https://github.com/dwash96/aider-ce/blob/main/CHANGELOG.md) 🞄
 [Issue Queue](https://github.com/dwash96/aider-ce/issues)
 
