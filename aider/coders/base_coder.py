@@ -3207,7 +3207,8 @@ class Coder:
         self.partial_response_reasoning_content = reasoning_content or ""
 
         try:
-            self.partial_response_content = response.choices[0].message.content or ""
+            if not self.partial_response_reasoning_content:
+                self.partial_response_content = response.choices[0].message.content or ""
         except AttributeError as e:
             content_err = e
 
