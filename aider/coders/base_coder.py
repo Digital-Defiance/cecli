@@ -191,8 +191,9 @@ class Coder:
             done_messages = from_coder.done_messages
             if edit_format != from_coder.edit_format and done_messages and summarize_from_coder:
                 try:
+                    io.tool_warning("Summarizing messages, please wait...")
                     done_messages = await from_coder.summarizer.summarize_all(done_messages)
-                except ValueError:
+                except (KeyboardInterrupt, ValueError):
                     # If summarization fails, keep the original messages and warn the user
                     io.tool_warning(
                         "Chat history summarization failed, continuing with full history"
@@ -3206,7 +3207,8 @@ class Coder:
         self.partial_response_reasoning_content = reasoning_content or ""
 
         try:
-            self.partial_response_content = response.choices[0].message.content or ""
+            if not self.partial_response_reasoning_content:
+                self.partial_response_content = response.choices[0].message.content or ""
         except AttributeError as e:
             content_err = e
 
@@ -3769,7 +3771,7 @@ class Coder:
         return edits
 
     async def auto_save_session(self):
-        """Automatically save the current session as 'auto-save'."""
+        """Automatically save the current session to {auto-save-session-name}.json."""
         if not getattr(self.args, "auto_save", False):
             return
 
@@ -3791,7 +3793,10 @@ class Coder:
                 session_manager = SessionManager(self, self.io)
                 loop = asyncio.get_running_loop()
                 self._autosave_future = loop.run_in_executor(
-                    None, session_manager.save_session, "auto-save", False
+                    None,
+                    session_manager.save_session,
+                    getattr(self.args, "auto_save_session_name", "auto-save"),
+                    False,
                 )
             except Exception:
                 # Don't show errors for auto-save to avoid interrupting the user experience
@@ -3841,9 +3846,7 @@ class Coder:
             if not command or command.startswith("#"):
                 continue
 
-            if command and getattr(self.args, "command_prefix", None):
-                command_prefix = getattr(self.args, "command_prefix", None)
-                command = f"{command_prefix} {command}"
+            command = self.format_command_with_prefix(command)
 
             self.io.tool_output()
             self.io.tool_output(f"Running {command}")
@@ -3862,3 +3865,32 @@ class Coder:
             line_plural = "line" if num_lines == 1 else "lines"
             self.io.tool_output(f"Added {num_lines} {line_plural} of output to the chat.")
             return accumulated_output
+
+    def format_command_with_prefix(self, command):
+        """
+        Format a command with a command prefix.
+
+        If the command prefix contains a {} placeholder, replace it with the command.
+        Otherwise, append the command to the prefix with a space.
+
+        Args:
+            command (str): The command to format
+
+        Returns:
+            str: The formatted command
+        """
+        command_prefix = None
+
+        if command and getattr(self.args, "command_prefix", None):
+            command_prefix = getattr(self.args, "command_prefix", None)
+
+        if not command_prefix:
+            return command
+
+        # Check if the prefix contains a {} placeholder
+        if "{}" in command_prefix:
+            # Replace the {} placeholder with the command
+            return command_prefix.replace("{}", command)
+        else:
+            # Append the command to the prefix with a space
+            return f"{command_prefix} {command}"

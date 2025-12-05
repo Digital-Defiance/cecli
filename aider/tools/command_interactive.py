@@ -31,9 +31,7 @@ class Tool(BaseTool):
         Execute an interactive shell command using run_cmd (which uses pexpect/PTY).
         """
         try:
-            if command_string and getattr(coder.args, "command_prefix", None):
-                command_prefix = getattr(coder.args, "command_prefix", None)
-                command_string = f"{command_prefix} {command_string}"
+            command_string = coder.format_command_with_prefix(command_string)
 
             confirmed = (
                 True

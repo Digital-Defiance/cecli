@@ -1315,7 +1315,9 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             from aider.sessions import SessionManager
 
             session_manager = SessionManager(coder, io)
-            session_manager.load_session("auto-save")
+            session_manager.load_session(
+                args.auto_save_session_name if args.auto_save_session_name else "auto-save"
+            )
         except Exception:
             # Don't show errors for auto-load to avoid interrupting the user experience
             pass
