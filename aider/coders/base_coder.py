@@ -3771,7 +3771,7 @@ class Coder:
         return edits
 
     async def auto_save_session(self):
-        """Automatically save the current session as 'auto-save'."""
+        """Automatically save the current session to {auto-save-session-name}.json."""
         if not getattr(self.args, "auto_save", False):
             return
 
@@ -3793,7 +3793,10 @@ class Coder:
                 session_manager = SessionManager(self, self.io)
                 loop = asyncio.get_running_loop()
                 self._autosave_future = loop.run_in_executor(
-                    None, session_manager.save_session, "auto-save", False
+                    None,
+                    session_manager.save_session,
+                    getattr(self.args, "auto_save_session_name", "auto-save"),
+                    False,
                 )
             except Exception:
                 # Don't show errors for auto-save to avoid interrupting the user experience
