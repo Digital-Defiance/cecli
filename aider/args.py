@@ -775,7 +775,7 @@ def get_parser(default_config_files, git_root):
         "--gui",
         "--browser",
         action=argparse.BooleanOptionalAction,
-        help="Run aider in your browser (default: False)",
+        help=argparse.SUPPRESS,
         default=False,
     )
     group.add_argument(
