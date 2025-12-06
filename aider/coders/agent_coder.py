@@ -358,7 +358,8 @@ class AgentCoder(Coder):
             for skill in skills:
                 skills_list.append(skill.name)
 
-            self.io.tool_output(f"Available Skills: {", ".join(skills_list)}")
+            joined_skills = ", ".join(skills_list)
+            self.io.tool_output(f"Available Skills: {joined_skills}")
 
     def get_local_tool_schemas(self):
         """Returns the JSON schemas for all local tools using the tool registry."""
