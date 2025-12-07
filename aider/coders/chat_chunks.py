@@ -31,18 +31,18 @@ class ChatChunks:
             return messages
         else:
             return (
-                self.format_list(self.system)
-                + self.format_list(self.static)
-                + self.format_list(self.examples)
-                + self.format_list(self.readonly_files)
-                + self.format_list(self.chat_files)
-                + self.format_list(self.repo)
-                + self.format_list(self.pre_message)
-                + self.format_list(self.done)
-                + self.format_list(self.edit_files)
-                + self.format_list(self.cur)
-                + self.format_list(self.post_message)
-                + self.format_list(self.reminder)
+                self.format_list("system")
+                + self.format_list("static")
+                + self.format_list("examples")
+                + self.format_list("readonly_files")
+                + self.format_list("chat_files")
+                + self.format_list("repo")
+                + self.format_list("pre_message")
+                + self.format_list("done")
+                + self.format_list("edit_files")
+                + self.format_list("cur")
+                + self.format_list("post_message")
+                + self.format_list("reminder")
             )
 
     def add_cache_control_headers(self):
@@ -86,7 +86,7 @@ class ChatChunks:
         return messages
 
     def format_list(self, chunk):
-        if type(chunk) is not list:
+        if type(getattr(self, chunk, [])) is not list:
             return []
 
-        return chunk
+        return getattr(self, chunk, [])
