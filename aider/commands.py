@@ -1083,12 +1083,27 @@ class Commands:
         ]
 
     def _handle_read_only_files(self, expanded_word, file_set, description=""):
-        """Handle read-only files with substring matching and samefile check"""
+        """Handle read-only files with substring matching, samefile check, and glob pattern matching"""
         matched = []
         for f in file_set:
-            if expanded_word in f:
-                matched.append(f)
-                continue
+            # Check if the expanded_word contains glob characters
+            if any(c in expanded_word for c in "*?[]"):
+                # Use pathlib.Path.match() for glob pattern matching
+                try:
+                    # Convert file path to Path object
+                    file_path = Path(f)
+                    # Check if the file path matches the glob pattern
+                    if file_path.match(os.path.abspath(expanded_word)):
+                        matched.append(f)
+                        continue
+                except Exception:
+                    # If path matching fails, fall back to other methods
+                    pass
+            else:
+                # Original substring matching for non-glob patterns
+                if expanded_word in f:
+                    matched.append(f)
+                    continue
 
             # Try samefile comparison for relative paths
             try:
