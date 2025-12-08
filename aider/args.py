@@ -723,7 +723,7 @@ def get_parser(default_config_files, git_root):
         "--check-update",
         action=argparse.BooleanOptionalAction,
         help="Check for new aider versions on launch",
-        default=True,
+        default=False,
     )
     group.add_argument(
         "--show-release-notes",
