@@ -324,7 +324,7 @@ class AgentCoder(Coder):
             if "skills_excludelist" not in config:
                 config["skills_excludelist"] = []
 
-            self._initialize_skills_manager(config)
+        self._initialize_skills_manager(config)
 
         return config
 
@@ -332,8 +332,6 @@ class AgentCoder(Coder):
         """
         Initialize the skills manager with the configured directory paths and filters.
         """
-        if not config.get("skills_paths", []):
-            return
 
         try:
             git_root = str(self.repo.root) if self.repo else None
