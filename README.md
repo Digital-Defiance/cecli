@@ -115,7 +115,7 @@ docker run \
   --config /app/.aider.conf.yml
 ```
 
-This command will make sure all commands ran by the coding agent happen in context of the docker container to protect the house file system for any infamous agentic mishap
+This command will make sure all commands ran by the coding agent happen in context of the docker container to protect the host file system from any infamous agentic mishap
 
 ## Project Roadmap/Goals
 
