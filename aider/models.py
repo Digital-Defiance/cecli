@@ -977,11 +977,19 @@ class Model(ModelSettings):
             dump(kwargs)
         kwargs["messages"] = messages
 
-        # Cache System Prompts When Possible
+        # Per this: https://github.com/BerriAI/litellm/issues/10226
+        # The first and second to last messages are cache optimal
+        # Since caches are also written to incrementally and you need
+        # the past and current states to properly append and gain
+        # efficiencies/savings in cache writing
         kwargs["cache_control_injection_points"] = [
             {
                 "location": "message",
-                "role": "system",
+                "index": -1,
+            },
+            {
+                "location": "message",
+                "index": -2,
             },
         ]
 

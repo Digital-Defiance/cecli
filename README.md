@@ -100,6 +100,23 @@ OPENROUTER_API_KEY="..."
 DEEPSEEK_API_KEY="..."
 ```
 
+### Run Program
+
+If you are in the directory with your .aider.conf.yml file, then simply running `aider-ce` or `cecli` will start the agent with your configuration. If you want additional sandboxing, we publish a docker container that can be ran as follows:
+
+```bash
+docker pull dustinwashington/aider-ce
+docker run \
+  -it \
+  --user $(id -u):$(id -g) \
+  --volume $(pwd):/app dustinwashington/aider-ce \
+  --volume $(pwd)/.aider.conf.yml:/.aider.conf.yml \
+  --volume $(pwd)/.aider.env:/.aider/.env \
+  --config /app/.aider.conf.yml
+```
+
+This command will make sure all commands ran by the coding agent happen in context of the docker container to protect the house file system for any infamous agentic mishap
+
 ## Project Roadmap/Goals
 
 The current priorities are to improve core capabilities and user experience of the Aider project

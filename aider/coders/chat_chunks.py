@@ -62,9 +62,24 @@ class ChatChunks:
         # The history is ephemeral on its own.
         self.add_cache_control(self.done)
 
+    # Per this: https://github.com/BerriAI/litellm/issues/10226
+    # The first and second to last messages are cache optimal
+    # Since caches are also written to incrementally and you need
+    # the past and current states to properly append and gain
+    # efficiencies/savings in cache writing
     def add_cache_control(self, messages):
-        if not messages:
+        if not messages or len(messages) < 2:
             return
+
+        content = messages[-2]["content"]
+        if type(content) is str:
+            content = dict(
+                type="text",
+                text=content,
+            )
+        content["cache_control"] = {"type": "ephemeral"}
+
+        messages[-2]["content"] = [content]
 
         content = messages[-1]["content"]
         if type(content) is str:

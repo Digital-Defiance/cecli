@@ -296,7 +296,7 @@ class InputOutput:
     bell_on_next_input = False
     notifications_command = None
     encoding = "utf-8"
-    VALID_STYLES = {"bold", "red", "green", "blue", "orange"}
+    VALID_STYLES = {"bold", "red", "green", "blue", "bright_cyan"}
     VALID_OPEN_TAG_PATTERN = re.compile(
         r"\\\[(" + "|".join(re.escape(s) for s in VALID_STYLES) + r")\]"
     )
