@@ -8,9 +8,16 @@ from aider.tools import grep
 
 
 @pytest.mark.skipif(shutil.which("rg") is None, reason="rg is required")
-def test_dash_prefixed_pattern_is_searched_literally(tmp_path, monkeypatch):
+@pytest.mark.parametrize("search_term", [
+    "--pattern",
+    "--pat tern",
+    "-pattern",
+    "--",
+    "-- -test",
+])
+def test_dash_prefixed_pattern_is_searched_literally(search_term, tmp_path, monkeypatch):
     sample = tmp_path / "example.txt"
-    sample.write_text("flag --prefix should be found\n")
+    sample.write_text(f"flag {search_term} should be found\n")
 
     coder = SimpleNamespace(
         repo=SimpleNamespace(root=str(tmp_path)),
@@ -29,7 +36,7 @@ def test_dash_prefixed_pattern_is_searched_literally(tmp_path, monkeypatch):
 
     result = grep.Tool.execute(
         coder,
-        pattern="--prefix",
+        pattern=search_term,
         file_pattern="*.txt",
         directory=".",
         use_regex=False,
@@ -39,5 +46,5 @@ def test_dash_prefixed_pattern_is_searched_literally(tmp_path, monkeypatch):
     )
 
     assert "Found matches" in result
-    assert "--prefix" in result
+    assert search_term in result
     coder.io.tool_error.assert_not_called()
