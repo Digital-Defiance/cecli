@@ -1,0 +1,61 @@
+/*
+ * Aider CE TUI Styles
+ *
+ * Uses Textual theme variables for consistent theming.
+ * Theme defined in app.py (AIDER_THEME).
+ */
+
+Screen {
+    background: $background;
+    layout: vertical;
+}
+
+/* Output area */
+#output {
+    height: 1fr;
+    width: 100%;
+    background: $background;
+    padding: 0 1;
+    margin: 0;
+    scrollbar-background: $background;
+    scrollbar-color: $surface;
+    scrollbar-size: 1 1;
+}
+
+/* Input area - floating card style */
+#input {
+    height: 3;
+    background: $surface;
+    border: none;
+    padding: 1 2;
+    margin: 0 1;
+}
+
+#input:focus {
+    border: none;
+    background: $surface;
+}
+
+/* Footer - solid Aider green */
+#footer {
+    height: 1;
+    width: 100%;
+    background: $primary;
+    color: $background;
+    padding: 0 1;
+}
+
+/* Generic Input styling */
+Input {
+    background: $background;
+    border: none;
+}
+
+Input:focus {
+    border: none;
+    background: $background;
+}
+
+Input > .input--placeholder {
+    color: $secondary;
+}

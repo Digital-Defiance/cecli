@@ -1314,6 +1314,13 @@ class Commands:
 
         await asyncio.sleep(0)
 
+        # Check if running in TUI mode - use graceful exit to restore terminal
+        if hasattr(self.io, 'request_exit'):
+            self.io.request_exit()
+            # Give TUI time to process the exit message
+            await asyncio.sleep(0.5)
+            return
+
         try:
             if self.coder.args.linear_output:
                 os._exit(0)
