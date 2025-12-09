@@ -85,8 +85,23 @@ class AiderApp(App):
             id="footer"
         )
 
+    # ASCII banner for startup
+    BANNER = """\
+
+[bold green] ██████╗███████╗ ██████╗██╗     ██╗
+██╔════╝██╔════╝██╔════╝██║     ██║
+██║     █████╗  ██║     ██║     ██║
+██║     ██╔══╝  ██║     ██║     ██║
+╚██████╗███████╗╚██████╗███████╗██║
+ ╚═════╝╚══════╝ ╚═════╝╚══════╝╚═╝[/bold green]
+"""
+
     def on_mount(self):
         """Called when app starts."""
+        # Show startup banner
+        output_container = self.query_one("#output", OutputContainer)
+        output_container.add_output(self.BANNER)
+
         self.set_interval(0.05, self.check_output_queue)
         self.worker.start()
         self.query_one("#input").focus()
