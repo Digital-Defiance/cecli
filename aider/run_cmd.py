@@ -60,7 +60,7 @@ def run_cmd_subprocess(command, verbose=False, cwd=None, encoding=sys.stdout.enc
                 print("Parent process:", parent_process)
 
         process = subprocess.Popen(
-            command,
+            process_multiline_command(command),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -131,3 +131,27 @@ def run_cmd_pexpect(command, verbose=False, cwd=None):
     except (pexpect.ExceptionPexpect, TypeError, ValueError) as e:
         error_msg = f"Error running command {command}: {e}"
         return 1, error_msg
+
+
+def process_multiline_command(command_string):
+    """
+    Removes lines that end with a single backslash used for line continuation.
+    """
+    lines = command_string.splitlines()
+    processed_lines = []
+
+    for line in lines:
+        # rstrip() removes trailing whitespace, including newlines in the original splitlines context.
+        # We check if the line, stripped of whitespace, ends with a single backslash.
+        stripped_line = line.rstrip()
+
+        # We need to distinguish between 'foo\' and 'foo\\' (literal backslash)
+        if stripped_line.endswith("\\") and not stripped_line.endswith("\\\\"):
+            # This line ends in an unescaped backslash (line continuation), so we skip it.
+            continue
+        else:
+            processed_lines.append(line)
+
+    # Join the remaining lines with the appropriate newline character
+    # Use '\n'.join for consistent Unix-style newlines, or os.linesep
+    return "\n".join(processed_lines)

@@ -3804,7 +3804,7 @@ class Coder:
             self.commands.cmd_running = False
 
     async def handle_shell_commands(self, commands_str, group):
-        commands = commands_str.strip().splitlines()
+        commands = commands_str.strip().split(";")
         command_count = sum(
             1 for cmd in commands if cmd.strip() and not cmd.strip().startswith("#")
         )
