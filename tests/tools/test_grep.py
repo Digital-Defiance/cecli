@@ -8,7 +8,7 @@ from aider.tools import grep
 
 
 @pytest.mark.skipif(shutil.which("rg") is None, reason="rg is required")
-def test_dash_prefixed_pattern_is_searched_literally(tmp_path):
+def test_dash_prefixed_pattern_is_searched_literally(tmp_path, monkeypatch):
     sample = tmp_path / "example.txt"
     sample.write_text("flag --prefix should be found\n")
 
@@ -21,6 +21,10 @@ def test_dash_prefixed_pattern_is_searched_literally(tmp_path):
         ),
         verbose=False,
         root=str(tmp_path),
+    )
+
+    monkeypatch.setattr(
+        grep.Tool, "_find_search_tool", lambda: ("rg", shutil.which("rg"))
     )
 
     result = grep.Tool.execute(
