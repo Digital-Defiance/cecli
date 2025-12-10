@@ -3001,8 +3001,8 @@ class Coder:
                 await asyncio.sleep(0.1)  # Yield control and wait briefly
 
             if isinstance(chunk, str):
-                text = chunk
-                received_content = True
+                self.io.tool_error(chunk)
+                continue
             else:
                 if len(chunk.choices) == 0:
                     continue

@@ -68,26 +68,23 @@ cache-prompts: true
 check-update: true
 debug: false
 enable-context-compaction: true
+context-compaction-max-tokens: 64000
 env-file: .aider.env
 multiline: true
 preserve-todo-list: true
 show-model-warnings: true
+use-enhanced-map: true
 watch-files: false
-agent-config: |
-  {
-    "large_file_token_threshold": 12500,
-    "skip_cli_confirmations": false
-  }
-mcp-servers: |
-  {
-    "mcpServers":
-      {
-        "context7":{
-          "transport":"http",
-          "url":"https://mcp.context7.com/mcp"
-        }
-      }
-  }
+
+agent-config:
+  large_file_token_threshold: 12500
+  skip_cli_confirmations: false
+
+mcp-servers:
+  mcpServers:
+    context7:
+      transport: http
+      url: https://mcp.context7.com/mcp
 ```
 
 Use the adjacent .aider.env file to store model api keys as environment variables, e.g:

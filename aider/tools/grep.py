@@ -167,7 +167,7 @@ class Tool(BaseTool):
                 cmd_args.append("--exclude-dir=.git")
 
             # Add pattern and directory path
-            cmd_args.extend([pattern, str(search_dir_path)])
+            cmd_args.extend(["--", pattern, str(search_dir_path)])
 
             # Convert list to command string for run_cmd_subprocess
             command_string = oslex.join(cmd_args)
