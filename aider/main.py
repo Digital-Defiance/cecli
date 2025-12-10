@@ -44,6 +44,44 @@ from aider.watch import FileWatcher
 from .dump import dump  # noqa: F401
 
 
+def convert_yaml_to_json_string(value):
+    """
+    Convert YAML dict/list values to JSON strings for compatibility.
+
+    configargparse.YAMLConfigFileParser converts YAML to Python objects,
+    but some arguments expect JSON strings. This function handles:
+    - Direct dict/list objects
+    - String representations of dicts/lists (Python literals)
+    - Already JSON strings (passed through unchanged)
+
+    Args:
+        value: The value to convert
+
+    Returns:
+        str: JSON string if value is a dict/list, otherwise the original value
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
+
+    if isinstance(value, str):
+        # configargparse might convert dict to string representation
+        # Try to parse it as a Python literal
+        try:
+            import ast
+
+            parsed = ast.literal_eval(value)
+            if isinstance(parsed, (dict, list)):
+                return json.dumps(parsed)
+        except (SyntaxError, ValueError):
+            # If it's not a Python literal, assume it's already JSON
+            pass
+
+    return value
+
+
 def check_config_files_for_yes(config_files):
     found = False
     for config_file in config_files:
@@ -508,6 +546,15 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     # Parse again to include any arguments that might have been defined in .env
     args = parser.parse_args(argv)
     set_args_error_data(args)
+
+    # Convert YAML dict arguments to JSON strings for compatibility
+    # configargparse.YAMLConfigFileParser converts YAML to Python objects,
+    # but some arguments expect JSON strings
+    if hasattr(args, "agent_config") and args.agent_config is not None:
+        args.agent_config = convert_yaml_to_json_string(args.agent_config)
+
+    if hasattr(args, "mcp_servers") and args.mcp_servers is not None:
+        args.mcp_servers = convert_yaml_to_json_string(args.mcp_servers)
 
     if args.debug:
         global log_file
