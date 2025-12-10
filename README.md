@@ -73,6 +73,7 @@ env-file: .aider.env
 multiline: true
 preserve-todo-list: true
 show-model-warnings: true
+use-enhanced-map: true
 watch-files: false
 
 agent-config:
