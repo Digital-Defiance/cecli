@@ -901,6 +901,12 @@ class Model(ModelSettings):
             return
         return True
 
+    def is_anthropic(self):
+        name = self.name.lower()
+        if "claude" not in name:
+            return
+        return True
+
     def is_ollama(self):
         return self.name.startswith("ollama/") or self.name.startswith("ollama_chat/")
 
@@ -976,6 +982,27 @@ class Model(ModelSettings):
         if self.verbose:
             dump(kwargs)
         kwargs["messages"] = messages
+
+        if not self.is_anthropic():
+            # Per this: https://github.com/BerriAI/litellm/issues/10226
+            # The first and second to last messages are cache optimal
+            # Since caches are also written to incrementally and you need
+            # the past and current states to properly append and gain
+            # efficiencies/savings in cache writing
+            kwargs["cache_control_injection_points"] = [
+                {
+                    "location": "message",
+                    "role": "system",
+                },
+                {
+                    "location": "message",
+                    "index": -1,
+                },
+                {
+                    "location": "message",
+                    "index": -2,
+                },
+            ]
 
         # Are we using github copilot?
         if "GITHUB_COPILOT_TOKEN" in os.environ or self.name.startswith("github_copilot/"):
