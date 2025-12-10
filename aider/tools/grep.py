@@ -166,11 +166,6 @@ class Tool(BaseTool):
             if tool_name == "grep":
                 cmd_args.append("--exclude-dir=.git")
 
-            # Pattern may start with a dash, this will make rg interpret it as
-            # an option, "-e" works around this.
-            if tool_name == "rg":
-                cmd_args.extend(["-e"])
-
             # Add pattern and directory path
             cmd_args.extend(["--", pattern, str(search_dir_path)])
 
