@@ -2996,6 +2996,10 @@ class Coder:
         received_content = False
 
         async for chunk in completion:
+            if self.args.debug:
+                with open(".aider/logs/chunks.log", "a") as f:
+                    print(chunk, file=f)
+
             # Check if confirmation is in progress and wait if needed
             while self.io.confirmation_in_progress:
                 await asyncio.sleep(0.1)  # Yield control and wait briefly
