@@ -155,6 +155,12 @@ def get_parser(default_config_files, git_root):
         help="Verify the SSL cert when connecting to models (default: True)",
     )
     group.add_argument(
+        "--native-tls",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use system defined ssl certificates, instead of python's defaults (Default: True)",
+    )
+    group.add_argument(
         "--timeout",
         type=float,
         default=None,

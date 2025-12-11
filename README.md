@@ -40,14 +40,14 @@ pip install aider-ce
 or
 
 ```bash
-uv pip install aider-ce
+uv pip install --native-tls aider-ce
 ```
 
 The package exports an `aider-ce` command that accepts all of Aider's configuration options
 
 ### Tool Installation
 ```bash
-uv tool install --python python3.12 aider-ce
+uv tool install --native-tls --python python3.12 aider-ce
 ```
 
 Use the tool installation so aider doesn't interfere with your development environment

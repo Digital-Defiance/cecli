@@ -11,6 +11,8 @@ import webbrowser
 from dataclasses import fields
 from pathlib import Path
 
+import truststore
+
 try:
     import git
 except ImportError:
@@ -527,6 +529,9 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             if check_config_files_for_yes(default_config_files):
                 return await graceful_exit(None, 1)
         raise e
+
+    if args.native_tls:
+        truststore.inject_into_ssl()
 
     if args.verbose:
         print("Config files search order, if no --config:")
