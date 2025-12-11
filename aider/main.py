@@ -11,6 +11,8 @@ import webbrowser
 from dataclasses import fields
 from pathlib import Path
 
+import truststore
+
 try:
     import git
 except ImportError:
@@ -19,6 +21,10 @@ except ImportError:
 import importlib_resources
 import shtab
 from dotenv import load_dotenv
+
+if sys.platform == "win32":  # Windows asyncio fix. set_event_loop_policy deprecated in 3.16
+    if hasattr(asyncio, "set_event_loop_policy"):
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from prompt_toolkit.enums import EditingMode
 
 from aider import __version__, models, urls, utils
@@ -488,6 +494,14 @@ def custom_tracer(frame, event, arg):
 
 
 def main(argv=None, input=None, output=None, force_git_root=None, return_coder=False):
+    # Asyncio run workaround for Windows in Python 3.12+. Required from 3.16+
+    if sys.platform == "win32":
+        if sys.version_info >= (3, 12) and hasattr(asyncio, "SelectorEventLoop"):
+            return asyncio.run(
+                main_async(argv, input, output, force_git_root, return_coder),
+                loop_factory=asyncio.SelectorEventLoop,
+            )
+
     return asyncio.run(main_async(argv, input, output, force_git_root, return_coder))
 
 
@@ -527,6 +541,9 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             if check_config_files_for_yes(default_config_files):
                 return await graceful_exit(None, 1)
         raise e
+
+    if args.native_tls:
+        truststore.inject_into_ssl()
 
     if args.verbose:
         print("Config files search order, if no --config:")

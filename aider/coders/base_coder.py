@@ -1381,7 +1381,7 @@ class Coder:
                     self.io.ring_bell()
                     await self.io.recreate_input()
 
-                await asyncio.sleep(0.01)  # Small yield to prevent tight loop
+                await asyncio.sleep(0.1)  # Small yield to prevent tight loop
 
             except KeyboardInterrupt:
                 self.io.set_placeholder("")
@@ -1439,7 +1439,7 @@ class Coder:
                         await self.io.stop_output_task()
 
                 await self.auto_save_session()
-                await asyncio.sleep(0.01)  # Small yield to prevent tight loop
+                await asyncio.sleep(0.1)  # Small yield to prevent tight loop
 
             except KeyboardInterrupt:
                 self.io.stop_spinner()
@@ -2996,6 +2996,10 @@ class Coder:
         received_content = False
 
         async for chunk in completion:
+            if self.args.debug:
+                with open(".aider/logs/chunks.log", "a") as f:
+                    print(chunk, file=f)
+
             # Check if confirmation is in progress and wait if needed
             while self.io.confirmation_in_progress:
                 await asyncio.sleep(0.1)  # Yield control and wait briefly

@@ -35,10 +35,10 @@ source venv/bin/activate
 pip install uv
 
 # Build Project
-uv pip install -e .
+uv pip install --native-tls -e .
 
 # Add tool chain
-uv install pre-commit
+uv install --native-tls pre-commit
 pre-commit install
 
 # Run Program
