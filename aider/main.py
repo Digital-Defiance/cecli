@@ -1,11 +1,12 @@
 import os
 
 try:
-    if not os.environ["CECLI_DEFAULT_TLS"] or os.environ["AIDER_CE_DEFAULT_TLS"]:
+    if not os.getenv("CECLI_DEFAULT_TLS") and not os.getenv("AIDER_CE_DEFAULT_TLS"):
         import truststore
 
         truststore.inject_into_ssl()
-except Exception:
+except Exception as e:
+    print(e)
     pass
 
 import asyncio
