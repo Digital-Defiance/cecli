@@ -1,7 +1,7 @@
 import os
 
 try:
-    if not os.environ["CECLI_DEFAULT_TLS"] or os.environ["SIDER_CE_DEFAULT_TLS"]:
+    if not os.environ["CECLI_DEFAULT_TLS"] or os.environ["AIDER_CE_DEFAULT_TLS"]:
         import truststore
 
         truststore.inject_into_ssl()
