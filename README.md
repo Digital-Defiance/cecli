@@ -153,34 +153,289 @@ The current priorities are to improve core capabilities and user experience of t
 
 ### All Contributors (Both Aider Main and Aider-CE)
 
-<a href="https://github.com/paul-gauthier">@paul-gauthier</a>
-<a href="https://github.com/dwash96">@dwash96</a>
-<a href="https://github.com/tekacs">@tekacs</a>
-<a href="https://github.com/ei-grad">@ei-grad</a>
-<a href="https://github.com/joshuavial">@joshuavial</a>
-<a href="https://github.com/chr15m">@chr15m</a>
-<a href="https://github.com/fry69">@fry69</a>
-<a href="https://github.com/quinlanjager">@quinlanjager</a>
-<a href="https://github.com/caseymcc">@caseymcc</a>
-<a href="https://github.com/shladnik">@shladnik</a>
-<a href="https://github.com/itlackey">@itlackey</a>
-<a href="https://github.com/tomjuggler">@tomjuggler</a>
-<a href="https://github.com/szmania">@szmania</a>
-<a href="https://github.com/vk4s">@vk4s</a>
-<a href="https://github.com/titusz">@titusz</a>
-<a href="https://github.com/daniel-vainsencher">@daniel-vainsencher</a>
-<a href="https://github.com/bphd">@bphd</a>
-<a href="https://github.com/akaihola">@akaihola</a>
-<a href="https://github.com/jalammar">@jalammar</a>
-<a href="https://github.com/schpet">@schpet</a>
-<a href="https://github.com/iamFIREcracker">@iamFIREcracker</a>
-<a href="https://github.com/KennyDizi">@KennyDizi</a>
-<a href="https://github.com/ivanfioravanti">@ivanfioravanti</a>
-<a href="https://github.com/mdeweerd">@mdeweerd</a>
-<a href="https://github.com/fahmad91">@fahmad91</a>
-<a href="https://github.com/itsmeknt">@itsmeknt</a>
-<a href="https://github.com/cheahjs">@cheahjs</a>
-<a href="https://github.com/youknow04">@youknow04</a>
-<a href="https://github.com/pjcreath">@pjcreath</a>
-<a href="https://github.com/pcamp">@pcamp</a>
-<a href="https://github.com/ErichBSchulz">@ErichBSchulz</a>
+<table>
+<tbody>
+<tr>
+<td><a href="https://github.com/paul-gauthier">@paul-gauthier</a></td>
+<td><a href="https://github.com/dwash96">@dwash96</a></td>
+<td><a href="https://github.com/tekacs">@tekacs</a></td>
+<td><a href="https://github.com/ei-grad">@ei-grad</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/joshuavial">@joshuavial</a></td>
+<td><a href="https://github.com/chr15m">@chr15m</a></td>
+<td><a href="https://github.com/fry69">@fry69</a></td>
+<td><a href="https://github.com/quinlanjager">@quinlanjager</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/caseymcc">@caseymcc</a></td>
+<td><a href="https://github.com/shladnik">@shladnik</a></td>
+<td><a href="https://github.com/itlackey">@itlackey</a></td>
+<td><a href="https://github.com/tomjuggler">@tomjuggler</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/szmania">@szmania</a></td>
+<td><a href="https://github.com/vk4s">@vk4s</a></td>
+<td><a href="https://github.com/titusz">@titusz</a></td>
+<td><a href="https://github.com/daniel-vainsencher">@daniel-vainsencher</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/bphd">@bphd</a></td>
+<td><a href="https://github.com/akaihola">@akaihola</a></td>
+<td><a href="https://github.com/jalammar">@jalammar</a></td>
+<td><a href="https://github.com/schpet">@schpet</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/iamFIREcracker">@iamFIREcracker</a></td>
+<td><a href="https://github.com/ErichBSchulz">@ErichBSchulz</a></td>
+<td><a href="https://github.com/KennyDizi">@KennyDizi</a></td>
+<td><a href="https://github.com/ivanfioravanti">@ivanfioravanti</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/mdeweerd">@mdeweerd</a></td>
+<td><a href="https://github.com/fahmad91">@fahmad91</a></td>
+<td><a href="https://github.com/itsmeknt">@itsmeknt</a></td>
+<td><a href="https://github.com/cheahjs">@cheahjs</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/youknow04">@youknow04</a></td>
+<td><a href="https://github.com/pjcreath">@pjcreath</a></td>
+<td><a href="https://github.com/pcamp">@pcamp</a></td>
+<td><a href="https://github.com/miradnanali">@miradnanali</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/o-nix">@o-nix</a></td>
+<td><a href="https://github.com/jpshackelford">@jpshackelford</a></td>
+<td><a href="https://github.com/johbo">@johbo</a></td>
+<td><a href="https://github.com/jamwil">@jamwil</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/claui">@claui</a></td>
+<td><a href="https://github.com/codeofdusk">@codeofdusk</a></td>
+<td><a href="https://github.com/Taik">@Taik</a></td>
+<td><a href="https://github.com/Hambaobao">@Hambaobao</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/therealmarv">@therealmarv</a></td>
+<td><a href="https://github.com/muravvv">@muravvv</a></td>
+<td><a href="https://github.com/hypn4">@hypn4</a></td>
+<td><a href="https://github.com/gmoz22">@gmoz22</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/contributor">@contributor</a></td>
+<td><a href="https://github.com/apaz-cli">@apaz-cli</a></td>
+<td><a href="https://github.com/preynal">@preynal</a></td>
+<td><a href="https://github.com/nims11">@nims11</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/lreeves">@lreeves</a></td>
+<td><a href="https://github.com/ktakayama">@ktakayama</a></td>
+<td><a href="https://github.com/sentienthouseplant">@sentienthouseplant</a></td>
+<td><a href="https://github.com/gcp">@gcp</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/thehunmonkgroup">@thehunmonkgroup</a></td>
+<td><a href="https://github.com/ctoth">@ctoth</a></td>
+<td><a href="https://github.com/misteral">@misteral</a></td>
+<td><a href="https://github.com/burnettk">@burnettk</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/cryptekbits">@cryptekbits</a></td>
+<td><a href="https://github.com/deansher">@deansher</a></td>
+<td><a href="https://github.com/kennyfrc">@kennyfrc</a></td>
+<td><a href="https://github.com/lentil32">@lentil32</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/malkoG">@malkoG</a></td>
+<td><a href="https://github.com/mubashir1osmani">@mubashir1osmani</a></td>
+<td><a href="https://github.com/TimPut">@TimPut</a></td>
+<td><a href="https://github.com/zjy1412">@zjy1412</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/savioursho">@savioursho</a></td>
+<td><a href="https://github.com/jayeshthk">@jayeshthk</a></td>
+<td><a href="https://github.com/susliko">@susliko</a></td>
+<td><a href="https://github.com/FeepingCreature">@FeepingCreature</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/aelaguiz">@aelaguiz</a></td>
+<td><a href="https://github.com/eltociear">@eltociear</a></td>
+<td><a href="https://github.com/tao12345666333">@tao12345666333</a></td>
+<td><a href="https://github.com/jpshack-at-palomar">@jpshack-at-palomar</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/mbokinala">@mbokinala</a></td>
+<td><a href="https://github.com/yamitzky">@yamitzky</a></td>
+<td><a href="https://github.com/mobyvb">@mobyvb</a></td>
+<td><a href="https://github.com/nicolasperez19">@nicolasperez19</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/ozapinq">@ozapinq</a></td>
+<td><a href="https://github.com/ryanfreckleton">@ryanfreckleton</a></td>
+<td><a href="https://github.com/nhs000">@nhs000</a></td>
+<td><a href="https://github.com/smh">@smh</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/zhyu">@zhyu</a></td>
+<td><a href="https://github.com/Skountz">@Skountz</a></td>
+<td><a href="https://github.com/sestrella">@sestrella</a></td>
+<td><a href="https://github.com/Netzvamp">@Netzvamp</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/peterhadlaw">@peterhadlaw</a></td>
+<td><a href="https://github.com/pauldw">@pauldw</a></td>
+<td><a href="https://github.com/paulmaunders">@paulmaunders</a></td>
+<td><a href="https://github.com/StevenTCramer">@StevenTCramer</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/strayer">@strayer</a></td>
+<td><a href="https://github.com/taha-yassine">@taha-yassine</a></td>
+<td><a href="https://github.com/tamirzb">@tamirzb</a></td>
+<td><a href="https://github.com/tgbender">@tgbender</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/pcgeek86">@pcgeek86</a></td>
+<td><a href="https://github.com/omri123">@omri123</a></td>
+<td><a href="https://github.com/MatthewZMD">@MatthewZMD</a></td>
+<td><a href="https://github.com/mbailey">@mbailey</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/golergka">@golergka</a></td>
+<td><a href="https://github.com/matfat55">@matfat55</a></td>
+<td><a href="https://github.com/mtofano">@mtofano</a></td>
+<td><a href="https://github.com/maledorak">@maledorak</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/mlang">@mlang</a></td>
+<td><a href="https://github.com/marcomayer">@marcomayer</a></td>
+<td><a href="https://github.com/holoskii">@holoskii</a></td>
+<td><a href="https://github.com/ffluk3">@ffluk3</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/lattwood">@lattwood</a></td>
+<td><a href="https://github.com/henderkes">@henderkes</a></td>
+<td><a href="https://github.com/you-n-g">@you-n-g</a></td>
+<td><a href="https://github.com/rti">@rti</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/prmbiy">@prmbiy</a></td>
+<td><a href="https://github.com/omarcinkonis">@omarcinkonis</a></td>
+<td><a href="https://github.com/Oct4Pie">@Oct4Pie</a></td>
+<td><a href="https://github.com/mark-asymbl">@mark-asymbl</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/mdklab">@mdklab</a></td>
+<td><a href="https://github.com/mario7421">@mario7421</a></td>
+<td><a href="https://github.com/kAIto47802">@kAIto47802</a></td>
+<td><a href="https://github.com/jvmncs">@jvmncs</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/hydai">@hydai</a></td>
+<td><a href="https://github.com/hstoklosa">@hstoklosa</a></td>
+<td><a href="https://github.com/gordonlukch">@gordonlukch</a></td>
+<td><a href="https://github.com/develmusa">@develmusa</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/coredevorg">@coredevorg</a></td>
+<td><a href="https://github.com/cantalupo555">@cantalupo555</a></td>
+<td><a href="https://github.com/caetanominuzzo">@caetanominuzzo</a></td>
+<td><a href="https://github.com/yzx9">@yzx9</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/zackees">@zackees</a></td>
+<td><a href="https://github.com/wietsevenema">@wietsevenema</a></td>
+<td><a href="https://github.com/krewenki">@krewenki</a></td>
+<td><a href="https://github.com/vinnymac">@vinnymac</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/szepeviktor">@szepeviktor</a></td>
+<td><a href="https://github.com/varchasgopalaswamy">@varchasgopalaswamy</a></td>
+<td><a href="https://github.com/tanavamsikrishna">@tanavamsikrishna</a></td>
+<td><a href="https://github.com/tylersatre">@tylersatre</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/daysm">@daysm</a></td>
+<td><a href="https://github.com/devriesd">@devriesd</a></td>
+<td><a href="https://github.com/daniel-sc">@daniel-sc</a></td>
+<td><a href="https://github.com/damms005">@damms005</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/curran">@curran</a></td>
+<td><a href="https://github.com/cclauss">@cclauss</a></td>
+<td><a href="https://github.com/cjoach">@cjoach</a></td>
+<td><a href="https://github.com/csala">@csala</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/bexelbie">@bexelbie</a></td>
+<td><a href="https://github.com/branchv">@branchv</a></td>
+<td><a href="https://github.com/bkowalik">@bkowalik</a></td>
+<td><a href="https://github.com/h0x91b">@h0x91b</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/aroffe99">@aroffe99</a></td>
+<td><a href="https://github.com/banjo">@banjo</a></td>
+<td><a href="https://github.com/anjor">@anjor</a></td>
+<td><a href="https://github.com/andreypopp">@andreypopp</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/ivnvxd">@ivnvxd</a></td>
+<td><a href="https://github.com/andreakeesys">@andreakeesys</a></td>
+<td><a href="https://github.com/ameramayreh">@ameramayreh</a></td>
+<td><a href="https://github.com/a1ooha">@a1ooha</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/maliayas">@maliayas</a></td>
+<td><a href="https://github.com/akirak">@akirak</a></td>
+<td><a href="https://github.com/adrianlzt">@adrianlzt</a></td>
+<td><a href="https://github.com/codefromthecrypt">@codefromthecrypt</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/aweis89">@aweis89</a></td>
+<td><a href="https://github.com/aj47">@aj47</a></td>
+<td><a href="https://github.com/noitcudni">@noitcudni</a></td>
+<td><a href="https://github.com/solatis">@solatis</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/webkonstantin">@webkonstantin</a></td>
+<td><a href="https://github.com/khulnasoft-bot">@khulnasoft-bot</a></td>
+<td><a href="https://github.com/KebobZ">@KebobZ</a></td>
+<td><a href="https://github.com/acro5piano">@acro5piano</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/josx">@josx</a></td>
+<td><a href="https://github.com/joshvera">@joshvera</a></td>
+<td><a href="https://github.com/jklina">@jklina</a></td>
+<td><a href="https://github.com/jkeys089">@jkeys089</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/johanvts">@johanvts</a></td>
+<td><a href="https://github.com/gengjiawen">@gengjiawen</a></td>
+<td><a href="https://github.com/jevon">@jevon</a></td>
+<td><a href="https://github.com/jesstelford">@jesstelford</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/JeongJuhyeon">@JeongJuhyeon</a></td>
+<td><a href="https://github.com/jackhallam">@jackhallam</a></td>
+<td><a href="https://github.com/Mushoz">@Mushoz</a></td>
+<td><a href="https://github.com/zestysoft">@zestysoft</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/gwpl">@gwpl</a></td>
+<td><a href="https://github.com/garrett-hopper">@garrett-hopper</a></td>
+<td><a href="https://github.com/filiptrplan">@filiptrplan</a></td>
+<td><a href="https://github.com/FelixLisczyk">@FelixLisczyk</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/evnoj">@evnoj</a></td>
+<td><a href="https://github.com/erykwieliczko">@erykwieliczko</a></td>
+<td><a href="https://github.com/elohmeier">@elohmeier</a></td>
+<td><a href="https://github.com/emmanuel-ferdman">@emmanuel-ferdman</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/spdustin">@spdustin</a></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
