@@ -614,6 +614,12 @@ def get_parser(default_config_files, git_root):
         help="Perform a dry run without modifying files (default: False)",
     )
     group.add_argument(
+        "--tui",
+        action="store_true",
+        default=False,
+        help="Launch Textual TUI interface (experimental)",
+    )
+    group.add_argument(
         "--skip-sanity-check-repo",
         action="store_true",
         help="Skip the sanity check for the git repository (default: False)",
