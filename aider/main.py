@@ -1,3 +1,13 @@
+import os
+
+try:
+    if not os.environ["CECLI_DEFAULT_TLS"] or os.environ["SIDER_CE_DEFAULT_TLS"]:
+        import truststore
+
+        truststore.inject_into_ssl()
+except Exception:
+    pass
+
 import asyncio
 import glob
 import json
@@ -10,8 +20,6 @@ import traceback
 import webbrowser
 from dataclasses import fields
 from pathlib import Path
-
-import truststore
 
 try:
     import git
@@ -541,9 +549,6 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             if check_config_files_for_yes(default_config_files):
                 return await graceful_exit(None, 1)
         raise e
-
-    if args.native_tls:
-        truststore.inject_into_ssl()
 
     if args.verbose:
         print("Config files search order, if no --config:")
