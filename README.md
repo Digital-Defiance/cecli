@@ -156,285 +156,297 @@ The current priorities are to improve core capabilities and user experience of t
 <table>
 <tbody>
 <tr>
-<td><a href="https://github.com/paul-gauthier">@paul-gauthier</a></td>
-<td><a href="https://github.com/dwash96">@dwash96</a></td>
-<td><a href="https://github.com/tekacs">@tekacs</a></td>
-<td><a href="https://github.com/ei-grad">@ei-grad</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=paul-gauthier">@paul-gauthier</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=dwash96">@dwash96</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=tekacs">@tekacs</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=ei-grad">@ei-grad</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/joshuavial">@joshuavial</a></td>
-<td><a href="https://github.com/chr15m">@chr15m</a></td>
-<td><a href="https://github.com/fry69">@fry69</a></td>
-<td><a href="https://github.com/quinlanjager">@quinlanjager</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=joshuavial">@joshuavial</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=chr15m">@chr15m</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=fry69">@fry69</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=quinlanjager">@quinlanjager</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/caseymcc">@caseymcc</a></td>
-<td><a href="https://github.com/shladnik">@shladnik</a></td>
-<td><a href="https://github.com/itlackey">@itlackey</a></td>
-<td><a href="https://github.com/tomjuggler">@tomjuggler</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=caseymcc">@caseymcc</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=shladnik">@shladnik</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=itlackey">@itlackey</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=tomjuggler">@tomjuggler</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/szmania">@szmania</a></td>
-<td><a href="https://github.com/vk4s">@vk4s</a></td>
-<td><a href="https://github.com/titusz">@titusz</a></td>
-<td><a href="https://github.com/daniel-vainsencher">@daniel-vainsencher</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=szmania">@szmania</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=vk4s">@vk4s</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=titusz">@titusz</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=daniel-vainsencher">@daniel-vainsencher</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/bphd">@bphd</a></td>
-<td><a href="https://github.com/akaihola">@akaihola</a></td>
-<td><a href="https://github.com/jalammar">@jalammar</a></td>
-<td><a href="https://github.com/schpet">@schpet</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=bphd">@bphd</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=akaihola">@akaihola</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=jalammar">@jalammar</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=schpet">@schpet</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/iamFIREcracker">@iamFIREcracker</a></td>
-<td><a href="https://github.com/ErichBSchulz">@ErichBSchulz</a></td>
-<td><a href="https://github.com/KennyDizi">@KennyDizi</a></td>
-<td><a href="https://github.com/ivanfioravanti">@ivanfioravanti</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=iamFIREcracker">@iamFIREcracker</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=ErichBSchulz">@ErichBSchulz</a></td>
+<td>JV</td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=KennyDizi">@KennyDizi</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/mdeweerd">@mdeweerd</a></td>
-<td><a href="https://github.com/fahmad91">@fahmad91</a></td>
-<td><a href="https://github.com/itsmeknt">@itsmeknt</a></td>
-<td><a href="https://github.com/cheahjs">@cheahjs</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=ivanfioravanti">@ivanfioravanti</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=mdeweerd">@mdeweerd</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=fahmad91">@fahmad91</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=itsmeknt">@itsmeknt</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/youknow04">@youknow04</a></td>
-<td><a href="https://github.com/pjcreath">@pjcreath</a></td>
-<td><a href="https://github.com/pcamp">@pcamp</a></td>
-<td><a href="https://github.com/miradnanali">@miradnanali</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=cheahjs">@cheahjs</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=youknow04">@youknow04</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=pjcreath">@pjcreath</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=pcamp">@pcamp</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/o-nix">@o-nix</a></td>
-<td><a href="https://github.com/jpshackelford">@jpshackelford</a></td>
-<td><a href="https://github.com/johbo">@johbo</a></td>
-<td><a href="https://github.com/jamwil">@jamwil</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=miradnanali">@miradnanali</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=o-nix">@o-nix</a></td>
+<td>Jonathan Ellis</td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=jpshackelford">@jpshackelford</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/claui">@claui</a></td>
-<td><a href="https://github.com/codeofdusk">@codeofdusk</a></td>
-<td><a href="https://github.com/Taik">@Taik</a></td>
-<td><a href="https://github.com/Hambaobao">@Hambaobao</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=johbo">@johbo</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=jamwil">@jamwil</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=claui">@claui</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=codeofdusk">@codeofdusk</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/therealmarv">@therealmarv</a></td>
-<td><a href="https://github.com/muravvv">@muravvv</a></td>
-<td><a href="https://github.com/hypn4">@hypn4</a></td>
-<td><a href="https://github.com/gmoz22">@gmoz22</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=Taik">@Taik</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=Hambaobao">@Hambaobao</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=therealmarv">@therealmarv</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=muravvv">@muravvv</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/contributor">@contributor</a></td>
-<td><a href="https://github.com/apaz-cli">@apaz-cli</a></td>
-<td><a href="https://github.com/preynal">@preynal</a></td>
-<td><a href="https://github.com/nims11">@nims11</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=hypn4">@hypn4</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=gmoz22">@gmoz22</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=contributor">@contributor</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=apaz-cli">@apaz-cli</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/lreeves">@lreeves</a></td>
-<td><a href="https://github.com/ktakayama">@ktakayama</a></td>
-<td><a href="https://github.com/sentienthouseplant">@sentienthouseplant</a></td>
-<td><a href="https://github.com/gcp">@gcp</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=preynal">@preynal</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=nims11">@nims11</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=lreeves">@lreeves</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=ktakayama">@ktakayama</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/thehunmonkgroup">@thehunmonkgroup</a></td>
-<td><a href="https://github.com/ctoth">@ctoth</a></td>
-<td><a href="https://github.com/misteral">@misteral</a></td>
-<td><a href="https://github.com/burnettk">@burnettk</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=sentienthouseplant">@sentienthouseplant</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=gcp">@gcp</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=thehunmonkgroup">@thehunmonkgroup</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=ctoth">@ctoth</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/cryptekbits">@cryptekbits</a></td>
-<td><a href="https://github.com/deansher">@deansher</a></td>
-<td><a href="https://github.com/kennyfrc">@kennyfrc</a></td>
-<td><a href="https://github.com/lentil32">@lentil32</a></td>
+<td>Alexander Kjeldaas</td>
+<td>Yutaka Matsubara</td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=burnettk">@burnettk</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=cryptekbits">@cryptekbits</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/malkoG">@malkoG</a></td>
-<td><a href="https://github.com/mubashir1osmani">@mubashir1osmani</a></td>
-<td><a href="https://github.com/TimPut">@TimPut</a></td>
-<td><a href="https://github.com/zjy1412">@zjy1412</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=deansher">@deansher</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=kennyfrc">@kennyfrc</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=lentil32">@lentil32</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=malkoG">@malkoG</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/savioursho">@savioursho</a></td>
-<td><a href="https://github.com/jayeshthk">@jayeshthk</a></td>
-<td><a href="https://github.com/susliko">@susliko</a></td>
-<td><a href="https://github.com/FeepingCreature">@FeepingCreature</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=mubashir1osmani">@mubashir1osmani</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=TimPut">@TimPut</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=zjy1412">@zjy1412</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=savioursho">@savioursho</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/aelaguiz">@aelaguiz</a></td>
-<td><a href="https://github.com/eltociear">@eltociear</a></td>
-<td><a href="https://github.com/tao12345666333">@tao12345666333</a></td>
-<td><a href="https://github.com/jpshack-at-palomar">@jpshack-at-palomar</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=jayeshthk">@jayeshthk</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=FeepingCreature">@FeepingCreature</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=susliko">@susliko</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=aelaguiz">@aelaguiz</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/mbokinala">@mbokinala</a></td>
-<td><a href="https://github.com/yamitzky">@yamitzky</a></td>
-<td><a href="https://github.com/mobyvb">@mobyvb</a></td>
-<td><a href="https://github.com/nicolasperez19">@nicolasperez19</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=eltociear">@eltociear</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=misteral">@misteral</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=tao12345666333">@tao12345666333</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=jpshack-at-palomar">@jpshack-at-palomar</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/ozapinq">@ozapinq</a></td>
-<td><a href="https://github.com/ryanfreckleton">@ryanfreckleton</a></td>
-<td><a href="https://github.com/nhs000">@nhs000</a></td>
-<td><a href="https://github.com/smh">@smh</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=mbokinala">@mbokinala</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=yamitzky">@yamitzky</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=mobyvb">@mobyvb</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=nicolasperez19">@nicolasperez19</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/zhyu">@zhyu</a></td>
-<td><a href="https://github.com/Skountz">@Skountz</a></td>
-<td><a href="https://github.com/sestrella">@sestrella</a></td>
-<td><a href="https://github.com/Netzvamp">@Netzvamp</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=ozapinq">@ozapinq</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=ryanfreckleton">@ryanfreckleton</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=nhs000">@nhs000</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=smh">@smh</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/peterhadlaw">@peterhadlaw</a></td>
-<td><a href="https://github.com/pauldw">@pauldw</a></td>
-<td><a href="https://github.com/paulmaunders">@paulmaunders</a></td>
-<td><a href="https://github.com/StevenTCramer">@StevenTCramer</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=zhyu">@zhyu</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=peterhadlaw">@peterhadlaw</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=Netzvamp">@Netzvamp</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=sestrella">@sestrella</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/strayer">@strayer</a></td>
-<td><a href="https://github.com/taha-yassine">@taha-yassine</a></td>
-<td><a href="https://github.com/tamirzb">@tamirzb</a></td>
-<td><a href="https://github.com/tgbender">@tgbender</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=Skountz">@Skountz</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=StevenTCramer">@StevenTCramer</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=strayer">@strayer</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=taha-yassine">@taha-yassine</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/pcgeek86">@pcgeek86</a></td>
-<td><a href="https://github.com/omri123">@omri123</a></td>
-<td><a href="https://github.com/MatthewZMD">@MatthewZMD</a></td>
-<td><a href="https://github.com/mbailey">@mbailey</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=tamirzb">@tamirzb</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=tgbender">@tgbender</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=pcgeek86">@pcgeek86</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=tylersatre">@tylersatre</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/golergka">@golergka</a></td>
-<td><a href="https://github.com/matfat55">@matfat55</a></td>
-<td><a href="https://github.com/mtofano">@mtofano</a></td>
-<td><a href="https://github.com/maledorak">@maledorak</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=tanavamsikrishna">@tanavamsikrishna</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=you-n-g">@you-n-g</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=pauldw">@pauldw</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=paulmaunders">@paulmaunders</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/mlang">@mlang</a></td>
-<td><a href="https://github.com/marcomayer">@marcomayer</a></td>
-<td><a href="https://github.com/holoskii">@holoskii</a></td>
-<td><a href="https://github.com/ffluk3">@ffluk3</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=omri123">@omri123</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=MatthewZMD">@MatthewZMD</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=mbailey">@mbailey</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=golergka">@golergka</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/lattwood">@lattwood</a></td>
-<td><a href="https://github.com/henderkes">@henderkes</a></td>
-<td><a href="https://github.com/you-n-g">@you-n-g</a></td>
-<td><a href="https://github.com/rti">@rti</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=matfat55">@matfat55</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=mtofano">@mtofano</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=maledorak">@maledorak</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=mlang">@mlang</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/prmbiy">@prmbiy</a></td>
-<td><a href="https://github.com/omarcinkonis">@omarcinkonis</a></td>
-<td><a href="https://github.com/Oct4Pie">@Oct4Pie</a></td>
-<td><a href="https://github.com/mark-asymbl">@mark-asymbl</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=marcomayer">@marcomayer</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=holoskii">@holoskii</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=ffluk3">@ffluk3</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=lattwood">@lattwood</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/mdklab">@mdklab</a></td>
-<td><a href="https://github.com/mario7421">@mario7421</a></td>
-<td><a href="https://github.com/kAIto47802">@kAIto47802</a></td>
-<td><a href="https://github.com/jvmncs">@jvmncs</a></td>
+<td>wangboxue</td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=rti">@rti</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=prmbiy">@prmbiy</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=omarcinkonis">@omarcinkonis</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/hydai">@hydai</a></td>
-<td><a href="https://github.com/hstoklosa">@hstoklosa</a></td>
-<td><a href="https://github.com/gordonlukch">@gordonlukch</a></td>
-<td><a href="https://github.com/develmusa">@develmusa</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=Oct4Pie">@Oct4Pie</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=mark-asymbl">@mark-asymbl</a></td>
+<td>michal.sliwa</td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=mdklab">@mdklab</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/coredevorg">@coredevorg</a></td>
-<td><a href="https://github.com/cantalupo555">@cantalupo555</a></td>
-<td><a href="https://github.com/caetanominuzzo">@caetanominuzzo</a></td>
-<td><a href="https://github.com/yzx9">@yzx9</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=mario7421">@mario7421</a></td>
+<td>liam.liu</td>
+<td>kwmiebach</td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=kAIto47802">@kAIto47802</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/zackees">@zackees</a></td>
-<td><a href="https://github.com/wietsevenema">@wietsevenema</a></td>
-<td><a href="https://github.com/krewenki">@krewenki</a></td>
-<td><a href="https://github.com/vinnymac">@vinnymac</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=jvmncs">@jvmncs</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=hydai">@hydai</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=hstoklosa">@hstoklosa</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=gordonlukch">@gordonlukch</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/szepeviktor">@szepeviktor</a></td>
-<td><a href="https://github.com/varchasgopalaswamy">@varchasgopalaswamy</a></td>
-<td><a href="https://github.com/tanavamsikrishna">@tanavamsikrishna</a></td>
-<td><a href="https://github.com/tylersatre">@tylersatre</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=develmusa">@develmusa</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=coredevorg">@coredevorg</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=cantalupo555">@cantalupo555</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=caetanominuzzo">@caetanominuzzo</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/daysm">@daysm</a></td>
-<td><a href="https://github.com/devriesd">@devriesd</a></td>
-<td><a href="https://github.com/daniel-sc">@daniel-sc</a></td>
-<td><a href="https://github.com/damms005">@damms005</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=yzx9">@yzx9</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=zackees">@zackees</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=wietsevenema">@wietsevenema</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=krewenki">@krewenki</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/curran">@curran</a></td>
-<td><a href="https://github.com/cclauss">@cclauss</a></td>
-<td><a href="https://github.com/cjoach">@cjoach</a></td>
-<td><a href="https://github.com/csala">@csala</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=vinnymac">@vinnymac</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=szepeviktor">@szepeviktor</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=varchasgopalaswamy">@varchasgopalaswamy</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=spdustin">@spdustin</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/bexelbie">@bexelbie</a></td>
-<td><a href="https://github.com/branchv">@branchv</a></td>
-<td><a href="https://github.com/bkowalik">@bkowalik</a></td>
-<td><a href="https://github.com/h0x91b">@h0x91b</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=henderkes">@henderkes</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=daysm">@daysm</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=devriesd">@devriesd</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=daniel-sc">@daniel-sc</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/aroffe99">@aroffe99</a></td>
-<td><a href="https://github.com/banjo">@banjo</a></td>
-<td><a href="https://github.com/anjor">@anjor</a></td>
-<td><a href="https://github.com/andreypopp">@andreypopp</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=damms005">@damms005</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=curran">@curran</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=cclauss">@cclauss</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=cjoach">@cjoach</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/ivnvxd">@ivnvxd</a></td>
-<td><a href="https://github.com/andreakeesys">@andreakeesys</a></td>
-<td><a href="https://github.com/ameramayreh">@ameramayreh</a></td>
-<td><a href="https://github.com/a1ooha">@a1ooha</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=csala">@csala</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=bexelbie">@bexelbie</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=branchv">@branchv</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=bkowalik">@bkowalik</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/maliayas">@maliayas</a></td>
-<td><a href="https://github.com/akirak">@akirak</a></td>
-<td><a href="https://github.com/adrianlzt">@adrianlzt</a></td>
-<td><a href="https://github.com/codefromthecrypt">@codefromthecrypt</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=h0x91b">@h0x91b</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=aroffe99">@aroffe99</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=banjo">@banjo</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=anjor">@anjor</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/aweis89">@aweis89</a></td>
-<td><a href="https://github.com/aj47">@aj47</a></td>
-<td><a href="https://github.com/noitcudni">@noitcudni</a></td>
-<td><a href="https://github.com/solatis">@solatis</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=andreypopp">@andreypopp</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=ivnvxd">@ivnvxd</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=andreakeesys">@andreakeesys</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=ameramayreh">@ameramayreh</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/webkonstantin">@webkonstantin</a></td>
-<td><a href="https://github.com/khulnasoft-bot">@khulnasoft-bot</a></td>
-<td><a href="https://github.com/KebobZ">@KebobZ</a></td>
-<td><a href="https://github.com/acro5piano">@acro5piano</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=a1ooha">@a1ooha</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=maliayas">@maliayas</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=akirak">@akirak</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=adrianlzt">@adrianlzt</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/josx">@josx</a></td>
-<td><a href="https://github.com/joshvera">@joshvera</a></td>
-<td><a href="https://github.com/jklina">@jklina</a></td>
-<td><a href="https://github.com/jkeys089">@jkeys089</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=codefromthecrypt">@codefromthecrypt</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=aweis89">@aweis89</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=aj47">@aj47</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=noitcudni">@noitcudni</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/johanvts">@johanvts</a></td>
-<td><a href="https://github.com/gengjiawen">@gengjiawen</a></td>
-<td><a href="https://github.com/jevon">@jevon</a></td>
-<td><a href="https://github.com/jesstelford">@jesstelford</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=solatis">@solatis</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=webkonstantin">@webkonstantin</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=khulnasoft-bot">@khulnasoft-bot</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=KebobZ">@KebobZ</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/JeongJuhyeon">@JeongJuhyeon</a></td>
-<td><a href="https://github.com/jackhallam">@jackhallam</a></td>
-<td><a href="https://github.com/Mushoz">@Mushoz</a></td>
-<td><a href="https://github.com/zestysoft">@zestysoft</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=acro5piano">@acro5piano</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=josx">@josx</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=joshvera">@joshvera</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=jklina">@jklina</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/gwpl">@gwpl</a></td>
-<td><a href="https://github.com/garrett-hopper">@garrett-hopper</a></td>
-<td><a href="https://github.com/filiptrplan">@filiptrplan</a></td>
-<td><a href="https://github.com/FelixLisczyk">@FelixLisczyk</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=jkeys089">@jkeys089</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=johanvts">@johanvts</a></td>
+<td>Jim White</td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=gengjiawen">@gengjiawen</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/evnoj">@evnoj</a></td>
-<td><a href="https://github.com/erykwieliczko">@erykwieliczko</a></td>
-<td><a href="https://github.com/elohmeier">@elohmeier</a></td>
-<td><a href="https://github.com/emmanuel-ferdman">@emmanuel-ferdman</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=jevon">@jevon</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=jesstelford">@jesstelford</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=JeongJuhyeon">@JeongJuhyeon</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=jackhallam">@jackhallam</a></td>
 </tr>
 <tr>
-<td><a href="https://github.com/spdustin">@spdustin</a></td>
-<td></td>
-<td></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=Mushoz">@Mushoz</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=zestysoft">@zestysoft</a></td>
+<td>Henry Fraser</td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=gwpl">@gwpl</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=garrett-hopper">@garrett-hopper</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=filiptrplan">@filiptrplan</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=FelixLisczyk">@FelixLisczyk</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=evnoj">@evnoj</a></td>
+</tr>
+<tr>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=erykwieliczko">@erykwieliczko</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=elohmeier">@elohmeier</a></td>
+<td><a href="https://github.com/dwash96/aider-ce/commits/main?author=emmanuel-ferdman">@emmanuel-ferdman</a></td>
 <td></td>
 </tr>
 </tbody>
