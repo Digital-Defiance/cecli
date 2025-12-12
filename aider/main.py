@@ -566,8 +566,11 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     loaded_dotenvs = load_dotenv_files(git_root, args.env_file, args.encoding)
 
     # Parse again to include any arguments that might have been defined in .env
-    args = parser.parse_args(argv)
+    args, unknown = parser.parse_known_args(argv)
     set_args_error_data(args)
+
+    if len(unknown):
+        print("Unknown Args: ", unknown)
 
     # Convert YAML dict arguments to JSON strings for compatibility
     # configargparse.YAMLConfigFileParser converts YAML to Python objects,
