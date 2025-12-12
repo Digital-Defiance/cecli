@@ -1521,7 +1521,9 @@ class Coder:
         else:
             message = user_message
 
-        if self.commands.is_command(user_message):
+        if self.commands.is_command(user_message) and not self.commands.is_test_command(
+            user_message
+        ):
             return
 
         while True:
