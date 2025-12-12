@@ -2129,7 +2129,7 @@ class Coder:
                 " the context limit is exceeded."
             )
 
-            if not await self.io.confirm_ask("Try to proceed anyway?", explicit_yes_required=True):
+            if not await self.io.confirm_ask("Try to proceed anyway?"):
                 return False
         return True
 
