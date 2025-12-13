@@ -37,13 +37,13 @@ class TextualInputOutput(InputOutput):
 
         # Task detection patterns
         self.task_markers = [
-            ('Tool:', 'tool'),
-            ('Running', 'execution'),
-            ('Git:', 'git'),
-            ('Linting', 'lint'),
-            ('Testing', 'test'),
-            ('Adding', 'file_op'),
-            ('Removing', 'file_op'),
+            ("Tool:", "tool"),
+            ("Running", "execution"),
+            ("Git:", "git"),
+            ("Linting", "lint"),
+            ("Testing", "test"),
+            ("Adding", "file_op"),
+            ("Removing", "file_op"),
         ]
 
     def _detect_task_start(self, text):
@@ -58,12 +58,12 @@ class TextualInputOutput(InputOutput):
         for marker, task_type in self.task_markers:
             if marker in text:
                 # Extract title from first line, max 50 chars
-                title = text.split('\n')[0][:50]
+                title = text.split("\n")[0][:50]
                 return True, title, task_type
 
         return False, None, None
 
-    def start_task(self, title, task_type='general'):
+    def start_task(self, title, task_type="general"):
         """Start a new output task.
 
         Args:
@@ -71,12 +71,14 @@ class TextualInputOutput(InputOutput):
             task_type: Type of task
         """
         self.current_task_id = f"task_{time.time()}"
-        self.output_queue.put({
-            'type': 'start_task',
-            'task_id': self.current_task_id,
-            'title': title,
-            'task_type': task_type,
-        })
+        self.output_queue.put(
+            {
+                "type": "start_task",
+                "task_id": self.current_task_id,
+                "title": title,
+                "task_type": task_type,
+            }
+        )
 
     def _get_tui_console(self):
         """Get or create console for TUI rendering."""
@@ -101,16 +103,18 @@ class TextualInputOutput(InputOutput):
         text = capture.get()
 
         # Send to TUI via queue
-        self.output_queue.put({
-            'type': 'output',
-            'text': text,
-            'task_id': self.current_task_id,
-        })
+        self.output_queue.put(
+            {
+                "type": "output",
+                "text": text,
+                "task_id": self.current_task_id,
+            }
+        )
 
     def stream_output(self, text, final=False):
         """Override stream_output to send streaming text to TUI.
 
-        Uses Textual's MarkdownStream for efficient rendering.
+        Uses Textual's RichLog for efficient rendering.
 
         Args:
             text: Text to stream
@@ -119,25 +123,27 @@ class TextualInputOutput(InputOutput):
         # Start response on first chunk
         if not self._streaming_response and text:
             self._streaming_response = True
-            self.output_queue.put({'type': 'start_response'})
+            self.output_queue.put({"type": "start_response"})
 
         # Stream the chunk
         if text:
-            self.output_queue.put({
-                'type': 'stream_chunk',
-                'text': text,
-            })
+            self.output_queue.put(
+                {
+                    "type": "stream_chunk",
+                    "text": text,
+                }
+            )
 
         # End response on final chunk
         if final and self._streaming_response:
             self._streaming_response = False
-            self.output_queue.put({'type': 'end_response'})
+            self.output_queue.put({"type": "end_response"})
 
     def reset_streaming_response(self):
         """Reset streaming state between responses."""
         if self._streaming_response:
             self._streaming_response = False
-            self.output_queue.put({'type': 'end_response'})
+            self.output_queue.put({"type": "end_response"})
 
     def tool_output(self, *messages, **kwargs):
         """Override tool_output to detect task boundaries and queue output.
@@ -147,7 +153,7 @@ class TextualInputOutput(InputOutput):
             **kwargs: Additional arguments
         """
         if messages:
-            text = ' '.join(str(m) for m in messages)
+            text = " ".join(str(m) for m in messages)
 
             # Check if this should start a new task
             should_start, title, task_type = self._detect_task_start(text)
@@ -168,11 +174,13 @@ class TextualInputOutput(InputOutput):
         super().start_spinner(text, update_last_text)
 
         # Send to TUI
-        self.output_queue.put({
-            'type': 'spinner',
-            'action': 'start',
-            'text': text,
-        })
+        self.output_queue.put(
+            {
+                "type": "spinner",
+                "action": "start",
+                "text": text,
+            }
+        )
 
     def update_spinner(self, text):
         """Override update_spinner to send updates to TUI.
@@ -184,11 +192,13 @@ class TextualInputOutput(InputOutput):
         super().update_spinner(text)
 
         # Send to TUI
-        self.output_queue.put({
-            'type': 'spinner',
-            'action': 'update',
-            'text': text,
-        })
+        self.output_queue.put(
+            {
+                "type": "spinner",
+                "action": "update",
+                "text": text,
+            }
+        )
 
     def stop_spinner(self):
         """Override stop_spinner to send stop state to TUI."""
@@ -196,10 +206,12 @@ class TextualInputOutput(InputOutput):
         super().stop_spinner()
 
         # Send to TUI
-        self.output_queue.put({
-            'type': 'spinner',
-            'action': 'stop',
-        })
+        self.output_queue.put(
+            {
+                "type": "spinner",
+                "action": "stop",
+            }
+        )
 
     async def get_input(
         self,
@@ -228,11 +240,13 @@ class TextualInputOutput(InputOutput):
         # Signal TUI that we're ready for input
         command_names = commands.get_commands() if commands else []
 
-        self.output_queue.put({
-            'type': 'ready_for_input',
-            'files': list(addable_rel_fnames) if addable_rel_fnames else [],
-            'commands': command_names,
-        })
+        self.output_queue.put(
+            {
+                "type": "ready_for_input",
+                "files": list(addable_rel_fnames) if addable_rel_fnames else [],
+                "commands": command_names,
+            }
+        )
 
         # Wait for input from TUI (blocking in async context)
         # We need to poll the queue since it's not async
@@ -240,10 +254,11 @@ class TextualInputOutput(InputOutput):
             try:
                 # Non-blocking get with timeout
                 import queue
+
                 result = self.input_queue.get(timeout=0.1)
 
-                if 'text' in result:
-                    user_input = result['text']
+                if "text" in result:
+                    user_input = result["text"]
 
                     # Log the input (same as parent)
                     self.user_input(user_input)
@@ -287,7 +302,7 @@ class TextualInputOutput(InputOutput):
             return False
 
         if group and group.preference:
-            return group.preference == 'all'
+            return group.preference == "all"
 
         if group_response and group_response in self.group_responses:
             return self.group_responses[group_response]
@@ -296,45 +311,48 @@ class TextualInputOutput(InputOutput):
         self.num_user_asks += 1
 
         # Send confirmation request to TUI
-        self.output_queue.put({
-            'type': 'confirmation',
-            'question': question,
-            'subject': subject,
-            'options': {
-                'default': default,
-                'explicit_yes_required': explicit_yes_required,
-                'group': group,
-                'group_response': group_response,
-                'allow_never': allow_never,
-                'allow_tweak': allow_tweak,
-                'acknowledge': acknowledge,
+        self.output_queue.put(
+            {
+                "type": "confirmation",
+                "question": question,
+                "subject": subject,
+                "options": {
+                    "default": default,
+                    "explicit_yes_required": explicit_yes_required,
+                    "group": group,
+                    "group_response": group_response,
+                    "allow_never": allow_never,
+                    "allow_tweak": allow_tweak,
+                    "acknowledge": acknowledge,
+                },
             }
-        })
+        )
 
         # Wait for response from TUI
         while True:
             try:
                 import queue
+
                 result = self.input_queue.get(timeout=0.1)
 
-                if 'confirmed' in result:
-                    response = result['confirmed']
+                if "confirmed" in result:
+                    response = result["confirmed"]
 
                     # Handle special responses
-                    if response == 'never':
+                    if response == "never":
                         self.never_prompts.add(question_id)
                         return False
-                    elif response == 'tweak':
-                        return 'tweak'
-                    elif response == 'all':
+                    elif response == "tweak":
+                        return "tweak"
+                    elif response == "all":
                         if group:
-                            group.preference = 'all'
+                            group.preference = "all"
                         if group_response:
                             self.group_responses[group_response] = True
                         return True
-                    elif response == 'skip':
+                    elif response == "skip":
                         if group:
-                            group.preference = 'skip'
+                            group.preference = "skip"
                         if group_response:
                             self.group_responses[group_response] = False
                         return False
@@ -365,4 +383,4 @@ class TextualInputOutput(InputOutput):
         This sends an exit signal to the TUI instead of calling sys.exit()
         directly, allowing Textual to properly restore terminal state.
         """
-        self.output_queue.put({'type': 'exit'})
+        self.output_queue.put({"type": "exit"})

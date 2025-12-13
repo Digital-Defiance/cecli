@@ -30,7 +30,7 @@ class AiderFooter(Static):
         project_name: str = "",
         git_branch: str = "",
         aider_mode: str = "code",
-        **kwargs
+        **kwargs,
     ):
         """Initialize footer.
 
@@ -71,39 +71,40 @@ class AiderFooter(Static):
 
     def render(self) -> Text:
         """Render the footer with left/right split."""
+
         # Build left side: spinner/mode + model
         left = Text()
 
         if self.spinner_visible:
             spinner_char = self._spinner_chars[self._spinner_frame]
-            left.append(f"{spinner_char} ", style="bold #000000")
+            left.append(f"{spinner_char} ")
             if self.spinner_text:
-                left.append(self.spinner_text, style="bold #000000")
+                left.append(self.spinner_text)
                 left.append(" ")
 
         if self.aider_mode:
-            left.append(f"[{self.aider_mode}]", style="bold #003300")
+            left.append(f"[{self.aider_mode}]")
             left.append(" ")
 
         model_display = self._get_display_model()
         if model_display:
-            left.append(model_display, style="#003300")
+            left.append(model_display)
 
         # Build right side: project + git + cost
         right = Text()
 
         if self.project_name:
-            right.append(self.project_name, style="#003300")
+            right.append(self.project_name)
             right.append("  ")
 
         if self.git_branch:
-            right.append(self.git_branch, style="bold #000000")
+            right.append(self.git_branch)
             if self.git_dirty:
-                right.append(f" +{self.git_dirty}", style="bold #552200")
+                right.append(f" +{self.git_dirty}")
             right.append("  ")
 
         # Always show cost
-        right.append(f"${self.cost:.2f}", style="#000000")
+        right.append(f"${self.cost:.2f}")
 
         # Calculate padding to right-align
         try:

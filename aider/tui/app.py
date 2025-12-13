@@ -6,28 +6,22 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.theme import Theme
 
-from .widgets import (
-    AiderFooter,
-    CompletionBar,
-    InputArea,
-    OutputContainer,
-    StatusBar,
-)
+from .widgets import AiderFooter, CompletionBar, InputArea, OutputContainer, StatusBar
 from .widgets.output import CostUpdate
 
-# Aider theme - dark with green accent
+# Aider theme - dark with blue accent
 AIDER_THEME = Theme(
     name="aider",
-    primary="#00aa00",      # Aider green
+    primary="#00ff5f",  # Cecli blue
     secondary="#888888",
-    accent="#00aa00",
+    accent="#00ff87",
     foreground="#ffffff",
-    background="#0d0d0d",   # Near black
+    background="rgba(0,0,0,0.1)",  # Near black
     success="#00aa00",
-    warning="#ffaa00",
+    warning="#ffd700",
     error="#ff3333",
-    surface="#1a1a1a",      # Slightly lighter than background
-    panel="#262626",
+    surface="transparent",  # Slightly lighter than background
+    panel="transparent",
     dark=True,
 )
 
@@ -38,7 +32,7 @@ class AiderApp(App):
     CSS_PATH = "styles.tcss"
 
     BINDINGS = [
-        Binding("ctrl+c", "quit", "Quit", show=True),
+        # Binding("ctrl+c", "quit", "Quit", show=True),
         Binding("ctrl+l", "clear_output", "Clear", show=True),
     ]
 
@@ -60,17 +54,21 @@ class AiderApp(App):
         """Create child widgets."""
         coder = self.worker.coder
         model_name = coder.main_model.name if coder.main_model else "Unknown"
-        aider_mode = getattr(coder, 'edit_format', 'code') or 'code'
+        aider_mode = getattr(coder, "edit_format", "code") or "code"
 
         # Get project name (just the folder name, not full path)
         project_name = ""
         if coder.repo:
-            project_name = coder.repo.root.name if hasattr(coder.repo.root, 'name') else str(coder.repo.root).split('/')[-1]
+            project_name = (
+                coder.repo.root.name
+                if hasattr(coder.repo.root, "name")
+                else str(coder.repo.root).split("/")[-1]
+            )
         else:
             project_name = "No repo"
 
         # Get history file path from coder's io
-        history_file = getattr(coder.io, 'input_history_file', None)
+        history_file = getattr(coder.io, "input_history_file", None)
 
         # Simple vertical layout - no header, footer has all info
         # Git info loaded in on_mount to avoid blocking startup
@@ -82,25 +80,24 @@ class AiderApp(App):
             project_name=project_name,
             git_branch="",  # Loaded async in on_mount
             aider_mode=aider_mode,
-            id="footer"
+            id="footer",
         )
 
     # ASCII banner for startup
-    BANNER = """\
-
-[bold green] ██████╗███████╗ ██████╗██╗     ██╗
-██╔════╝██╔════╝██╔════╝██║     ██║
-██║     █████╗  ██║     ██║     ██║
-██║     ██╔══╝  ██║     ██║     ██║
-╚██████╗███████╗╚██████╗███████╗██║
- ╚═════╝╚══════╝ ╚═════╝╚══════╝╚═╝[/bold green]
+    BANNER = """
+[bold spring_green2] ██████╗███████╗ ██████╗██╗     ██╗[/bold spring_green2]
+[bold spring_green1]██╔════╝██╔════╝██╔════╝██║     ██║[/bold spring_green1]
+[bold medium_spring_green]██║     █████╗  ██║     ██║     ██║[/bold medium_spring_green]
+[bold cyan2]██║     ██╔══╝  ██║     ██║     ██║[/bold cyan2]
+[bold cyan1]╚██████╗███████╗╚██████╗███████╗██║[/bold cyan1]
+[bold bright_white] ╚═════╝╚══════╝ ╚═════╝╚══════╝╚═╝[/bold bright_white]
 """
 
     def on_mount(self):
         """Called when app starts."""
         # Show startup banner
         output_container = self.query_one("#output", OutputContainer)
-        output_container.add_output(self.BANNER)
+        output_container.add_output(self.BANNER, dim=False)
 
         self.set_interval(0.05, self.check_output_queue)
         self.worker.start()
@@ -131,41 +128,41 @@ class AiderApp(App):
 
     def handle_output_message(self, msg):
         """Route output messages to appropriate handlers."""
-        msg_type = msg['type']
+        msg_type = msg["type"]
 
-        if msg_type == 'output':
-            self.add_output(msg['text'], msg.get('task_id'))
-        elif msg_type == 'start_response':
+        if msg_type == "output":
+            self.add_output(msg["text"], msg.get("task_id"))
+        elif msg_type == "start_response":
             # Start a new LLM response with streaming
             self.run_worker(self._start_response())
-        elif msg_type == 'stream_chunk':
+        elif msg_type == "stream_chunk":
             # Stream a chunk of LLM response
-            self.run_worker(self._stream_chunk(msg['text']))
-        elif msg_type == 'end_response':
+            self.run_worker(self._stream_chunk(msg["text"]))
+        elif msg_type == "end_response":
             # End the current LLM response
             self.run_worker(self._end_response())
-        elif msg_type == 'start_task':
-            self.start_task(msg['task_id'], msg['title'], msg.get('task_type'))
-        elif msg_type == 'confirmation':
+        elif msg_type == "start_task":
+            self.start_task(msg["task_id"], msg["title"], msg.get("task_type"))
+        elif msg_type == "confirmation":
             self.show_confirmation(msg)
-        elif msg_type == 'spinner':
+        elif msg_type == "spinner":
             self.update_spinner(msg)
-        elif msg_type == 'ready_for_input':
+        elif msg_type == "ready_for_input":
             self.enable_input(msg)
             footer = self.query_one(AiderFooter)
             footer.stop_spinner()
-        elif msg_type == 'error':
-            self.show_error(msg['message'])
-        elif msg_type == 'cost_update':
+        elif msg_type == "error":
+            self.show_error(msg["message"])
+        elif msg_type == "cost_update":
             footer = self.query_one(AiderFooter)
-            footer.update_cost(msg.get('cost', 0))
-        elif msg_type == 'exit':
+            footer.update_cost(msg.get("cost", 0))
+        elif msg_type == "exit":
             # Graceful exit requested - let Textual clean up terminal properly
             self.action_quit()
-        elif msg_type == 'mode_change':
+        elif msg_type == "mode_change":
             # Update footer with new chat mode
             footer = self.query_one(AiderFooter)
-            footer.update_mode(msg.get('mode', 'code'))
+            footer.update_mode(msg.get("mode", "code"))
 
     def add_output(self, text, task_id=None):
         """Add output to the output container."""
@@ -205,26 +202,26 @@ class AiderApp(App):
 
         # Show confirmation in status bar
         status_bar = self.query_one("#status-bar", StatusBar)
-        status_bar.show_confirm(msg['question'], show_all=True)
+        status_bar.show_confirm(msg["question"], show_all=True)
 
     def update_spinner(self, msg):
         """Update spinner in footer."""
         footer = self.query_one(AiderFooter)
-        action = msg.get('action', 'start')
+        action = msg.get("action", "start")
 
-        if action == 'start':
-            footer.start_spinner(msg.get('text', ''))
-        elif action == 'update':
-            footer.spinner_text = msg.get('text', '')
-        elif action == 'stop':
+        if action == "start":
+            footer.start_spinner(msg.get("text", ""))
+        elif action == "update":
+            footer.spinner_text = msg.get("text", "")
+        elif action == "stop":
             footer.stop_spinner()
 
     def enable_input(self, msg):
         """Enable input and update autocomplete data."""
         input_area = self.query_one("#input", InputArea)
         input_area.disabled = False  # Ensure input is enabled
-        files = msg.get('files', [])
-        commands = msg.get('commands', [])
+        files = msg.get("files", [])
+        commands = msg.get("commands", [])
         input_area.update_autocomplete_data(files, commands)
         input_area.focus()
 
@@ -253,7 +250,7 @@ class AiderApp(App):
         footer = self.query_one(AiderFooter)
         footer.start_spinner("Thinking...")
 
-        self.input_queue.put({'text': user_input})
+        self.input_queue.put({"text": user_input})
 
     def action_clear_output(self):
         """Clear all output."""
@@ -263,7 +260,7 @@ class AiderApp(App):
     def action_quit(self):
         """Quit the application."""
         # Prevent multiple quit attempts
-        if hasattr(self, '_quitting') and self._quitting:
+        if hasattr(self, "_quitting") and self._quitting:
             return
         self._quitting = True
 
@@ -292,7 +289,7 @@ class AiderApp(App):
         input_area.disabled = False
         input_area.focus()
 
-        self.input_queue.put({'confirmed': message.result})
+        self.input_queue.put({"confirmed": message.result})
 
     # Commands that use path-based completion
     PATH_COMPLETION_COMMANDS = {"/read-only", "/read-only-stub", "/load", "/save"}
@@ -303,9 +300,9 @@ class AiderApp(App):
 
         # Get current files in chat
         inchat_files = []
-        if hasattr(coder, 'abs_fnames'):
+        if hasattr(coder, "abs_fnames"):
             inchat_files.extend(coder.abs_fnames)
-        if hasattr(coder, 'abs_read_only_fnames'):
+        if hasattr(coder, "abs_read_only_fnames"):
             inchat_files.extend(coder.abs_read_only_fnames)
 
         # Check if cache is still valid
@@ -316,9 +313,9 @@ class AiderApp(App):
         symbols = set()
 
         # Also add filenames as completable symbols
-        if hasattr(coder, 'get_inchat_relative_files'):
+        if hasattr(coder, "get_inchat_relative_files"):
             symbols.update(coder.get_inchat_relative_files())
-        if hasattr(coder, 'get_all_relative_files'):
+        if hasattr(coder, "get_all_relative_files"):
             # Add all project files too
             symbols.update(coder.get_all_relative_files())
 
@@ -336,7 +333,7 @@ class AiderApp(App):
 
         for fname in files_to_process:
             try:
-                with open(fname, 'r', encoding='utf-8', errors='ignore') as f:
+                with open(fname, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
 
                 lexer = guess_lexer_for_filename(fname, content)
@@ -370,7 +367,7 @@ class AiderApp(App):
         from pathlib import Path
 
         coder = self.worker.coder
-        root = Path(coder.root) if hasattr(coder, 'root') else Path.cwd()
+        root = Path(coder.root) if hasattr(coder, "root") else Path.cwd()
 
         # Handle the prefix - could be partial path like "src/ma" or just "ma"
         if "/" in prefix:
@@ -403,7 +400,6 @@ class AiderApp(App):
 
     def _get_suggestions(self, text: str) -> list[str]:
         """Get completion suggestions for given text."""
-        input_area = self.query_one("#input", InputArea)
         suggestions = []
         commands = self.worker.coder.commands
 
@@ -443,7 +439,9 @@ class AiderApp(App):
                         cmd_completions = commands.get_completions(cmd_name)
                         if cmd_completions:
                             if arg_prefix:
-                                suggestions = [c for c in cmd_completions if arg_prefix_lower in str(c).lower()]
+                                suggestions = [
+                                    c for c in cmd_completions if arg_prefix_lower in str(c).lower()
+                                ]
                             else:
                                 suggestions = list(cmd_completions)
                     except Exception:
@@ -452,7 +450,7 @@ class AiderApp(App):
             # Symbol completion triggered by @
             # Find the @ and get the prefix after it
             at_index = text.rfind("@")
-            prefix = text[at_index + 1:]
+            prefix = text[at_index + 1 :]
             suggestions = self._get_symbol_completions(prefix)
         # No file completion for regular text - use @ for files/symbols
 
@@ -479,9 +477,7 @@ class AiderApp(App):
             else:
                 # Create new completion bar
                 completion_bar = CompletionBar(
-                    suggestions=suggestions,
-                    prefix=text,
-                    id="completion-bar"
+                    suggestions=suggestions, prefix=text, id="completion-bar"
                 )
                 self.mount(completion_bar, before=input_area)
         else:

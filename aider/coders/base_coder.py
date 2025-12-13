@@ -546,7 +546,7 @@ class Coder:
 
     def get_announcements(self):
         lines = []
-        lines.append(f"Aider-CE v{__version__}")
+        lines.append(f"cecli v{__version__}")
 
         # Model
         main_model = self.main_model

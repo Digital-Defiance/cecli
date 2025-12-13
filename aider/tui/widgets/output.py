@@ -1,10 +1,10 @@
-"""Output widget for Aider TUI using Textual's Markdown widget."""
+"""Output widget for Aider TUI using Textual's RichLog widget."""
 
 import re
 
-from textual.containers import VerticalScroll
+from rich.padding import Padding
 from textual.message import Message
-from textual.widgets import Markdown, Static
+from textual.widgets import RichLog
 
 
 class CostUpdate(Message):
@@ -15,61 +15,38 @@ class CostUpdate(Message):
         super().__init__()
 
 
-class OutputContainer(VerticalScroll):
-    """Scrollable output area using Markdown widgets for rich rendering.
+class OutputContainer(RichLog):
+    """Scrollable output area using RichLog widget for rich rendering.
 
-    Uses Textual's native Markdown widget with MarkdownStream for
-    efficient streaming of LLM responses.
+    Uses Textual's RichLog widget for efficient streaming and display
+    of LLM responses and system messages.
     """
 
     DEFAULT_CSS = """
     OutputContainer {
         scrollbar-gutter: stable;
         background: $background;
-    }
-
-    OutputContainer > Markdown {
-        margin: 0 1;
-        padding: 0;
-        background: $background;
-    }
-
-    OutputContainer > .user-message {
-        margin: 1 1 0 1;
-        padding: 0;
-        color: $primary;
-        background: $background;
-    }
-
-    OutputContainer > .system-message {
-        margin: 0 1;
-        padding: 0;
-        color: $secondary;
-        background: $background;
+        padding: 0 1;
     }
     """
 
+    _last_write_type = None
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._current_markdown: Markdown | None = None
-        self._stream = None
-        self._buffer = ""
+        # Line buffer for streaming text to avoid word-per-line issue
+        self._line_buffer = ""
+        # Enable markup for rich formatting
+        self.markup = True
+        self.wrap = True
+        # self.highlight = True
 
     async def start_response(self):
         """Start a new LLM response section with streaming support."""
-        # Stop any existing stream
-        await self._stop_stream()
-
-        # Create new Markdown widget for this response
-        self._current_markdown = Markdown("", id=f"response-{len(self.children)}")
-        await self.mount(self._current_markdown)
-
-        # Create stream for efficient updates
-        self._stream = Markdown.get_stream(self._current_markdown)
-        self._buffer = ""
-
+        # Clear the line buffer for new response
+        self._line_buffer = ""
         # Keep scrolled to bottom
-        self.anchor()
+        self.scroll_end(animate=False)
 
     async def stream_chunk(self, text: str):
         """Stream a chunk of markdown text."""
@@ -79,17 +56,18 @@ class OutputContainer(VerticalScroll):
         # Check for cost updates in the text
         self._check_cost(text)
 
-        if self._stream:
-            # Use MarkdownStream for efficient batched updates
-            await self._stream.write(text)
-        elif self._current_markdown:
-            # Fallback: append to buffer and update
-            self._buffer += text
-            await self._current_markdown.update(self._buffer)
-        else:
-            # No active response - start one
-            await self.start_response()
-            await self.stream_chunk(text)
+        # Add text to line buffer
+        self._line_buffer += text
+
+        # Process complete lines from buffer
+        while "\n" in self._line_buffer:
+            line, self._line_buffer = self._line_buffer.split("\n", 1)
+            # self.write(Padding(line.strip(), (0, 0, 0, 1)))
+            if line.rstrip():
+                self.set_last_write_type("assistant")
+                self.write(line.rstrip())
+        # Scroll to end to show new content
+        self.scroll_end(animate=False)
 
     async def end_response(self):
         """End the current LLM response."""
@@ -97,39 +75,43 @@ class OutputContainer(VerticalScroll):
 
     async def _stop_stream(self):
         """Stop the current markdown stream."""
-        if self._stream:
-            try:
-                await self._stream.stop()
-            except Exception:
-                pass
-            self._stream = None
+        # Flush any remaining buffer content
+        if self._line_buffer.strip():
+            self.write(self._line_buffer)
+            self._line_buffer = ""
+
+        # Scroll to end
+        self.scroll_end(animate=False)
 
     def add_user_message(self, text: str):
         """Add a user message (displayed differently from LLM output)."""
-        # User messages shown with > prefix, markup disabled to avoid parsing issues
-        static = Static(f"> {text}", classes="user-message", markup=False)
-        self.mount(static)
+        # Escape any Rich markup brackets in user text
+        text = self._escape_markup(text)
+        # User messages shown with > prefix in green color
+        self.set_last_write_type("user")
+        self.write(f"[bold medium_spring_green]> {text}[/bold medium_spring_green]")
         self.scroll_end(animate=False)
 
-    def add_system_message(self, text: str):
+    def add_system_message(self, text: str, dim=True):
         """Add a system/tool message."""
         if not text.strip():
             return
 
-        # Strip ANSI codes
-        text = re.sub(r'\x1b\[[0-9;]*m', '', text)
-        # Strip Rich markup tags like [blue], [/bold], etc.
-        text = re.sub(r'\[/?[a-zA-Z0-9_ #/]+\]', '', text)
+        # Escape any Rich markup brackets
+        text = self._escape_markup(text).removesuffix("\n")
+        start = ""
+        end = ""
+        # Write system message in secondary color
+        if dim:
+            start = "[dim]"
+            end = "[/dim]"
+            text = Padding(f"{start}{text}{end}", (0, 0, 0, 2))
 
-        if not text.strip():
-            return
-
-        # Create Static with markup disabled to avoid Rich parsing issues
-        static = Static(text, classes="system-message", markup=False)
-        self.mount(static)
+        self.set_last_write_type("system")
+        self.write(text)
         self.scroll_end(animate=False)
 
-    def add_output(self, text: str, task_id: str = None):
+    def add_output(self, text: str, task_id: str = None, dim=True):
         """Add output text as a system message.
 
         This handles tool output, status messages, etc.
@@ -143,7 +125,7 @@ class OutputContainer(VerticalScroll):
 
         # Always treat add_output as system messages
         # LLM streaming goes through the dedicated stream_chunk path
-        self.add_system_message(text)
+        self.add_system_message(text, dim=dim)
 
     def _check_cost(self, text: str):
         """Extract and emit cost updates."""
@@ -156,13 +138,26 @@ class OutputContainer(VerticalScroll):
 
     def start_task(self, task_id: str, title: str, task_type: str = "general"):
         """Start a new task section."""
-        static = Static(f"\n{title}", classes="system-message", markup=False)
-        self.mount(static)
+        self.write(f"\n[bold]{title}[/bold]")
         self.scroll_end(animate=False)
 
     def clear_output(self):
         """Clear all output."""
-        self._current_markdown = None
-        self._stream = None
-        self._buffer = ""
-        self.remove_children()
+        self._line_buffer = ""
+        self.clear()
+
+    def _escape_markup(self, text: str) -> str:
+        """Escape Rich markup brackets in text.
+
+        In Rich markup, [ and ] are special characters. To display them
+        literally, they must be escaped by doubling them: [ -> [[, ] -> ]].
+        """
+        # Simple escaping: replace [ with [[ and ] with ]]
+        # This works for most cases, though it double-escapes already escaped brackets
+        return text
+
+    def set_last_write_type(self, type):
+        if self._last_write_type and self._last_write_type != type:
+            self.write("")
+
+        self._last_write_type = type

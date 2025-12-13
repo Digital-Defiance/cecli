@@ -5,9 +5,16 @@
  * Theme defined in app.py (AIDER_THEME).
  */
 
+* {
+   background: $background;
+}
+
 Screen {
     background: $background;
     layout: vertical;
+    padding: 0;
+    margin: 0;
+    border: none;    
 }
 
 /* Output area */
@@ -24,34 +31,33 @@ Screen {
 
 /* Input area - floating card style */
 #input {
-    height: 3;
+    height: 5;
     background: $surface;
-    border: none;
+    border: round $secondary;
     padding: 1 2;
-    margin: 0 1;
+    margin: 0 1 1 1;
 }
 
 #input:focus {
-    border: none;
     background: $surface;
 }
 
-/* Footer - solid Aider green */
+/* Footer - same background as everything else */
 #footer {
     height: 1;
     width: 100%;
-    background: $primary;
-    color: $background;
+    background: $background;
+    color: $accent;
     padding: 0 1;
 }
 
-/* Generic Input styling */
-Input {
+/* Generic Input and TextArea styling */
+Input, TextArea {
     background: $background;
     border: none;
 }
 
-Input:focus {
+Input:focus, TextArea:focus {
     border: none;
     background: $background;
 }

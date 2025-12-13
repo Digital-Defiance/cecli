@@ -315,7 +315,7 @@ class InputOutput:
         user_input_color="blue",
         tool_output_color=None,
         tool_error_color="red",
-        tool_warning_color="#FFA500",
+        tool_warning_color="#ffd700",
         assistant_output_color="blue",
         completion_menu_color=None,
         completion_menu_bg_color=None,
