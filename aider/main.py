@@ -686,7 +686,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         try:
             from aider.tui import create_tui_io
 
-            args.linear_output = True
+            # args.linear_output = True
             print("Starting aider TUI...", flush=True)
             io, output_queue, input_queue = create_tui_io(args, editing_mode)
         except ImportError as e:
