@@ -131,6 +131,16 @@ class CoderWorker:
                 self.output_queue.put({"type": "error", "message": str(e)})
                 break
 
+    def interrupt(self):
+        """Cancel the current output task on the coder instance."""
+        if self.coder and hasattr(self.coder, "io") and self.coder.io:
+            # Cancel the output task if it exists
+            if hasattr(self.coder.io, "output_task") and self.coder.io.output_task:
+                self.coder.io.output_task.cancel()
+                # Also set output_running to False to stop the output_task loop
+                if hasattr(self.coder, "output_running"):
+                    self.coder.output_running = False
+
     def stop(self):
         """Stop the worker thread gracefully."""
         self.running = False

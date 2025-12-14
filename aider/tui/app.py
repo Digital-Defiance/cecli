@@ -19,6 +19,7 @@ class TUI(App):
     BINDINGS = [
         # Binding("ctrl+c", "quit", "Quit", show=True),
         Binding("ctrl+l", "clear_output", "Clear", show=True),
+        Binding("escape", "interrupt", "Interrupt", show=True),
     ]
 
     def __init__(self, coder_worker, output_queue, input_queue):
@@ -278,6 +279,17 @@ class TUI(App):
         """Clear all output."""
         output_container = self.query_one("#output", OutputContainer)
         output_container.clear_output()
+
+    def action_interrupt(self):
+        """Interrupt the current task."""
+        if self.worker:
+            self.worker.interrupt()
+            # Notify user
+            try:
+                status_bar = self.query_one("#status-bar", StatusBar)
+                status_bar.show_notification("Interrupting...", severity="warning", timeout=3)
+            except Exception:
+                pass
 
     def action_quit(self):
         """Quit the application."""
