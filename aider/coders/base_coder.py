@@ -1250,11 +1250,17 @@ class Coder:
                     await self.io.recreate_input()
                     await self.io.input_task
                     user_message = self.io.input_task.result()
-                    self.io.tool_output("Processing...\n")
+
+                    if self.args and not self.args.tui:
+                        self.io.tool_output("Processing...\n")
+
                     self.io.output_task = asyncio.create_task(self.generate(user_message, preproc))
 
                     await self.io.output_task
-                    self.io.tool_output("Finished.")
+
+                    if self.args and not self.args.tui:
+                        self.io.tool_output("Finished.")
+
                     self.io.ring_bell()
                     user_message = None
                     await self.auto_save_session()

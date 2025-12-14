@@ -20,8 +20,8 @@ class StatusBar(Widget, can_focus=True):
     DEFAULT_CSS = """
     StatusBar {
         height: auto;
-        background: $background;
-        margin: 0 1;
+        background: $surface;
+        margin: 0 0;
         padding: 0;
     }
 
@@ -32,10 +32,10 @@ class StatusBar(Widget, can_focus=True):
     /* Content container */
     StatusBar .status-content {
         height: 3;
-        padding: 1 2;
+        padding: 1 0 0 2;
         layout: horizontal;
         align: left middle;
-        background: $background;
+        background: $surface;
     }
 
     /* Notification styles */
@@ -44,7 +44,7 @@ class StatusBar(Widget, can_focus=True):
         height: 1;
         color: $secondary;
         content-align: left middle;
-        background: $background;
+        background: $surface;
     }
 
     StatusBar .notification-text.info {
@@ -69,14 +69,14 @@ class StatusBar(Widget, can_focus=True):
         height: 1;
         color: $foreground;
         content-align: left middle;
-        background: $background;
+        background: $surface;
     }
 
     StatusBar .confirm-hints {
         width: auto;
         height: 1;
         dock: right;
-        background: $background;
+        background: $surface;
     }
 
     StatusBar .hint {
@@ -84,7 +84,7 @@ class StatusBar(Widget, can_focus=True):
         height: 1;
         margin-left: 2;
         color: $secondary;
-        background: $background;
+        background: $surface;
     }
 
     StatusBar .hint-yes {
@@ -97,6 +97,18 @@ class StatusBar(Widget, can_focus=True):
 
     StatusBar .hint-all {
         color: $secondary;
+    }
+
+    StatusBar .hint-skip {
+        color: $secondary;
+    }
+
+    StatusBar .hint-tweak {
+        color: $accent;
+    }
+
+    StatusBar .hint-never {
+        color: $warning;
     }
     """
 
@@ -116,6 +128,10 @@ class StatusBar(Widget, can_focus=True):
         self._text = ""
         self._severity = "info"
         self._show_all = False
+        self._allow_tweak = False
+        self._allow_never = False
+        self._default = "y"
+        self._explicit_yes_required = False
         self._timer = None
 
     def compose(self) -> ComposeResult:
@@ -129,7 +145,7 @@ class StatusBar(Widget, can_focus=True):
             self.add_class("hidden")
             self.can_focus = False
         else:
-            self.can_focus = (mode == "confirm")
+            self.can_focus = mode == "confirm"
 
     def _rebuild_content(self) -> None:
         """Rebuild the content based on current mode."""
@@ -137,9 +153,7 @@ class StatusBar(Widget, can_focus=True):
         container.remove_children()
 
         if self.mode == "notification":
-            container.mount(
-                Static(self._text, classes=f"notification-text {self._severity}")
-            )
+            container.mount(Static(self._text, classes=f"notification-text {self._severity}"))
         elif self.mode == "confirm":
             container.mount(Static(self._text, classes="confirm-question"))
             hints = Horizontal(classes="confirm-hints")
@@ -148,12 +162,14 @@ class StatusBar(Widget, can_focus=True):
             hints.mount(Static("\\[n]o", classes="hint hint-no"))
             if self._show_all:
                 hints.mount(Static("\\[a]ll", classes="hint hint-all"))
+                hints.mount(Static("\\[s]kip", classes="hint hint-skip"))
+            if self._allow_tweak:
+                hints.mount(Static("\\[t]weak", classes="hint hint-tweak"))
+            if self._allow_never:
+                hints.mount(Static("\\[d]on't ask", classes="hint hint-never"))
 
     def show_notification(
-        self,
-        text: str,
-        severity: str = "info",
-        timeout: float | None = 3.0
+        self, text: str, severity: str = "info", timeout: float | None = 3.0
     ) -> None:
         """Show a transient notification message.
 
@@ -175,12 +191,24 @@ class StatusBar(Widget, can_focus=True):
         if timeout:
             self._timer = self.set_timer(timeout, self.hide)
 
-    def show_confirm(self, question: str, show_all: bool = False) -> None:
+    def show_confirm(
+        self,
+        question: str,
+        show_all: bool = False,
+        allow_tweak: bool = False,
+        allow_never: bool = False,
+        default: str = "y",
+        explicit_yes_required: bool = False,
+    ) -> None:
         """Show a confirmation prompt.
 
         Args:
             question: Question to display
             show_all: Whether to show "all" option
+            allow_tweak: Whether to show "tweak" option
+            allow_never: Whether to show "don't ask again" option
+            default: Default response ("y" or "n")
+            explicit_yes_required: Whether explicit yes is required
         """
         # Cancel any existing timer
         if self._timer:
@@ -189,6 +217,10 @@ class StatusBar(Widget, can_focus=True):
 
         self._text = question
         self._show_all = show_all
+        self._allow_tweak = allow_tweak
+        self._allow_never = allow_never
+        self._default = default
+        self._explicit_yes_required = explicit_yes_required
         self.mode = "confirm"
         self._rebuild_content()
         self.focus()
@@ -221,8 +253,27 @@ class StatusBar(Widget, can_focus=True):
             event.prevent_default()
             self.post_message(self.ConfirmResponse("all"))
             self.hide()
+        elif key == "s" and self._show_all:
+            event.stop()
+            event.prevent_default()
+            self.post_message(self.ConfirmResponse("skip"))
+            self.hide()
+        elif key == "t" and self._allow_tweak:
+            event.stop()
+            event.prevent_default()
+            self.post_message(self.ConfirmResponse("tweak"))
+            self.hide()
+        elif key == "d" and self._allow_never:
+            event.stop()
+            event.prevent_default()
+            self.post_message(self.ConfirmResponse("never"))
+            self.hide()
         elif key == "escape":
             event.stop()
             event.prevent_default()
-            self.post_message(self.ConfirmResponse(False))
+            # Return default based on default parameter
+            if self._default.lower().startswith("y"):
+                self.post_message(self.ConfirmResponse(True))
+            else:
+                self.post_message(self.ConfirmResponse(False))
             self.hide()

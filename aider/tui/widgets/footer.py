@@ -22,7 +22,7 @@ class AiderFooter(Static):
     spinner_text = reactive("")
     spinner_visible = reactive(False)
     _spinner_frame = 0
-    _spinner_chars = "◐◓◑◒"
+    _spinner_chars = "⠏⠛⠹⠼⠶⠧"
 
     def __init__(
         self,
@@ -82,29 +82,30 @@ class AiderFooter(Static):
                 left.append(self.spinner_text)
                 left.append(" ")
 
+        # Build right side: mode + model + project + git
+        right = Text()
+
         if self.aider_mode:
-            left.append(f"[{self.aider_mode}]")
-            left.append(" ")
+            right.append(f"{self.aider_mode}")
+            right.append(" • ")
 
         model_display = self._get_display_model()
         if model_display:
-            left.append(model_display)
-
-        # Build right side: project + git + cost
-        right = Text()
+            right.append(f"{model_display}")
+            right.append(" • ")
 
         if self.project_name:
-            right.append(self.project_name)
-            right.append("  ")
+            right.append(f"{self.project_name}")
+            right.append(" • ")
 
         if self.git_branch:
             right.append(self.git_branch)
             if self.git_dirty:
                 right.append(f" +{self.git_dirty}")
-            right.append("  ")
+            # right.append("  ")
 
         # Always show cost
-        right.append(f"${self.cost:.2f}")
+        # right.append(f"${self.cost:.2f}")
 
         # Calculate padding to right-align
         try:

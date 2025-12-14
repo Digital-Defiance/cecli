@@ -296,71 +296,107 @@ class TextualInputOutput(InputOutput):
         Returns:
             User's response (True, False, "tweak", etc.)
         """
-        # Check if already answered via group or never
-        question_id = (question, subject)
-        if question_id in self.never_prompts:
-            return False
-
-        if group and group.preference:
-            return group.preference == "all"
-
-        if group_response and group_response in self.group_responses:
-            return self.group_responses[group_response]
-
-        # Increment user ask counter
         self.num_user_asks += 1
 
-        # Send confirmation request to TUI
-        self.output_queue.put(
-            {
-                "type": "confirmation",
-                "question": question,
-                "subject": subject,
-                "options": {
-                    "default": default,
-                    "explicit_yes_required": explicit_yes_required,
-                    "group": group,
-                    "group_response": group_response,
-                    "allow_never": allow_never,
-                    "allow_tweak": allow_tweak,
-                    "acknowledge": acknowledge,
-                },
-            }
-        )
+        question_id = (question, subject)
 
-        # Wait for response from TUI
-        while True:
-            try:
-                import queue
+        try:
+            if question_id in self.never_prompts:
+                return False
 
-                result = self.input_queue.get(timeout=0.1)
+            if group and not group.show_group:
+                group = None
+            if group:
+                allow_never = True
 
-                if "confirmed" in result:
-                    response = result["confirmed"]
+            valid_responses = ["yes", "no", "skip", "all"]
+            options = " (Y)es/(N)o"
 
-                    # Handle special responses
-                    if response == "never":
-                        self.never_prompts.add(question_id)
-                        return False
-                    elif response == "tweak":
-                        return "tweak"
-                    elif response == "all":
-                        if group:
-                            group.preference = "all"
-                        if group_response:
-                            self.group_responses[group_response] = True
-                        return True
-                    elif response == "skip":
-                        if group:
-                            group.preference = "skip"
-                        if group_response:
-                            self.group_responses[group_response] = False
-                        return False
-                    else:
-                        # Regular boolean response
-                        return bool(response)
-            except queue.Empty:
-                await asyncio.sleep(0.1)
+            if allow_tweak:
+                valid_responses.append("tweak")
+                options += "/(T)weak"
+            if group or group_response:
+                if not explicit_yes_required or group_response:
+                    options += "/(A)ll"
+                options += "/(S)kip all"
+            if allow_never:
+                options += "/(D)on't ask again"
+                valid_responses.append("don't")
+
+            if default.lower().startswith("y"):
+                question += options + " [Yes]: "
+            elif default.lower().startswith("n"):
+                question += options + " [No]: "
+            else:
+                question += options + f" [{default}]: "
+
+            # Handle self.yes parameter (auto-yes for non-explicit confirmations)
+            if self.yes is True and not explicit_yes_required:
+                res = "y"
+                # Log the auto-response
+                hist = f"{question.strip()} {res}"
+                self.append_chat_history(hist, linebreak=True, blockquote=True)
+                return True
+            elif group and group.preference:
+                res = group.preference
+                self.user_input(f"{question} - {res}", log_only=False)
+            elif group_response and group_response in self.group_responses:
+                return self.group_responses[group_response]
+            else:
+                # Send confirmation request to TUI with full options
+                self.output_queue.put(
+                    {
+                        "type": "confirmation",
+                        "question": question,
+                        "subject": subject,
+                        "options": {
+                            "default": default,
+                            "explicit_yes_required": explicit_yes_required,
+                            "group": group,
+                            "group_response": group_response,
+                            "allow_never": allow_never,
+                            "allow_tweak": allow_tweak,
+                            "acknowledge": acknowledge,
+                            "valid_responses": valid_responses,
+                        },
+                    }
+                )
+
+            # Wait for response from TUI
+            while True:
+                try:
+                    import queue
+
+                    result = self.input_queue.get(timeout=0.1)
+
+                    if "confirmed" in result:
+                        response = result["confirmed"]
+
+                        # Handle special responses
+                        if response == "never":
+                            self.never_prompts.add(question_id)
+                            return False
+                        elif response == "tweak":
+                            return "tweak"
+                        elif response == "all":
+                            if group:
+                                group.preference = "all"
+                            if group_response:
+                                self.group_responses[group_response] = True
+                            return True
+                        elif response == "skip":
+                            if group:
+                                group.preference = "skip"
+                            if group_response:
+                                self.group_responses[group_response] = False
+                            return False
+                        else:
+                            # Regular boolean response
+                            return bool(response)
+                except queue.Empty:
+                    await asyncio.sleep(0.1)
+        except asyncio.CancelledError:
+            return False
 
     async def stop_task_streams(self):
         """Override to avoid asyncio issues in worker thread.

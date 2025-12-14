@@ -6,7 +6,13 @@
  */
 
 * {
-   background: $background;
+    background: $background;
+    scrollbar-background: $surface;
+    scrollbar-background-hover: $surface;
+    scrollbar-background-active: $surface;
+    scrollbar-color: $secondary;
+    scrollbar-color-hover: $accent;  
+    scrollbar-color-active: $accent;     
 }
 
 Screen {
@@ -21,24 +27,41 @@ Screen {
 #output {
     height: 1fr;
     width: 100%;
-    background: $background;
-    padding: 0 1;
+    background: $surface;
+    padding: 0 0 0 1;
     margin: 0;
-    scrollbar-background: $background;
-    scrollbar-color: $surface;
     scrollbar-size: 1 1;
 }
 
 /* Input area - floating card style */
 #input {
-    height: 5;
+    height: auto;
+    max-height: 33%;
+    min-height: 5;
     background: $surface;
-    border: round $secondary;
-    padding: 1 2;
-    margin: 0 1 1 1;
+    border: round $accent 50%;
+    padding: 0 0 0 2;
+    margin: 0 1 2 1;
+    scrollbar-size: 1 1;
 }
 
 #input:focus {
+    background: $surface;
+}
+
+/* Generic Input and TextArea styling */
+Input, TextArea {
+    background: $surface;
+    border: none;
+}
+
+Input:focus, TextArea:focus {
+    border: none;
+    background: $surface;
+}
+
+Input > .input--placeholder, TextArea > .text-area--placeholder  {
+    color: $secondary;
     background: $surface;
 }
 
@@ -46,22 +69,7 @@ Screen {
 #footer {
     height: 1;
     width: 100%;
-    background: $background;
+    background: $surface;
     color: $accent;
     padding: 0 1;
-}
-
-/* Generic Input and TextArea styling */
-Input, TextArea {
-    background: $background;
-    border: none;
-}
-
-Input:focus, TextArea:focus {
-    border: none;
-    background: $background;
-}
-
-Input > .input--placeholder {
-    color: $secondary;
 }

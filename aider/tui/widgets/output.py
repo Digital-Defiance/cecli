@@ -25,8 +25,8 @@ class OutputContainer(RichLog):
     DEFAULT_CSS = """
     OutputContainer {
         scrollbar-gutter: stable;
-        background: $background;
-        padding: 0 1;
+        background: $surface;
+        padding: 0 0;
     }
     """
 

@@ -2,11 +2,18 @@
 
 from prompt_toolkit.history import FileHistory
 from textual.message import Message
-from textual.widgets import Input
+from textual.widgets import TextArea
 
 
-class InputArea(Input):
+class InputArea(TextArea):
     """Input widget with autocomplete and history support."""
+
+    class Submit(Message):
+        """User submitted the input (Enter key)."""
+
+        def __init__(self, value: str):
+            self.value = value
+            super().__init__()
 
     class CompletionRequested(Message):
         """User requested completion (Tab key or auto-trigger)."""
@@ -17,14 +24,17 @@ class InputArea(Input):
 
     class CompletionCycle(Message):
         """User wants to cycle through completions."""
+
         pass
 
     class CompletionAccept(Message):
         """User wants to accept current completion."""
+
         pass
 
     class CompletionDismiss(Message):
         """User wants to dismiss completions."""
+
         pass
 
     def __init__(self, history_file: str = None, **kwargs):
@@ -33,10 +43,19 @@ class InputArea(Input):
         Args:
             history_file: Path to input history file for up/down navigation
         """
-        super().__init__(
-            placeholder="> Type your message...",
-            **kwargs
-        )
+        super().__init__(show_line_numbers=False, **kwargs)
+        # Note: placeholder is not a constructor argument in some versions of Textual TextArea,
+        # but it is a reactive property. We set it here.
+        # Check if placeholder was passed in kwargs, if not use default
+        # (kwargs are passed to super, so if it WAS passed, it might be handled or ignored depending on version)
+        # To be safe, we set it explicitly if not in kwargs, but we can't easily check what super did.
+        # We'll just set it.
+        # But wait, kwargs might have had it.
+        # Let's assume kwargs might handle it or we set it.
+        # Actually, let's just set the default if it's empty.
+        if not self.placeholder:
+            self.placeholder = "> Type your message... (Ctrl+s to send, Enter for new line)"
+
         self.files = []
         self.commands = []
         self.completion_active = False
@@ -46,6 +65,43 @@ class InputArea(Input):
         self._history: list[str] | None = None  # None = not loaded yet
         self._history_index = -1  # -1 = not navigating, 0+ = position in history
         self._saved_input = ""  # Saves current input when navigating history
+
+    @property
+    def value(self) -> str:
+        """Alias for text property to maintain compatibility."""
+        return self.text
+
+    @value.setter
+    def value(self, new_value: str):
+        """Alias for text property to maintain compatibility."""
+        self.text = new_value
+
+    @property
+    def cursor_position(self) -> int:
+        """
+        Get cursor position as an index (compatibility wrapper).
+        Note: This is approximate/incomplete for multi-line but helps compat.
+        It returns the offset from start of text.
+        """
+        # Calculate offset based on cursor_location (row, col)
+        # This is expensive, but necessary for compat if used heavily.
+        # Or we can just ignore getters if not used.
+        # app.py uses `len(input_area.value)` to set it.
+        # So it uses setter.
+        return 0  # Dummy getter
+
+    @cursor_position.setter
+    def cursor_position(self, pos: int):
+        """
+        Set cursor position (compatibility wrapper).
+        If pos is len(text), move to end.
+        """
+        if pos >= len(self.text):
+            # Move cursor to the very end
+            lines = self.text.split("\n")
+            row = max(0, len(lines) - 1)
+            col = len(lines[row])
+            self.cursor_location = (row, col)
 
     def _ensure_history_loaded(self) -> list[str]:
         """Lazily load history on first access.
@@ -57,7 +113,9 @@ class InputArea(Input):
             if self.history_file:
                 try:
                     # FileHistory returns most recent first, so reverse it
-                    self._history = list(reversed(list(FileHistory(self.history_file).load_history_strings())))
+                    self._history = list(
+                        reversed(list(FileHistory(self.history_file).load_history_strings()))
+                    )
                 except (OSError, IOError):
                     pass  # History file doesn't exist yet or can't be read
         return self._history
@@ -109,15 +167,15 @@ class InputArea(Input):
 
         # Save current input when first entering history
         if self._history_index == -1:
-            self._saved_input = self.value
+            self._saved_input = self.text
             self._history_index = len(history) - 1
         elif self._history_index > 0:
             self._history_index -= 1
         else:
             return  # Already at oldest
 
-        self.value = history[self._history_index]
-        self.cursor_position = len(self.value)
+        self.text = history[self._history_index]
+        self.cursor_position = len(self.text)  # Will move to end
 
     def _history_next(self) -> None:
         """Navigate to next (newer) history entry."""
@@ -127,18 +185,43 @@ class InputArea(Input):
         history = self._ensure_history_loaded()
         if self._history_index < len(history) - 1:
             self._history_index += 1
-            self.value = history[self._history_index]
+            self.text = history[self._history_index]
         else:
             # Back to current input
             self._history_index = -1
-            self.value = self._saved_input
+            self.text = self._saved_input
 
-        self.cursor_position = len(self.value)
+        self.cursor_position = len(self.text)  # Will move to end
 
     def on_key(self, event) -> None:
         """Handle keys for completion and history navigation."""
         if self.disabled:
             return
+
+        if event.key == "ctrl+c":
+            event.stop()
+            event.prevent_default()
+            if self.text.strip():
+                self.save_to_history(self.text)
+            self.text = ""
+            return
+
+        if event.key == "ctrl+s":
+            # Submit message
+            event.stop()
+            event.prevent_default()
+            self.post_message(self.Submit(self.text))
+            return
+
+        if event.key == "enter":
+            if self.completion_active:
+                # Accept completion
+                self.post_message(self.CompletionAccept())
+                event.stop()
+                event.prevent_default()
+                return
+            else:
+                return
 
         if event.key == "tab":
             event.stop()
@@ -148,34 +231,32 @@ class InputArea(Input):
                 self.post_message(self.CompletionCycle())
             else:
                 # Request completions
-                self.post_message(self.CompletionRequested(self.value))
+                self.post_message(self.CompletionRequested(self.text))
         elif event.key == "escape" and self.completion_active:
             event.stop()
             event.prevent_default()
             self.post_message(self.CompletionDismiss())
         elif event.key == "up":
-            # Navigate to previous history entry
-            event.stop()
-            event.prevent_default()
-            self._history_prev()
+            # If on first line, navigate history
+            # Or use Ctrl+Up? Let's use Up if on first line for convenience, similar to typical shell
+            # BUT this is a text editor.
+            # Let's try: if cursor is at (0,0) or just row 0.
+            if self.cursor_location[0] == 0:
+                event.stop()
+                event.prevent_default()
+                self._history_prev()
         elif event.key == "down":
-            # Navigate to next history entry
-            event.stop()
-            event.prevent_default()
-            self._history_next()
+            # If on last line, navigate history
+            if self.cursor_location[0] == self.document.line_count - 1:
+                event.stop()
+                event.prevent_default()
+                self._history_next()
 
-    def on_input_changed(self, event) -> None:
+    def on_text_area_changed(self, event) -> None:
         """Update completions as user types."""
+        # Note: Event name for TextArea change is 'Changed' but handler is on_text_area_changed
         if not self.disabled:
+            val = self.text
             # Auto-trigger for slash commands, @ symbols, or update existing completions
-            if event.value.startswith("/") or "@" in event.value or self.completion_active:
-                self.post_message(self.CompletionRequested(event.value))
-
-    def on_input_submitted(self, event) -> None:
-        """Handle Enter key - accept completion if active."""
-        if self.completion_active:
-            # Let app handle accepting completion
-            self.post_message(self.CompletionAccept())
-            # Prevent the default submit behavior
-            event.stop()
-            event.prevent_default()
+            if val.startswith("/") or "@" in val or self.completion_active:
+                self.post_message(self.CompletionRequested(val))

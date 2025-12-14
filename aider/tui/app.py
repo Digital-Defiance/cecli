@@ -12,17 +12,21 @@ from .widgets.output import CostUpdate
 # Aider theme - dark with blue accent
 AIDER_THEME = Theme(
     name="aider",
-    primary="#00ff5f",  # Cecli blue
+    primary="#00ff5f",
     secondary="#888888",
-    accent="#00ff87",
+    accent="#00ff87",  # Cecli green
     foreground="#ffffff",
-    background="rgba(0,0,0,0.1)",  # Near black
+    background="#1e1e1e",
     success="#00aa00",
     warning="#ffd700",
     error="#ff3333",
     surface="transparent",  # Slightly lighter than background
     panel="transparent",
     dark=True,
+    variables={
+        "input-cursor-foreground": "#00ff87",
+        "input-cursor-text-style": "underline",
+    },
 )
 
 
@@ -85,12 +89,13 @@ class AiderApp(App):
 
     # ASCII banner for startup
     BANNER = """
-[bold spring_green2] ██████╗███████╗ ██████╗██╗     ██╗[/bold spring_green2]
-[bold spring_green1]██╔════╝██╔════╝██╔════╝██║     ██║[/bold spring_green1]
-[bold medium_spring_green]██║     █████╗  ██║     ██║     ██║[/bold medium_spring_green]
-[bold cyan2]██║     ██╔══╝  ██║     ██║     ██║[/bold cyan2]
-[bold cyan1]╚██████╗███████╗╚██████╗███████╗██║[/bold cyan1]
-[bold bright_white] ╚═════╝╚══════╝ ╚═════╝╚══════╝╚═╝[/bold bright_white]
+[bold spring_green2]   ██████╗███████╗ ██████╗██╗     ██╗[/bold spring_green2]
+[bold spring_green1]  ██╔════╝██╔════╝██╔════╝██║     ██║[/bold spring_green1]
+[bold medium_spring_green]  ██║     █████╗  ██║     ██║     ██║[/bold medium_spring_green]
+[bold cyan2]  ██║     ██╔══╝  ██║     ██║     ██║[/bold cyan2]
+[bold cyan1]  ╚██████╗███████╗╚██████╗███████╗██║[/bold cyan1]
+[bold bright_white]   ╚═════╝╚══════╝ ╚═════╝╚══════╝╚═╝[/bold bright_white]
+
 """
 
     def on_mount(self):
@@ -200,9 +205,23 @@ class AiderApp(App):
         input_area = self.query_one("#input", InputArea)
         input_area.disabled = True
 
-        # Show confirmation in status bar
+        # Show confirmation in status bar with all options
         status_bar = self.query_one("#status-bar", StatusBar)
-        status_bar.show_confirm(msg["question"], show_all=True)
+        options = msg.get("options", {})
+
+        # Determine which options to show based on the parameters
+        show_all = options.get("group") is not None or options.get("group_response") is not None
+        allow_tweak = options.get("allow_tweak", False)
+        allow_never = options.get("allow_never", False)
+
+        status_bar.show_confirm(
+            msg["question"],
+            show_all=show_all,
+            allow_tweak=allow_tweak,
+            allow_never=allow_never,
+            default=options.get("default", "y"),
+            explicit_yes_required=options.get("explicit_yes_required", False),
+        )
 
     def update_spinner(self, msg):
         """Update spinner in footer."""
@@ -230,9 +249,9 @@ class AiderApp(App):
         status_bar = self.query_one("#status-bar", StatusBar)
         status_bar.show_notification(f"Error: {message}", severity="error", timeout=10)
 
-    def on_input_submitted(self, event):
+    def on_input_area_submit(self, message: InputArea.Submit):
         """Handle input submission."""
-        user_input = event.value
+        user_input = message.value
 
         if not user_input.strip():
             return
@@ -241,7 +260,7 @@ class AiderApp(App):
         input_area = self.query_one("#input", InputArea)
         input_area.save_to_history(user_input)
 
-        event.input.value = ""
+        input_area.value = ""
 
         # Show user's message in output
         self.add_user_message(user_input)
