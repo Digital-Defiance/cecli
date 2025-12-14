@@ -209,6 +209,24 @@ class TextualInputOutput(InputOutput):
             }
         )
 
+    def update_spinner_suffix(self, text=None):
+        """Override update_spinner_suffix to send updates to TUI.
+
+        Args:
+            text: New spinner suffix text
+        """
+        # Call parent
+        super().update_spinner_suffix(text)
+
+        # Send to TUI
+        self.output_queue.put(
+            {
+                "type": "spinner",
+                "action": "update_suffix",
+                "text": text,
+            }
+        )
+
     def stop_spinner(self):
         """Override stop_spinner to send stop state to TUI."""
         # Call parent

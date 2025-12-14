@@ -232,6 +232,8 @@ class TUI(App):
             footer.start_spinner(msg.get("text", ""))
         elif action == "update":
             footer.spinner_text = msg.get("text", "")
+        elif action == "update_suffix":
+            footer.spinner_suffix = msg.get("text", "")
         elif action == "stop":
             footer.stop_spinner()
 

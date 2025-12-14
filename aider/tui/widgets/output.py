@@ -38,17 +38,16 @@ class OutputContainer(RichLog):
         super().__init__(**kwargs)
         # Line buffer for streaming text to avoid word-per-line issue
         self._line_buffer = ""
+
         # Enable markup for rich formatting
+        self.highlight = True
         self.markup = True
         self.wrap = True
-        # self.highlight = True
 
     async def start_response(self):
         """Start a new LLM response section with streaming support."""
         # Clear the line buffer for new response
         self._line_buffer = ""
-        # Keep scrolled to bottom
-        self.scroll_end(animate=False)
 
     async def stream_chunk(self, text: str):
         """Stream a chunk of markdown text."""
@@ -68,8 +67,6 @@ class OutputContainer(RichLog):
             if line.rstrip():
                 self.set_last_write_type("assistant")
                 self.write(line.rstrip())
-        # Scroll to end to show new content
-        self.scroll_end(animate=False)
 
     async def end_response(self):
         """End the current LLM response."""
@@ -82,12 +79,10 @@ class OutputContainer(RichLog):
             self.write(self._line_buffer)
             self._line_buffer = ""
 
-        # Scroll to end
-        self.scroll_end(animate=False)
-
     def add_user_message(self, text: str):
         """Add a user message (displayed differently from LLM output)."""
         # User messages shown with > prefix in green color
+        self.auto_scroll = True
         self.set_last_write_type("user")
         self.write(f"[bold medium_spring_green]> {text}[/bold medium_spring_green]")
         self.scroll_end(animate=False)
@@ -109,7 +104,6 @@ class OutputContainer(RichLog):
 
         self.set_last_write_type("system")
         self.write(text)
-        self.scroll_end(animate=False)
 
     def add_output(self, text: str, task_id: str = None, dim=True):
         """Add output text as a system message.
@@ -146,7 +140,6 @@ class OutputContainer(RichLog):
     def start_task(self, task_id: str, title: str, task_type: str = "general"):
         """Start a new task section."""
         self.write(f"\n[bold]{title}[/bold]")
-        self.scroll_end(animate=False)
 
     def clear_output(self):
         """Clear all output."""
@@ -176,3 +169,27 @@ class OutputContainer(RichLog):
 
         # Prevent the event from bubbling further
         event.prevent_default()
+
+    @on(events.MouseScrollUp)
+    def disable_auto_scroll(self, event: events.MouseScrollUp) -> None:
+        """
+        Event handler called when the screen is scrolled up.
+        Disables automatic scrolling
+        """
+        self.auto_scroll = False
+
+    @on(events.MouseScrollDown)
+    def enable_auto_scroll(self, event: events.MouseScrollDown) -> None:
+        """
+        Event handler called when the screen is scrolled down.
+        Enables automatic scrolling if we are near the end
+        """
+
+        # Calculate the relevant dimensions
+        scroll_top = self.scroll_y
+        view_height = self.size.height
+        content_height = self.content_size.height
+
+        # Check if scrolled to the bottom (allowing for minor floating point inaccuracies)
+        if scroll_top + view_height >= content_height - 32:
+            self.auto_scroll = True

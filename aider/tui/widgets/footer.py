@@ -20,6 +20,7 @@ class AiderFooter(Static):
 
     # Spinner state
     spinner_text = reactive("")
+    spinner_suffix = reactive("")
     spinner_visible = reactive(False)
     _spinner_frame = 0
     _spinner_chars = "⠏⠛⠹⠼⠶⠧"
@@ -80,7 +81,10 @@ class AiderFooter(Static):
             left.append(f"{spinner_char} ")
             if self.spinner_text:
                 left.append(self.spinner_text)
-                left.append(" ")
+
+            if self.spinner_suffix:
+                left.append(" • ")
+                left.append(self.spinner_suffix)
 
         # Build right side: mode + model + project + git
         right = Text()
