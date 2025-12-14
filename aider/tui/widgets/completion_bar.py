@@ -68,6 +68,7 @@ class CompletionBar(Widget, can_focus=False):
 
     class Dismissed(Message):
         """Completion bar dismissed."""
+
         pass
 
     def __init__(self, suggestions: list[str] = None, prefix: str = "", **kwargs):
@@ -78,7 +79,7 @@ class CompletionBar(Widget, can_focus=False):
             prefix: Current input prefix to complete from
         """
         super().__init__(**kwargs)
-        self.suggestions = (suggestions or [])[:self.MAX_SUGGESTIONS]
+        self.suggestions = (suggestions or [])[: self.MAX_SUGGESTIONS]
         self.prefix = prefix
         self.selected_index = 0
         self._item_widgets: list[Static] = []
@@ -121,7 +122,7 @@ class CompletionBar(Widget, can_focus=False):
                 # Use the directory part of common prefix
                 self._common_prefix = common.rsplit("/", 1)[0] + "/" if "/" in common else ""
                 if self._common_prefix:
-                    self._display_names = [s[len(self._common_prefix):] for s in self.suggestions]
+                    self._display_names = [s[len(self._common_prefix) :] for s in self.suggestions]
                 else:
                     self._display_names = self.suggestions[:]
             else:
@@ -162,7 +163,7 @@ class CompletionBar(Widget, can_focus=False):
 
     def update_suggestions(self, suggestions: list[str], prefix: str = "") -> None:
         """Update suggestions in place."""
-        self.suggestions = suggestions[:self.MAX_SUGGESTIONS]
+        self.suggestions = suggestions[: self.MAX_SUGGESTIONS]
         self.prefix = prefix
         self.selected_index = 0
 
@@ -182,7 +183,9 @@ class CompletionBar(Widget, can_focus=False):
         # Ensure meta widgets exist
         if self._left_more is None or self._left_more.parent is None:
             self._left_more = Static("", classes="completion-more")
-            self.mount(self._left_more, before=self._item_widgets[0] if self._item_widgets else None)
+            self.mount(
+                self._left_more, before=self._item_widgets[0] if self._item_widgets else None
+            )
         if self._right_more is None or self._right_more.parent is None:
             self._right_more = Static("", classes="completion-more")
             self.mount(self._right_more, after=self._left_more if self._left_more else None)
@@ -194,7 +197,9 @@ class CompletionBar(Widget, can_focus=False):
         while len(self._item_widgets) < self.WINDOW_SIZE:
             new_item = Static("", classes="completion-item")
             self._item_widgets.append(new_item)
-            target = self._right_more if self._right_more and self._right_more.parent else self._hint
+            target = (
+                self._right_more if self._right_more and self._right_more.parent else self._hint
+            )
             self.mount(new_item, before=target)
 
         if not self._display_names:
@@ -209,7 +214,7 @@ class CompletionBar(Widget, can_focus=False):
         # Build display order: selected item first, then others after it
         total = len(self._display_names)
         items_before = self.selected_index
-        items_after = total - self.selected_index - 1
+        # items_after = total - self.selected_index - 1
 
         # Show indicator if there are items before selected
         if self._left_more:

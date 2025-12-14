@@ -3,18 +3,18 @@
 import asyncio
 import logging
 import threading
+import warnings
 from typing import Optional
 
 from aider.coders import Coder
 from aider.commands import SwitchCoder
 
 # Suppress asyncio task destroyed warnings during shutdown
-logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
 # Also suppress via warnings module
-import warnings
-warnings.filterwarnings('ignore', message='.*Task was destroyed.*')
-warnings.filterwarnings('ignore', message='.*coroutine.*was never awaited.*')
+warnings.filterwarnings("ignore", message=".*Task was destroyed.*")
+warnings.filterwarnings("ignore", message=".*coroutine.*was never awaited.*")
 
 
 class CoderWorker:
@@ -30,7 +30,7 @@ class CoderWorker:
         """
         self.coder = coder
         self.output_queue = output_queue  # queue.Queue
-        self.input_queue = input_queue    # queue.Queue
+        self.input_queue = input_queue  # queue.Queue
         self.thread: Optional[threading.Thread] = None
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.running = False
@@ -113,23 +113,21 @@ class CoderWorker:
                     self.coder.mcp_tools = old_mcp_tools
 
                     # Notify TUI of mode change
-                    edit_format = getattr(self.coder, 'edit_format', 'code') or 'code'
-                    self.output_queue.put({
-                        'type': 'mode_change',
-                        'mode': edit_format,
-                    })
+                    edit_format = getattr(self.coder, "edit_format", "code") or "code"
+                    self.output_queue.put(
+                        {
+                            "type": "mode_change",
+                            "mode": edit_format,
+                        }
+                    )
                 except Exception as e:
-                    self.output_queue.put({
-                        'type': 'error',
-                        'message': f"Failed to switch mode: {e}"
-                    })
+                    self.output_queue.put(
+                        {"type": "error", "message": f"Failed to switch mode: {e}"}
+                    )
                     break
                 # Continue the loop with the new coder
             except Exception as e:
-                self.output_queue.put({
-                    'type': 'error',
-                    'message': str(e)
-                })
+                self.output_queue.put({"type": "error", "message": str(e)})
                 break
 
     def stop(self):
@@ -137,9 +135,9 @@ class CoderWorker:
         self.running = False
 
         # Signal the coder to stop
-        if hasattr(self.coder, 'input_running'):
+        if hasattr(self.coder, "input_running"):
             self.coder.input_running = False
-        if hasattr(self.coder, 'output_running'):
+        if hasattr(self.coder, "output_running"):
             self.coder.output_running = False
 
         if self.loop and self.loop.is_running():
