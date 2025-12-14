@@ -102,17 +102,18 @@ class CoderWorker:
                     kwargs["args"] = self.coder.args
                     # Skip summarization to avoid blocking LLM calls during mode switch
                     kwargs["summarize_from_coder"] = False
-
-                    # Transfer MCP state to avoid re-initialization
-                    old_mcp_servers = self.coder.mcp_servers
-                    old_mcp_tools = self.coder.mcp_tools
                     kwargs["mcp_servers"] = []  # Empty to skip initialization
-                    self.coder = await Coder.create(**kwargs)
-                    # Restore MCP state
-                    self.coder.mcp_servers = old_mcp_servers
-                    self.coder.mcp_tools = old_mcp_tools
+
+                    new_coder = await Coder.create(**kwargs)
+                    new_coder.args = self.coder.args
+                    # Transfer MCP state to avoid re-initialization
+                    new_coder.mcp_servers = self.coder.mcp_servers
+                    new_coder.mcp_tools = self.coder.mcp_tools
+                    # Transfer TUI app weak reference
+                    new_coder.tui = self.coder.tui
 
                     # Notify TUI of mode change
+                    self.coder = new_coder
                     edit_format = getattr(self.coder, "edit_format", "code") or "code"
                     self.output_queue.put(
                         {

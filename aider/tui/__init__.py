@@ -5,6 +5,7 @@ using the Textual framework. Launch with: aider-ce --tui
 """
 
 import queue
+import weakref
 
 from .app import TUI
 from .io import TextualInputOutput
@@ -73,6 +74,9 @@ async def launch_tui(coder, output_queue, input_queue):
     """
     worker = CoderWorker(coder, output_queue, input_queue)
     app = TUI(worker, output_queue, input_queue)
+
+    # Set weak reference to TUI app on the coder instance
+    coder.tui = weakref.ref(app)
 
     return_code = await app.run_async()
 

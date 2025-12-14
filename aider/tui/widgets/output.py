@@ -4,6 +4,7 @@ import re
 
 from rich.padding import Padding
 from rich.style import Style as RichStyle
+from rich.text import Text
 from textual import events, on
 from textual.message import Message
 from textual.widgets import RichLog
@@ -33,6 +34,7 @@ class OutputContainer(RichLog):
     """
 
     _last_write_type = None
+    _write_history = []
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -66,7 +68,7 @@ class OutputContainer(RichLog):
             # self.write(Padding(line.strip(), (0, 0, 0, 1)))
             if line.rstrip():
                 self.set_last_write_type("assistant")
-                self.write(line.rstrip())
+                self.output(line.rstrip())
 
     async def end_response(self):
         """End the current LLM response."""
@@ -75,8 +77,8 @@ class OutputContainer(RichLog):
     async def _stop_stream(self):
         """Stop the current markdown stream."""
         # Flush any remaining buffer content
-        if self._line_buffer.strip():
-            self.write(self._line_buffer)
+        if self._line_buffer.rstrip():
+            self.output(self.rstrip())
             self._line_buffer = ""
 
     def add_user_message(self, text: str):
@@ -84,7 +86,7 @@ class OutputContainer(RichLog):
         # User messages shown with > prefix in green color
         self.auto_scroll = True
         self.set_last_write_type("user")
-        self.write(f"[bold medium_spring_green]> {text}[/bold medium_spring_green]")
+        self.output(f"[bold medium_spring_green]> {text}[/bold medium_spring_green]")
         self.scroll_end(animate=False)
 
     def add_system_message(self, text: str, dim=True):
@@ -103,7 +105,7 @@ class OutputContainer(RichLog):
             text = Padding(f"{start}{text}{end}", (0, 0, 0, 2))
 
         self.set_last_write_type("system")
-        self.write(text)
+        self.output(text)
 
     def add_output(self, text: str, task_id: str = None, dim=True):
         """Add output text as a system message.
@@ -125,8 +127,12 @@ class OutputContainer(RichLog):
         if not styles:
             styles = dict()
 
-        styles = RichStyle(**styles)
-        self.write(Padding(styles.render(text=text), (0, 0, 0, 2)))
+        style = RichStyle(**styles)
+        with self.app.console.capture() as capture:
+            self.app.console.print(Text(text), style=style)
+        capture_text = capture.get()
+
+        self.output(Padding(capture_text, (0, 0, 0, 2)))
 
     def _check_cost(self, text: str):
         """Extract and emit cost updates."""
@@ -139,7 +145,7 @@ class OutputContainer(RichLog):
 
     def start_task(self, task_id: str, title: str, task_type: str = "general"):
         """Start a new task section."""
-        self.write(f"\n[bold]{title}[/bold]")
+        self.set_last_write_type(f"{task_id}-{title}-{task_type}")
 
     def clear_output(self):
         """Clear all output."""
@@ -147,10 +153,46 @@ class OutputContainer(RichLog):
         self.clear()
 
     def set_last_write_type(self, type):
-        if self._last_write_type and self._last_write_type != type:
-            self.write("")
+        if type and self._last_write_type and self._last_write_type != type:
+            self.output("")
 
         self._last_write_type = type
+
+    def output(self, text, check_duplicates=True):
+        """Write output with duplicate newline checking.
+
+        Args:
+            text: The text to write
+            check_duplicates: If True, check for duplicate newlines before writing
+        """
+        with self.app.console.capture() as capture:
+            self.app.console.print(text)
+        check = Text(capture.get()).plain
+
+        # self.write(str(self._write_history))
+        # self.write(repr(check))
+
+        # Check for duplicate newlines
+
+        if check_duplicates and len(self._write_history) >= 2:
+            nl_check = check in ["", "\n", "\\n"]
+            nl_last = self._write_history[-1] in ["", "\n", "\\n"]
+            nl_penultimate = self._write_history[-2] in ["", "\n", "\\n"] or self._write_history[
+                -2
+            ].endswith("\n")
+
+            if nl_check and nl_last and nl_penultimate:
+                return
+
+        # Call the actual write method
+        self.write(text)
+
+        # Log the write
+        self._write_history.append(check)
+
+        # Keep history size manageable
+        if len(self._write_history) > 5:
+            self._write_history.pop(0)
 
     @on(events.Print)
     def log_print(self, event: events.Print) -> None:
@@ -165,7 +207,7 @@ class OutputContainer(RichLog):
                 write_type = "stderr"
 
             self.set_last_write_type(write_type)
-            self.add_output_styled(event.text, {"color": color})
+            self.add_output_styled(event.text.removesuffix("\n"), {"color": color})
 
         # Prevent the event from bubbling further
         event.prevent_default()

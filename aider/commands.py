@@ -920,7 +920,7 @@ class Commands:
             if not addable_files:
                 self.io.tool_output("No files available to add.")
                 return
-            selected_files = run_fzf(addable_files, multi=True)
+            selected_files = run_fzf(addable_files, multi=True, coder=self.coder)
             if not selected_files:
                 return
             args = " ".join([self.quote_fname(f) for f in selected_files])
@@ -1254,19 +1254,29 @@ class Commands:
         "Run a shell command and optionally add the output to the chat (alias: !)"
         try:
             self.cmd_running = True
+            should_print = True
+
+            if self.coder.args.tui:
+                should_print = False
+
             exit_status, combined_output = await asyncio.to_thread(
                 run_cmd,
                 args,
                 verbose=self.verbose,
-                error_print=self.io.tool_error,
+                error_print=self.coder.io.tool_error,
                 cwd=self.coder.root,
+                should_print=should_print,
             )
+
             self.cmd_running = False
 
-            # This print statement, for whatever reason,
-            # allows the thread to properly yield control of the terminal
-            # to the main program
-            print("")
+            if self.coder.args.tui:
+                print(combined_output)
+            else:
+                # This print statement, for whatever reason,
+                # allows the thread to properly yield control of the terminal
+                # to the main program
+                print("")
 
             if combined_output is None:
                 return
@@ -1834,7 +1844,7 @@ class Commands:
                     target_mode="read-only",
                 )
                 return
-            selected_files = run_fzf(addable_files, multi=True)
+            selected_files = run_fzf(addable_files, multi=True, coder=self.coder)
             if not selected_files:
                 # If user didn't select any files, convert all editable files to read-only
                 self._cmd_read_only_base(
@@ -1872,7 +1882,7 @@ class Commands:
                     target_mode="read-only (stub)",
                 )
                 return
-            selected_files = run_fzf(addable_files, multi=True)
+            selected_files = run_fzf(addable_files, multi=True, coder=self.coder)
             if not selected_files:
                 # If user didn't select any files, convert all editable files to read-only stubs
                 self._cmd_read_only_base(
@@ -2066,7 +2076,7 @@ class Commands:
     def cmd_history_search(self, args):
         "Fuzzy search in history and paste it in the prompt"
         history_lines = self.io.get_input_history()
-        selected_lines = run_fzf(history_lines)
+        selected_lines = run_fzf(history_lines, coder=self.coder)
         if selected_lines:
             self.io.set_placeholder("".join(selected_lines))
 

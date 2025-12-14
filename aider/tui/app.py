@@ -1,5 +1,6 @@
 """Main Textual application for Aider TUI."""
 
+import concurrent.futures
 import queue
 
 from textual.app import App, ComposeResult
@@ -296,6 +297,21 @@ class TUI(App):
         """Perform the actual quit after UI updates."""
         self.worker.stop()
         self.exit()
+
+    def run_obstructive(self, func, *args, **kwargs):
+        """Run a function with the TUI suspended, called from a worker thread."""
+        future = concurrent.futures.Future()
+
+        def wrapper():
+            try:
+                with self.suspend():
+                    result = func(*args, **kwargs)
+                    future.set_result(result)
+            except Exception as e:
+                future.set_exception(e)
+
+        self.call_from_thread(wrapper)
+        return future.result()
 
     def on_cost_update(self, message: CostUpdate):
         """Handle cost update from output."""

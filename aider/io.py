@@ -1399,7 +1399,7 @@ class InputOutput:
     def tool_warning(self, message="", strip=True):
         self._tool_message(message, strip, self.tool_warning_color)
 
-    def tool_output(self, *messages, log_only=False, bold=False):
+    def tool_output(self, *messages, log_only=False, bold=False, type=None):
         if messages:
             hist = " ".join(messages)
             hist = f"{hist.strip()}"

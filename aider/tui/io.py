@@ -163,9 +163,15 @@ class TextualInputOutput(InputOutput):
         """
         if messages:
             text = " ".join(str(m) for m in messages)
+            type = kwargs.get("type", None)
 
             # Check if this should start a new task
             should_start, title, task_type = self._detect_task_start(text)
+
+            if type:
+                should_start = True
+                title = type
+
             if should_start:
                 self.start_task(title, task_type)
 
@@ -188,6 +194,14 @@ class TextualInputOutput(InputOutput):
                 "type": "spinner",
                 "action": "start",
                 "text": text,
+            }
+        )
+
+        self.output_queue.put(
+            {
+                "type": "spinner",
+                "action": "update_suffix",
+                "text": "",
             }
         )
 

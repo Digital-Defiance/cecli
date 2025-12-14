@@ -152,6 +152,9 @@ class Coder:
 
     ok_to_warm_cache = False
 
+    # Weak reference to TUI app instance (when running in TUI mode)
+    tui = None
+
     @classmethod
     async def create(
         self,

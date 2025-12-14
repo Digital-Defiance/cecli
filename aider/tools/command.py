@@ -52,6 +52,12 @@ class Tool(BaseTool):
                 coder.io.tool_output(f"Skipped execution of shell command: {command_string}")
                 return "Shell command execution skipped by user."
 
+            should_print = True
+            tui = None
+            if coder.tui and coder.tui():
+                tui = coder.tui()
+                should_print = False
+
             # Proceed with execution if confirmed is True
             coder.io.tool_output(f"⚙️ Executing non-interactive shell command: {command_string}")
 
@@ -60,6 +66,7 @@ class Tool(BaseTool):
                 command_string,
                 verbose=coder.verbose,
                 cwd=coder.root,  # Execute in the project root
+                should_print=should_print,
             )
 
             # Format the output for the result message, include more content
@@ -73,6 +80,9 @@ class Tool(BaseTool):
                     + f"\n... (output truncated at {output_limit} characters, based on"
                     " large_file_token_threshold)"
                 )
+
+            if tui:
+                coder.io.tool_output(output_content)
 
             if exit_status == 0:
                 return (
