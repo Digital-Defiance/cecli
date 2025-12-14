@@ -343,7 +343,6 @@ class InputOutput:
             self.chat_history_file = None
 
         self.placeholder = None
-        self.fallback_spinner = None
         self.prompt_session = None
         self.interrupted = False
         self.never_prompts = set()
@@ -459,6 +458,8 @@ class InputOutput:
         self.spinner_frame_index = 0
         self.spinner_last_frame_index = 0
         self.unicode_palette = "░█"
+        self.fallback_spinner = None
+        self.fallback_spinner_enabled = True
 
         if fancy_input:
             # If unicode is supported, use the rich 'dots2' spinner, otherwise an ascii fallback
@@ -527,7 +528,7 @@ class InputOutput:
 
             if update_last_text:
                 self.last_spinner_text = text
-        else:
+        elif self.fallback_spinner_enabled:
             self.fallback_spinner = Spinner(text)
             self.fallback_spinner.step()
 
@@ -548,7 +549,7 @@ class InputOutput:
 
         # Keep last frame index to avoid spinner "jumping" on restart
         self.spinner_last_frame_index = self.spinner_frame_index
-        if self.fallback_spinner:
+        if self.fallback_spinner and self.fallback_spinner_enabled:
             self.fallback_spinner.end()
             self.fallback_spinner = None
 

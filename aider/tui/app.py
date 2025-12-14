@@ -9,28 +9,8 @@ from textual.theme import Theme
 from .widgets import AiderFooter, CompletionBar, InputArea, OutputContainer, StatusBar
 from .widgets.output import CostUpdate
 
-# Aider theme - dark with blue accent
-AIDER_THEME = Theme(
-    name="aider",
-    primary="#00ff5f",
-    secondary="#888888",
-    accent="#00ff87",  # Cecli green
-    foreground="#ffffff",
-    background="#1e1e1e",
-    success="#00aa00",
-    warning="#ffd700",
-    error="#ff3333",
-    surface="transparent",  # Slightly lighter than background
-    panel="transparent",
-    dark=True,
-    variables={
-        "input-cursor-foreground": "#00ff87",
-        "input-cursor-text-style": "underline",
-    },
-)
 
-
-class AiderApp(App):
+class TUI(App):
     """Main Textual application for Aider TUI."""
 
     CSS_PATH = "styles.tcss"
@@ -51,7 +31,26 @@ class AiderApp(App):
         self._symbols_files_hash = None
 
         # Register and set aider theme
-        self.register_theme(AIDER_THEME)
+        BASE_THEME = Theme(
+            name="aider",
+            primary="#00ff5f",
+            secondary="#888888",
+            accent="#00ff87",  # Cecli green
+            foreground="#ffffff",
+            background="#1e1e1e",
+            success="#00aa00",
+            warning="#ffd700",
+            error="#ff3333",
+            surface="transparent",  # Slightly lighter than background
+            panel="transparent",
+            dark=True,
+            variables={
+                "input-cursor-foreground": "#00ff87",
+                "input-cursor-text-style": "underline",
+            },
+        )
+
+        self.register_theme(BASE_THEME)
         self.theme = "aider"
 
     def compose(self) -> ComposeResult:
@@ -103,6 +102,7 @@ class AiderApp(App):
         # Show startup banner
         output_container = self.query_one("#output", OutputContainer)
         output_container.add_output(self.BANNER, dim=False)
+        self.begin_capture_print(output_container, stdout=True, stderr=True)
 
         self.set_interval(0.05, self.check_output_queue)
         self.worker.start()

@@ -6,11 +6,11 @@ using the Textual framework. Launch with: aider-ce --tui
 
 import queue
 
-from .app import AiderApp
+from .app import TUI
 from .io import TextualInputOutput
 from .worker import CoderWorker
 
-__all__ = ["AiderApp", "TextualInputOutput", "CoderWorker", "create_tui_io", "launch_tui"]
+__all__ = ["TUI", "TextualInputOutput", "CoderWorker", "create_tui_io", "launch_tui"]
 
 
 def create_tui_io(args, editing_mode):
@@ -72,7 +72,7 @@ async def launch_tui(coder, output_queue, input_queue):
         Exit code from TUI
     """
     worker = CoderWorker(coder, output_queue, input_queue)
-    app = AiderApp(worker, output_queue, input_queue)
+    app = TUI(worker, output_queue, input_queue)
 
     return_code = await app.run_async()
 

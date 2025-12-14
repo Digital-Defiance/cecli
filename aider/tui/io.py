@@ -35,6 +35,9 @@ class TextualInputOutput(InputOutput):
         # LLM response streaming state
         self._streaming_response = False
 
+        # Disable fallback spinner so it doesn't clutter terminal output
+        self.fallback_spinner_enabled = False
+
         # Task detection patterns
         self.task_markers = [
             ("Tool:", "tool"),
@@ -45,6 +48,12 @@ class TextualInputOutput(InputOutput):
             ("Adding", "file_op"),
             ("Removing", "file_op"),
         ]
+
+    def rule(self):
+        pass
+
+    def get_bottom_toolbar(self):
+        pass
 
     def _detect_task_start(self, text):
         """Detect if this output should start a new task.

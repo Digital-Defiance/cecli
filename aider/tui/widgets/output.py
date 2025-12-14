@@ -3,6 +3,8 @@
 import re
 
 from rich.padding import Padding
+from rich.style import Style as RichStyle
+from textual import events, on
 from textual.message import Message
 from textual.widgets import RichLog
 
@@ -85,8 +87,6 @@ class OutputContainer(RichLog):
 
     def add_user_message(self, text: str):
         """Add a user message (displayed differently from LLM output)."""
-        # Escape any Rich markup brackets in user text
-        text = self._escape_markup(text)
         # User messages shown with > prefix in green color
         self.set_last_write_type("user")
         self.write(f"[bold medium_spring_green]> {text}[/bold medium_spring_green]")
@@ -98,7 +98,7 @@ class OutputContainer(RichLog):
             return
 
         # Escape any Rich markup brackets
-        text = self._escape_markup(text).removesuffix("\n")
+        text = text.removesuffix("\n")
         start = ""
         end = ""
         # Write system message in secondary color
@@ -127,6 +127,13 @@ class OutputContainer(RichLog):
         # LLM streaming goes through the dedicated stream_chunk path
         self.add_system_message(text, dim=dim)
 
+    def add_output_styled(self, text: str, styles=None):
+        if not styles:
+            styles = dict()
+
+        styles = RichStyle(**styles)
+        self.write(Padding(styles.render(text=text), (0, 0, 0, 2)))
+
     def _check_cost(self, text: str):
         """Extract and emit cost updates."""
         match = re.search(r"\$(\d+\.?\d*)\s*session", text)
@@ -146,18 +153,26 @@ class OutputContainer(RichLog):
         self._line_buffer = ""
         self.clear()
 
-    def _escape_markup(self, text: str) -> str:
-        """Escape Rich markup brackets in text.
-
-        In Rich markup, [ and ] are special characters. To display them
-        literally, they must be escaped by doubling them: [ -> [[, ] -> ]].
-        """
-        # Simple escaping: replace [ with [[ and ] with ]]
-        # This works for most cases, though it double-escapes already escaped brackets
-        return text
-
     def set_last_write_type(self, type):
         if self._last_write_type and self._last_write_type != type:
             self.write("")
 
         self._last_write_type = type
+
+    @on(events.Print)
+    def log_print(self, event: events.Print) -> None:
+        """Writes the captured print output to the RichLog widget."""
+        if event.text.strip():
+            theme_vars = self.app.get_css_variables()
+            color = theme_vars.get("warning")
+            write_type = "stdout"
+
+            if event.stderr:
+                color = theme_vars.get("error")
+                write_type = "stderr"
+
+            self.set_last_write_type(write_type)
+            self.add_output_styled(event.text, {"color": color})
+
+        # Prevent the event from bubbling further
+        event.prevent_default()
