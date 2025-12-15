@@ -31,6 +31,7 @@ def test_dash_prefixed_pattern_is_searched_literally(search_term, tmp_path, monk
         ),
         verbose=False,
         root=str(tmp_path),
+        tui=lambda: None,
     )
 
     monkeypatch.setattr(grep.Tool, "_find_search_tool", lambda: ("rg", shutil.which("rg")))

@@ -32,7 +32,6 @@ dependencies = { file = "requirements/requirements.in" }
 [tool.setuptools.dynamic.optional-dependencies]
 dev = { file = "requirements/requirements-dev.in" }
 help = { file = "requirements/requirements-help.in" }
-browser = { file = "requirements/requirements-browser.in" }
 playwright = { file = "requirements/requirements-playwright.in" }
 tui = { file = "requirements/requirements-tui.in" }
 
