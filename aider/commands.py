@@ -465,6 +465,10 @@ class Commands:
         "Clear the chat history"
 
         self._clear_chat_history()
+
+        if self.coder.tui and self.coder.tui():
+            self.coder.tui().action_clear_output()
+
         self.io.tool_output("All chat history cleared.")
 
     def _drop_all_files(self):
@@ -494,6 +498,10 @@ class Commands:
         "Drop all files and clear the chat history"
         self._drop_all_files()
         self._clear_chat_history()
+
+        if self.coder.tui and self.coder.tui():
+            self.coder.tui().action_clear_output()
+
         self.io.tool_output("All files dropped and chat history cleared.")
 
     def cmd_tokens(self, args):

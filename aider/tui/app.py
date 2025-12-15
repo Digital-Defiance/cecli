@@ -315,6 +315,8 @@ class TUI(App):
         """Clear all output."""
         output_container = self.query_one("#output", OutputContainer)
         output_container.clear_output()
+        output_container.add_output(self.BANNER, dim=False)
+        self.worker.coder.show_announcements()
 
     def action_interrupt(self):
         """Interrupt the current task."""
