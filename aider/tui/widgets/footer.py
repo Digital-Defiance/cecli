@@ -89,7 +89,7 @@ class AiderFooter(Static):
                 left.append(" • ")
                 left.append(self.spinner_suffix)
         else:
-            left.append("Model")
+            left.append("cecli")
             left.append(" • ")
             left.append(self._get_display_model())
 
