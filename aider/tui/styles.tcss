@@ -41,7 +41,7 @@ Screen {
     background: $surface;
     border: round $accent 50%;
     padding: 0 0 0 2;
-    margin: 0 1 2 1;
+    margin: 0 1 0 1;
     scrollbar-size: 1 1;
 }
 
@@ -65,6 +65,16 @@ Input > .input--placeholder, TextArea > .text-area--placeholder  {
     background: $surface;
 }
 
+
+/* Key hints below input */
+#key-hints {
+    height: 1;
+    width: 100%;
+    text-align: right;
+    color: $secondary;
+    padding: 0 2 0 0;
+    margin: 0 0 1 0;
+}
 /* Footer - same background as everything else */
 #footer {
     height: 1;

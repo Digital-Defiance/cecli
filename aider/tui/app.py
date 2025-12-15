@@ -7,7 +7,14 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.theme import Theme
 
-from .widgets import AiderFooter, CompletionBar, InputArea, OutputContainer, StatusBar
+from .widgets import (
+    AiderFooter,
+    CompletionBar,
+    InputArea,
+    KeyHints,
+    OutputContainer,
+    StatusBar,
+)
 from .widgets.output import CostUpdate
 
 
@@ -80,6 +87,7 @@ class TUI(App):
         yield OutputContainer(id="output")
         yield StatusBar(id="status-bar")
         yield InputArea(history_file=history_file, id="input")
+        yield KeyHints(id="key-hints")
         yield AiderFooter(
             model_name=model_name,
             project_name=project_name,
@@ -110,8 +118,22 @@ class TUI(App):
         self.worker.start()
         self.query_one("#input").focus()
 
+        # Initialize key hints
+        self.update_key_hints()
+
         # Load git info in background to avoid blocking startup
         self.call_later(self._load_git_info)
+
+    def update_key_hints(self, generating=False):
+        """Update the key hints below the input area."""
+        try:
+            hints = self.query_one(KeyHints)
+            if generating:
+                hints.update("escape to cancel")
+            else:
+                hints.update("ctrl+s to submit")
+        except Exception:
+            pass
 
     def _load_git_info(self):
         """Load git branch and dirty count (deferred to avoid blocking startup)."""
@@ -241,6 +263,7 @@ class TUI(App):
 
     def enable_input(self, msg):
         """Enable input and update autocomplete data."""
+        self.update_key_hints(generating=False)
         input_area = self.query_one("#input", InputArea)
         input_area.disabled = False  # Ensure input is enabled
         files = msg.get("files", [])
@@ -272,6 +295,8 @@ class TUI(App):
         # Update footer to show processing
         footer = self.query_one(AiderFooter)
         footer.start_spinner("Thinking...")
+
+        self.update_key_hints(generating=True)
 
         self.input_queue.put({"text": user_input})
 

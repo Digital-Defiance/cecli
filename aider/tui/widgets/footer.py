@@ -63,11 +63,14 @@ class AiderFooter(Static):
         if not self.model_name:
             return ""
         # Strip common prefixes like "openrouter/x-ai/"
-        name = self.model_name
-        if "/" in name:
-            name = name.split("/")[-1]
-        if len(name) > 25:
-            name = name[:22] + "..."
+        name = self.app.worker.coder.main_model.name
+        if len(name) > 40:
+            if "/" in name:
+                name = name.split("/")[-1]
+
+            if len(name) > 35:
+                name = name[:35] + "..."
+
         return name
 
     def render(self) -> Text:
@@ -85,6 +88,10 @@ class AiderFooter(Static):
             if self.spinner_suffix:
                 left.append(" • ")
                 left.append(self.spinner_suffix)
+        else:
+            left.append("Model")
+            left.append(" • ")
+            left.append(self._get_display_model())
 
         # Build right side: mode + model + project + git
         right = Text()
@@ -93,10 +100,10 @@ class AiderFooter(Static):
             right.append(f"{self.aider_mode}")
             right.append(" • ")
 
-        model_display = self._get_display_model()
-        if model_display:
-            right.append(f"{model_display}")
-            right.append(" • ")
+        # model_display = self._get_display_model()
+        # if model_display:
+        #     right.append(f"{model_display}")
+        #     right.append(" • ")
 
         if self.project_name:
             right.append(f"{self.project_name}")
