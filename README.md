@@ -77,6 +77,7 @@ preserve-todo-list: true
 show-model-warnings: true
 use-enhanced-map: true
 watch-files: false
+tui: true
 
 agent-config:
   large_file_token_threshold: 12500
