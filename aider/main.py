@@ -400,6 +400,80 @@ def register_litellm_models(git_root, model_metadata_fname, io, verbose=False):
         return 1
 
 
+def load_model_overrides(git_root, model_overrides_fname, io, verbose=False):
+    """Load model tag overrides from a YAML file."""
+    from pathlib import Path
+
+    import yaml
+
+    model_overrides_files = generate_search_path_list(
+        ".aider.model.overrides.yml", git_root, model_overrides_fname
+    )
+
+    overrides = {}
+    files_loaded = []
+
+    for fname in model_overrides_files:
+        try:
+            if Path(fname).exists():
+                with open(fname, "r") as f:
+                    content = yaml.safe_load(f)
+                    if content:
+                        # Merge overrides, later files override earlier ones
+                        for model_name, tags in content.items():
+                            if model_name not in overrides:
+                                overrides[model_name] = {}
+                            overrides[model_name].update(tags)
+                        files_loaded.append(fname)
+        except Exception as e:
+            io.tool_error(f"Error loading model overrides from {fname}: {e}")
+
+    if len(files_loaded) > 0 and verbose:
+        io.tool_output("Loaded model overrides from:")
+        for file_loaded in files_loaded:
+            io.tool_output(f"  - {file_loaded}")
+
+    if (
+        model_overrides_fname
+        and model_overrides_fname not in files_loaded
+        and model_overrides_fname != ".aider.model.overrides.yml"
+    ):
+        io.tool_warning(f"Model Overrides File Not Found: {model_overrides_fname}")
+
+    return overrides
+
+
+def load_model_overrides_from_string(model_overrides_str, io):
+    """Load model tag overrides from a JSON/YAML string."""
+    import json
+
+    import yaml
+
+    overrides = {}
+
+    if not model_overrides_str:
+        return overrides
+
+    try:
+        # First try to parse as JSON
+        try:
+            content = json.loads(model_overrides_str)
+        except json.JSONDecodeError:
+            # If JSON fails, try YAML
+            content = yaml.safe_load(model_overrides_str)
+
+        if content and isinstance(content, dict):
+            for model_name, tags in content.items():
+                if model_name not in overrides:
+                    overrides[model_name] = {}
+                overrides[model_name].update(tags)
+
+        return overrides
+    except Exception as e:
+        io.tool_error(f"Error parsing model overrides string: {e}")
+        return {}
+
+
 async def sanity_check_repo(repo, io):
     if not repo:
         return True
@@ -867,10 +941,76 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         return await graceful_exit(None, 1)
     args.model = selected_model_name  # Update args with the selected model
 
+    # Load model overrides if specified
+    model_overrides = {}
+
+    # First load from file if specified
+    if args.model_overrides_file:
+        model_overrides = load_model_overrides(
+            git_root, args.model_overrides_file, io, verbose=args.verbose
+        )
+
+    # Then load from direct JSON/YAML string if specified (overrides file)
+    if args.model_overrides:
+        direct_overrides = load_model_overrides_from_string(args.model_overrides, io)
+        # Merge direct overrides with file overrides (direct takes precedence)
+        for model_name, tags in direct_overrides.items():
+            if model_name not in model_overrides:
+                model_overrides[model_name] = {}
+            model_overrides[model_name].update(tags)
+
+    # Parse model names with suffixes and apply overrides
+    def parse_model_with_suffix(model_name, overrides):
+        """Parse model name with optional :suffix and apply overrides."""
+        if not model_name:
+            return model_name, {}
+
+        # Split on last colon to get model name and suffix
+        if ":" in model_name:
+            base_model, suffix = model_name.rsplit(":", 1)
+        else:
+            base_model, suffix = model_name, None
+
+        # Apply overrides if suffix exists
+        override_kwargs = {}
+        if suffix and base_model in overrides and suffix in overrides[base_model]:
+            override_kwargs = overrides[base_model][suffix].copy()
+
+        return base_model, override_kwargs
+
+    # Parse main model
+    main_model_name, main_model_overrides = parse_model_with_suffix(args.model, model_overrides)
+    weak_model_name, weak_model_overrides = parse_model_with_suffix(
+        args.weak_model, model_overrides
+    )
+    editor_model_name, editor_model_overrides = parse_model_with_suffix(
+        args.editor_model, model_overrides
+    )
+
+    # Create weak model if specified with overrides
+    weak_model_obj = None
+    if weak_model_name:
+        weak_model_obj = models.Model(
+            weak_model_name,
+            weak_model=False,
+            verbose=args.verbose,
+            override_kwargs=weak_model_overrides,
+        )
+
+    # Create editor model if specified with overrides
+    editor_model_obj = None
+    if editor_model_name:
+        editor_model_obj = models.Model(
+            editor_model_name,
+            editor_model=False,
+            verbose=args.verbose,
+            override_kwargs=editor_model_overrides,
+        )
+
     # Check if an OpenRouter model was selected/specified but the key is missing
-    if args.model.startswith("openrouter/") and not os.environ.get("OPENROUTER_API_KEY"):
+    if main_model_name.startswith("openrouter/") and not os.environ.get("OPENROUTER_API_KEY"):
         io.tool_warning(
-            f"The specified model '{args.model}' requires an OpenRouter API key, which was not"
+            f"The specified model '{main_model_name}' requires an OpenRouter API key, which was not"
             " found."
         )
         # Attempt OAuth flow because the specific model needs it
@@ -891,7 +1031,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         else:
             # OAuth failed or was declined by the user
             io.tool_error(
-                f"Unable to proceed without an OpenRouter API key for model '{args.model}'."
+                f"Unable to proceed without an OpenRouter API key for model '{main_model_name}'."
             )
             await io.offer_url(
                 urls.models_and_keys, "Open documentation URL for more info?", acknowledge=True
@@ -899,11 +1039,12 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             return await graceful_exit(None, 1)
 
     main_model = models.Model(
-        args.model,
-        weak_model=args.weak_model,
-        editor_model=args.editor_model,
+        main_model_name,
+        weak_model=weak_model_obj,
+        editor_model=editor_model_obj,
         editor_edit_format=args.editor_edit_format,
         verbose=args.verbose,
+        override_kwargs=main_model_overrides,
     )
 
     # Check if deprecated remove_reasoning is set
