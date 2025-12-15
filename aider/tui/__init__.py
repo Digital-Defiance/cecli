@@ -61,7 +61,7 @@ def create_tui_io(args, editing_mode):
     return io, output_queue, input_queue
 
 
-async def launch_tui(coder, output_queue, input_queue):
+async def launch_tui(coder, output_queue, input_queue, args):
     """Launch the TUI application.
 
     Args:
@@ -73,7 +73,7 @@ async def launch_tui(coder, output_queue, input_queue):
         Exit code from TUI
     """
     worker = CoderWorker(coder, output_queue, input_queue)
-    app = TUI(worker, output_queue, input_queue)
+    app = TUI(worker, output_queue, input_queue, args)
 
     # Set weak reference to TUI app on the coder instance
     coder.tui = weakref.ref(app)

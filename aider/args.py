@@ -218,8 +218,22 @@ def get_parser(default_config_files, git_root):
         ),
     )
 
+    ########
+    group = parser.add_argument_group("TUI Settings")
+    group.add_argument(
+        "--tui",
+        action="store_true",
+        default=False,
+        help="Launch Textual TUI interface (experimental)",
+    )
+    group.add_argument(
+        "--tui-config",
+        metavar="TUI_CONFIG_JSON",
+        help="Specify TUI Mode configuration as a JSON string",
+        default=None,
+    )
     #########
-    group = parser.add_argument_group("Agent settings")
+    group = parser.add_argument_group("Agent Settings")
     group.add_argument(
         "--agent-config",
         metavar="AGENT_CONFIG_JSON",
@@ -612,12 +626,6 @@ def get_parser(default_config_files, git_root):
         action=argparse.BooleanOptionalAction,
         default=False,
         help="Perform a dry run without modifying files (default: False)",
-    )
-    group.add_argument(
-        "--tui",
-        action="store_true",
-        default=False,
-        help="Launch Textual TUI interface (experimental)",
     )
     group.add_argument(
         "--skip-sanity-check-repo",

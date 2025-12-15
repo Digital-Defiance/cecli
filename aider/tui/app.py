@@ -1,6 +1,7 @@
 """Main Textual application for Aider TUI."""
 
 import concurrent.futures
+import json
 import queue
 
 from textual.app import App, ComposeResult
@@ -31,38 +32,107 @@ class TUI(App):
         Binding("escape", "interrupt", "Interrupt", show=True),
     ]
 
-    def __init__(self, coder_worker, output_queue, input_queue):
+    def __init__(self, coder_worker, output_queue, input_queue, args):
         """Initialize the Aider TUI app."""
         super().__init__()
         self.worker = coder_worker
         self.output_queue = output_queue
         self.input_queue = input_queue
+        self.args = args  # Store args for _get_config
         # Cache for code symbols (functions, classes, variables)
         self._symbols_cache = None
         self._symbols_files_hash = None
 
-        # Register and set aider theme
+        self.tui_config = self._get_config()
+
+        # Register and set aider theme using config colors
+        colors = self.tui_config.get("colors", {})
+        other = self.tui_config.get("other", {})
         BASE_THEME = Theme(
             name="aider",
-            primary="#00ff5f",
-            secondary="#888888",
-            accent="#00ff87",  # Cecli green
-            foreground="#ffffff",
-            background="#1e1e1e",
-            success="#00aa00",
-            warning="#ffd700",
-            error="#ff3333",
-            surface="transparent",  # Slightly lighter than background
-            panel="transparent",
-            dark=True,
+            primary=colors.get("primary", "#00ff5f"),
+            secondary=colors.get("secondary", "#888888"),
+            accent=colors.get("accent", "#00ff87"),  # Cecli green
+            foreground=colors.get("foreground", "#ffffff"),
+            background=colors.get("background", "#1e1e1e"),
+            success=colors.get("success", "#00aa00"),
+            warning=colors.get("warning", "#ffd700"),
+            error=colors.get("error", "#ff3333"),
+            surface=colors.get("surface", "transparent"),  # Slightly lighter than background
+            panel=colors.get("panel", "transparent"),
+            dark=other.get("dark", True),
             variables={
-                "input-cursor-foreground": "#00ff87",
-                "input-cursor-text-style": "underline",
+                "input-cursor-foreground": colors.get("input-cursor-foreground", "#00ff87"),
+                "input-cursor-text-style": other.get("input-cursor-text-style", "underline"),
             },
         )
 
         self.register_theme(BASE_THEME)
         self.theme = "aider"
+
+    def _get_config(self):
+        """
+        Parse and return TUI configuration from args.tui_config.
+
+        Returns:
+            dict: TUI configuration with defaults for missing values
+        """
+        config = {}
+
+        # Check if tui_config is provided via args
+        if (
+            hasattr(self, "args")
+            and self.args
+            and hasattr(self.args, "tui_config")
+            and self.args.tui_config
+        ):
+            try:
+                config = json.loads(self.args.tui_config)
+            except (json.JSONDecodeError, TypeError) as e:
+                # Can't use self.io here since it doesn't exist yet
+                # The error will be handled elsewhere if needed
+                print(f"Warning: Failed to parse tui-config JSON: {e}")
+                # Continue with empty config, will apply defaults below
+
+        # Ensure config has a colors entry with nested structure matching BASE_THEME
+        if "colors" not in config:
+            config["colors"] = {}
+
+        if "other" not in config:
+            config["other"] = {}
+
+        # Ensure colors dict has all expected keys with default values
+        default_colors = {
+            "primary": "#00ff5f",
+            "secondary": "#888888",
+            "accent": "#00ff87",
+            "foreground": "#ffffff",
+            "background": "#1e1e1e",
+            "success": "#00aa00",
+            "warning": "#ffd700",
+            "error": "#ff3333",
+            "surface": "transparent",
+            "panel": "transparent",
+            "dark": True,
+            "variables": {
+                "input-cursor-foreground": "#00ff87",
+                "input-cursor-text-style": "underline",
+            },
+        }
+
+        # Merge default colors with user-provided colors
+        for key, default_value in default_colors.items():
+            if key not in config["colors"]:
+                config["colors"][key] = default_value
+            elif key == "variables" and isinstance(default_value, dict):
+                # Handle nested variables dict
+                if "variables" not in config["colors"]:
+                    config["colors"]["variables"] = {}
+                for var_key, var_default in default_value.items():
+                    if var_key not in config["colors"]["variables"]:
+                        config["colors"]["variables"][var_key] = var_default
+
+        return config
 
     def compose(self) -> ComposeResult:
         """Create child widgets."""

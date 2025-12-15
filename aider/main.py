@@ -596,6 +596,9 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     if hasattr(args, "agent_config") and args.agent_config is not None:
         args.agent_config = convert_yaml_to_json_string(args.agent_config)
 
+    if hasattr(args, "tui_config") and args.tui_config is not None:
+        args.tui_config = convert_yaml_to_json_string(args.tui_config)
+
     if hasattr(args, "mcp_servers") and args.mcp_servers is not None:
         args.mcp_servers = convert_yaml_to_json_string(args.mcp_servers)
 
@@ -1264,7 +1267,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     if args.tui:
         from aider.tui import launch_tui
 
-        return_code = await launch_tui(coder, output_queue, input_queue)
+        return_code = await launch_tui(coder, output_queue, input_queue, args)
         return await graceful_exit(coder, return_code)
 
     # Standard CLI mode - main loop
