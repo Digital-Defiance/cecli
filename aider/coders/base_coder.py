@@ -152,6 +152,9 @@ class Coder:
 
     ok_to_warm_cache = False
 
+    # Weak reference to TUI app instance (when running in TUI mode)
+    tui = None
+
     @classmethod
     async def create(
         self,
@@ -546,7 +549,7 @@ class Coder:
 
     def get_announcements(self):
         lines = []
-        lines.append(f"Aider-CE v{__version__}")
+        lines.append(f"cecli v{__version__}")
 
         # Model
         main_model = self.main_model
@@ -1250,11 +1253,17 @@ class Coder:
                     await self.io.recreate_input()
                     await self.io.input_task
                     user_message = self.io.input_task.result()
-                    self.io.tool_output("Processing...\n")
+
+                    if self.args and not self.args.tui:
+                        self.io.tool_output("Processing...\n")
+
                     self.io.output_task = asyncio.create_task(self.generate(user_message, preproc))
 
                     await self.io.output_task
-                    self.io.tool_output("Finished.")
+
+                    if self.args and not self.args.tui:
+                        self.io.tool_output("Finished.")
+
                     self.io.ring_bell()
                     user_message = None
                     await self.auto_save_session()
@@ -1351,8 +1360,11 @@ class Coder:
                     try:
                         user_message = self.io.input_task.result()
 
+                        # Defer to confirmation handler to fix Windows event loop race.
+                        if self.io.confirmation_in_progress:
+                            pass
                         # Set user message for output task
-                        if not self.io.acknowledge_confirmation():
+                        elif not self.io.acknowledge_confirmation():
                             if user_message:
                                 self.user_message = user_message
                                 await self.auto_save_session()
@@ -2129,7 +2141,7 @@ class Coder:
                 " the context limit is exceeded."
             )
 
-            if not await self.io.confirm_ask("Try to proceed anyway?", explicit_yes_required=True):
+            if not await self.io.confirm_ask("Try to proceed anyway?"):
                 return False
         return True
 

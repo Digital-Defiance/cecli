@@ -120,6 +120,23 @@ def get_parser(default_config_files, git_root):
         help="Add a model alias (can be used multiple times)",
     )
     group.add_argument(
+        "--model-overrides",
+        metavar="MODEL_OVERRIDES_JSON",
+        help=(
+            'Specify model tag overrides directly as JSON/YAML string (e.g., \'{"gpt-4o": {"high":'
+            ' {"temperature": 0.8}}}\')'
+        ),
+        default=None,
+    )
+    group.add_argument(
+        "--model-overrides-file",
+        metavar="MODEL_OVERRIDES_FILE",
+        default=".aider.model.overrides.yml",
+        help=(
+            "Specify a file with model tag overrides (e.g., gpt-4o:high -> reasoning_effort: high)"
+        ),
+    ).complete = shtab.FILE
+    group.add_argument(
         "--reasoning-effort",
         type=str,
         help="Set the reasoning_effort API parameter (default: not set)",
@@ -218,8 +235,22 @@ def get_parser(default_config_files, git_root):
         ),
     )
 
+    ########
+    group = parser.add_argument_group("TUI Settings")
+    group.add_argument(
+        "--tui",
+        action="store_true",
+        default=False,
+        help="Launch Textual TUI interface (experimental)",
+    )
+    group.add_argument(
+        "--tui-config",
+        metavar="TUI_CONFIG_JSON",
+        help="Specify TUI Mode configuration as a JSON string",
+        default=None,
+    )
     #########
-    group = parser.add_argument_group("Agent settings")
+    group = parser.add_argument_group("Agent Settings")
     group.add_argument(
         "--agent-config",
         metavar="AGENT_CONFIG_JSON",
@@ -725,13 +756,6 @@ def get_parser(default_config_files, git_root):
             " (disables chat mode)"
         ),
     ).complete = shtab.FILE
-    group.add_argument(
-        "--gui",
-        "--browser",
-        action=argparse.BooleanOptionalAction,
-        help=argparse.SUPPRESS,
-        default=False,
-    )
     group.add_argument(
         "--copy-paste",
         action=argparse.BooleanOptionalAction,

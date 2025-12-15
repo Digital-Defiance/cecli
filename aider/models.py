@@ -311,13 +311,20 @@ model_info_manager = ModelInfoManager()
 
 class Model(ModelSettings):
     def __init__(
-        self, model, weak_model=None, editor_model=None, editor_edit_format=None, verbose=False
+        self,
+        model,
+        weak_model=None,
+        editor_model=None,
+        editor_edit_format=None,
+        verbose=False,
+        override_kwargs=None,
     ):
         # Map any alias to its canonical name
         model = MODEL_ALIASES.get(model, model)
 
         self.name = model
         self.verbose = verbose
+        self.override_kwargs = override_kwargs or {}
 
         self.max_chat_history_tokens = 1024
         self.weak_model = None
@@ -341,10 +348,7 @@ class Model(ModelSettings):
         self.max_chat_history_tokens = min(max(max_input_tokens / 16, 1024), 8192)
 
         self.configure_model_settings(model)
-        if weak_model is False:
-            self.weak_model_name = None
-        else:
-            self.get_weak_model(weak_model)
+        self.get_weak_model(weak_model)
 
         if editor_model is False:
             self.editor_model_name = None
@@ -412,6 +416,21 @@ class Model(ModelSettings):
                 self.accepts_settings.append("thinking_tokens")
             if "reasoning_effort" not in self.accepts_settings:
                 self.accepts_settings.append("reasoning_effort")
+
+        # Apply override kwargs from model-overrides configuration
+        if self.override_kwargs:
+            # Initialize extra_params if it doesn't exist
+            if not self.extra_params:
+                self.extra_params = {}
+
+            # Deep merge the override kwargs
+            for key, value in self.override_kwargs.items():
+                if isinstance(value, dict) and isinstance(self.extra_params.get(key), dict):
+                    # For nested dicts, merge recursively
+                    self.extra_params[key] = {**self.extra_params[key], **value}
+                else:
+                    # For non-dict values, simply update
+                    self.extra_params[key] = value
 
     def apply_generic_model_settings(self, model):
         if "/o3-mini" in model:
@@ -571,10 +590,22 @@ class Model(ModelSettings):
     def __str__(self):
         return self.name
 
-    def get_weak_model(self, provided_weak_model_name):
-        # If weak_model_name is provided, override the model settings
-        if provided_weak_model_name:
-            self.weak_model_name = provided_weak_model_name
+    def get_weak_model(self, provided_weak_model):
+        # If provided_weak_model is False, set weak_model to self
+        if provided_weak_model is False:
+            self.weak_model = self
+            self.weak_model_name = None
+            return
+
+        # If provided_weak_model is already a Model object, use it directly
+        if isinstance(provided_weak_model, Model):
+            self.weak_model = provided_weak_model
+            self.weak_model_name = provided_weak_model.name
+            return
+
+        # If weak_model_name is provided as a string, override the model settings
+        if provided_weak_model:
+            self.weak_model_name = provided_weak_model
 
         if not self.weak_model_name:
             self.weak_model = self
@@ -593,10 +624,16 @@ class Model(ModelSettings):
     def commit_message_models(self):
         return [self.weak_model, self]
 
-    def get_editor_model(self, provided_editor_model_name, editor_edit_format):
-        # If editor_model_name is provided, override the model settings
-        if provided_editor_model_name:
-            self.editor_model_name = provided_editor_model_name
+    def get_editor_model(self, provided_editor_model, editor_edit_format):
+        # If provided_editor_model is already a Model object, use it directly
+        if isinstance(provided_editor_model, Model):
+            self.editor_model = provided_editor_model
+            self.editor_model_name = provided_editor_model.name
+        else:
+            # If editor_model_name is provided as a string, override the model settings
+            if provided_editor_model:
+                self.editor_model_name = provided_editor_model
+
         if editor_edit_format:
             self.editor_edit_format = editor_edit_format
 

@@ -18,8 +18,10 @@ LLMs are a part of our lives from here on out so join us in learning about and c
 
 * [Agent Mode](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/agent-mode.md)
 * [MCP Configuration](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/mcp.md)
-* [Session Management](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/sessions.md)
+* [TUI Configuration](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/tui.md)
 * [Skills](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/skills.md)
+* [Session Management](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/sessions.md)
+* [Advanced Model Configuration](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/model-aliases.md# advanced-model-settings)
 * [Aider Original Documentation (still mostly applies)](https://aider.chat/)
 
 You can see a selection of the enhancements and updates by comparing the help output:
@@ -75,6 +77,7 @@ preserve-todo-list: true
 show-model-warnings: true
 use-enhanced-map: true
 watch-files: false
+tui: true
 
 agent-config:
   large_file_token_threshold: 12500
@@ -138,9 +141,9 @@ The current priorities are to improve core capabilities and user experience of t
   * [ ] Add support for partial files and code snippets in model completion messages
 
 5. **TUI Experience** - [Discussion](https://github.com/dwash96/aider-ce/issues/48)
-  * [ ] Add a full TUI (probably using textual) to have a visual interface competitive with the other coding agent terminal programs
+  * [x] Add a full TUI (probably using textual) to have a visual interface competitive with the other coding agent terminal programs
   * [x] Re-integrate pretty output formatting
-  * [ ] Implement a response area, a prompt area with current auto completion capabilities, and a helper area for management utility commands
+  * [x] Implement a response area, a prompt area with current auto completion capabilities, and a helper area for managing utility commands
 
 6. **Agent Mode** - [Discussion](https://github.com/dwash96/aider-ce/issues/111)
   * [x] Renaming "navigator mode" to "agent mode" for simplicity
