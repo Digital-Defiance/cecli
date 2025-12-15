@@ -465,6 +465,10 @@ class Commands:
         "Clear the chat history"
 
         self._clear_chat_history()
+
+        if self.coder.tui and self.coder.tui():
+            self.coder.tui().action_clear_output()
+
         self.io.tool_output("All chat history cleared.")
 
     def _drop_all_files(self):
@@ -494,6 +498,10 @@ class Commands:
         "Drop all files and clear the chat history"
         self._drop_all_files()
         self._clear_chat_history()
+
+        if self.coder.tui and self.coder.tui():
+            self.coder.tui().action_clear_output()
+
         self.io.tool_output("All files dropped and chat history cleared.")
 
     def cmd_tokens(self, args):
@@ -920,7 +928,7 @@ class Commands:
             if not addable_files:
                 self.io.tool_output("No files available to add.")
                 return
-            selected_files = run_fzf(addable_files, multi=True)
+            selected_files = run_fzf(addable_files, multi=True, coder=self.coder)
             if not selected_files:
                 return
             args = " ".join([self.quote_fname(f) for f in selected_files])
@@ -1254,19 +1262,29 @@ class Commands:
         "Run a shell command and optionally add the output to the chat (alias: !)"
         try:
             self.cmd_running = True
+            should_print = True
+
+            if self.coder.args.tui:
+                should_print = False
+
             exit_status, combined_output = await asyncio.to_thread(
                 run_cmd,
                 args,
                 verbose=self.verbose,
-                error_print=self.io.tool_error,
+                error_print=self.coder.io.tool_error,
                 cwd=self.coder.root,
+                should_print=should_print,
             )
+
             self.cmd_running = False
 
-            # This print statement, for whatever reason,
-            # allows the thread to properly yield control of the terminal
-            # to the main program
-            print("")
+            if self.coder.args.tui:
+                print(combined_output)
+            else:
+                # This print statement, for whatever reason,
+                # allows the thread to properly yield control of the terminal
+                # to the main program
+                print("")
 
             if combined_output is None:
                 return
@@ -1318,6 +1336,13 @@ class Commands:
                 pass
 
         await asyncio.sleep(0)
+
+        # Check if running in TUI mode - use graceful exit to restore terminal
+        if hasattr(self.io, "request_exit"):
+            self.io.request_exit()
+            # Give TUI time to process the exit message
+            await asyncio.sleep(0.5)
+            return
 
         try:
             if self.coder.args.linear_output:
@@ -1411,7 +1436,7 @@ class Commands:
 
         files = self.coder.get_all_relative_files()
 
-        other_files = []
+        # other_files = []
         chat_files = []
         read_only_files = []
         read_only_stub_files = []
@@ -1419,8 +1444,8 @@ class Commands:
             abs_file_path = self.coder.abs_root_path(file)
             if abs_file_path in self.coder.abs_fnames:
                 chat_files.append(file)
-            else:
-                other_files.append(file)
+            # else:
+            #     other_files.append(file)
 
         # Add read-only files
         for abs_file_path in self.coder.abs_read_only_fnames:
@@ -1432,14 +1457,14 @@ class Commands:
             rel_file_path = self.coder.get_rel_fname(abs_file_path)
             read_only_stub_files.append(rel_file_path)
 
-        if not chat_files and not other_files and not read_only_files and not read_only_stub_files:
+        if not chat_files and not read_only_files and not read_only_stub_files:
             self.io.tool_output("\nNo files in chat, git repo, or read-only list.")
             return
 
-        if other_files:
-            self.io.tool_output("Repo files not in the chat:\n")
-        for file in other_files:
-            self.io.tool_output(f"  {file}")
+        # if other_files:
+        #     self.io.tool_output("Repo files not in the chat:\n")
+        # for file in other_files:
+        #     self.io.tool_output(f"  {file}")
 
         # Read-only files:
         if read_only_files or read_only_stub_files:
@@ -1827,7 +1852,7 @@ class Commands:
                     target_mode="read-only",
                 )
                 return
-            selected_files = run_fzf(addable_files, multi=True)
+            selected_files = run_fzf(addable_files, multi=True, coder=self.coder)
             if not selected_files:
                 # If user didn't select any files, convert all editable files to read-only
                 self._cmd_read_only_base(
@@ -1865,7 +1890,7 @@ class Commands:
                     target_mode="read-only (stub)",
                 )
                 return
-            selected_files = run_fzf(addable_files, multi=True)
+            selected_files = run_fzf(addable_files, multi=True, coder=self.coder)
             if not selected_files:
                 # If user didn't select any files, convert all editable files to read-only stubs
                 self._cmd_read_only_base(
@@ -2059,7 +2084,7 @@ class Commands:
     def cmd_history_search(self, args):
         "Fuzzy search in history and paste it in the prompt"
         history_lines = self.io.get_input_history()
-        selected_lines = run_fzf(history_lines)
+        selected_lines = run_fzf(history_lines, coder=self.coder)
         if selected_lines:
             self.io.set_placeholder("".join(selected_lines))
 

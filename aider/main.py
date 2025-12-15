@@ -142,6 +142,23 @@ def guessed_wrong_repo(io, git_root, fnames, git_dname):
     return str(check_repo)
 
 
+def validate_tui_args(args):
+    """Validate that incompatible flags aren't used with --tui"""
+    if not args.tui:
+        return
+
+    incompatible = []
+    if args.vim:
+        incompatible.append("--vim")
+    if not args.fancy_input:
+        incompatible.append("--no-fancy-input")
+
+    if incompatible:
+        print(f"Error: --tui is incompatible with: {', '.join(incompatible)}")
+        print("Remove these flags or use standard CLI mode.")
+        sys.exit(1)
+
+
 async def make_new_repo(git_root, io):
     try:
         repo = git.Repo.init(git_root)
@@ -579,6 +596,9 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     if hasattr(args, "agent_config") and args.agent_config is not None:
         args.agent_config = convert_yaml_to_json_string(args.agent_config)
 
+    if hasattr(args, "tui_config") and args.tui_config is not None:
+        args.tui_config = convert_yaml_to_json_string(args.tui_config)
+
     if hasattr(args, "mcp_servers") and args.mcp_servers is not None:
         args.mcp_servers = convert_yaml_to_json_string(args.mcp_servers)
 
@@ -659,14 +679,36 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             verbose=args.verbose,
         )
 
-    io = get_io(args.pretty)
-    try:
-        io.rule()
-    except UnicodeEncodeError as err:
-        if not io.pretty:
-            raise err
-        io = get_io(False)
-        io.tool_warning("Terminal does not support pretty output (UnicodeDecodeError)")
+    # Validate TUI arguments
+    validate_tui_args(args)
+
+    # TUI mode - create TUI-specific IO
+    output_queue = None
+    input_queue = None
+    if args.tui:
+        try:
+            from aider.tui import create_tui_io
+
+            args.linear_output = True
+            print("Starting aider TUI...", flush=True)
+            io, output_queue, input_queue = create_tui_io(args, editing_mode)
+        except ImportError as e:
+            print("Error: --tui requires 'textual' package")
+            print("Install with: pip install aider-ce[tui]")
+            print(f"Import error: {e}")
+            sys.exit(1)
+    else:
+        io = get_io(args.pretty)
+
+    # Only do CLI-specific initialization if not in TUI mode
+    if not args.tui:
+        try:
+            io.rule()
+        except UnicodeEncodeError as err:
+            if not io.pretty:
+                raise err
+            io = get_io(False)
+            io.tool_warning("Terminal does not support pretty output (UnicodeDecodeError)")
 
     # Process any environment variables set via --set-env
     if args.set_env:
@@ -1221,6 +1263,14 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             # Don't show errors for auto-load to avoid interrupting the user experience
             pass
 
+    # TUI mode - launch Textual interface
+    if args.tui:
+        from aider.tui import launch_tui
+
+        return_code = await launch_tui(coder, output_queue, input_queue, args)
+        return await graceful_exit(coder, return_code)
+
+    # Standard CLI mode - main loop
     while True:
         try:
             coder.ok_to_warm_cache = bool(args.cache_keepalive_pings)

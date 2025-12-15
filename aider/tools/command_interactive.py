@@ -51,6 +51,12 @@ class Tool(BaseTool):
                 coder.io.tool_output(f"Skipped execution of shell command: {command_string}")
                 return "Shell command execution skipped by user."
 
+            should_print = True
+            # tui = None
+            if coder.tui and coder.tui():
+                # tui = coder.tui()
+                should_print = False
+
             coder.io.tool_output(f"⚙️ Starting interactive shell command: {command_string}")
             coder.io.tool_output(">>> You may need to interact with the command below <<<")
             coder.io.tool_output(" \n")
@@ -64,6 +70,7 @@ class Tool(BaseTool):
                 verbose=coder.verbose,  # Pass verbose flag
                 error_print=coder.io.tool_error,  # Use io for error printing
                 cwd=coder.root,  # Execute in the project root
+                should_print=should_print,
             )
 
             await asyncio.sleep(1)
