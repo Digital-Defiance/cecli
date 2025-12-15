@@ -19,8 +19,9 @@ LLMs are a part of our lives from here on out so join us in learning about and c
 * [Agent Mode](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/agent-mode.md)
 * [MCP Configuration](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/mcp.md)
 * [TUI Configuration](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/tui.md)
-* [Session Management](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/sessions.md)
 * [Skills](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/skills.md)
+* [Session Management](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/sessions.md)
+* [Advanced Model Configuration](https://github.com/dwash96/aider-ce/blob/main/aider/website/docs/config/model-aliases.md# advanced-model-settings)
 * [Aider Original Documentation (still mostly applies)](https://aider.chat/)
 
 You can see a selection of the enhancements and updates by comparing the help output:
