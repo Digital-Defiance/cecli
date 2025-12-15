@@ -77,11 +77,19 @@ def run_cmd_subprocess(
 
         output = []
 
-        for line in process.stdout:
-            output.append(line)
+        while True:
+            # Read one line (it will block until a newline or EOF is received)
+            line = process.stdout.readline()
 
-            if should_print:
-                print(line, end="", flush=True)
+            # Check if the line is empty AND the process has finished
+            if not line and process.poll() is not None:
+                break  # Exit the loop if nothing more to read and process is done
+
+            if line:
+                output.append(line)
+
+                if should_print:
+                    print(line, end="", flush=True)
 
         process.wait()
         return process.returncode, "".join(output)
