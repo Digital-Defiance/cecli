@@ -54,7 +54,7 @@ class InputArea(TextArea):
         # Let's assume kwargs might handle it or we set it.
         # Actually, let's just set the default if it's empty.
         if not self.placeholder:
-            self.placeholder = "> Type your message... (ctrl+s to send, enter for new line)"
+            self.placeholder = "> Type your message... (ctrl+s to submit, enter for new line)"
 
         self.files = []
         self.commands = []
