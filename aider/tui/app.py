@@ -5,11 +5,13 @@ import queue
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.containers import Vertical
 from textual.theme import Theme
 
 from .widgets import (
     AiderFooter,
     CompletionBar,
+    FileList,
     InputArea,
     KeyHints,
     OutputContainer,
@@ -86,7 +88,11 @@ class TUI(App):
         # Git info loaded in on_mount to avoid blocking startup
         yield OutputContainer(id="output")
         yield StatusBar(id="status-bar")
-        yield InputArea(history_file=history_file, id="input")
+        yield Vertical(
+            InputArea(history_file=history_file, id="input"),
+            FileList(id="file-list", classes="empty"),
+            id="input-container",
+        )
         yield KeyHints(id="key-hints")
         yield AiderFooter(
             model_name=model_name,
@@ -247,6 +253,21 @@ class TUI(App):
             explicit_yes_required=options.get("explicit_yes_required", False),
         )
 
+    def enable_input(self, msg):
+        """Enable input and update autocomplete data."""
+        self.update_key_hints(generating=False)
+        input_area = self.query_one("#input", InputArea)
+        input_area.disabled = False  # Ensure input is enabled
+        files = msg.get("files", [])
+        commands = msg.get("commands", [])
+        input_area.update_autocomplete_data(files, commands)
+
+        # Update file list
+        file_list = self.query_one("#file-list", FileList)
+        file_list.update_files(msg.get("chat_files", {}))
+
+        input_area.focus()
+
     def update_spinner(self, msg):
         """Update spinner in footer."""
         footer = self.query_one(AiderFooter)
@@ -260,16 +281,6 @@ class TUI(App):
             footer.spinner_suffix = msg.get("text", "")
         elif action == "stop":
             footer.stop_spinner()
-
-    def enable_input(self, msg):
-        """Enable input and update autocomplete data."""
-        self.update_key_hints(generating=False)
-        input_area = self.query_one("#input", InputArea)
-        input_area.disabled = False  # Ensure input is enabled
-        files = msg.get("files", [])
-        commands = msg.get("commands", [])
-        input_area.update_autocomplete_data(files, commands)
-        input_area.focus()
 
     def show_error(self, message):
         """Show error notification."""

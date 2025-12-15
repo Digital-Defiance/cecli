@@ -5,7 +5,7 @@ import time
 
 from rich.console import Console
 
-from aider.io import InputOutput
+from aider.io import InputOutput, get_rel_fname
 
 
 class TextualInputOutput(InputOutput):
@@ -281,11 +281,27 @@ class TextualInputOutput(InputOutput):
         # Signal TUI that we're ready for input
         command_names = commands.get_commands() if commands else []
 
+        # Process read-only files
+        rel_read_only_fnames = []
+        if abs_read_only_fnames:
+            rel_read_only_fnames = [get_rel_fname(f, root) for f in abs_read_only_fnames]
+
+        rel_read_only_stubs_fnames = []
+        if abs_read_only_stubs_fnames:
+            rel_read_only_stubs_fnames = [
+                get_rel_fname(f, root) for f in abs_read_only_stubs_fnames
+            ]
+
         self.output_queue.put(
             {
                 "type": "ready_for_input",
                 "files": list(addable_rel_fnames) if addable_rel_fnames else [],
                 "commands": command_names,
+                "chat_files": {
+                    "rel_fnames": list(rel_fnames),
+                    "rel_read_only_fnames": rel_read_only_fnames,
+                    "rel_read_only_stubs_fnames": rel_read_only_stubs_fnames,
+                },
             }
         )
 

@@ -1428,7 +1428,7 @@ class Commands:
 
         files = self.coder.get_all_relative_files()
 
-        other_files = []
+        # other_files = []
         chat_files = []
         read_only_files = []
         read_only_stub_files = []
@@ -1436,8 +1436,8 @@ class Commands:
             abs_file_path = self.coder.abs_root_path(file)
             if abs_file_path in self.coder.abs_fnames:
                 chat_files.append(file)
-            else:
-                other_files.append(file)
+            # else:
+            #     other_files.append(file)
 
         # Add read-only files
         for abs_file_path in self.coder.abs_read_only_fnames:
@@ -1449,14 +1449,14 @@ class Commands:
             rel_file_path = self.coder.get_rel_fname(abs_file_path)
             read_only_stub_files.append(rel_file_path)
 
-        if not chat_files and not other_files and not read_only_files and not read_only_stub_files:
+        if not chat_files and not read_only_files and not read_only_stub_files:
             self.io.tool_output("\nNo files in chat, git repo, or read-only list.")
             return
 
-        if other_files:
-            self.io.tool_output("Repo files not in the chat:\n")
-        for file in other_files:
-            self.io.tool_output(f"  {file}")
+        # if other_files:
+        #     self.io.tool_output("Repo files not in the chat:\n")
+        # for file in other_files:
+        #     self.io.tool_output(f"  {file}")
 
         # Read-only files:
         if read_only_files or read_only_stub_files:

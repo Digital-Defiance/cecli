@@ -18,8 +18,8 @@ class CompletionBar(Widget, can_focus=False):
     CompletionBar {
         height: 1;
         background: $surface;
-        margin: 0 1;
-        padding: 0 1;
+        margin: 0 0;
+        padding: 0 0;
         layout: horizontal;
     }
 

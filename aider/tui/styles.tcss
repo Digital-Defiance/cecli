@@ -34,14 +34,24 @@ Screen {
 }
 
 /* Input area - floating card style */
-#input {
+#input-container {
     height: auto;
     max-height: 33%;
-    min-height: 5;
-    background: $surface;
-    border: round $accent 50%;
-    padding: 0 0 0 2;
+    min-height: 0;
+    padding: 0 0 0 1;
     margin: 0 1 0 1;
+    border: round $accent 50%;
+    background: $surface;
+}
+
+#input {
+    max-height: 1fr;
+    height: auto;
+    min-height: 3;
+    background: $surface;
+    border: none;
+    padding: 0 0 0 0;
+    margin: 0 2 0 0;
     scrollbar-size: 1 1;
 }
 
@@ -65,6 +75,23 @@ Input > .input--placeholder, TextArea > .text-area--placeholder  {
     background: $surface;
 }
 
+/* File List below input */
+#file-list {
+    padding: 0 0 0 0;
+    margin: 0;
+    background: $surface;
+    color: $secondary;
+    height: auto;
+    min-height: 0;
+    dock: bottom
+}
+
+#file-list.empty {
+    height: 0;
+    margin: 0;
+    padding: 0;    
+    display: none;
+}
 
 /* Key hints below input */
 #key-hints {
