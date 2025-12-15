@@ -3833,7 +3833,7 @@ class Coder:
         if not await self.io.confirm_ask(
             prompt,
             subject="\n".join(commands),
-            explicit_yes_required=True,
+            explicit_yes_required=self.args.yes_always_commands,
             group=group,
             allow_never=True,
         ):
