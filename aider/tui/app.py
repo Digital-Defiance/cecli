@@ -489,10 +489,12 @@ class TUI(App):
                     suggestions = all_commands
                 else:
                     suggestions = [c for c in all_commands if c.startswith(cmd_part)]
-            else:
+            elif len(parts) > 1:
                 # Complete command argument
                 cmd_name = cmd_part
-                arg_prefix = parts[1] if len(parts) > 1 else ""
+                end_lookup = text.rsplit(maxsplit=1)
+
+                arg_prefix = end_lookup[1]
                 arg_prefix_lower = arg_prefix.lower()
 
                 # Check if this command needs path-based completion
