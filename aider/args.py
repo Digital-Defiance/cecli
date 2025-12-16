@@ -797,7 +797,7 @@ def get_parser(default_config_files, git_root):
         help=(
             "Run input and output sequentially instead of us simultaneous streams (default: False)"
         ),
-        default=False,
+        default=True,
     )
     group.add_argument(
         "--debug",
