@@ -797,7 +797,7 @@ def get_parser(default_config_files, git_root):
         help=(
             "Run input and output sequentially instead of us simultaneous streams (default: False)"
         ),
-        default=False,
+        default=True,
     )
     group.add_argument(
         "--debug",
@@ -838,8 +838,15 @@ def get_parser(default_config_files, git_root):
     group.add_argument(
         "--yes-always",
         action="store_true",
-        help="Always say yes to every confirmation",
+        help="Always say yes to every confirmation (not including cli commands)",
         default=None,
+    )
+    group.add_argument(
+        "--yes-always-commands",
+        "--yolo",
+        action="store_true",
+        help="Always say yes to every confirmation (including cli commands)",
+        default=False,
     )
     group.add_argument(
         "--disable-playwright",

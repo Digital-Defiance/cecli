@@ -721,6 +721,9 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     if return_coder and args.yes_always is None:
         args.yes_always = True
 
+    if args.yes_always_commands:
+        args.yes_always = True
+
     editing_mode = EditingMode.VI if args.vim else EditingMode.EMACS
 
     def get_io(pretty):

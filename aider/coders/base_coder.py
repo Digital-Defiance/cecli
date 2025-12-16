@@ -2894,6 +2894,9 @@ class Coder:
         added_fnames = []
         group = ConfirmGroup(new_mentions)
         for rel_fname in sorted(new_mentions):
+            if self.args.tui:
+                self.io.tool_output(rel_fname)
+
             if await self.io.confirm_ask(
                 "Add file to the chat?", subject=rel_fname, group=group, allow_never=True
             ):
@@ -3833,7 +3836,7 @@ class Coder:
         if not await self.io.confirm_ask(
             prompt,
             subject="\n".join(commands),
-            explicit_yes_required=True,
+            explicit_yes_required=self.args.yes_always_commands,
             group=group,
             allow_never=True,
         ):
