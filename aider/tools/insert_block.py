@@ -33,7 +33,7 @@ class Tool(BaseTool):
                     "occurrence": {"type": "integer", "default": 1},
                     "change_id": {"type": "string"},
                     "dry_run": {"type": "boolean", "default": False},
-                    "position": {"type": "string", "enum": ["top", "bottom"]},
+                    "position": {"type": "string", "enum": ["top", "bottom", ""]},
                     "auto_indent": {"type": "boolean", "default": True},
                     "use_regex": {"type": "boolean", "default": False},
                 },
@@ -69,7 +69,7 @@ class Tool(BaseTool):
             occurrence: Which occurrence of the pattern to use (1-based, or -1 for last)
             change_id: Optional ID for tracking changes
             dry_run: If True, only simulate the change
-            position: Special position like "start_of_file" or "end_of_file"
+            position: Special position like "top" or "bottom" (mutually exclusive with before_pattern and after_pattern)
             auto_indent: If True, automatically adjust indentation of inserted content
             use_regex: If True, treat patterns as regular expressions
         """
