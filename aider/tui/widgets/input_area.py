@@ -282,6 +282,15 @@ class InputArea(TextArea):
         # Note: Event name for TextArea change is 'Changed' but handler is on_text_area_changed
         if not self.disabled:
             val = self.text
+            possible_path = False
+
             # Auto-trigger for slash commands, @ symbols, or update existing completions
-            if val.startswith("/") or "@" in val or self.completion_active:
+            words = val.rsplit(maxsplit=1)
+
+            if words:
+                last_word = words[-1]
+                if "/" in last_word:
+                    possible_path = True
+
+            if val.startswith("/") or "@" in val or possible_path or self.completion_active:
                 self.post_message(self.CompletionRequested(val))

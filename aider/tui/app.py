@@ -695,7 +695,16 @@ class TUI(App):
             at_index = text.rfind("@")
             prefix = text[at_index + 1 :]
             suggestions = self._get_symbol_completions(prefix)
-        # No file completion for regular text - use @ for files/symbols
+        else:
+            # Check if last contiguous, no-space separated string contains a forward slash
+            # This allows path completions even without a leading slash
+            words = text.rsplit(maxsplit=1)
+
+            if words:
+                last_word = words[-1]
+                if "/" in last_word:
+                    # Provide path completions for the partial path
+                    suggestions = self._get_symbol_completions(last_word)
 
         return [str(s) for s in suggestions[:50]]
 
