@@ -75,7 +75,14 @@ class Tool(BaseTool):
         tool_name = "InsertBlock"
         try:
             # 1. Validate parameters
-            if sum(x is not None for x in [after_pattern, before_pattern, position]) != 1:
+            def _is_provided(value):
+                if value is None:
+                    return False
+                if isinstance(value, str) and value == "":
+                    return False
+                return True
+
+            if sum(_is_provided(x) for x in [after_pattern, before_pattern, position]) != 1:
                 raise ToolError(
                     "Must specify exactly one of: after_pattern, before_pattern, or position"
                 )
