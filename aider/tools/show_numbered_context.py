@@ -1,7 +1,12 @@
 import os
 
 from aider.tools.utils.base_tool import BaseTool
-from aider.tools.utils.helpers import ToolError, handle_tool_error, resolve_paths
+from aider.tools.utils.helpers import (
+    ToolError,
+    handle_tool_error,
+    is_provided,
+    resolve_paths,
+)
 
 
 class Tool(BaseTool):
@@ -34,22 +39,15 @@ class Tool(BaseTool):
         tool_name = "ShowNumberedContext"
         try:
             # 1. Validate arguments
-            def _is_provided(value):
-                if value is None:
-                    return False
-                if isinstance(value, str) and value == "":
-                    return False
-                if isinstance(value, (int, float)) and value == 0:
-                    return False
-                return True
+            pattern_provided = is_provided(pattern)
+            line_number_provided = is_provided(line_number, treat_zero_as_missing=True)
 
-            provided_counts = [_is_provided(x) for x in [pattern, line_number]]
-            if sum(provided_counts) != 1:
+            if sum([pattern_provided, line_number_provided]) != 1:
                 raise ToolError("Provide exactly one of 'pattern' or 'line_number'.")
 
-            if not provided_counts[0]:
+            if not pattern_provided:
                 pattern = None
-            if not provided_counts[1]:
+            if not line_number_provided:
                 line_number = None
 
             # 2. Resolve path

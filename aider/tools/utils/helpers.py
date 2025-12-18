@@ -10,6 +10,21 @@ class ToolError(Exception):
     pass
 
 
+def is_provided(value, *, treat_zero_as_missing=False):
+    """
+    Normalizes parameter presence checks across tools.
+
+    Returns True when the value should be considered user-provided.
+    """
+    if value is None:
+        return False
+    if isinstance(value, str) and value == "":
+        return False
+    if treat_zero_as_missing and isinstance(value, (int, float)) and value == 0:
+        return False
+    return True
+
+
 def resolve_paths(coder, file_path):
     """Resolves absolute and relative paths for a given file path."""
     try:
@@ -106,17 +121,10 @@ def determine_line_range(
     Raises ToolError if end_pattern is not found or line_count is invalid.
     """
 
-    def _is_provided(value):
-        if value is None:
-            return False
-        if isinstance(value, str) and value == "":
-            return False
-        return True
-
     # Parameter validation: Ensure only one targeting method is used
     targeting_methods = [
-        _is_provided(target_symbol),
-        _is_provided(start_pattern_line_index),
+        is_provided(target_symbol),
+        is_provided(start_pattern_line_index),
         # Note: line_count and end_pattern depend on start_pattern_line_index
     ]
     if sum(targeting_methods) > 1:
