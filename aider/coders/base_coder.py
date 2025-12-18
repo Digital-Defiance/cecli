@@ -172,7 +172,7 @@ class Coder:
             if from_coder:
                 main_model = from_coder.main_model
             else:
-                main_model = models.Model(models.DEFAULT_MODEL_NAME)
+                main_model = models.Model(models.DEFAULT_MODEL_NAME, io=io)
 
         if edit_format == "code":
             edit_format = None
@@ -393,7 +393,7 @@ class Coder:
             self.main_model.reasoning_tag if self.main_model.reasoning_tag else REASONING_TAG
         )
 
-        self.stream = stream and main_model.streaming
+        self.stream = stream and main_model.streaming and not main_model.copy_paste_instead_of_api
 
         if cache_prompts and self.main_model.cache_control:
             self.add_cache_headers = True
@@ -576,6 +576,8 @@ class Coder:
             output += ", prompt cache"
         if main_model.info.get("supports_assistant_prefill"):
             output += ", infinite output"
+        if main_model.copy_paste_instead_of_api:
+            output += ", copy/paste mode"
 
         lines.append(output)
 

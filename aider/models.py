@@ -24,6 +24,7 @@ from aider.sendchat import sanity_check_messages
 from aider.utils import check_pip_install_extra
 
 RETRY_TIMEOUT = 60
+COPY_PASTE_PREFIX = "cp:"
 
 request_timeout = 600
 
@@ -316,15 +317,29 @@ class Model(ModelSettings):
         weak_model=None,
         editor_model=None,
         editor_edit_format=None,
-        verbose=False,
+        verbose=False, io=None,
         override_kwargs=None,
     ):
-        # Map any alias to its canonical name
+        # Determine copy/paste mode and map model aliases
+        provided_model = model or ""
+        if isinstance(provided_model, Model):
+            provided_model = provided_model.name
+        elif not isinstance(provided_model, str):
+            provided_model = str(provided_model)
+
+        self.io = io
+        self.verbose = verbose
+        self.override_kwargs = override_kwargs or {}
+
+        self.copy_paste_instead_of_api = provided_model.startswith(COPY_PASTE_PREFIX)
+        if self.copy_paste_instead_of_api:
+            model = provided_model.removeprefix(COPY_PASTE_PREFIX)
+        else:
+            model = provided_model
+
         model = MODEL_ALIASES.get(model, model)
 
         self.name = model
-        self.verbose = verbose
-        self.override_kwargs = override_kwargs or {}
 
         self.max_chat_history_tokens = 1024
         self.weak_model = None
@@ -354,6 +369,9 @@ class Model(ModelSettings):
             self.editor_model_name = None
         else:
             self.get_editor_model(editor_model, editor_edit_format)
+
+        if self.copy_paste_instead_of_api:
+            self.streaming = False
 
     def get_model_info(self, model):
         return model_info_manager.get_model_info(model)
@@ -597,6 +615,11 @@ class Model(ModelSettings):
             self.weak_model_name = None
             return
 
+        if self.copy_paste_instead_of_api:
+            self.weak_model = self
+            self.weak_model_name = None
+            return
+
         # If provided_weak_model is already a Model object, use it directly
         if isinstance(provided_weak_model, Model):
             self.weak_model = provided_weak_model
@@ -618,6 +641,7 @@ class Model(ModelSettings):
         self.weak_model = Model(
             self.weak_model_name,
             weak_model=False,
+            io=self.io,
         )
         return self.weak_model
 
@@ -625,6 +649,11 @@ class Model(ModelSettings):
         return [self.weak_model, self]
 
     def get_editor_model(self, provided_editor_model, editor_edit_format):
+        if self.copy_paste_instead_of_api:
+            provided_editor_model = False
+            self.editor_model_name = self.name
+            self.editor_model = self
+
         # If provided_editor_model is already a Model object, use it directly
         if isinstance(provided_editor_model, Model):
             self.editor_model = provided_editor_model
@@ -643,6 +672,7 @@ class Model(ModelSettings):
             self.editor_model = Model(
                 self.editor_model_name,
                 editor_model=False,
+                io=self.io,
             )
 
         if not self.editor_edit_format:
@@ -955,6 +985,9 @@ class Model(ModelSettings):
 
         messages = model_request_parser(self, messages)
 
+        if self.copy_paste_instead_of_api:
+            return self.copy_paste_completion(messages)
+
         if self.verbose:
             for message in messages:
                 msg_role = message.get("role")
@@ -1060,6 +1093,101 @@ class Model(ModelSettings):
                 raise
 
         return hash_object, res
+
+    def copy_paste_completion(self, messages):
+        try:
+            import pyperclip
+            import uuid
+        except ImportError:
+            if self.io:
+                self.io.tool_error('copy/paste mode requires the pyperclip package.')
+                self.io.tool_output('Install it with: pip install pyperclip')
+            raise
+
+        def content_to_text(content):
+            if not content:
+                return ''
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                parts = []
+                for part in content:
+                    if isinstance(part, dict):
+                        text = part.get('text')
+                        if isinstance(text, str):
+                            parts.append(text)
+                    elif isinstance(part, str):
+                        parts.append(part)
+                return ''.join(parts)
+            if isinstance(content, dict):
+                text = content.get('text')
+                if isinstance(text, str):
+                    return text
+                return ''
+            return str(content)
+
+        lines = []
+        for message in messages:
+            text_content = content_to_text(message.get('content'))
+            if not text_content:
+                continue
+            role = message.get('role')
+            if role:
+                lines.append(f"{role.upper()}:\n{text_content}")
+            else:
+                lines.append(text_content)
+
+        prompt_text = "\n\n".join(lines).strip()
+
+        try:
+            pyperclip.copy(prompt_text)
+        except Exception as err:
+            if self.io:
+                self.io.tool_error(f'Unable to copy prompt to clipboard: {err}')
+            raise
+
+        if self.io:
+            self.io.tool_output('Request copied to clipboard.')
+            self.io.tool_output('Paste it into your LLM interface, then copy the reply back.')
+            self.io.tool_output('Waiting for clipboard updates (Ctrl+C to cancel)...')
+
+        try:
+            last_value = pyperclip.paste()
+        except Exception as err:
+            if self.io:
+                self.io.tool_error(f'Unable to read clipboard: {err}')
+            raise
+
+        while True:
+            time.sleep(0.5)
+            try:
+                current_value = pyperclip.paste()
+            except Exception as err:
+                if self.io:
+                    self.io.tool_error(f'Unable to read clipboard: {err}')
+                raise
+            if current_value != last_value:
+                response_text = current_value
+                break
+
+        completion = litellm.ModelResponse(
+            id=f'chatcmpl-{uuid.uuid4()}',
+            choices=[
+                litellm.Choices(
+                    index=0,
+                    finish_reason='stop',
+                    message=litellm.Message(role='assistant', content=response_text),
+                )
+            ],
+            created=int(time.time()),
+            model=self.name,
+            usage={'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0},
+        )
+
+        kwargs = dict(model=self.name, messages=messages, stream=False)
+        hash_object = hashlib.sha1(json.dumps(kwargs, sort_keys=True).encode())
+
+        return hash_object, completion
 
     async def simple_send_with_retries(self, messages, max_tokens=None):
         from aider.exceptions import LiteLLMExceptions
@@ -1201,6 +1329,9 @@ async def sanity_check_models(io, main_model):
 
 
 async def sanity_check_model(io, model):
+    if getattr(model, 'copy_paste_instead_of_api', False):
+        return False
+
     show = False
 
     if model.missing_keys:

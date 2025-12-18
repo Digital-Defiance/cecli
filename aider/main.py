@@ -968,16 +968,23 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         if not model_name:
             return model_name, {}
 
-        # Split on last colon to get model name and suffix
-        if ":" in model_name:
-            base_model, suffix = model_name.rsplit(":", 1)
-        else:
-            base_model, suffix = model_name, None
+        prefix = ""
+        base_model = model_name
+        if model_name.startswith(models.COPY_PASTE_PREFIX):
+            prefix = models.COPY_PASTE_PREFIX
+            base_model = model_name[len(prefix) :]
 
-        # Apply overrides if suffix exists
+        if ":" in base_model:
+            base_model, suffix = base_model.rsplit(":", 1)
+        else:
+            suffix = None
+
         override_kwargs = {}
         if suffix and base_model in overrides and suffix in overrides[base_model]:
             override_kwargs = overrides[base_model][suffix].copy()
+
+        if prefix:
+            base_model = prefix + base_model
 
         return base_model, override_kwargs
 
@@ -997,6 +1004,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             weak_model_name,
             weak_model=False,
             verbose=args.verbose,
+            io=io,
             override_kwargs=weak_model_overrides,
         )
 
@@ -1007,6 +1015,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             editor_model_name,
             editor_model=False,
             verbose=args.verbose,
+            io=io,
             override_kwargs=editor_model_overrides,
         )
 
@@ -1047,6 +1056,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         editor_model=editor_model_obj,
         editor_edit_format=args.editor_edit_format,
         verbose=args.verbose,
+        io=io,
         override_kwargs=main_model_overrides,
     )
 
