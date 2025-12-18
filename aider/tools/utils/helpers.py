@@ -105,10 +105,18 @@ def determine_line_range(
     Determines the end line index based on end_pattern or line_count.
     Raises ToolError if end_pattern is not found or line_count is invalid.
     """
+
+    def _is_provided(value):
+        if value is None:
+            return False
+        if isinstance(value, str) and value == "":
+            return False
+        return True
+
     # Parameter validation: Ensure only one targeting method is used
     targeting_methods = [
-        target_symbol is not None,
-        start_pattern_line_index is not None,
+        _is_provided(target_symbol),
+        _is_provided(start_pattern_line_index),
         # Note: line_count and end_pattern depend on start_pattern_line_index
     ]
     if sum(targeting_methods) > 1:

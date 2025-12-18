@@ -88,3 +88,19 @@ def test_conflicting_pattern_and_line_number_raise(coder_with_file):
 
     assert result.startswith("Error: Provide exactly one of")
     coder.io.tool_error.assert_called()
+
+
+def test_target_symbol_empty_string_treated_as_missing():
+    from aider.tools.utils import helpers
+    from aider.tools.utils.helpers import ToolError
+
+    with pytest.raises(ToolError, match="Must specify either target_symbol or start_pattern"):
+        helpers.determine_line_range(
+            coder=SimpleNamespace(repo_map=None),  # repo_map not used in this path
+            file_path="dummy",
+            lines=["a", "b"],
+            target_symbol="",
+            start_pattern_line_index=None,
+            end_pattern=None,
+            line_count=1,
+        )
