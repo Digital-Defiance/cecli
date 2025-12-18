@@ -34,8 +34,23 @@ class Tool(BaseTool):
         tool_name = "ShowNumberedContext"
         try:
             # 1. Validate arguments
-            if not (pattern is None) ^ (line_number is None):
+            def _is_provided(value):
+                if value is None:
+                    return False
+                if isinstance(value, str) and value == "":
+                    return False
+                if isinstance(value, (int, float)) and value == 0:
+                    return False
+                return True
+
+            provided_counts = [_is_provided(x) for x in [pattern, line_number]]
+            if sum(provided_counts) != 1:
                 raise ToolError("Provide exactly one of 'pattern' or 'line_number'.")
+
+            if not provided_counts[0]:
+                pattern = None
+            if not provided_counts[1]:
+                line_number = None
 
             # 2. Resolve path
             abs_path, rel_path = resolve_paths(coder, file_path)
