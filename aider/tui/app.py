@@ -5,7 +5,8 @@ import json
 import queue
 
 from textual.app import App, ComposeResult
-from textual.binding import Binding
+
+# from textual.binding import Binding
 from textual.containers import Vertical
 from textual.theme import Theme
 
@@ -28,8 +29,8 @@ class TUI(App):
 
     BINDINGS = [
         # Binding("ctrl+c", "quit", "Quit", show=True),
-        Binding("ctrl+l", "clear_output", "Clear", show=True),
-        Binding("escape", "interrupt", "Interrupt", show=True),
+        # Binding("ctrl+l", "clear_output", "Clear", show=True),
+        # Binding("escape", "interrupt", "Interrupt", show=True),
     ]
 
     def __init__(self, coder_worker, output_queue, input_queue, args):
@@ -67,6 +68,42 @@ class TUI(App):
             },
         )
 
+        self.bind(
+            self.tui_config["key_bindings"]["newline"], "noop", description="New Line", show=True
+        )
+        self.bind(
+            self.tui_config["key_bindings"]["submit"], "noop", description="Submit", show=True
+        )
+        self.bind(
+            self.tui_config["key_bindings"]["cycle_forward"],
+            "noop",
+            description="Cycle Forward",
+            show=True,
+        )
+        self.bind(
+            self.tui_config["key_bindings"]["cycle_backward"],
+            "noop",
+            description="Cycle Backward",
+            show=True,
+        )
+        self.bind(
+            self.tui_config["key_bindings"]["cancel"], "noop", description="Cancel", show=True
+        )
+
+        self.bind(
+            self.tui_config["key_bindings"]["focus"],
+            "focus_input",
+            description="Focus Input",
+            show=True,
+        )
+        self.bind(
+            self.tui_config["key_bindings"]["stop"], "interrupt", description="Interrupt", show=True
+        )
+        self.bind(
+            self.tui_config["key_bindings"]["clear"], "clear_output", description="Clear", show=True
+        )
+        self.bind(self.tui_config["key_bindings"]["focus"], "quit", description="Quit", show=True)
+
         self.register_theme(BASE_THEME)
         self.theme = "aider"
 
@@ -101,6 +138,12 @@ class TUI(App):
         if "other" not in config:
             config["other"] = {}
 
+        if "key_bindings" not in config:
+            config["key_bindings"] = {}
+
+        coder = self.worker.coder
+        is_multiline = coder.args.multiline
+
         # Ensure colors dict has all expected keys with default values
         default_colors = {
             "primary": "#00ff5f",
@@ -120,6 +163,18 @@ class TUI(App):
             },
         }
 
+        default_key_bindings = {
+            "newline": "enter" if is_multiline else "shift+enter",
+            "submit": "shift+enter" if is_multiline else "enter",
+            "stop": "escape",
+            "cycle_forward": "tab",
+            "cycle_backward": "shift+tab",
+            "focus": "ctrl+f",
+            "cancel": "ctrl+c",
+            "clear": "ctrl+l",
+            "quit": "ctrl+q",
+        }
+
         # Merge default colors with user-provided colors
         for key, default_value in default_colors.items():
             if key not in config["colors"]:
@@ -131,6 +186,13 @@ class TUI(App):
                 for var_key, var_default in default_value.items():
                     if var_key not in config["colors"]["variables"]:
                         config["colors"]["variables"][var_key] = var_default
+
+        for key, default_value in default_key_bindings.items():
+            if key not in config["key_bindings"]:
+                config["key_bindings"][key] = self._encode_keys(default_value)
+
+        for key, value in config["key_bindings"].items():
+            config["key_bindings"][key] = self._encode_keys(value)
 
         return config
 
@@ -205,9 +267,11 @@ class TUI(App):
         try:
             hints = self.query_one(KeyHints)
             if generating:
-                hints.update("escape to cancel")
+                stop = self.app._decode_keys(self.app.tui_config["key_bindings"]["stop"])
+                hints.update(f"{stop} to cancel")
             else:
-                hints.update("ctrl+s to submit")
+                submit = self.app._decode_keys(self.app.tui_config["key_bindings"]["submit"])
+                hints.update(f"{submit} to submit")
         except Exception:
             pass
 
@@ -381,6 +445,11 @@ class TUI(App):
 
         self.input_queue.put({"text": user_input})
 
+    def action_focus_input(self) -> None:
+        """Find the input widget and set focus to it."""
+        input_area = self.query_one("#input", InputArea)
+        input_area.focus()
+
     def action_clear_output(self):
         """Clear all output."""
         output_container = self.query_one("#output", OutputContainer)
@@ -412,6 +481,21 @@ class TUI(App):
 
         # Delay exit to allow status bar to render
         self.set_timer(0.3, self._do_quit)
+
+    def action_noop(self):
+        pass
+
+    def _encode_keys(self, key):
+        if key == "shift+enter":
+            return "ctrl+j"
+
+        return key
+
+    def _decode_keys(self, key):
+        if key == "ctrl+j":
+            return "shift+enter"
+
+        return key
 
     def _do_quit(self):
         """Perform the actual quit after UI updates."""
@@ -650,6 +734,14 @@ class TUI(App):
         try:
             completion_bar = self.query_one("#completion-bar", CompletionBar)
             completion_bar.cycle_next()
+        except Exception:
+            pass
+
+    def on_input_area_completion_cycle_previous(self, message: InputArea.CompletionCyclePrevious):
+        """Handle Tab to cycle through completions."""
+        try:
+            completion_bar = self.query_one("#completion-bar", CompletionBar)
+            completion_bar.cycle_previous()
         except Exception:
             pass
 

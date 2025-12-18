@@ -27,6 +27,11 @@ class InputArea(TextArea):
 
         pass
 
+    class CompletionCyclePrevious(Message):
+        """User wants to cycle through completions backwards."""
+
+        pass
+
     class CompletionAccept(Message):
         """User wants to accept current completion."""
 
@@ -54,7 +59,12 @@ class InputArea(TextArea):
         # Let's assume kwargs might handle it or we set it.
         # Actually, let's just set the default if it's empty.
         if not self.placeholder:
-            self.placeholder = "> Type your message... (ctrl+s to submit, enter for new line)"
+            submit = self.app._decode_keys(self.app.tui_config["key_bindings"]["submit"])
+            newline = self.app._decode_keys(self.app.tui_config["key_bindings"]["newline"])
+
+            self.placeholder = (
+                f"> Type your message... ({submit} to submit, {newline} for new line)"
+            )
 
         self.files = []
         self.commands = []
@@ -198,7 +208,7 @@ class InputArea(TextArea):
         if self.disabled:
             return
 
-        if event.key == "ctrl+c":
+        if event.key == self.app.tui_config["key_bindings"]["cancel"]:
             event.stop()
             event.prevent_default()
             if self.text.strip():
@@ -206,14 +216,14 @@ class InputArea(TextArea):
             self.text = ""
             return
 
-        if event.key == "ctrl+s":
+        if event.key == self.app.tui_config["key_bindings"]["submit"]:
             # Submit message
             event.stop()
             event.prevent_default()
             self.post_message(self.Submit(self.text))
             return
 
-        if event.key == "enter":
+        if event.key == self.app.tui_config["key_bindings"]["newline"]:
             if self.completion_active:
                 # Accept completion
                 self.post_message(self.CompletionAccept())
@@ -221,9 +231,15 @@ class InputArea(TextArea):
                 event.prevent_default()
                 return
             else:
+                if self.app.tui_config["key_bindings"]["newline"] != "enter":
+                    self.insert("\n")
+
+                    current_row, current_col = self.cursor_location
+                    self.cursor_location = (current_row + 1, 0)
+
                 return
 
-        if event.key == "tab":
+        if event.key == self.app.tui_config["key_bindings"]["cycle_forward"]:
             event.stop()
             event.prevent_default()
             if self.completion_active:
@@ -232,7 +248,16 @@ class InputArea(TextArea):
             else:
                 # Request completions
                 self.post_message(self.CompletionRequested(self.text))
-        elif event.key == "escape" and self.completion_active:
+        elif event.key == self.app.tui_config["key_bindings"]["cycle_backward"]:
+            event.stop()
+            event.prevent_default()
+            if self.completion_active:
+                # Cycle through completions
+                self.post_message(self.CompletionCyclePrevious())
+            else:
+                # Request completions
+                self.post_message(self.CompletionRequested(self.text))
+        elif event.key == self.app.tui_config["key_bindings"]["stop"] and self.completion_active:
             event.stop()
             event.prevent_default()
             self.post_message(self.CompletionDismiss())

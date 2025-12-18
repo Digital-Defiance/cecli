@@ -25,7 +25,7 @@ tui: true
 
 ### Complete Configuration Example
 
-Complete configuration example in YAML configuration file (`.aider.conf.yml` or `~/.aider.conf.yml`). The base theme is pretty nice but if you want different colors, do you thing:
+Complete configuration example in YAML configuration file (`.aider.conf.yml` or `~/.aider.conf.yml`). The base theme is pretty nice but if you want different colors and key bindings, do you thing:
 
 ```yaml
 tui: true
@@ -41,14 +41,52 @@ tui-config:
     error: "#ff3333"
     surface: "transparent"
     panel: "transparent"
-    dark: true
-    variables:
-      input-cursor-foreground: "#00ff87"
+    input-cursor-foreground: "#00ff87"
   other:
     dark: true
     input-cursor-text-style: "underline"
+  key_bindings:
+    newline: "enter"
+    submit: "shift+enter"
+    stop: "escape"
+    cycle_forward: "tab"
+    cycle_backward: "shift+tab"
+    focus: "ctrl+f"
+    cancel: "ctrl+c"
+    clear: "ctrl+l"
+    quit: "ctrl+q"
 
 ```
+
+### Key Command Configuration
+
+The TUI provides customizable key bindings for all major actions. The default key bindings are:
+
+| Action | Default Key | Description |
+|--------|-------------|-------------|
+| New Line | `enter` (multiline mode) / `shift+enter` (single-line mode) | Insert a new line in the input area |
+| Submit | `shift+enter` (multiline mode) / `enter` (single-line mode) | Submit the current input |
+| Cancel | `ctrl+c` | Stop and stash current input prompt |
+| Stop | `escape` | Interrupt the current LLM response or task |
+| Cycle Forward | `tab` | Cycle forward through completion suggestions |
+| Cycle Backward | `shift+tab` | Cycle backward through completion suggestions |
+| Focus | `ctrl+f` | Focus the input area |
+| Clear | `ctrl+l` | Clear the output area |
+| Quit | `ctrl+q` | Exit the TUI |
+
+#### Customizing Key Bindings
+
+You can customize any key binding by adding a `key_bindings` section to your `tui-config`. For example, to change the quit key to `ctrl+x`:
+
+```yaml
+tui-config:
+  key_bindings:
+    quit: "ctrl+x"
+```
+
+All key bindings use Textual's key syntax:
+- Single keys: `enter`, `escape`, `tab`
+- Modifier combinations: `ctrl+c`, `shift+enter`, etc.
 
 ## Benefits
 

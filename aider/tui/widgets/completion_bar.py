@@ -280,6 +280,15 @@ class CompletionBar(Widget, can_focus=False):
             self.selected_index = (self.selected_index + 1) % len(self.suggestions)
             self._update_selection()
 
+    def cycle_previous(self) -> None:
+        """Cycle to next suggestion."""
+        if self.suggestions:
+            if not self.selected_index:
+                self.selected_index = len(self.suggestions) - 1
+            else:
+                self.selected_index = (self.selected_index - 1) % len(self.suggestions)
+            self._update_selection()
+
     def select_current(self) -> None:
         """Select current suggestion and dismiss."""
         if self.suggestions:
