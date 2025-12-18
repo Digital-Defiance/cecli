@@ -581,6 +581,10 @@ class Commands:
 
                 relative_fname = self.coder.get_rel_fname(fname)
                 content = self.io.read_text(fname)
+
+                if not content:
+                    continue
+
                 if is_image_file(relative_fname):
                     tokens = self.coder.main_model.token_count_for_image(fname)
                 else:
@@ -603,7 +607,11 @@ class Commands:
 
                 relative_fname = self.coder.get_rel_fname(fname)
                 content = self.io.read_text(fname)
-                if content is not None and not is_image_file(relative_fname):
+
+                if not content:
+                    continue
+
+                if not is_image_file(relative_fname):
                     # approximate
                     content = f"{relative_fname}\n{fence}\n" + content + f"{fence}\n"
                     tokens = self.coder.main_model.token_count(content)
@@ -620,6 +628,10 @@ class Commands:
             relative_fname = self.coder.get_rel_fname(fname)
             if not is_image_file(relative_fname):
                 stub = self.coder.get_file_stub(fname)
+
+                if not stub:
+                    continue
+
                 content = f"{relative_fname} (stub)\n{fence}\n" + stub + "{fence}\n"
                 tokens = self.coder.main_model.token_count(content)
                 res.append((tokens, f"{relative_fname} (read-only stub)", "/drop to remove"))
