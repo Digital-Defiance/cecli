@@ -218,8 +218,4 @@ class CopyPasteCoder(Coder):
 
         kwargs = dict(model=model.name, messages=messages, stream=False)
         hash_object = hashlib.sha1(json.dumps(kwargs, sort_keys=True).encode())  # nosec B324
-
         return hash_object, completion
-```bash
-C:\Users\ccn\AppData\Roaming\uv\tools\aider-ce\Scripts\python.exe -m flake8 --select=E9,F821,F823,F831,F406,F407,F701,F702,F704,F706 --show-source --isolated aider\coders\copypaste_coder.py
-```
