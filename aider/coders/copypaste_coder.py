@@ -1,5 +1,6 @@
 import hashlib
 import json
+import math
 import time
 import uuid
 
@@ -120,6 +121,22 @@ class CopyPasteCoder(Coder):
             self.io.tool_error(f"Unable to read clipboard: {err}")
             raise
 
+        # Estimate tokens locally using the model's tokenizer; fallback to heuristic.
+        def _safe_token_count(text):
+            if not text:
+                return 0
+            try:
+                count = model.token_count(text)
+                if isinstance(count, int) and count >= 0:
+                    return count
+            except Exception:
+                pass
+            return int(math.ceil(len(text) / 4))
+
+        prompt_tokens = _safe_token_count(prompt_text)
+        completion_tokens = _safe_token_count(response_text)
+        total_tokens = prompt_tokens + completion_tokens
+
         completion = litellm.ModelResponse(
             id=f"chatcmpl-{uuid.uuid4()}",
             choices=[
@@ -131,7 +148,11 @@ class CopyPasteCoder(Coder):
             ],
             created=int(time.time()),
             model=model.name,
-            usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            usage={
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+            },
         )
 
         kwargs = dict(model=model.name, messages=messages, stream=False)
