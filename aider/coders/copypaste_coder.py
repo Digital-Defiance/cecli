@@ -28,19 +28,9 @@ class CopyPasteCoder(Coder):
         if tools:
             self.io.tool_warning("copy/paste mode ignores tool call requests.")
 
-        self.got_reasoning_content = False
-        self.ended_reasoning_content = False
-
-        self._streaming_buffer_length = 0
         self.io.reset_streaming_response()
 
         self.partial_response_content = ""
-        self.partial_response_reasoning_content = ""
-        self.partial_response_chunks = []
-        self.partial_response_tool_calls = []
-        self.partial_response_function_call = dict()
-
-        completion = None
 
         try:
             hash_object, completion = self.copy_paste_completion(messages, model)
@@ -52,10 +42,6 @@ class CopyPasteCoder(Coder):
 
             if self.partial_response_content:
                 self.io.ai_output(self.partial_response_content)
-            elif self.partial_response_function_call:
-                args = self.parse_partial_args()
-                if args:
-                    self.io.ai_output(json.dumps(args, indent=4))
 
     def copy_paste_completion(self, messages, model):
         try:
