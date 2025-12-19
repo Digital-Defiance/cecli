@@ -11,7 +11,7 @@ import git
 from prompt_toolkit.input import DummyInput
 from prompt_toolkit.output import DummyOutput
 
-from aider.coders import Coder
+from aider.coders import Coder, CopyPasteCoder
 from aider.dump import dump  # noqa: F401
 from aider.io import InputOutput
 from aider.main import check_gitignore, load_dotenv_files, main, setup_git
@@ -88,6 +88,27 @@ class TestMain(TestCase):
         )
         self.assertTrue((subdir / "foo.txt").exists())
         self.assertTrue((subdir / "bar.txt").exists())
+
+    async def test_main_copy_paste_model_overrides(self):
+        overrides = json.dumps({"gpt-4o": {"fast": {"temperature": 0.42}}})
+        coder = await main(
+            [
+                "--no-git",
+                "--exit",
+                "--yes",
+                "--model",
+                "cp:gpt-4o:fast",
+                "--model-overrides",
+                overrides,
+            ],
+            input=DummyInput(),
+            output=DummyOutput(),
+            return_coder=True,
+        )
+
+        self.assertIsInstance(coder, CopyPasteCoder)
+        self.assertTrue(coder.main_model.copy_paste_instead_of_api)
+        self.assertEqual(coder.main_model.override_kwargs, {"temperature": 0.42})
 
     async def test_main_with_git_config_yml(self):
         make_repo()
