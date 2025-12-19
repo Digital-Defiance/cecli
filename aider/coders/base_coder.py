@@ -639,7 +639,7 @@ class Coder:
         if self.done_messages:
             lines.append("Restored previous conversation history.")
 
-        if self.io.multiline_mode:
+        if self.io.multiline_mode and not self.args.tui:
             lines.append("Multiline mode: Enabled. Enter inserts newline, Alt-Enter submits text")
 
         return lines
