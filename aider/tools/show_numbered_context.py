@@ -25,6 +25,10 @@ class Tool(BaseTool):
                     "context_lines": {"type": "integer", "default": 3},
                 },
                 "required": ["file_path"],
+                "oneOf": [
+                    {"required": ["pattern"], "not": {"required": ["line_number"]}},
+                    {"required": ["line_number"], "not": {"required": ["pattern"]}},
+                ],
             },
         },
     }

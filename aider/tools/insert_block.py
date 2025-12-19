@@ -38,6 +38,20 @@ class Tool(BaseTool):
                     "use_regex": {"type": "boolean", "default": False},
                 },
                 "required": ["file_path", "content"],
+                "oneOf": [
+                    {
+                        "required": ["after_pattern"],
+                        "not": {"required": ["before_pattern", "position"]},
+                    },
+                    {
+                        "required": ["before_pattern"],
+                        "not": {"required": ["after_pattern", "position"]},
+                    },
+                    {
+                        "required": ["position"],
+                        "not": {"required": ["after_pattern", "before_pattern"]},
+                    },
+                ],
             },
         },
     }
