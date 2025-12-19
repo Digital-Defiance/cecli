@@ -88,11 +88,12 @@ class CopyPasteCoder(Coder):
 
         self.io.reset_streaming_response()
 
-        # Base Coder methods (eg show_send_output) expect these streaming attributes
-        # to always exist, even when we bypass the normal API streaming path.
+        # Base Coder methods (eg show_send_output/preprocess_response) expect these streaming
+        # attributes to always exist, even when we bypass the normal API streaming path.
         self.partial_response_content = ""
         self.partial_response_function_call = None
-        self.partial_response_tool_calls = None
+        # preprocess_response() does len(self.partial_response_tool_calls), so it must not be None.
+        self.partial_response_tool_calls = []
 
         try:
             hash_object, completion = self.copy_paste_completion(messages, model)
@@ -219,3 +220,6 @@ class CopyPasteCoder(Coder):
         hash_object = hashlib.sha1(json.dumps(kwargs, sort_keys=True).encode())  # nosec B324
 
         return hash_object, completion
+```bash
+pytest
+```
