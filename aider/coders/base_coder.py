@@ -229,6 +229,12 @@ class Coder:
             kwargs = use_kwargs
             from_coder.ok_to_warm_cache = False
 
+        if getattr(main_model, "copy_paste_instead_of_api", False):
+            res = coders.CopyPasteCoder(main_model, io, args=args, **kwargs)
+            await res.initialize_mcp_tools()
+            res.original_kwargs = dict(kwargs)
+            return res
+
         for coder in coders.__all__:
             if hasattr(coder, "edit_format") and coder.edit_format == edit_format:
                 res = coder(main_model, io, args=args, **kwargs)

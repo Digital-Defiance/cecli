@@ -985,9 +985,6 @@ class Model(ModelSettings):
 
         messages = model_request_parser(self, messages)
 
-        if self.copy_paste_instead_of_api:
-            return self.copy_paste_completion(messages)
-
         if self.verbose:
             for message in messages:
                 msg_role = message.get("role")
@@ -1093,101 +1090,6 @@ class Model(ModelSettings):
                 raise
 
         return hash_object, res
-
-    def copy_paste_completion(self, messages):
-        try:
-            import pyperclip
-            import uuid
-        except ImportError:
-            if self.io:
-                self.io.tool_error('copy/paste mode requires the pyperclip package.')
-                self.io.tool_output('Install it with: pip install pyperclip')
-            raise
-
-        def content_to_text(content):
-            if not content:
-                return ''
-            if isinstance(content, str):
-                return content
-            if isinstance(content, list):
-                parts = []
-                for part in content:
-                    if isinstance(part, dict):
-                        text = part.get('text')
-                        if isinstance(text, str):
-                            parts.append(text)
-                    elif isinstance(part, str):
-                        parts.append(part)
-                return ''.join(parts)
-            if isinstance(content, dict):
-                text = content.get('text')
-                if isinstance(text, str):
-                    return text
-                return ''
-            return str(content)
-
-        lines = []
-        for message in messages:
-            text_content = content_to_text(message.get('content'))
-            if not text_content:
-                continue
-            role = message.get('role')
-            if role:
-                lines.append(f"{role.upper()}:\n{text_content}")
-            else:
-                lines.append(text_content)
-
-        prompt_text = "\n\n".join(lines).strip()
-
-        try:
-            pyperclip.copy(prompt_text)
-        except Exception as err:
-            if self.io:
-                self.io.tool_error(f'Unable to copy prompt to clipboard: {err}')
-            raise
-
-        if self.io:
-            self.io.tool_output('Request copied to clipboard.')
-            self.io.tool_output('Paste it into your LLM interface, then copy the reply back.')
-            self.io.tool_output('Waiting for clipboard updates (Ctrl+C to cancel)...')
-
-        try:
-            last_value = pyperclip.paste()
-        except Exception as err:
-            if self.io:
-                self.io.tool_error(f'Unable to read clipboard: {err}')
-            raise
-
-        while True:
-            time.sleep(0.5)
-            try:
-                current_value = pyperclip.paste()
-            except Exception as err:
-                if self.io:
-                    self.io.tool_error(f'Unable to read clipboard: {err}')
-                raise
-            if current_value != last_value:
-                response_text = current_value
-                break
-
-        completion = litellm.ModelResponse(
-            id=f'chatcmpl-{uuid.uuid4()}',
-            choices=[
-                litellm.Choices(
-                    index=0,
-                    finish_reason='stop',
-                    message=litellm.Message(role='assistant', content=response_text),
-                )
-            ],
-            created=int(time.time()),
-            model=self.name,
-            usage={'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0},
-        )
-
-        kwargs = dict(model=self.name, messages=messages, stream=False)
-        hash_object = hashlib.sha1(json.dumps(kwargs, sort_keys=True).encode())
-
-        return hash_object, completion
 
     async def simple_send_with_retries(self, messages, max_tokens=None):
         from aider.exceptions import LiteLLMExceptions
