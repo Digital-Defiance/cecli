@@ -373,7 +373,7 @@ class Model(ModelSettings):
         else:
             self.get_editor_model(editor_model, editor_edit_format)
 
-        if self.copy_paste_transport != "api":
+        if self.copy_paste_transport == "clipboard":
             self.streaming = False
 
     def get_model_info(self, model):
@@ -622,7 +622,7 @@ class Model(ModelSettings):
             self.weak_model_name = None
             return
 
-        if self.copy_paste_transport != "api":
+        if self.copy_paste_transport == "clipboard":
             self.weak_model = self
             self.weak_model_name = None
             return
@@ -656,7 +656,7 @@ class Model(ModelSettings):
         return [self.weak_model, self]
 
     def get_editor_model(self, provided_editor_model, editor_edit_format):
-        if self.copy_paste_transport != "api":
+        if self.copy_paste_transport == "clipboard":
             provided_editor_model = False
             self.editor_model_name = self.name
             self.editor_model = self
@@ -1238,7 +1238,7 @@ async def sanity_check_models(io, main_model):
 
 
 async def sanity_check_model(io, model):
-    if getattr(model, "copy_paste_transport", "api") != "api":
+    if getattr(model, "copy_paste_transport", "api") == "clipboard":
         return False
 
     show = False

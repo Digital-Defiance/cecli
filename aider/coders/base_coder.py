@@ -231,7 +231,7 @@ class Coder:
 
         if getattr(main_model, "copy_paste_mode", False) and getattr(
             main_model, "copy_paste_transport", "api"
-        ) != "api":
+        ) == "clipboard":
             res = coders.CopyPasteCoder(main_model, io, args=args, **kwargs)
             await res.initialize_mcp_tools()
             res.original_kwargs = dict(kwargs)
@@ -387,7 +387,7 @@ class Coder:
         self.io = io
         self.io.coder = weakref.ref(self)
 
-        self.manual_copy_paste = getattr(main_model, "copy_paste_transport", "api") != "api"
+        self.manual_copy_paste = getattr(main_model, "copy_paste_transport", "api") == "clipboard"
         self.copy_paste_mode = getattr(main_model, "copy_paste_mode", False) or auto_copy_context
 
         self.shell_commands = []
