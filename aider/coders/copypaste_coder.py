@@ -76,7 +76,7 @@ class CopyPasteCoder(Coder):
     async def send(self, messages, model=None, functions=None, tools=None):
         model = model or self.main_model
 
-        if not getattr(model, "copy_paste_instead_of_api", False):
+        if getattr(model, "copy_paste_transport", "api") == "api":
             async for chunk in super().send(messages, model=model, functions=functions, tools=tools):
                 yield chunk
             return
@@ -108,7 +108,7 @@ class CopyPasteCoder(Coder):
 
     def copy_paste_completion(self, messages, model):
         try:
-            from aider import copypaste
+            from aider.helpers import copypaste
         except ImportError:  # pragma: no cover - import error path
             self.io.tool_error("copy/paste mode requires the pyperclip package.")
             self.io.tool_output("Install it with: pip install pyperclip")

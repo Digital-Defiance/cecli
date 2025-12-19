@@ -331,9 +331,12 @@ class Model(ModelSettings):
         self.verbose = verbose
         self.override_kwargs = override_kwargs or {}
 
-        self.copy_paste_instead_of_api = provided_model.startswith(COPY_PASTE_PREFIX)
-        if self.copy_paste_instead_of_api:
+        self.copy_paste_mode = False
+        self.copy_paste_transport = "api"
+
+        if provided_model.startswith(COPY_PASTE_PREFIX):
             model = provided_model.removeprefix(COPY_PASTE_PREFIX)
+            self.enable_copy_paste_mode(transport="clipboard")
         else:
             model = provided_model
 
@@ -370,7 +373,7 @@ class Model(ModelSettings):
         else:
             self.get_editor_model(editor_model, editor_edit_format)
 
-        if self.copy_paste_instead_of_api:
+        if self.copy_paste_transport != "api":
             self.streaming = False
 
     def get_model_info(self, model):
@@ -608,6 +611,10 @@ class Model(ModelSettings):
     def __str__(self):
         return self.name
 
+    def enable_copy_paste_mode(self, *, transport="api"):
+        self.copy_paste_mode = True
+        self.copy_paste_transport = transport
+
     def get_weak_model(self, provided_weak_model):
         # If provided_weak_model is False, set weak_model to self
         if provided_weak_model is False:
@@ -615,7 +622,7 @@ class Model(ModelSettings):
             self.weak_model_name = None
             return
 
-        if self.copy_paste_instead_of_api:
+        if self.copy_paste_transport != "api":
             self.weak_model = self
             self.weak_model_name = None
             return
@@ -649,7 +656,7 @@ class Model(ModelSettings):
         return [self.weak_model, self]
 
     def get_editor_model(self, provided_editor_model, editor_edit_format):
-        if self.copy_paste_instead_of_api:
+        if self.copy_paste_transport != "api":
             provided_editor_model = False
             self.editor_model_name = self.name
             self.editor_model = self
@@ -1231,7 +1238,7 @@ async def sanity_check_models(io, main_model):
 
 
 async def sanity_check_model(io, model):
-    if getattr(model, 'copy_paste_instead_of_api', False):
+    if getattr(model, "copy_paste_transport", "api") != "api":
         return False
 
     show = False

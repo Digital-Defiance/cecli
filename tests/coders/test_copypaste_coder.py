@@ -59,7 +59,8 @@ async def test_send_uses_copy_paste_flow(monkeypatch):
     coder.preprocess_response = fake_preprocess_response
 
     class ModelStub:
-        copy_paste_instead_of_api = True
+        copy_paste_mode = True
+        copy_paste_transport = "clipboard"
         name = "cp:gpt-4o"
 
         @staticmethod
@@ -92,7 +93,7 @@ def test_copy_paste_completion_interacts_with_clipboard(monkeypatch):
     io = MagicMock()
     coder.io = io
 
-    import aider.copypaste as copypaste
+    import aider.helpers.copypaste as copypaste
 
     copy_mock = MagicMock()
     read_mock = MagicMock(return_value="initial value")
@@ -122,6 +123,8 @@ def test_copy_paste_completion_interacts_with_clipboard(monkeypatch):
 
     class ModelStub:
         name = "cp:gpt-4o"
+        copy_paste_mode = True
+        copy_paste_transport = "clipboard"
 
         @staticmethod
         def token_count(text):

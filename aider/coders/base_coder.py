@@ -229,7 +229,9 @@ class Coder:
             kwargs = use_kwargs
             from_coder.ok_to_warm_cache = False
 
-        if getattr(main_model, "copy_paste_instead_of_api", False):
+        if getattr(main_model, "copy_paste_mode", False) and getattr(
+            main_model, "copy_paste_transport", "api"
+        ) != "api":
             res = coders.CopyPasteCoder(main_model, io, args=args, **kwargs)
             await res.initialize_mcp_tools()
             res.original_kwargs = dict(kwargs)
@@ -385,6 +387,9 @@ class Coder:
         self.io = io
         self.io.coder = weakref.ref(self)
 
+        self.manual_copy_paste = getattr(main_model, "copy_paste_transport", "api") != "api"
+        self.copy_paste_mode = getattr(main_model, "copy_paste_mode", False) or auto_copy_context
+
         self.shell_commands = []
         self.partial_response_tool_calls = []
 
@@ -405,7 +410,7 @@ class Coder:
             self.main_model.reasoning_tag if self.main_model.reasoning_tag else REASONING_TAG
         )
 
-        self.stream = stream and main_model.streaming and not main_model.copy_paste_instead_of_api
+        self.stream = stream and main_model.streaming and not self.manual_copy_paste
 
         if cache_prompts and self.main_model.cache_control:
             self.add_cache_headers = True
@@ -587,7 +592,7 @@ class Coder:
             output += ", prompt cache"
         if main_model.info.get("supports_assistant_prefill"):
             output += ", infinite output"
-        if main_model.copy_paste_instead_of_api:
+        if self.copy_paste_mode:
             output += ", copy/paste mode"
 
         lines.append(output)

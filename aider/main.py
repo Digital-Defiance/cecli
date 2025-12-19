@@ -41,7 +41,7 @@ from aider.args import get_parser
 from aider.coders import Coder
 from aider.coders.base_coder import UnknownEditFormat
 from aider.commands import Commands, SwitchCoder
-from aider.copypaste import ClipboardWatcher
+from aider.helpers.copypaste import ClipboardWatcher
 from aider.deprecated import handle_deprecated_model_args
 from aider.format_settings import format_settings, scrub_sensitive_info
 from aider.helpers.file_searcher import generate_search_path_list
@@ -1077,6 +1077,9 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         io=io,
         override_kwargs=main_model_overrides,
     )
+
+    if args.copy_paste and main_model.copy_paste_transport == "api":
+        main_model.enable_copy_paste_mode()
 
     # Check if deprecated remove_reasoning is set
     if main_model.remove_reasoning is not None:

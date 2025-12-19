@@ -107,8 +107,26 @@ class TestMain(TestCase):
         )
 
         self.assertIsInstance(coder, CopyPasteCoder)
-        self.assertTrue(coder.main_model.copy_paste_instead_of_api)
+        self.assertTrue(coder.main_model.copy_paste_mode)
+        self.assertEqual(coder.main_model.copy_paste_transport, "clipboard")
         self.assertEqual(coder.main_model.override_kwargs, {"temperature": 0.42})
+
+    @patch("aider.main.ClipboardWatcher")
+    async def test_main_copy_paste_flag_sets_mode(self, mock_watcher):
+        mock_watcher.return_value = MagicMock()
+
+        coder = await main(
+            ["--no-git", "--exit", "--yes", "--copy-paste"],
+            input=DummyInput(),
+            output=DummyOutput(),
+            return_coder=True,
+        )
+
+        self.assertNotIsInstance(coder, CopyPasteCoder)
+        self.assertTrue(coder.main_model.copy_paste_mode)
+        self.assertEqual(coder.main_model.copy_paste_transport, "api")
+        self.assertTrue(coder.copy_paste_mode)
+        self.assertFalse(coder.manual_copy_paste)
 
     async def test_main_with_git_config_yml(self):
         make_repo()
