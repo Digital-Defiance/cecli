@@ -57,7 +57,7 @@ class CopyPasteCoder(Coder):
 
     def copy_paste_completion(self, messages, model):
         try:
-            import pyperclip
+            from aider import copypaste
         except ImportError:  # pragma: no cover - import error path
             self.io.tool_error("copy/paste mode requires the pyperclip package.")
             self.io.tool_output("Install it with: pip install pyperclip")
@@ -99,8 +99,8 @@ class CopyPasteCoder(Coder):
         prompt_text = "\n\n".join(lines).strip()
 
         try:
-            pyperclip.copy(prompt_text)
-        except Exception as err:  # pragma: no cover - clipboard error path
+            copypaste.copy_to_clipboard(prompt_text)
+        except copypaste.ClipboardError as err:  # pragma: no cover - clipboard error path
             self.io.tool_error(f"Unable to copy prompt to clipboard: {err}")
             raise
 
@@ -109,21 +109,16 @@ class CopyPasteCoder(Coder):
         self.io.tool_output("Waiting for clipboard updates (Ctrl+C to cancel)...")
 
         try:
-            last_value = pyperclip.paste()
-        except Exception as err:  # pragma: no cover - clipboard error path
+            last_value = copypaste.read_clipboard()
+        except copypaste.ClipboardError as err:  # pragma: no cover - clipboard error path
             self.io.tool_error(f"Unable to read clipboard: {err}")
             raise
 
-        while True:
-            time.sleep(0.5)
-            try:
-                current_value = pyperclip.paste()
-            except Exception as err:  # pragma: no cover - clipboard error path
-                self.io.tool_error(f"Unable to read clipboard: {err}")
-                raise
-            if current_value != last_value:
-                response_text = current_value
-                break
+        try:
+            response_text = copypaste.wait_for_clipboard_change(initial=last_value)
+        except copypaste.ClipboardError as err:  # pragma: no cover - clipboard error path
+            self.io.tool_error(f"Unable to read clipboard: {err}")
+            raise
 
         completion = litellm.ModelResponse(
             id=f"chatcmpl-{uuid.uuid4()}",
@@ -143,4 +138,3 @@ class CopyPasteCoder(Coder):
         hash_object = hashlib.sha1(json.dumps(kwargs, sort_keys=True).encode())
 
         return hash_object, completion
-
