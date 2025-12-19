@@ -100,6 +100,7 @@ class Commands:
             model_name,
             editor_model=self.coder.main_model.editor_model.name,
             weak_model=self.coder.main_model.weak_model.name,
+            io=self.io,
         )
         await models.sanity_check_models(self.io, model)
 
@@ -172,6 +173,7 @@ class Commands:
             self.coder.main_model.name,
             editor_model=self.coder.main_model.editor_model.name,
             weak_model=model_name,
+            io=self.io,
         )
         await models.sanity_check_models(self.io, model)
         raise SwitchCoder(main_model=model)
