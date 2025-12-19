@@ -117,9 +117,7 @@ def test_copy_paste_completion_interacts_with_clipboard(monkeypatch):
 
     monkeypatch.setattr("aider.coders.copypaste_coder.litellm.Message", DummyMessage)
     monkeypatch.setattr("aider.coders.copypaste_coder.litellm.Choices", DummyChoices)
-    monkeypatch.setattr(
-        "aider.coders.copypaste_coder.litellm.ModelResponse", DummyModelResponse
-    )
+    monkeypatch.setattr("aider.coders.copypaste_coder.litellm.ModelResponse", DummyModelResponse)
 
     class ModelStub:
         name = "cp:gpt-4o"
@@ -154,7 +152,9 @@ def test_copy_paste_completion_interacts_with_clipboard(monkeypatch):
     )
 
     expected_hash = hashlib.sha1(
-        json.dumps({"model": model.name, "messages": messages, "stream": False}, sort_keys=True).encode()
+        json.dumps(
+            {"model": model.name, "messages": messages, "stream": False}, sort_keys=True
+        ).encode()
     ).hexdigest()
     assert hash_obj.hexdigest() == expected_hash
 

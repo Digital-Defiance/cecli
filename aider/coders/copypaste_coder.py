@@ -57,7 +57,10 @@ class CopyPasteCoder(Coder):
         target_coder_class = None
         if coders is not None:
             for coder_cls in getattr(coders, "__all__", []):
-                if hasattr(coder_cls, "edit_format") and coder_cls.edit_format == selected_edit_format:
+                if (
+                    hasattr(coder_cls, "edit_format")
+                    and coder_cls.edit_format == selected_edit_format
+                ):
                     target_coder_class = coder_cls
                     break
 
@@ -77,7 +80,9 @@ class CopyPasteCoder(Coder):
         model = model or self.main_model
 
         if getattr(model, "copy_paste_transport", "api") == "api":
-            async for chunk in super().send(messages, model=model, functions=functions, tools=tools):
+            async for chunk in super().send(
+                messages, model=model, functions=functions, tools=tools
+            ):
                 yield chunk
             return
 

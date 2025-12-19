@@ -229,9 +229,10 @@ class Coder:
             kwargs = use_kwargs
             from_coder.ok_to_warm_cache = False
 
-        if getattr(main_model, "copy_paste_mode", False) and getattr(
-            main_model, "copy_paste_transport", "api"
-        ) == "clipboard":
+        if (
+            getattr(main_model, "copy_paste_mode", False)
+            and getattr(main_model, "copy_paste_transport", "api") == "clipboard"
+        ):
             res = coders.CopyPasteCoder(main_model, io, args=args, **kwargs)
             await res.initialize_mcp_tools()
             res.original_kwargs = dict(kwargs)

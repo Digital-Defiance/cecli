@@ -317,7 +317,8 @@ class Model(ModelSettings):
         weak_model=None,
         editor_model=None,
         editor_edit_format=None,
-        verbose=False, io=None,
+        verbose=False,
+        io=None,
         override_kwargs=None,
     ):
         # Determine copy/paste mode and map model aliases
