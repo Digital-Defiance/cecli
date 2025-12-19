@@ -5,6 +5,7 @@ import time
 import uuid
 
 from aider.llm import litellm
+from aider.exceptions import LiteLLMExceptions
 
 from .base_coder import Coder
 
@@ -129,8 +130,17 @@ class CopyPasteCoder(Coder):
                 count = model.token_count(text)
                 if isinstance(count, int) and count >= 0:
                     return count
-            except Exception:
-                pass
+            except Exception as ex:
+                # Try to map known LiteLLM exceptions to user-friendly messages, then fallback.
+                try:
+                    ex_info = LiteLLMExceptions().get_ex_info(ex)
+                    if ex_info and ex_info.description:
+                        self.io.tool_warning(
+                            f"Token count failed: {ex_info.description} Falling back to heuristic."
+                        )
+                except Exception:
+                    # Avoid masking the original issue during error mapping.
+                    pass
             return int(math.ceil(len(text) / 4))
 
         prompt_tokens = _safe_token_count(prompt_text)
