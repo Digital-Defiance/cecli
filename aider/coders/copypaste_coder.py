@@ -90,7 +90,11 @@ class CopyPasteCoder(Coder):
 
         self.io.reset_streaming_response()
 
+        # Base Coder methods (eg show_send_output) expect these streaming attributes
+        # to always exist, even when we bypass the normal API streaming path.
         self.partial_response_content = ""
+        self.partial_response_function_call = None
+        self.partial_response_tool_calls = None
 
         try:
             hash_object, completion = self.copy_paste_completion(messages, model)
