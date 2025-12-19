@@ -28,9 +28,7 @@ class CopyPasteCoder(Coder):
         self._init_prompts_from_selected_edit_format()
 
     def _init_prompts_from_selected_edit_format(self):
-        """
-        Initialize ``self.gpt_prompts`` (and related prompt-dependent metadata) using the coder
-        class matching the currently selected edit format.
+        """Initialize ``self.gpt_prompts`` based on the currently selected edit format.
 
         This prevents AttributeError crashes when base ``Coder`` code assumes ``self.gpt_prompts``
         exists (eg during message formatting, announcements, cancellation/cleanup paths, etc).
@@ -116,6 +114,7 @@ class CopyPasteCoder(Coder):
             raise
 
         def content_to_text(content):
+            """Extract text from the various content formats Aider/LLMs can produce."""
             if not content:
                 return ""
             if isinstance(content, str):
@@ -174,6 +173,7 @@ class CopyPasteCoder(Coder):
 
         # Estimate tokens locally using the model's tokenizer; fallback to heuristic.
         def _safe_token_count(text):
+            """Return token count via the model tokenizer, falling back to a heuristic."""
             if not text:
                 return 0
             try:
@@ -181,7 +181,7 @@ class CopyPasteCoder(Coder):
                 if isinstance(count, int) and count >= 0:
                     return count
             except Exception as ex:
-                # Try to map known LiteLLM exceptions to user-friendly messages, then fallback.
+                # Try to map known LiteLLM exceptions to user-friendly messages, then fall back.
                 try:
                     ex_info = LiteLLMExceptions().get_ex_info(ex)
                     if ex_info and ex_info.description:
@@ -216,6 +216,6 @@ class CopyPasteCoder(Coder):
         )
 
         kwargs = dict(model=model.name, messages=messages, stream=False)
-        hash_object = hashlib.sha1(json.dumps(kwargs, sort_keys=True).encode())
+        hash_object = hashlib.sha1(json.dumps(kwargs, sort_keys=True).encode())  # nosec B324
 
         return hash_object, completion
