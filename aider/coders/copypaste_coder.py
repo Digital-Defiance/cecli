@@ -4,22 +4,82 @@ import math
 import time
 import uuid
 
-from aider.llm import litellm
 from aider.exceptions import LiteLLMExceptions
+from aider.llm import litellm
 
 from .base_coder import Coder
 
 
 class CopyPasteCoder(Coder):
-    """Coder implementation that performs clipboard-driven interactions."""
+    """Coder implementation that performs clipboard-driven interactions.
+
+    This coder swaps the transport mechanism (clipboard vs API) but must remain compatible with the
+    base ``Coder`` interface. In particular, many base methods assume ``self.gpt_prompts`` exists.
+
+    We therefore mirror the prompt pack from the coder that matches the currently selected
+    ``edit_format``.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Ensure CopyPasteCoder always has a prompt pack.
+        # We mirror prompts from the coder that matches the active edit format.
+        self._init_prompts_from_selected_edit_format()
+
+    def _init_prompts_from_selected_edit_format(self):
+        """
+        Initialize ``self.gpt_prompts`` (and related prompt-dependent metadata) using the coder
+        class matching the currently selected edit format.
+
+        This prevents AttributeError crashes when base ``Coder`` code assumes ``self.gpt_prompts``
+        exists (eg during message formatting, announcements, cancellation/cleanup paths, etc).
+        """
+        # Determine the selected edit_format the same way Coder.create() does.
+        selected_edit_format = None
+        if getattr(self, "args", None) is not None and getattr(self.args, "edit_format", None):
+            selected_edit_format = self.args.edit_format
+        else:
+            selected_edit_format = getattr(self.main_model, "edit_format", None)
+
+        # "code" is treated like None in Coder.create()
+        if selected_edit_format == "code":
+            selected_edit_format = None
+
+        # If no edit format is selected, fall back to model default.
+        if selected_edit_format is None:
+            selected_edit_format = getattr(self.main_model, "edit_format", None)
+
+        # Find the coder class that would have been selected for this edit_format.
+        try:
+            import aider.coders as coders
+        except Exception:
+            coders = None
+
+        target_coder_class = None
+        if coders is not None:
+            for coder_cls in getattr(coders, "__all__", []):
+                if hasattr(coder_cls, "edit_format") and coder_cls.edit_format == selected_edit_format:
+                    target_coder_class = coder_cls
+                    break
+
+        # Mirror prompt pack + edit_format where available.
+        if target_coder_class is not None and hasattr(target_coder_class, "gpt_prompts"):
+            self.gpt_prompts = target_coder_class.gpt_prompts
+            # Keep announcements/formatting consistent with the selected coder.
+            self.edit_format = getattr(target_coder_class, "edit_format", self.edit_format)
+            return
+
+        # Last-resort fallback: avoid crashing if we can't determine the prompts.
+        # Prefer keeping any existing gpt_prompts (if one was set elsewhere).
+        if not hasattr(self, "gpt_prompts"):
+            self.gpt_prompts = None
 
     async def send(self, messages, model=None, functions=None, tools=None):
         model = model or self.main_model
 
         if not getattr(model, "copy_paste_instead_of_api", False):
-            async for chunk in super().send(
-                messages, model=model, functions=functions, tools=tools
-            ):
+            async for chunk in super().send(messages, model=model, functions=functions, tools=tools):
                 yield chunk
             return
 
