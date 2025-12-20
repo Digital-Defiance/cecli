@@ -81,12 +81,9 @@ class AgentCoder(Coder):
     """Mode where the LLM autonomously manages which files are in context."""
 
     edit_format = "agent"
+    gpt_prompts = AgentPrompts()
 
     def __init__(self, *args, **kwargs):
-        # Initialize appropriate prompt set before calling parent constructor
-        # This needs to happen before super().__init__ so the parent class has access to gpt_prompts
-        self.gpt_prompts = AgentPrompts()
-
         # Dictionary to track recently removed files
         self.recently_removed = {}
 
