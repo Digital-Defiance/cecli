@@ -59,8 +59,8 @@ class InputArea(TextArea):
         # Let's assume kwargs might handle it or we set it.
         # Actually, let's just set the default if it's empty.
         if not self.placeholder:
-            submit = self.app._decode_keys(self.app.tui_config["key_bindings"]["submit"])
-            newline = self.app._decode_keys(self.app.tui_config["key_bindings"]["newline"])
+            submit = self.app.get_keys_for("submit")
+            newline = self.app.get_keys_for("newline")
 
             self.placeholder = (
                 f"> Type your message... ({submit} to submit, {newline} for new line)"
@@ -208,7 +208,7 @@ class InputArea(TextArea):
         if self.disabled:
             return
 
-        if event.key == self.app.tui_config["key_bindings"]["cancel"]:
+        if self.app.is_key_for("cancel", event.key):
             event.stop()
             event.prevent_default()
             if self.text.strip():
@@ -216,30 +216,30 @@ class InputArea(TextArea):
             self.text = ""
             return
 
-        if event.key == self.app.tui_config["key_bindings"]["submit"]:
+        if self.completion_active and self.app.is_key_for("completion", event.key):
+            # Accept completion
+            self.post_message(self.CompletionAccept())
+            event.stop()
+            event.prevent_default()
+            return
+
+        if self.app.is_key_for("submit", event.key):
             # Submit message
             event.stop()
             event.prevent_default()
             self.post_message(self.Submit(self.text))
             return
 
-        if event.key == self.app.tui_config["key_bindings"]["newline"]:
-            if self.completion_active:
-                # Accept completion
-                self.post_message(self.CompletionAccept())
-                event.stop()
-                event.prevent_default()
-                return
-            else:
-                if self.app.tui_config["key_bindings"]["newline"] != "enter":
-                    self.insert("\n")
+        if self.app.is_key_for("newline", event.key):
+            if self.app.get_keys_for("newline") != "enter":
+                self.insert("\n")
 
-                    current_row, current_col = self.cursor_location
-                    self.cursor_location = (current_row + 1, 0)
+                current_row, current_col = self.cursor_location
+                self.cursor_location = (current_row + 1, 0)
 
-                return
+            return
 
-        if event.key == self.app.tui_config["key_bindings"]["cycle_forward"]:
+        if self.app.is_key_for("cycle_forward", event.key):
             event.stop()
             event.prevent_default()
             if self.completion_active:
@@ -248,7 +248,7 @@ class InputArea(TextArea):
             else:
                 # Request completions
                 self.post_message(self.CompletionRequested(self.text))
-        elif event.key == self.app.tui_config["key_bindings"]["cycle_backward"]:
+        elif self.app.is_key_for("cycle_backward", event.key):
             event.stop()
             event.prevent_default()
             if self.completion_active:
@@ -257,7 +257,7 @@ class InputArea(TextArea):
             else:
                 # Request completions
                 self.post_message(self.CompletionRequested(self.text))
-        elif event.key == self.app.tui_config["key_bindings"]["stop"] and self.completion_active:
+        elif self.app.is_key_for("stop", event.key) and self.completion_active:
             event.stop()
             event.prevent_default()
             self.post_message(self.CompletionDismiss())

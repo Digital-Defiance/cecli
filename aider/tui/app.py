@@ -69,40 +69,57 @@ class TUI(App):
         )
 
         self.bind(
-            self.tui_config["key_bindings"]["newline"], "noop", description="New Line", show=True
+            self._encode_keys(self.get_keys_for("newline")),
+            "noop",
+            description="New Line",
+            show=True,
         )
         self.bind(
-            self.tui_config["key_bindings"]["submit"], "noop", description="Submit", show=True
+            self._encode_keys(self.get_keys_for("submit")), "noop", description="Submit", show=True
         )
         self.bind(
-            self.tui_config["key_bindings"]["cycle_forward"],
+            self._encode_keys(self.get_keys_for("completion")),
+            "noop",
+            description="Accept Completion",
+            show=True,
+        )
+        self.bind(
+            self._encode_keys(self.get_keys_for("cycle_forward")),
             "noop",
             description="Cycle Forward",
             show=True,
         )
         self.bind(
-            self.tui_config["key_bindings"]["cycle_backward"],
+            self._encode_keys(self.get_keys_for("cycle_backward")),
             "noop",
             description="Cycle Backward",
             show=True,
         )
         self.bind(
-            self.tui_config["key_bindings"]["cancel"], "noop", description="Cancel", show=True
+            self._encode_keys(self.get_keys_for("cancel")), "noop", description="Cancel", show=True
         )
 
         self.bind(
-            self.tui_config["key_bindings"]["focus"],
+            self._encode_keys(self.get_keys_for("focus")),
             "focus_input",
             description="Focus Input",
             show=True,
         )
         self.bind(
-            self.tui_config["key_bindings"]["stop"], "interrupt", description="Interrupt", show=True
+            self._encode_keys(self.get_keys_for("stop")),
+            "interrupt",
+            description="Interrupt",
+            show=True,
         )
         self.bind(
-            self.tui_config["key_bindings"]["clear"], "clear_output", description="Clear", show=True
+            self._encode_keys(self.get_keys_for("clear")),
+            "clear_output",
+            description="Clear",
+            show=True,
         )
-        self.bind(self.tui_config["key_bindings"]["focus"], "quit", description="Quit", show=True)
+        self.bind(
+            self._encode_keys(self.get_keys_for("focus")), "quit", description="Quit", show=True
+        )
 
         self.register_theme(BASE_THEME)
         self.theme = "aider"
@@ -166,9 +183,10 @@ class TUI(App):
         default_key_bindings = {
             "newline": "enter" if is_multiline else "shift+enter",
             "submit": "shift+enter" if is_multiline else "enter",
+            "completion": "tab",
             "stop": "escape",
-            "cycle_forward": "tab",
-            "cycle_backward": "shift+tab",
+            "cycle_forward": "right",
+            "cycle_backward": "left",
             "focus": "ctrl+f",
             "cancel": "ctrl+c",
             "clear": "ctrl+l",
@@ -267,10 +285,10 @@ class TUI(App):
         try:
             hints = self.query_one(KeyHints)
             if generating:
-                stop = self.app._decode_keys(self.app.tui_config["key_bindings"]["stop"])
+                stop = self.app.get_keys_for("stop")
                 hints.update(f"{stop} to cancel")
             else:
-                submit = self.app._decode_keys(self.app.tui_config["key_bindings"]["submit"])
+                submit = self.app.get_keys_for("submit")
                 hints.update(f"{submit} to submit")
         except Exception:
             pass
@@ -486,16 +504,25 @@ class TUI(App):
         pass
 
     def _encode_keys(self, key):
-        if key == "shift+enter":
-            return "ctrl+j"
+        key = key.replace("shift+enter", "ctrl+j")
 
         return key
 
     def _decode_keys(self, key):
-        if key == "ctrl+j":
-            return "shift+enter"
+        key = key.replace("ctrl+j", "shift+enter")
 
         return key
+
+    def is_key_for(self, type, key):
+        allowed_keys = self.tui_config["key_bindings"][type].split(",")
+        if key in allowed_keys:
+            return True
+
+        return False
+
+    def get_keys_for(self, type):
+        allowed_keys = self.tui_config["key_bindings"][type]
+        return self._decode_keys(allowed_keys)
 
     def _do_quit(self):
         """Perform the actual quit after UI updates."""
