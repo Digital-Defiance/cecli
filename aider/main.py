@@ -41,9 +41,9 @@ from aider.args import get_parser
 from aider.coders import Coder
 from aider.coders.base_coder import UnknownEditFormat
 from aider.commands import Commands, SwitchCoder
-from aider.helpers.copypaste import ClipboardWatcher
 from aider.deprecated import handle_deprecated_model_args
 from aider.format_settings import format_settings, scrub_sensitive_info
+from aider.helpers.copypaste import ClipboardWatcher
 from aider.helpers.file_searcher import generate_search_path_list
 from aider.history import ChatSummary
 from aider.io import InputOutput
@@ -984,31 +984,24 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         """
         if not model_name:
             return model_name, {}
-        entry = override_index.get(model_name)
-        if not entry:
-            return model_name, {}
-        base_model, cfg = entry
-        return base_model, cfg.copy()
 
+        # Check for copy-paste prefix
         prefix = ""
-        base_model = model_name
         if model_name.startswith(models.COPY_PASTE_PREFIX):
             prefix = models.COPY_PASTE_PREFIX
-            base_model = model_name[len(prefix) :]
+            model_name = model_name[len(prefix) :]
 
-        if ":" in base_model:
-            base_model, suffix = base_model.rsplit(":", 1)
-        else:
-            suffix = None
+        # Check if the model_name (without prefix) is in override_index
+        entry = override_index.get(model_name)
+        if not entry:
+            # No override found, return original name with prefix
+            model_name = prefix + model_name
+            return model_name, {}
 
-        override_kwargs = {}
-        if suffix and base_model in overrides and suffix in overrides[base_model]:
-            override_kwargs = overrides[base_model][suffix].copy()
-
-        if prefix:
-            base_model = prefix + base_model
-
-        return base_model, override_kwargs
+        base_model, cfg = entry
+        # Re-add prefix if it was present
+        model_name = prefix + base_model
+        return model_name, cfg.copy()
 
     # Apply overrides (if any) to the selected models
     main_model_name, main_model_overrides = apply_model_overrides(args.model)
