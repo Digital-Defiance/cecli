@@ -1203,6 +1203,8 @@ class AgentCoder(Coder):
                 await self.auto_commit(self.files_edited_by_tools)
 
             self.tool_usage_history = []
+            if self.files_edited_by_tools:
+                _ = await self.auto_commit(self.files_edited_by_tools)
             return True
 
         # Since we are no longer suppressing, the partial_response_content IS the final content.
