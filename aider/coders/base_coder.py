@@ -2837,8 +2837,8 @@ class Coder:
                 # but response.dict() is the Pydantic V1 method name.
                 response_dict = dict(response)
             except TypeError:
-                print("Neither model_dump() nor dict() worked as expected.")
-                raise
+                print("Response parsing error.")
+                return
 
         msg = response_dict["choices"][0]["message"]
 
