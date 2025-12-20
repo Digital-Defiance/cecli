@@ -172,7 +172,7 @@ class Coder:
             if from_coder:
                 main_model = from_coder.main_model
             else:
-                main_model = models.Model(models.DEFAULT_MODEL_NAME)
+                main_model = models.Model(models.DEFAULT_MODEL_NAME, io=io)
 
         if edit_format == "code":
             edit_format = None
@@ -228,6 +228,15 @@ class Coder:
 
             kwargs = use_kwargs
             from_coder.ok_to_warm_cache = False
+
+        if (
+            getattr(main_model, "copy_paste_mode", False)
+            and getattr(main_model, "copy_paste_transport", "api") == "clipboard"
+        ):
+            res = coders.CopyPasteCoder(main_model, io, args=args, **kwargs)
+            await res.initialize_mcp_tools()
+            res.original_kwargs = dict(kwargs)
+            return res
 
         for coder in coders.__all__:
             if hasattr(coder, "edit_format") and coder.edit_format == edit_format:
@@ -379,6 +388,9 @@ class Coder:
         self.io = io
         self.io.coder = weakref.ref(self)
 
+        self.manual_copy_paste = getattr(main_model, "copy_paste_transport", "api") == "clipboard"
+        self.copy_paste_mode = getattr(main_model, "copy_paste_mode", False) or auto_copy_context
+
         self.shell_commands = []
         self.partial_response_tool_calls = []
 
@@ -399,7 +411,7 @@ class Coder:
             self.main_model.reasoning_tag if self.main_model.reasoning_tag else REASONING_TAG
         )
 
-        self.stream = stream and main_model.streaming
+        self.stream = stream and main_model.streaming and not self.manual_copy_paste
 
         if cache_prompts and self.main_model.cache_control:
             self.add_cache_headers = True
@@ -581,6 +593,8 @@ class Coder:
             output += ", prompt cache"
         if main_model.info.get("supports_assistant_prefill"):
             output += ", infinite output"
+        if self.copy_paste_mode:
+            output += ", copy/paste mode"
 
         lines.append(output)
 
@@ -639,7 +653,7 @@ class Coder:
         if self.done_messages:
             lines.append("Restored previous conversation history.")
 
-        if self.io.multiline_mode:
+        if self.io.multiline_mode and not self.args.tui:
             lines.append("Multiline mode: Enabled. Enter inserts newline, Alt-Enter submits text")
 
         return lines
@@ -2823,8 +2837,8 @@ class Coder:
                 # but response.dict() is the Pydantic V1 method name.
                 response_dict = dict(response)
             except TypeError:
-                print("Neither model_dump() nor dict() worked as expected.")
-                raise
+                print("Response parsing error.")
+                return
 
         msg = response_dict["choices"][0]["message"]
 
