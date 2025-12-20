@@ -185,8 +185,8 @@ class TUI(App):
             "submit": "shift+enter" if is_multiline else "enter",
             "completion": "tab",
             "stop": "escape",
-            "cycle_forward": "right",
-            "cycle_backward": "left",
+            "cycle_forward": "shift+right",
+            "cycle_backward": "shift+left",
             "focus": "ctrl+f",
             "cancel": "ctrl+c",
             "clear": "ctrl+l",
@@ -671,7 +671,13 @@ class TUI(App):
         suggestions = []
         commands = self.worker.coder.commands
 
-        if text.startswith("/"):
+        if "@" in text:
+            # Symbol completion triggered by @
+            # Find the @ and get the prefix after it
+            at_index = text.rfind("@")
+            prefix = text[at_index + 1 :]
+            suggestions = self._get_symbol_completions(prefix)
+        elif text.startswith("/"):
             # Command completion
             parts = text.split(maxsplit=1)
             cmd_part = parts[0]
@@ -716,12 +722,6 @@ class TUI(App):
                                 suggestions = list(cmd_completions)
                     except Exception:
                         pass
-        elif "@" in text:
-            # Symbol completion triggered by @
-            # Find the @ and get the prefix after it
-            at_index = text.rfind("@")
-            prefix = text[at_index + 1 :]
-            suggestions = self._get_symbol_completions(prefix)
         else:
             # Check if last contiguous, no-space separated string contains a forward slash
             # This allows path completions even without a leading slash
