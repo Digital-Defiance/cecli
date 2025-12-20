@@ -694,7 +694,7 @@ class TUI(App):
                 cmd_name = cmd_part
                 end_lookup = text.rsplit(maxsplit=1)
 
-                arg_prefix = end_lookup[1]
+                arg_prefix = end_lookup[-1]
                 arg_prefix_lower = arg_prefix.lower()
 
                 # Check if this command needs path-based completion
@@ -809,7 +809,7 @@ class TUI(App):
         selected = message.value
 
         if current.startswith("/"):
-            parts = current.split(maxsplit=1)
+            parts = current.rsplit(maxsplit=1)
             if len(parts) == 1:
                 # Replace entire command
                 # Only add space if command takes arguments
