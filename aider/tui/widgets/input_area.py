@@ -70,6 +70,9 @@ class InputArea(TextArea):
         self.commands = []
         self.completion_active = False
 
+        self._cycling = False
+        self._completion_prefix = ""
+
         # History support - lazy loaded
         self.history_file = history_file
         self._history: list[str] | None = None  # None = not loaded yet
@@ -81,10 +84,9 @@ class InputArea(TextArea):
         """Alias for text property to maintain compatibility."""
         return self.text
 
-    @value.setter
-    def value(self, new_value: str):
-        """Alias for text property to maintain compatibility."""
-        self.text = new_value
+    @property
+    def completion_prefix(self) -> str:
+        return self._completion_prefix
 
     @property
     def cursor_position(self) -> int:
@@ -99,6 +101,11 @@ class InputArea(TextArea):
         # app.py uses `len(input_area.value)` to set it.
         # So it uses setter.
         return 0  # Dummy getter
+
+    @value.setter
+    def value(self, new_value: str):
+        """Alias for text property to maintain compatibility."""
+        self.text = new_value
 
     @cursor_position.setter
     def cursor_position(self, pos: int):
@@ -203,10 +210,26 @@ class InputArea(TextArea):
 
         self.cursor_position = len(self.text)  # Will move to end
 
+    def set_completion_preview(self, text: str):
+        self._cycling = True
+        self.value = text
+        self.cursor_position = len(text)
+
     def on_key(self, event) -> None:
         """Handle keys for completion and history navigation."""
         if self.disabled:
             return
+
+        # Reset cycling if not a cycle command
+        is_cycle = self.app.is_key_for("cycle_forward", event.key) or self.app.is_key_for(
+            "cycle_backward", event.key
+        )
+        if not is_cycle:
+            self._cycling = False
+
+        if event.key == "space" and self.completion_active:
+            self.completion_active = False
+            self.post_message(self.CompletionDismiss())
 
         if self.app.is_key_for("cancel", event.key):
             event.stop()
@@ -214,13 +237,6 @@ class InputArea(TextArea):
             if self.text.strip():
                 self.save_to_history(self.text)
             self.text = ""
-            return
-
-        if self.completion_active and self.app.is_key_for("completion", event.key):
-            # Accept completion
-            self.post_message(self.CompletionAccept())
-            event.stop()
-            event.prevent_default()
             return
 
         if self.app.is_key_for("submit", event.key):
@@ -280,6 +296,14 @@ class InputArea(TextArea):
     def on_text_area_changed(self, event) -> None:
         """Update completions as user types."""
         # Note: Event name for TextArea change is 'Changed' but handler is on_text_area_changed
+        if self.disabled:
+            return
+
+        if self._cycling:
+            return
+
+        self._completion_prefix = self.text
+
         if not self.disabled:
             val = self.text
             possible_path = False

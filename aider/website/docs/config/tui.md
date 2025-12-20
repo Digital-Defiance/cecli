@@ -50,8 +50,8 @@ tui-config:
     submit: "shift+enter"
     completion: "tab"
     stop: "escape"
-    cycle_forward: "shift+right"
-    cycle_backward: "shift+left"
+    cycle_forward: "tab"
+    cycle_backward: "shift+tab"
     focus: "ctrl+f"
     cancel: "ctrl+c"
     clear: "ctrl+l"
@@ -67,11 +67,10 @@ The TUI provides customizable key bindings for all major actions. The default ke
 |--------|-------------|-------------|
 | New Line | `enter` (multiline mode) / `shift+enter` (single-line mode) | Insert a new line in the input area |
 | Submit | `shift+enter` (multiline mode) / `enter` (single-line mode) | Submit the current input |
-| Completion | `tab` | Accept the current completion suggestion |
 | Cancel | `ctrl+c` | Stop and stash current input prompt |
 | Stop | `escape` | Interrupt the current LLM response or task |
-| Cycle Forward | `shift+right` | Cycle forward through completion suggestions |
-| Cycle Backward | `shift+left` | Cycle backward through completion suggestions |
+| Cycle Forward | `tab` | Cycle forward through completion suggestions |
+| Cycle Backward | `shift+tab` | Cycle backward through completion suggestions |
 | Focus | `ctrl+f` | Focus the input area |
 | Clear | `ctrl+l` | Clear the output area |
 | Quit | `ctrl+q` | Exit the TUI |
