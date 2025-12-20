@@ -2336,6 +2336,8 @@ class Coder:
                         return
             except Exception as e:
                 self.io.tool_error(f"Error processing tool calls: {str(e)}")
+                self.reflected_message = True
+                return
                 # Continue without tool processing
 
             self.num_tool_calls = 0
