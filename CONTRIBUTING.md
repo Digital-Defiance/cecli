@@ -66,9 +66,10 @@ docker build -t cecli -f docker/Dockerfile .
 
 In order for your PR to be accepted it must:
 
-1. Comply with project coding standards (including running the pre-commit formatting hooks)
-2. Include test coverage
-3. Update relevant user-facing documentation:
+1. Be up to date with the main branch
+2. Comply with project coding standards (including running the pre-commit formatting hooks)
+3. Include test coverage
+4. Update relevant user-facing documentation:
    - Primary documentation will live in `aider/website/docs/config/`
    - Check new cli arguments with the output of `/help` and `--help`
 
