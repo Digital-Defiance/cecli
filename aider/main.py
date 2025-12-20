@@ -762,10 +762,11 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     # TUI mode - create TUI-specific IO
     output_queue = None
     input_queue = None
-    if args.tui:
+    if args.tui or (args.tui is None and not args.linear_output):
         try:
             from aider.tui import create_tui_io
 
+            args.tui = True
             args.linear_output = True
             print("Starting aider TUI...", flush=True)
             io, output_queue, input_queue = create_tui_io(args, editing_mode)
