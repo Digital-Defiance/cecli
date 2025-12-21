@@ -287,7 +287,7 @@ class AgentCoder(Coder):
             config["tools_excludelist"] = []
 
         if "include_context_blocks" in config:
-            self.allowed_context_blocks = set(config["context_blocks"])
+            self.allowed_context_blocks = set(config["include_context_blocks"])
         else:
             self.allowed_context_blocks = {
                 "context_summary",
