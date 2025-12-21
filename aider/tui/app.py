@@ -456,6 +456,11 @@ class TUI(App):
 
         self.input_queue.put({"text": user_input})
 
+    def set_input_value(self, text) -> None:
+        """Find the input widget and set focus to it."""
+        input_area = self.query_one("#input", InputArea)
+        input_area.value = text
+
     def action_focus_input(self) -> None:
         """Find the input widget and set focus to it."""
         input_area = self.query_one("#input", InputArea)

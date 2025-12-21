@@ -1649,7 +1649,7 @@ class Commands:
         res += "\n"
         return res
 
-    def cmd_voice(self, args):
+    async def cmd_voice(self, args):
         "Record and transcribe voice input"
 
         if not self.voice:
@@ -1667,13 +1667,18 @@ class Commands:
                 return
 
         try:
-            text = self.voice.record_and_transcribe(None, language=self.voice_language)
+            self.coder.io.update_spinner("Recording...")
+            text = await self.voice.record_and_transcribe(None, language=self.voice_language)
         except litellm.OpenAIError as err:
             self.io.tool_error(f"Unable to use OpenAI whisper model: {err}")
             return
 
         if text:
             self.io.placeholder = text
+
+        if self.coder.tui and self.coder.tui():
+            self.coder.tui().set_input_value(text)
+            self.coder.tui().refresh()
 
     def cmd_paste(self, args):
         """Paste image/text from the clipboard into the chat.\
