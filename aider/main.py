@@ -762,6 +762,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     # TUI mode - create TUI-specific IO
     output_queue = None
     input_queue = None
+    _console_io = get_io(args.pretty)
     if args.tui or (args.tui is None and not args.linear_output):
         try:
             from aider.tui import create_tui_io
@@ -776,7 +777,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             print(f"Import error: {e}")
             sys.exit(1)
     else:
-        io = get_io(args.pretty)
+        io = _console_io
 
     # Only do CLI-specific initialization if not in TUI mode
     if not args.tui:
@@ -1258,37 +1259,38 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             repomap_in_memory=args.map_memory_cache,
             linear_output=args.linear_output,
         )
+        _console_coder = coder.clone(io=_console_io)
 
         if args.show_model_warnings:
-            problem = await models.sanity_check_models(io, main_model)
+            problem = await models.sanity_check_models(_console_io, main_model)
             if problem:
-                io.tool_output("You can skip this check with --no-show-model-warnings")
+                _console_io.tool_output("You can skip this check with --no-show-model-warnings")
 
                 try:
-                    await io.offer_url(
+                    await _console_io.offer_url(
                         urls.model_warnings,
                         "Open documentation url for more info?",
                         acknowledge=True,
                     )
-                    io.tool_output()
+                    _console_io.tool_output()
                 except KeyboardInterrupt:
                     return await graceful_exit(coder, 1)
 
         if args.git:
-            git_root = await setup_git(git_root, io)
+            git_root = await setup_git(git_root, _console_io)
             if args.gitignore:
-                await check_gitignore(git_root, io)
+                await check_gitignore(git_root, _console_io)
 
     except UnknownEditFormat as err:
-        io.tool_error(str(err))
-        await io.offer_url(
+        _console_io.tool_error(str(err))
+        await _console_io.offer_url(
             urls.edit_formats, "Open documentation about edit formats?", acknowledge=True
         )
 
         return await graceful_exit(None, 1)
 
     except ValueError as err:
-        io.tool_error(str(err))
+        _console_io.tool_error(str(err))
 
         return await graceful_exit(None, 1)
 
@@ -1437,11 +1439,9 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         except Exception:
             # Don't show errors for auto-load to avoid interrupting the user experience
             pass
-
     # TUI mode - launch Textual interface
     if args.tui:
         from aider.tui import launch_tui
-
         return_code = await launch_tui(coder, output_queue, input_queue, args)
         return await graceful_exit(coder, return_code)
 
