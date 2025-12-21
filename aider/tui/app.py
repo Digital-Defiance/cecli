@@ -450,7 +450,7 @@ class TUI(App):
 
         # Update footer to show processing
         footer = self.query_one(AiderFooter)
-        footer.start_spinner("Thinking...")
+        footer.start_spinner("Processing...")
 
         self.update_key_hints(generating=True)
 
