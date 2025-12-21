@@ -450,7 +450,8 @@ class TUI(App):
 
         # Update footer to show processing
         footer = self.query_one(AiderFooter)
-        footer.start_spinner("Thinking...")
+        if not user_input.startswith("/"):
+            footer.start_spinner("Thinking...")
 
         self.update_key_hints(generating=True)
 
