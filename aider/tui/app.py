@@ -6,6 +6,8 @@ import queue
 
 from textual.app import App, ComposeResult
 
+from aider.editor import pipe_editor
+
 # from textual.binding import Binding
 from textual.containers import Vertical
 from textual.theme import Theme
@@ -112,7 +114,13 @@ class TUI(App):
             show=True,
         )
         self.bind(
-            self._encode_keys(self.get_keys_for("focus")), "quit", description="Quit", show=True
+            self._encode_keys(self.get_keys_for("quit")), "quit", description="Quit", show=True
+        )
+        self.bind(
+            self._encode_keys(self.get_keys_for("editor")),
+            "open_editor",
+            description="Editor",
+            show=True,
         )
 
         self.register_theme(BASE_THEME)
@@ -184,7 +192,18 @@ class TUI(App):
             "cancel": "ctrl+c",
             "clear": "ctrl+l",
             "quit": "ctrl+q",
+            "editor": "ctrl+o",
         }
+
+        # Default settings for the "other" section
+        default_other = {
+            "render_markdown": True,
+        }
+
+        # Merge default other settings with user-provided settings
+        for key, default_value in default_other.items():
+            if key not in config["other"]:
+                config["other"][key] = default_value
 
         # Merge default colors with user-provided colors
         for key, default_value in default_colors.items():
@@ -439,6 +458,22 @@ class TUI(App):
         if not user_input.strip():
             return
 
+        # Intercept /editor and /edit commands to handle with TUI suspension
+        stripped = user_input.strip()
+        if stripped in ("/editor", "/edit") or stripped.startswith("/editor ") or stripped.startswith("/edit "):
+            # Extract initial content if provided (e.g., "/editor some text")
+            initial_content = ""
+            if stripped.startswith("/editor "):
+                initial_content = stripped[8:]
+            elif stripped.startswith("/edit "):
+                initial_content = stripped[6:]
+
+            # Clear input and open editor with suspend
+            input_area = self.query_one("#input", InputArea)
+            input_area.value = ""
+            self._open_editor_suspended(initial_content)
+            return
+
         # Save to history before clearing
         input_area = self.query_one("#input", InputArea)
         input_area.save_to_history(user_input)
@@ -501,6 +536,41 @@ class TUI(App):
     def action_noop(self):
         pass
 
+    def action_open_editor(self):
+        """Open an external editor to compose a prompt (keyboard shortcut)."""
+        # Get current input text to use as initial content
+        input_area = self.query_one("#input", InputArea)
+        current_text = input_area.value
+        self._open_editor_suspended(current_text)
+
+    def _open_editor_suspended(self, initial_content=""):
+        """Open an external editor with proper TUI suspension.
+
+        Args:
+            initial_content: Initial text to populate the editor with
+        """
+        # Get editor from coder's commands or default
+        editor = getattr(self.worker.coder.commands, "editor", None)
+
+        # Suspend TUI and open editor
+        with self.suspend():
+            edited_text = pipe_editor(initial_content, suffix="md", editor=editor)
+
+        # Set the edited text back to input
+        input_area = self.query_one("#input", InputArea)
+        if edited_text and edited_text.strip():
+            input_area.value = edited_text.rstrip()
+            input_area.focus()
+
+            # Show notification
+            try:
+                status_bar = self.query_one("#status-bar", StatusBar)
+                status_bar.show_notification("Editor content loaded", severity="information", timeout=2)
+            except Exception:
+                pass
+        else:
+            input_area.focus()
+
     def _encode_keys(self, key):
         key = key.replace("shift+enter", "ctrl+j")
 
@@ -521,6 +591,11 @@ class TUI(App):
     def get_keys_for(self, type):
         allowed_keys = self.tui_config["key_bindings"][type]
         return self._decode_keys(allowed_keys)
+
+    @property
+    def render_markdown(self):
+        """Return whether markdown rendering is enabled."""
+        return self.tui_config.get("other", {}).get("render_markdown", True)
 
     def _do_quit(self):
         """Perform the actual quit after UI updates."""
