@@ -331,6 +331,14 @@ class TUI(App):
 
         if msg_type == "output":
             self.add_output(msg["text"], msg.get("task_id"))
+        elif msg_type == "tool_call":
+            # Render tool call with styled panel
+            output_container = self.query_one("#output", OutputContainer)
+            output_container.add_tool_call(msg["lines"])
+        elif msg_type == "tool_result":
+            # Render tool result with connector prefix
+            output_container = self.query_one("#output", OutputContainer)
+            output_container.add_tool_result(msg["text"])
         elif msg_type == "start_response":
             # Start a new LLM response with streaming
             self.run_worker(self._start_response())

@@ -49,6 +49,11 @@ class TextualInputOutput(InputOutput):
             ("Removing", "file_op"),
         ]
 
+        # Tool call buffering for styled panel rendering
+        self._tool_call_buffer = []
+        self._in_tool_call = False
+        self._expect_tool_result = False
+
     def rule(self):
         pass
 
@@ -182,14 +187,57 @@ class TextualInputOutput(InputOutput):
         """
         if messages:
             text = " ".join(str(m) for m in messages)
-            type = kwargs.get("type", None)
+            msg_type = kwargs.get("type", None)
+
+            # Handle tool call buffering for styled panel rendering
+            if msg_type == "Tool Call":
+                # Start buffering a new tool call
+                self._in_tool_call = True
+                self._tool_call_buffer = [text]
+                # Log to history
+                self.append_chat_history(text, linebreak=True, blockquote=True)
+                return
+            elif msg_type == "tool-footer":
+                # End of tool call - flush buffer as styled panel
+                if self._in_tool_call and self._tool_call_buffer:
+                    self.output_queue.put(
+                        {
+                            "type": "tool_call",
+                            "lines": self._tool_call_buffer,
+                        }
+                    )
+                    # Expect a tool result next
+                    self._expect_tool_result = True
+                self._in_tool_call = False
+                self._tool_call_buffer = []
+                return
+            elif self._in_tool_call:
+                # Add to tool call buffer
+                if text.strip():
+                    self._tool_call_buffer.append(text)
+                    # Log to history
+                    self.append_chat_history(text, linebreak=True, blockquote=True)
+                return
+
+            # Check if this is a tool result (comes right after tool call)
+            if self._expect_tool_result and text.strip():
+                self._expect_tool_result = False
+                self.output_queue.put(
+                    {
+                        "type": "tool_result",
+                        "text": text,
+                    }
+                )
+                # Log to history
+                self.append_chat_history(text, linebreak=True, blockquote=True)
+                return
 
             # Check if this should start a new task
             should_start, title, task_type = self._detect_task_start(text)
 
-            if type:
+            if msg_type:
                 should_start = True
-                title = type
+                title = msg_type
 
             if should_start:
                 self.start_task(title, task_type)

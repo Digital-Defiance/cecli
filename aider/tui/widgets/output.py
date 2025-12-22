@@ -135,6 +135,49 @@ class OutputContainer(RichLog):
 
         self.output(Padding(capture_text, (0, 0, 0, 2)))
 
+    def add_tool_call(self, lines: list):
+        """Add a tool call with themed styling.
+
+        Args:
+            lines: List of lines from the tool call (header, arguments, etc.)
+        """
+        if not lines:
+            return
+
+        for i, line in enumerate(lines):
+            # Strip Rich markup
+            clean_line = line.replace("[bright_cyan]", "").replace("[/bright_cyan]", "")
+
+            content = Text()
+            if i == 0:
+                # First line: reformat "Tool Call: server • function" to "Tool Call · server · function"
+                clean_line = clean_line.replace("Tool Call:", "Tool Call ·").replace(" • ", " · ")
+                content.append(clean_line, style="#00ff87")  # $accent
+            else:
+                # Subsequent lines (arguments) - prefix with corner to show they belong to the call
+                content.append("⎿ ", style="#00ff87")
+                content.append(clean_line, style="dim")
+
+            self.set_last_write_type("tool_call")
+            self.output(Padding(content, (0, 0, 0, 1)))
+
+    def add_tool_result(self, text: str):
+        """Add a tool result.
+
+        Args:
+            text: The tool result text
+        """
+        if not text:
+            return
+
+        clean_text = text.strip()
+
+        result = Text()
+        result.append(clean_text, style="dim")
+
+        self.set_last_write_type("tool_result")
+        self.output(Padding(result, (0, 0, 0, 1)))
+
     def _check_cost(self, text: str):
         """Extract and emit cost updates."""
         match = re.search(r"\$(\d+\.?\d*)\s*session", text)
