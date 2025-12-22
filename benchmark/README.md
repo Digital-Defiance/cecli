@@ -1,13 +1,14 @@
 
 # Aider benchmark harness
 
-Aider uses benchmarks to quantitatively measure how well it works
+Before `cecli` was born, the old `aider` used benchmarks to quantitatively measure how well it works
 with various LLMs.
+
 This directory holds the harness and tools needed to run the benchmarking suite.
 
 ## Background
 
-The benchmark is based on the [Exercism](https://github.com/exercism/python) coding exercises.
+The benchmark was based on the [Exercism](https://github.com/exercism/python) coding exercises.
 This
 benchmark evaluates how effectively aider and LLMs can translate a
 natural language coding request into executable code saved into
@@ -42,15 +43,17 @@ First, prepare all the groundwork for running the benchmarks.
 These steps only need to be done once.
 
 ```
-# Clone the aider repo
-git clone https://github.com/Aider-AI/aider.git
+ORG=Aider-AI
+REPO=aider
+# Clone the main repo
+git clone https://github.com/$ORG/$REPO.git
 
-# Create the scratch dir to hold benchmarking results inside the main aider dir:
-cd aider
+# Create the scratch dir to hold benchmarking results inside the main repo:
+cd $REPO
 mkdir tmp.benchmarks
 
 # Clone the repo with the exercises
-git clone https://github.com/Aider-AI/polyglot-benchmark tmp.benchmarks/polyglot-benchmark
+git clone https://github.com/$ORG/polyglot-benchmark tmp.benchmarks/polyglot-benchmark
 
 # Build the docker container
 ./benchmark/docker_build.sh
@@ -66,6 +69,7 @@ Launch the docker container and run the benchmark inside it:
 
 # Inside the container, install aider as a development build.
 # This way you're running the code that you cloned above, including any local changes.
+# TODO: this step should be included in the Dockerfile
 pip install -e .[dev]
 
 # Run the benchmark:
@@ -136,12 +140,12 @@ This way the `model`, `edit_format` and `commit_hash`
 should be enough to reliably reproduce any benchmark run.
 
 You can see examples of the benchmark report yaml in the
-[aider leaderboard data files](https://github.com/Aider-AI/aider/blob/main/aider/website/_data/).
+[aider leaderboard data files](https://github.com/$ORG/aider/blob/main/aider/website/_data/).
 
 
 ## Limitations, notes
 
 - Contributions of benchmark results are welcome! Submit results by opening a PR with edits to the
-[aider leaderboard data files](https://github.com/Aider-AI/aider/blob/main/aider/website/_data/).
+[aider leaderboard data files](https://github.com/$ORG/aider/blob/main/aider/website/_data/).
 - These scripts are not intended for use by typical aider end users.
 - Some of these tools are written as `bash` scripts, so it will be hard to use them on Windows.
