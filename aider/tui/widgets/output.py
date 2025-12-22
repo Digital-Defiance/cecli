@@ -2,6 +2,7 @@
 
 import re
 
+from rich.markdown import Markdown
 from rich.padding import Padding
 from rich.style import Style as RichStyle
 from rich.text import Text
@@ -68,7 +69,7 @@ class OutputContainer(RichLog):
             # self.write(Padding(line.strip(), (0, 0, 0, 1)))
             if line.rstrip():
                 self.set_last_write_type("assistant")
-                self.output(line.rstrip())
+                self.output(line.rstrip(), render_markdown=True)
 
     async def end_response(self):
         """End the current LLM response."""
@@ -78,7 +79,7 @@ class OutputContainer(RichLog):
         """Stop the current markdown stream."""
         # Flush any remaining buffer content
         if self._line_buffer.rstrip():
-            self.output(self.rstrip())
+            self.output(self._line_buffer.rstrip(), render_markdown=True)
             self._line_buffer = ""
 
     def add_user_message(self, text: str):
@@ -158,13 +159,20 @@ class OutputContainer(RichLog):
 
         self._last_write_type = type
 
-    def output(self, text, check_duplicates=True):
+    def output(self, text, check_duplicates=True, render_markdown=False):
         """Write output with duplicate newline checking.
 
         Args:
             text: The text to write
             check_duplicates: If True, check for duplicate newlines before writing
+            render_markdown: If True and app config allows, render as markdown
         """
+        # Check if we should render as markdown
+        if render_markdown and hasattr(self.app, 'render_markdown') and self.app.render_markdown:
+            # Only render string content as markdown
+            if isinstance(text, str):
+                text = Markdown(text)
+
         with self.app.console.capture() as capture:
             self.app.console.print(text)
         check = Text(capture.get()).plain

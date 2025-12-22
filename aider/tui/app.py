@@ -197,7 +197,7 @@ class TUI(App):
 
         # Default settings for the "other" section
         default_other = {
-            "render_markdown": True,
+            "render_markdown": False,
         }
 
         # Merge default other settings with user-provided settings

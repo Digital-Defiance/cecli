@@ -154,6 +154,25 @@ class TextualInputOutput(InputOutput):
             self._streaming_response = False
             self.output_queue.put({"type": "end_response"})
 
+    def assistant_output(self, message, pretty=None):
+        """Override assistant_output to send LLM response through streaming path.
+
+        This ensures non-streaming mode output gets the same markdown rendering
+        treatment as streaming mode.
+
+        Args:
+            message: The assistant's response message
+            pretty: Whether to use pretty formatting (unused in TUI, kept for compatibility)
+        """
+        if not message:
+            self.tool_warning("Empty response received from LLM. Check your provider account?")
+            return
+
+        # Use the streaming path so markdown rendering is applied
+        self.output_queue.put({"type": "start_response"})
+        self.output_queue.put({"type": "stream_chunk", "text": message})
+        self.output_queue.put({"type": "end_response"})
+
     def tool_output(self, *messages, **kwargs):
         """Override tool_output to detect task boundaries and queue output.
 
