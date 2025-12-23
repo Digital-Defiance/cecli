@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import asyncio
 import datetime
 import importlib_resources
 import json
@@ -817,7 +818,7 @@ def get_replayed_content(replay_dname, test_dname):
 
 def run_test(original_dname, testdir, *args, **kwargs):
     try:
-        return run_test_real(original_dname, testdir, *args, **kwargs)
+        return asyncio.run(run_test_real(original_dname, testdir, *args, **kwargs))
     except Exception:
         logger.error("=" * 40)
         logger.error("Test failed")
@@ -828,7 +829,7 @@ def run_test(original_dname, testdir, *args, **kwargs):
         results_fname.write_text(json.dumps(dict(exception=traceback.format_exc())))
 
 
-def run_test_real(
+async def run_test_real(
     original_dname,
     testdir,
     model_name,
@@ -1025,7 +1026,7 @@ def run_test_real(
     if map_tokens is not None:
         coder_kwargs["map_tokens"] = map_tokens
 
-    coder = Coder.create(**coder_kwargs)
+    coder = await Coder.create(**coder_kwargs)
     dump(coder.ignore_mentions)
 
     coder.show_announcements()
@@ -1052,9 +1053,9 @@ def run_test_real(
             show = [">> " + line for line in show]
             io.append_chat_history("".join(show))
 
-            coder.apply_updates()
+            await coder.apply_updates()
         else:
-            response = coder.run(with_message=instructions, preproc=False)
+            response = await coder.run(with_message=instructions, preproc=False)
 
         dur += time.time() - start
 
