@@ -86,7 +86,9 @@ def resolve_dirname(results_dir, use_single_prior, make_new):
 
 @app.command()
 def main(
-    results_dir: Optional[str] = typer.Argument(RESULTS_DIR_DEFAULT, help="Results directory"),
+    results_dir: Optional[str] = typer.Argument(
+        RESULTS_DIR_DEFAULT, help="Results directory"
+    ),
     model: str = typer.Option("gpt-3.5-turbo", "--model", "-m", help="Model name"),
     sleep: float = typer.Option(
         0, "--sleep", help="Sleep seconds between tests when single threaded"
