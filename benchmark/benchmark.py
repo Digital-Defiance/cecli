@@ -373,60 +373,39 @@ def main(
     # Enable in-memory RepoMap cache when running multiple threads to avoid SQLite contention
     repomap_in_memory = threads > 1
 
-    if threads == 1:
+    test_args = dict(
+        model_name=model,
+        edit_format=edit_format,
+        tries=tries,
+        no_unit_tests=no_unit_tests,
+        no_aider=no_aider,
+        verbose=verbose,
+        commit_hash=commit_hash,
+        replay=replay,
+        editor_model=editor_model,
+        editor_edit_format=editor_edit_format,
+        num_ctx=num_ctx,
+        sleep=sleep,
+        reasoning_effort=reasoning_effort,
+        thinking_tokens=thinking_tokens,
+        map_tokens=map_tokens,
+        repomap_in_memory=repomap_in_memory,
+        dry=dry,
+    )
+
+    if threads > 1:
+        run_test_threaded = lox.thread(threads)(run_test)
+        for test_path in test_dnames:
+            run_test_threaded.scatter(original_dname, results_dir / test_path, **test_args)
+        all_results = run_test_threaded.gather(tqdm=True)
+    else:
         all_results = []
         for test_path in test_dnames:
-            results = run_test(
-                original_dname,
-                results_dir / test_path,
-                model,
-                edit_format,
-                tries,
-                no_unit_tests,
-                no_aider,
-                verbose,
-                commit_hash,
-                replay,
-                editor_model,
-                editor_edit_format,
-                num_ctx,
-                sleep,
-                reasoning_effort,
-                thinking_tokens,
-                map_tokens,
-                repomap_in_memory,
-                dry,
-            )
-
+            results = run_test(original_dname, results_dir / test_path, **test_args)
             all_results.append(results)
             summarize_results(results_dir, verbose)
             if sleep:
                 time.sleep(sleep)
-    else:
-        run_test_threaded = lox.thread(threads)(run_test)
-        for test_path in test_dnames:
-            run_test_threaded.scatter(
-                original_dname,
-                results_dir / test_path,
-                model,
-                edit_format,
-                tries,
-                no_unit_tests,
-                no_aider,
-                verbose,
-                commit_hash,
-                replay,
-                editor_model,
-                editor_edit_format,
-                num_ctx,
-                sleep,
-                reasoning_effort,
-                thinking_tokens,
-                map_tokens,
-                repomap_in_memory,
-                dry,
-            )
-        all_results = run_test_threaded.gather(tqdm=True)
 
     print()
     print()
