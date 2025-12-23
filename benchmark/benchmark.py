@@ -198,13 +198,13 @@ def main(
         import lox  # Only needed for threaded runs
         from aider import models, sendchat
         from aider.coders import base_coder
+
         repo = git.Repo(search_parent_directories=True)
         commit_hash = repo.head.object.hexsha[:7]
         if repo.is_dirty():
             commit_hash += "-dirty"
 
     results_dir = resolve_dirname(results_dir, cont, make_new)
-
 
     if not dry and "AIDER_DOCKER" not in os.environ:
         logger.warning(
@@ -254,7 +254,9 @@ def main(
 
         return exercise_dirs
 
-    def get_exercise_dirs(base_dir, languages=None, sets=None, hash_re=None, legacy=False):
+    def get_exercise_dirs(
+        base_dir, languages=None, sets=None, hash_re=None, legacy=False
+    ):
         if legacy:
             return legacy_get_exercise_dirs(base_dir, languages)
 
