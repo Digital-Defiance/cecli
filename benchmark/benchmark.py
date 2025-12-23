@@ -189,6 +189,8 @@ def main(
 
     logging.basicConfig(level=log_level, format="%(message)s")
 
+    from aider import models
+
     if dry:
         no_aider = True
         no_unit_tests = True
@@ -196,7 +198,7 @@ def main(
         # Lazy imports for the actual benchmark run
         import git  # Heavy
         import lox  # Only needed for threaded runs
-        from aider import models, sendchat
+        from aider import sendchat
         from aider.coders import base_coder
 
         repo = git.Repo(search_parent_directories=True)
