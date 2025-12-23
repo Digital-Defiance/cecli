@@ -396,7 +396,9 @@ def main(
     if threads > 1:
         run_test_threaded = lox.thread(threads)(run_test)
         for test_path in test_dnames:
-            run_test_threaded.scatter(original_dname, results_dir / test_path, **test_args)
+            run_test_threaded.scatter(
+                original_dname, results_dir / test_path, **test_args
+            )
         all_results = run_test_threaded.gather(tqdm=True)
     else:
         all_results = []
