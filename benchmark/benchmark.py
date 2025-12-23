@@ -462,7 +462,9 @@ def load_results(results_dir, stats_languages=None):
                     pass
 
             if stats_languages:
-                languages = [lang.strip().lower() for lang in stats_languages.split(",")]
+                languages = [
+                    lang.strip().lower() for lang in stats_languages.split(",")
+                ]
                 if lang.lower() not in languages:
                     continue
 
