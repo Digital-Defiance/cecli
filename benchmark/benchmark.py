@@ -14,6 +14,7 @@ from json.decoder import JSONDecodeError
 from pathlib import Path
 from types import SimpleNamespace
 from typing import List, Optional
+import logging
 
 """
 Performance-oriented refactors:
@@ -29,6 +30,8 @@ from dotenv import load_dotenv
 from rich.console import Console
 
 from aider.dump import dump  # noqa: F401
+
+logger = logging.getLogger("aider.benchmark")
 
 # Cache for commit-hash -> version lookup
 _VERSION_CACHE = {}
@@ -50,13 +53,14 @@ def resolve_dirname(dirname, use_single_prior, make_new):
     priors = list(BENCHMARK_DNAME.glob(f"*--{dirname}"))
     if len(priors) == 1 and use_single_prior:
         dirname = priors[0].name
-        print(f"Using pre-existing {dirname}")
+        logger.info(f"Using pre-existing {dirname}")
     elif len(priors):
         if not make_new:
-            print(f"Prior runs of {dirname} exist, use --new or name one explicitly")
-            print()
+            logger.warning(
+                f"Prior runs of {dirname} exist, use --new or name one explicitly"
+            )
             for prior in priors:
-                print(prior)
+                logger.warning(prior)
             return
 
     if not re.match(r"\d\d\d\d-\d\d-\d\d-", str(dirname)):
@@ -111,7 +115,10 @@ def main(
         False, "--no-unit-tests", help="Do not run unit tests"
     ),
     no_aider: bool = typer.Option(False, "--no-aider", help="Do not run aider"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+    verbose: int = typer.Option(
+        0, "--verbose", "-v", count=True, help="Verbose output"
+    ),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Quiet output"),
     tries: int = typer.Option(
         2, "--tries", "-r", help="Number of tries for running tests"
     ),
@@ -147,6 +154,15 @@ def main(
         False, "--dry", help="Run in dry mode (no aider, no tests)"
     ),
 ):
+    if quiet:
+        log_level = logging.WARNING
+    elif verbose > 0:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+
+    logging.basicConfig(level=log_level, format="%(message)s")
+
     if dry:
         no_aider = True
         no_unit_tests = True
@@ -155,7 +171,7 @@ def main(
         dirnames = []
 
     if len(dirnames) > 1:
-        print("Only provide 1 dirname")
+        logger.error("Only provide 1 dirname")
         return 1
 
     updated_dirnames = []
@@ -183,8 +199,10 @@ def main(
         commit_hash += "-dirty"
 
     if not dry and "AIDER_DOCKER" not in os.environ:
-        print("Warning: Benchmarking runs unvetted code. Run in a docker container.")
-        print(
+        logger.warning(
+            "Warning: Benchmarking runs unvetted code. Run in a docker container."
+        )
+        logger.warning(
             "Set AIDER_DOCKER in the environment to by-pass this check at your own risk."
         )
         return
@@ -204,7 +222,7 @@ def main(
             lang_dirs = [d for d in lang_dirs if d.name.lower() in requested]
             dump(lang_dirs)
             if not lang_dirs:
-                print(f"No matching language directories found for: {languages}")
+                logger.warning(f"No matching language directories found for: {languages}")
                 return []
 
         # Get all exercise dirs under exercises/practice for each language
@@ -222,17 +240,16 @@ def main(
     exercise_dirs = get_exercise_dirs(original_dname, languages)
 
     if not exercise_dirs:
-        print("No exercise directories found")
+        logger.error("No exercise directories found")
         return 1
 
     if clean and dirname.exists() and not dry:
-        print("Cleaning up and replacing", dirname)
+        logger.info(f"Cleaning up and replacing {dirname}")
         dir_files = set(fn.name for fn in dirname.glob("*"))
         original_files = set(fn.name for fn in original_dname.glob("*"))
         if dir_files != original_files:
-            print(
-                "ERROR: will not delete dir that does not look like original tests",
-                dirname,
+            logger.error(
+                f"ERROR: will not delete dir that does not look like original tests {dirname}"
             )
             return
 
@@ -244,7 +261,7 @@ def main(
         dirname.rename(dest)
 
     if not dirname.exists() and not dry:
-        print(f"Copying {original_dname} -> {dirname} ...")
+        logger.info(f"Copying {original_dname} -> {dirname} ...")
         # Only copy the practice subdirs with exercises
         os.makedirs(dirname, exist_ok=True)
         for lang_dir in original_dname.iterdir():
@@ -255,7 +272,7 @@ def main(
                 dest_lang_dir = dirname / lang_dir.name / "exercises" / "practice"
                 os.makedirs(dest_lang_dir.parent, exist_ok=True)
                 shutil.copytree(practice_dir, dest_lang_dir)
-        print("...done")
+        logger.info("...done")
 
     test_dnames = sorted(str(d.relative_to(original_dname)) for d in exercise_dirs)
 
@@ -268,13 +285,12 @@ def main(
     if read_model_settings:
         try:
             files_loaded = models.register_models([read_model_settings])
-            if verbose:
-                if files_loaded:
-                    print(f"Loaded model settings from: {files_loaded[0]}")
-                else:
-                    print(f"No model settings loaded from: {read_model_settings}")
+            if files_loaded:
+                logger.debug(f"Loaded model settings from: {files_loaded[0]}")
+            else:
+                logger.debug(f"No model settings loaded from: {read_model_settings}")
         except Exception as e:
-            print(f"Error loading model settings: {e}")
+            logger.error(f"Error loading model settings: {e}")
             return 1
 
     if keywords:
@@ -379,7 +395,7 @@ def load_results(dirname, stats_languages=None):
                 lang = fname.parent.parent.parent.parent.name
                 lang_to_results.setdefault(lang, []).append(results)
             except json.JSONDecodeError:
-                print("json.JSONDecodeError", fname)
+                logger.warning(f"json.JSONDecodeError {fname}")
                 continue
     return lang_to_results
 
@@ -752,9 +768,9 @@ def run_test(original_dname, testdir, *args, **kwargs):
     try:
         return run_test_real(original_dname, testdir, *args, **kwargs)
     except Exception:
-        print("=" * 40)
-        print("Test failed")
-        traceback.print_exc()
+        logger.error("=" * 40)
+        logger.error("Test failed")
+        logger.error(traceback.format_exc())
 
         testdir = Path(testdir)
         results_fname = testdir / ".aider.results.json"
@@ -792,7 +808,7 @@ def run_test_real(
     from aider.io import InputOutput
 
     if not os.path.isdir(testdir):
-        print("Not a dir:", testdir)
+        logger.error(f"Not a dir: {testdir}")
         return
 
     testdir = Path(testdir)
@@ -808,7 +824,7 @@ def run_test_real(
             # else:
             return res
         except JSONDecodeError:
-            print(f"{results_fname} failed to parse, redoing...")
+            logger.warning(f"{results_fname} failed to parse, redoing...")
 
     # Read solution and test files from config
     fnames = []
@@ -864,7 +880,7 @@ def run_test_real(
                     os.makedirs(src.parent, exist_ok=True)
                     shutil.copy(original_fname, src)
         else:
-            print(f"Warning: Solution file not found: {src}")
+            logger.warning(f"Warning: Solution file not found: {src}")
 
     file_list = " ".join(fname.name for fname in fnames)
 
@@ -914,7 +930,7 @@ def run_test_real(
     dump(main_model)
     dump(edit_format)
     show_fnames = ",".join(map(str, fnames))
-    print("fnames:", show_fnames)
+    logger.info(f"fnames: {show_fnames}")
     # Ensure this test directory is a standalone git repo so RepoMap can be used
     if not dry:
         try:
@@ -935,8 +951,7 @@ def run_test_real(
                 )
                 r.index.commit("Initial commit for aider benchmark")
         except Exception as e:
-            if verbose:
-                print(f"Warning: failed to initialize git repo in {testdir}: {e}")
+            logger.debug(f"Warning: failed to initialize git repo in {testdir}: {e}")
 
     coder_kwargs = dict(
         main_model=main_model,
@@ -1031,7 +1046,7 @@ def run_test_real(
             1 for line in errors if line.startswith("IndentationError")
         )
 
-        print(errors[-1])
+        logger.info(errors[-1])
         errors = "\n".join(errors)
         instructions = errors
         instructions += prompts.test_failures.format(file_list=file_list)
@@ -1043,35 +1058,29 @@ def run_test_real(
         if target_dir.exists():
             try:
                 shutil.rmtree(target_dir)
-                if verbose:
-                    print(f"Cleaned up Rust target/debug directory: {target_dir}")
+                logger.debug(f"Cleaned up Rust target/debug directory: {target_dir}")
             except (OSError, shutil.Error, PermissionError) as e:
-                if verbose:
-                    print(f"Failed to clean up Rust target/debug directory: {e}")
+                logger.debug(f"Failed to clean up Rust target/debug directory: {e}")
 
         # Java build directories
         java_build_dir = testdir / "build"
         if java_build_dir.exists():
             try:
                 shutil.rmtree(java_build_dir)
-                if verbose:
-                    print(f"Cleaned up Java build directory: {java_build_dir}")
+                logger.debug(f"Cleaned up Java build directory: {java_build_dir}")
             except (OSError, shutil.Error, PermissionError) as e:
-                if verbose:
-                    print(f"Failed to clean up Java build directory: {e}")
+                logger.debug(f"Failed to clean up Java build directory: {e}")
 
         # Node.js node_modules directories
         node_modules_dir = testdir / "node_modules"
         if node_modules_dir.exists():
             try:
                 shutil.rmtree(node_modules_dir)
-                if verbose:
-                    print(
-                        f"Cleaned up Node.js node_modules directory: {node_modules_dir}"
-                    )
+                logger.debug(
+                    f"Cleaned up Node.js node_modules directory: {node_modules_dir}"
+                )
             except (OSError, shutil.Error, PermissionError) as e:
-                if verbose:
-                    print(f"Failed to clean up Node.js node_modules directory: {e}")
+                logger.debug(f"Failed to clean up Node.js node_modules directory: {e}")
 
     results = dict(
         testdir=str(testdir),
@@ -1148,7 +1157,7 @@ def run_unit_tests(original_dname, testdir, history_fname, test_files):
         src = original_dname / Path(*testdir.parts[-4:]) / file_path
         dst = testdir / file_path
         if src.exists():
-            print("copying", src, dst)
+            logger.info(f"copying {src} {dst}")
             os.makedirs(dst.parent, exist_ok=True)
             shutil.copy(src, dst)
 
@@ -1161,7 +1170,7 @@ def run_unit_tests(original_dname, testdir, history_fname, test_files):
                 content = re.sub(r"@Disabled\([^)]*\)\s*\n", "", content)
                 test_file.write_text(content)
 
-    print(" ".join(command))
+    logger.info(" ".join(command))
 
     result = subprocess.run(
         command,
@@ -1183,7 +1192,7 @@ def run_unit_tests(original_dname, testdir, history_fname, test_files):
         fh.write(f"```\n{res}\n```")
 
     if not success:
-        print(f"Tests failed: {testdir}")
+        logger.info(f"Tests failed: {testdir}")
         return res
 
 
