@@ -342,14 +342,21 @@ def main(
 
         results_dir.rename(dest)
 
-    if not results_dir.exists() and not dry:
-        logger.info(f"Copying {original_dname} -> {results_dir} ...")
-        os.makedirs(results_dir, exist_ok=True)
+    if not dry:
+        if not results_dir.exists():
+            logger.info(f"Copying {original_dname} -> {results_dir} ...")
+            os.makedirs(results_dir, exist_ok=True)
+
+        copied = False
         for exercise_dir in exercise_dirs:
             dest_dir = results_dir / exercise_dir.name
             if not dest_dir.exists():
+                if not copied:
+                    logger.info(f"Adding missing exercises to {results_dir} ...")
                 shutil.copytree(exercise_dir, dest_dir)
-        logger.info("...done")
+                copied = True
+        if copied:
+            logger.info("...done")
 
     test_dnames = sorted(d.name for d in exercise_dirs)
 
