@@ -42,6 +42,7 @@ app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
 
 load_dotenv(override=True)
 
+
 def resolve_dirname(dirname, use_single_prior, make_new):
     if len(dirname.parts) > 1:
         return dirname
@@ -75,30 +76,51 @@ def main(
         0, "--sleep", help="Sleep seconds between tests when single threaded"
     ),
     languages: str = typer.Option(
-        None, "--languages", "-l", help="Only run tests for specific languages (comma separated)"
+        None,
+        "--languages",
+        "-l",
+        help="Only run tests for specific languages (comma separated)",
     ),
     edit_format: str = typer.Option(None, "--edit-format", "-e", help="Edit format"),
     editor_model: str = typer.Option(None, "--editor-model", help="Editor model name"),
-    editor_edit_format: str = typer.Option(None, "--editor-edit-format", help="Editor edit format"),
+    editor_edit_format: str = typer.Option(
+        None, "--editor-edit-format", help="Editor edit format"
+    ),
     replay: str = typer.Option(
         None,
         "--replay",
         help="Replay previous .aider.chat.history.md responses from previous benchmark run",
     ),
     keywords: str = typer.Option(
-        None, "--keywords", "-k", help="Only run tests that contain keywords (comma sep)"
+        None,
+        "--keywords",
+        "-k",
+        help="Only run tests that contain keywords (comma sep)",
     ),
     clean: bool = typer.Option(
-        False, "--clean", "-c", help="Discard the existing testdir and make a clean copy"
+        False,
+        "--clean",
+        "-c",
+        help="Discard the existing testdir and make a clean copy",
     ),
-    cont: bool = typer.Option(False, "--cont", help="Continue the (single) matching testdir"),
+    cont: bool = typer.Option(
+        False, "--cont", help="Continue the (single) matching testdir"
+    ),
     make_new: bool = typer.Option(False, "--new", help="Make a new dated testdir"),
-    no_unit_tests: bool = typer.Option(False, "--no-unit-tests", help="Do not run unit tests"),
+    no_unit_tests: bool = typer.Option(
+        False, "--no-unit-tests", help="Do not run unit tests"
+    ),
     no_aider: bool = typer.Option(False, "--no-aider", help="Do not run aider"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
-    tries: int = typer.Option(2, "--tries", "-r", help="Number of tries for running tests"),
-    threads: int = typer.Option(1, "--threads", "-t", help="Number of threads to run in parallel"),
-    num_tests: int = typer.Option(-1, "--num-tests", "-n", help="Number of tests to run"),
+    tries: int = typer.Option(
+        2, "--tries", "-r", help="Number of tries for running tests"
+    ),
+    threads: int = typer.Option(
+        1, "--threads", "-t", help="Number of threads to run in parallel"
+    ),
+    num_tests: int = typer.Option(
+        -1, "--num-tests", "-n", help="Number of tests to run"
+    ),
     num_ctx: Optional[int] = typer.Option(
         None, "--num-ctx", help="Override model context window size"
     ),
@@ -106,7 +128,9 @@ def main(
         None, "--read-model-settings", help="Load aider model settings from YAML file"
     ),
     reasoning_effort: Optional[str] = typer.Option(
-        None, "--reasoning-effort", help="Set reasoning effort for models that support it"
+        None,
+        "--reasoning-effort",
+        help="Set reasoning effort for models that support it",
     ),
     thinking_tokens: Optional[int] = typer.Option(
         None, "--thinking-tokens", help="Set thinking tokens for models that support it"
@@ -119,7 +143,9 @@ def main(
     exercises_dir: str = typer.Option(
         EXERCISES_DIR_DEFAULT, "--exercises-dir", help="Directory with exercise files"
     ),
-    dry: bool = typer.Option(False, "--dry", help="Run in dry mode (no aider, no tests)"),
+    dry: bool = typer.Option(
+        False, "--dry", help="Run in dry mode (no aider, no tests)"
+    ),
 ):
     if dry:
         no_aider = True
@@ -158,7 +184,9 @@ def main(
 
     if not dry and "AIDER_DOCKER" not in os.environ:
         print("Warning: Benchmarking runs unvetted code. Run in a docker container.")
-        print("Set AIDER_DOCKER in the environment to by-pass this check at your own risk.")
+        print(
+            "Set AIDER_DOCKER in the environment to by-pass this check at your own risk."
+        )
         return
 
     assert BENCHMARK_DNAME.exists() and BENCHMARK_DNAME.is_dir(), BENCHMARK_DNAME
@@ -202,7 +230,10 @@ def main(
         dir_files = set(fn.name for fn in dirname.glob("*"))
         original_files = set(fn.name for fn in original_dname.glob("*"))
         if dir_files != original_files:
-            print("ERROR: will not delete dir that does not look like original tests", dirname)
+            print(
+                "ERROR: will not delete dir that does not look like original tests",
+                dirname,
+            )
             return
 
         dest = dirname.parent / "OLD" / dirname.name
@@ -228,7 +259,9 @@ def main(
 
     test_dnames = sorted(str(d.relative_to(original_dname)) for d in exercise_dirs)
 
-    resource_metadata = importlib_resources.files("aider.resources").joinpath("model-metadata.json")
+    resource_metadata = importlib_resources.files("aider.resources").joinpath(
+        "model-metadata.json"
+    )
     model_metadata_files_loaded = models.register_litellm_models([resource_metadata])
     dump(model_metadata_files_loaded)
 
@@ -246,7 +279,9 @@ def main(
 
     if keywords:
         keywords = keywords.split(",")
-        test_dnames = [dn for dn in test_dnames for keyword in keywords if keyword in dn]
+        test_dnames = [
+            dn for dn in test_dnames for keyword in keywords if keyword in dn
+        ]
 
     random.shuffle(test_dnames)
     if num_tests > 0:
@@ -322,14 +357,15 @@ def main(
     return 0
 
 
-
 def load_results(dirname, stats_languages=None):
     dirname = Path(dirname)
     lang_to_results = {}
 
     if stats_languages:
         languages = [lang.strip().lower() for lang in stats_languages.split(",")]
-        glob_patterns = [f"{lang}/exercises/practice/*/.aider.results.json" for lang in languages]
+        glob_patterns = [
+            f"{lang}/exercises/practice/*/.aider.results.json" for lang in languages
+        ]
     else:
         glob_patterns = ["*/exercises/practice/*/.aider.results.json"]
 
@@ -454,16 +490,30 @@ def summarize_results(dirname, verbose, stats_languages=None):
             add("lazy_comments", results.get("lazy_comments", 0), res, lang_stats)
 
             add("syntax_errors", results.get("syntax_errors", 0), res, lang_stats)
-            add("indentation_errors", results.get("indentation_errors", 0), res, lang_stats)
+            add(
+                "indentation_errors",
+                results.get("indentation_errors", 0),
+                res,
+                lang_stats,
+            )
 
             add("prompt_tokens", results.get("prompt_tokens", 0), res, lang_stats)
-            add("completion_tokens", results.get("completion_tokens", 0), res, lang_stats)
+            add(
+                "completion_tokens",
+                results.get("completion_tokens", 0),
+                res,
+                lang_stats,
+            )
 
             res.reasoning_effort = results.get("reasoning_effort")
             res.thinking_tokens = results.get("thinking_tokens")
             res.map_tokens = results.get("map_tokens")
 
-            for key in "model edit_format commit_hash editor_model editor_edit_format".split():
+            for (
+                key
+            ) in (
+                "model edit_format commit_hash editor_model editor_edit_format".split()
+            ):
                 val = results.get(key)
                 if val:
                     variants[key].add(val)
@@ -586,7 +636,9 @@ def summarize_results(dirname, verbose, stats_languages=None):
         def compute_lang_to_col_widths(lang_to_stats):
             lang_to_col_widths = {}
             for lang, lang_stats in lang_to_stats.items():
-                lang_stat_attrs = [getattr(lang_stats, attr) for attr in lang_stats.__dict__]
+                lang_stat_attrs = [
+                    getattr(lang_stats, attr) for attr in lang_stats.__dict__
+                ]
                 lang_col_width = max(len(lang), len(max(lang_stat_attrs, key=len)))
                 lang_to_col_widths[lang] = lang_col_width
 
@@ -596,7 +648,10 @@ def summarize_results(dirname, verbose, stats_languages=None):
         print("======== Stats by language ========")
         print()
 
-        [format_lang_stats(lang, lang_stats) for lang, lang_stats in lang_to_stats.items()]
+        [
+            format_lang_stats(lang, lang_stats)
+            for lang, lang_stats in lang_to_stats.items()
+        ]
         lang_to_col_widths = compute_lang_to_col_widths(lang_to_stats)
 
         any_stats = list(lang_to_stats.values())[0]
@@ -683,7 +738,11 @@ def get_replayed_content(replay_dname, test_dname):
     return res
 
     res = res.splitlines(keepends=True)
-    res = [line for line in res if not line.startswith("> ") and not line.startswith("#### ")]
+    res = [
+        line
+        for line in res
+        if not line.startswith("> ") and not line.startswith("#### ")
+    ]
     return "".join(res)
 
 
@@ -862,7 +921,9 @@ def run_test_real(
                 cw.set_value("user", "name", "aider-benchmark")
                 cw.set_value("user", "email", "aider-benchmark@example.com")
             # Add existing files (solution set and any current files)
-            r.index.add([str(p.relative_to(testdir)) for p in testdir.rglob("*") if p.is_file()])
+            r.index.add(
+                [str(p.relative_to(testdir)) for p in testdir.rglob("*") if p.is_file()]
+            )
             r.index.commit("Initial commit for aider benchmark")
     except Exception as e:
         if verbose:
@@ -957,7 +1018,9 @@ def run_test_real(
         errors = errors.splitlines()
 
         syntax_errors += sum(1 for line in errors if line.startswith("SyntaxError"))
-        indentation_errors += sum(1 for line in errors if line.startswith("IndentationError"))
+        indentation_errors += sum(
+            1 for line in errors if line.startswith("IndentationError")
+        )
 
         print(errors[-1])
         errors = "\n".join(errors)
@@ -1029,7 +1092,9 @@ def run_test_real(
     )
 
     if edit_format == "architect":
-        results["editor_model"] = main_model.editor_model.name if main_model.editor_model else None
+        results["editor_model"] = (
+            main_model.editor_model.name if main_model.editor_model else None
+        )
         results["editor_edit_format"] = main_model.editor_edit_format
     dump(results)
 
@@ -1062,7 +1127,9 @@ def run_unit_tests(original_dname, testdir, history_fname, test_files):
             break
 
     if not command:
-        raise ValueError(f"No test command found for files with extensions: {extensions}")
+        raise ValueError(
+            f"No test command found for files with extensions: {extensions}"
+        )
 
     # Copy test files from original directory
     for file_path in test_files:
