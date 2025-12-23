@@ -204,7 +204,9 @@ def main(
         )
         return
 
-    assert BENCHMARK_DNAME.exists() and BENCHMARK_DNAME.is_dir(), BENCHMARK_DNAME
+    if not (BENCHMARK_DNAME.exists() and BENCHMARK_DNAME.is_dir()):
+        logger.error(f"Benchmark directory not found: {BENCHMARK_DNAME}")
+        sys.exit(1)
 
     def get_exercise_dirs(base_dir, languages=None):
         """Get all exercise directories for specified languages (or all if none specified)"""
@@ -234,7 +236,9 @@ def main(
         return exercise_dirs
 
     original_dname = BENCHMARK_DNAME / exercises_dir
-    assert original_dname.exists() and original_dname.is_dir(), original_dname
+    if not (original_dname.exists() and original_dname.is_dir()):
+        logger.error(f"Exercises directory not found: {original_dname}")
+        sys.exit(1)
 
     exercise_dirs = get_exercise_dirs(original_dname, languages)
 
