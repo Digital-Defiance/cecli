@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import datetime
+import importlib_resources
 import json
 import os
 import random
@@ -194,7 +195,6 @@ def main(
     else:
         # Lazy imports for the actual benchmark run
         import git  # Heavy
-        import importlib_resources  # Used for model metadata registration
         import lox  # Only needed for threaded runs
         from aider import models, sendchat
         from aider.coders import base_coder
