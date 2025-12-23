@@ -96,7 +96,9 @@ def main(
     results_dir: Optional[str] = typer.Argument(
         "unnamed", help="Results directory slug"
     ),
-    model: str = typer.Option("gemini/gemini-3-flash-preview", "--model", "-m", help="Model name"),
+    model: str = typer.Option(
+        "gemini/gemini-3-flash-preview", "--model", "-m", help="Model name"
+    ),
     sleep: float = typer.Option(
         0, "--sleep", help="Sleep seconds between tests when single threaded"
     ),
