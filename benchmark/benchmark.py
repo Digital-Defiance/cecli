@@ -283,7 +283,9 @@ def main(
                 with open(cat_file, "r") as f:
                     metadata = yaml.safe_load(f)
                     if verbose > 1:
-                        logger.debug(f"found {metadata['name']} ({metadata['language']})")
+                        logger.debug(
+                            f"found {metadata['name']} ({metadata['language']})"
+                        )
             except Exception as e:
                 logger.warning(f"Failed to parse {cat_file}: {e}")
                 continue
