@@ -63,6 +63,9 @@ Launch the docker container and run the benchmark inside it:
 
 ```
 # Launch the docker container
+# You probably want to tweak this script to import your service keys.
+# It's curretnly configured to import GEMINI_API_KEY only.
+# PR's welcome to more effectively grab the keys without causing anxiety.
 ./benchmark/docker.sh
 
 # Inside the container, install aider as a development build.
@@ -87,6 +90,16 @@ but here are the most useful to keep in mind:
 - `--edit-format` is the name of the edit format, same as you would pass
   directly to `aider`. When working with an experimental LLM, I recommend
   starting with `whole`
+- `--sets` runs specific groups of tests using the `sets` in the `cat.yaml`.
+  (Hopefully, the sets will grow with time but currently it just bookmarks
+  the classic "polyglot" test battery.)
+- `--hash-re` allows for deterministic slicing of the exercise set based on the
+  exercise hash. This is useful for quickly grabbing a consistent subset or k-fold
+  cross-validation. For example:
+  - `^0`: 1/16 of the set.
+  - `^[01]`: 1/8 of the set.
+  - `^[0-3]`: 1/4 of the set.
+  - `^.{2}[4-7]`: 1/4 of the set, using the 3 character of the hash.
 - `--threads` specifies how many exercises to benchmark in parallel. Start with
   a single thread if you are working out the kinks on your benchmarking setup or
   working with a new model, etc. Once you are getting reliable results, you can
@@ -162,12 +175,6 @@ The benchmark has evolved into a collection of **Cecli Atomic Tests (Cats)**.
 - **Simplified Runner**: The test runner is being simplified to focus on its
   core job: executing tests and recording results. Downstream aggregation and
   analysis of results will be shifted to other tools and projects.
-- **Subset Filtering**: Use the `--sets` option to run specific groups of tests. (Hopefully, the sets will grow with time.)
+- **Subset Filtering**: see `--sets`
 - **K-fold Evaluation Slicing**: The `--hash-re` option allows for deterministic
-  slicing of the exercise set based on the exercise hash. This is useful for
-  parallelizing runs or performing k-fold cross-validation.
-  - `^0`: 1/16 of the set.
-  - `^[01]`: 1/8 of the set.
-  - `^[0-3]`: 1/4 of the set.
-  - `^.{2}[4-7]`: Targets the 3rd character of the hash for more granular
-    slicing.
+  slicing of the exercise (now `cats`) based on the exercise hash.
