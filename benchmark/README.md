@@ -5,6 +5,9 @@ measure how well it works with various LLMs.
 
 This directory holds the harness and tools needed to run the benchmarking suite.
 
+If you're familiar with the `aider` benchmarking, see the "What's new..."
+section below.
+
 ## Background
 
 The benchmark was based on the [Exercism](https://github.com/exercism/python)
@@ -110,32 +113,7 @@ collecting stats not executing unsafe python.
 ./benchmark/benchmark.py --stats tmp.benchmarks/YYYY-MM-DD-HH-MM-SS--a-helpful-name-for-this-run
 ```
 
-The benchmark report is a yaml record with statistics about the run:
-
-```yaml
-- dirname: 2024-07-04-14-32-08--claude-3.5-sonnet-diff-continue
-  test_cases: 225
-  model: claude-3.5-sonnet
-  edit_format: diff
-  commit_hash: 35f21b5
-  pass_rate_1: 57.1
-  pass_rate_2: 77.4
-  percent_cases_well_formed: 99.2
-  error_outputs: 23
-  num_malformed_responses: 4
-  num_with_malformed_responses: 1
-  user_asks: 2
-  lazy_comments: 0
-  syntax_errors: 1
-  indentation_errors: 0
-  exhausted_context_windows: 0
-  test_timeouts: 1
-  command: aider --sonnet
-  date: 2024-07-04
-  versions: 0.42.1-dev
-  seconds_per_case: 17.6
-  total_cost: 3.6346
-```
+The benchmark report is a yaml record with statistics about the run.
 
 The key statistics are the `pass_rate_#` entries, which report the percent of
 the tasks which had all tests passing. There will be multiple of these pass rate
@@ -148,17 +126,29 @@ commit the repo before starting a benchmark run. This way the `model`,
 `edit_format` and `commit_hash` should be enough to reliably reproduce any
 benchmark run.
 
-You can see examples of the benchmark report yaml in the
-[aider leaderboard data files](https://github.com/$ORG/aider/blob/main/aider/website/_data/).
+## Contributing
 
-## Limitations, notes
+Contributions of benchmark results and tests are welcome! Submit results by opening a PR.
 
-- Contributions of benchmark results are welcome! Submit results by opening a PR
-  with edits to the
-  [aider leaderboard data files](https://github.com/$ORG/aider/blob/main/aider/website/_data/).
-- These scripts are not intended for use by typical aider end users.
-- Some of these tools are written as `bash` scripts, so it will be hard to use
+Note the roadmap priorities:
+
+1. Complete 'set up records' to support smart caching.
+2. Atomic data collection. Most of the data is saved but need protocols for sharing.
+3. **Dimensional Parameter Walking** allowing for n-dimensional parameter tuning,
+   facilitating "gradient descent" approach to opimisation accross multiple parameters.
+   The test runner should accept n lists of options, e.g., ["thinking: 100", "thinking: 200", "thinking: 400"], ["optionA: B", "optionD: C"].
+4. Smart Caching so the runner can optionally skip any tests for which "similar" result data
+   is already available based on fuzzy metadata matching. This aids iterative Testing as
+   when adding a new option to a list of permutations, only the new permutations need to
+   be run. Also when new Cats join the collection it is easy to incrementally collect the data.
+5. Data aggregation and analysis. These will be seperate specialised tools.
+
+## Limitations
+
+- These scripts are not intended for use by typical `cecli` end users.
+- Some of the old (?deprecated) tools are written as `bash` scripts, so it will be hard to use
   them on Windows.
+- Currently the JS and cpp tests appear broken.
 
 ## What's new with Cecli Cats?
 
@@ -172,14 +162,7 @@ The benchmark has evolved into a collection of **Cecli Atomic Tests (Cats)**.
 - **Simplified Runner**: The test runner is being simplified to focus on its
   core job: executing tests and recording results. Downstream aggregation and
   analysis of results will be shifted to other tools and projects.
-
-## Enhancements
-
-The `aider-ce` benchmark harness includes several enhancements over the original
-`aider` benchmark:
-
-- **Subset Filtering**: Use the `--sets` option to run specific groups of tests
-  (e.g., `--sets core,strings`).
+- **Subset Filtering**: Use the `--sets` option to run specific groups of tests. (Hopefully, the sets will grow with time.)
 - **K-fold Evaluation Slicing**: The `--hash-re` option allows for deterministic
   slicing of the exercise set based on the exercise hash. This is useful for
   parallelizing runs or performing k-fold cross-validation.
