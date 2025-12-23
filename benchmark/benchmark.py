@@ -225,7 +225,7 @@ def main(
         print("No exercise directories found")
         return 1
 
-    if clean and dirname.exists():
+    if clean and dirname.exists() and not dry:
         print("Cleaning up and replacing", dirname)
         dir_files = set(fn.name for fn in dirname.glob("*"))
         original_files = set(fn.name for fn in original_dname.glob("*"))
@@ -243,7 +243,7 @@ def main(
 
         dirname.rename(dest)
 
-    if not dirname.exists():
+    if not dirname.exists() and not dry:
         print(f"Copying {original_dname} -> {dirname} ...")
         # Only copy the practice subdirs with exercises
         os.makedirs(dirname, exist_ok=True)
@@ -318,6 +318,7 @@ def main(
                 thinking_tokens,
                 map_tokens,
                 repomap_in_memory,
+                dry,
             )
 
             all_results.append(results)
@@ -346,6 +347,7 @@ def main(
                 thinking_tokens,
                 map_tokens,
                 repomap_in_memory,
+                dry,
             )
         all_results = run_test_threaded.gather(tqdm=True)
 
@@ -779,6 +781,7 @@ def run_test_real(
     map_tokens: Optional[int] = None,
     read_model_settings=None,
     repomap_in_memory: bool = False,
+    dry: bool = False,
 ):
     # Lazy imports: only needed in the actual benchmark execution path
     import git
@@ -847,18 +850,19 @@ def run_test_real(
             fnames.append(src)
             # restore the original file, in case we interrupted a prev run
             # Find the original file in the language-specific practice dir
-            lang_part = str(testdir).split("/exercises/practice/")[0]
-            original_fname = (
-                original_dname
-                / Path(lang_part).name
-                / "exercises"
-                / "practice"
-                / testdir.name
-                / file_path
-            )
-            if original_fname.exists():
-                os.makedirs(src.parent, exist_ok=True)
-                shutil.copy(original_fname, src)
+            if not dry:
+                lang_part = str(testdir).split("/exercises/practice/")[0]
+                original_fname = (
+                    original_dname
+                    / Path(lang_part).name
+                    / "exercises"
+                    / "practice"
+                    / testdir.name
+                    / file_path
+                )
+                if original_fname.exists():
+                    os.makedirs(src.parent, exist_ok=True)
+                    shutil.copy(original_fname, src)
         else:
             print(f"Warning: Solution file not found: {src}")
 
@@ -912,22 +916,23 @@ def run_test_real(
     show_fnames = ",".join(map(str, fnames))
     print("fnames:", show_fnames)
     # Ensure this test directory is a standalone git repo so RepoMap can be used
-    try:
-        git_dir = testdir / ".git"
-        if not git_dir.exists():
-            r = git.Repo.init(testdir)
-            # Set a local identity to avoid commit failures in clean containers
-            with r.config_writer() as cw:
-                cw.set_value("user", "name", "aider-benchmark")
-                cw.set_value("user", "email", "aider-benchmark@example.com")
-            # Add existing files (solution set and any current files)
-            r.index.add(
-                [str(p.relative_to(testdir)) for p in testdir.rglob("*") if p.is_file()]
-            )
-            r.index.commit("Initial commit for aider benchmark")
-    except Exception as e:
-        if verbose:
-            print(f"Warning: failed to initialize git repo in {testdir}: {e}")
+    if not dry:
+        try:
+            git_dir = testdir / ".git"
+            if not git_dir.exists():
+                r = git.Repo.init(testdir)
+                # Set a local identity to avoid commit failures in clean containers
+                with r.config_writer() as cw:
+                    cw.set_value("user", "name", "aider-benchmark")
+                    cw.set_value("user", "email", "aider-benchmark@example.com")
+                # Add existing files (solution set and any current files)
+                r.index.add(
+                    [str(p.relative_to(testdir)) for p in testdir.rglob("*") if p.is_file()]
+                )
+                r.index.commit("Initial commit for aider benchmark")
+        except Exception as e:
+            if verbose:
+                print(f"Warning: failed to initialize git repo in {testdir}: {e}")
 
     coder_kwargs = dict(
         main_model=main_model,
@@ -1027,39 +1032,40 @@ def run_test_real(
         instructions = errors
         instructions += prompts.test_failures.format(file_list=file_list)
 
-    # Clean up build directories after all attempts
-    # Rust target/debug
-    target_dir = testdir / "target" / "debug"
-    if target_dir.exists():
-        try:
-            shutil.rmtree(target_dir)
-            if verbose:
-                print(f"Cleaned up Rust target/debug directory: {target_dir}")
-        except (OSError, shutil.Error, PermissionError) as e:
-            if verbose:
-                print(f"Failed to clean up Rust target/debug directory: {e}")
+    if not dry:
+        # Clean up build directories after all attempts
+        # Rust target/debug
+        target_dir = testdir / "target" / "debug"
+        if target_dir.exists():
+            try:
+                shutil.rmtree(target_dir)
+                if verbose:
+                    print(f"Cleaned up Rust target/debug directory: {target_dir}")
+            except (OSError, shutil.Error, PermissionError) as e:
+                if verbose:
+                    print(f"Failed to clean up Rust target/debug directory: {e}")
 
-    # Java build directories
-    java_build_dir = testdir / "build"
-    if java_build_dir.exists():
-        try:
-            shutil.rmtree(java_build_dir)
-            if verbose:
-                print(f"Cleaned up Java build directory: {java_build_dir}")
-        except (OSError, shutil.Error, PermissionError) as e:
-            if verbose:
-                print(f"Failed to clean up Java build directory: {e}")
+        # Java build directories
+        java_build_dir = testdir / "build"
+        if java_build_dir.exists():
+            try:
+                shutil.rmtree(java_build_dir)
+                if verbose:
+                    print(f"Cleaned up Java build directory: {java_build_dir}")
+            except (OSError, shutil.Error, PermissionError) as e:
+                if verbose:
+                    print(f"Failed to clean up Java build directory: {e}")
 
-    # Node.js node_modules directories
-    node_modules_dir = testdir / "node_modules"
-    if node_modules_dir.exists():
-        try:
-            shutil.rmtree(node_modules_dir)
-            if verbose:
-                print(f"Cleaned up Node.js node_modules directory: {node_modules_dir}")
-        except (OSError, shutil.Error, PermissionError) as e:
-            if verbose:
-                print(f"Failed to clean up Node.js node_modules directory: {e}")
+        # Node.js node_modules directories
+        node_modules_dir = testdir / "node_modules"
+        if node_modules_dir.exists():
+            try:
+                shutil.rmtree(node_modules_dir)
+                if verbose:
+                    print(f"Cleaned up Node.js node_modules directory: {node_modules_dir}")
+            except (OSError, shutil.Error, PermissionError) as e:
+                if verbose:
+                    print(f"Failed to clean up Node.js node_modules directory: {e}")
 
     results = dict(
         testdir=str(testdir),
