@@ -119,7 +119,12 @@ def main(
     exercises_dir: str = typer.Option(
         EXERCISES_DIR_DEFAULT, "--exercises-dir", help="Directory with exercise files"
     ),
+    dry: bool = typer.Option(False, "--dry", help="Run in dry mode (no aider, no tests)"),
 ):
+    if dry:
+        no_aider = True
+        no_unit_tests = True
+
     if dirnames is None:
         dirnames = []
 
@@ -151,7 +156,7 @@ def main(
     if repo.is_dirty():
         commit_hash += "-dirty"
 
-    if "AIDER_DOCKER" not in os.environ:
+    if not dry and "AIDER_DOCKER" not in os.environ:
         print("Warning: Benchmarking runs unvetted code. Run in a docker container.")
         print("Set AIDER_DOCKER in the environment to by-pass this check at your own risk.")
         return
