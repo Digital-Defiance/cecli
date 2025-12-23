@@ -38,6 +38,7 @@ _VERSION_CACHE = {}
 
 BENCHMARK_DNAME = Path(os.environ.get("AIDER_BENCHMARK_DIR", "tmp.benchmarks"))
 EXERCISES_DIR_DEFAULT = "cecli-cat"
+RESULTS_DIR_DEFAULT = "cat-results"
 
 app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
 
@@ -45,7 +46,7 @@ app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
 load_dotenv(override=True)
 
 
-def resolve_dirname(dirname, use_single_prior, make_new):
+def resolve_dirname(results_dir, use_single_prior, make_new):
     """
     Determines the actual directory path used for storing benchmark results.
 
@@ -53,35 +54,39 @@ def resolve_dirname(dirname, use_single_prior, make_new):
     2. Safety check: If previous runs exist but the user didn't specify --new or --cont, it warns the user and aborts to prevent accidental overwrites or confusion.
     3. Creating a new run: If no prior run exists (or --new is used), it prepends the current timestamp to the directory name to ensure a unique workspace.
     """
-    if len(dirname.parts) > 1:
-        return dirname
+    logger.debug(f"initial results_dir: {results_dir}")
+    results_dir = Path(results_dir)
+    logger.debug(f"dirname1: {results_dir}")
+    if len(results_dir.parts) > 1:
+        return results_dir
 
-    priors = list(BENCHMARK_DNAME.glob(f"*--{dirname}"))
+    priors = list(BENCHMARK_DNAME.glob(f"*--{results_dir}"))
     if len(priors) == 1 and use_single_prior:
-        dirname = priors[0].name
-        logger.info(f"Using pre-existing {dirname}")
+        results_dir = priors[0].name
+        logger.info(f"Using pre-existing {results_dir}")
     elif len(priors):
         if not make_new:
             logger.warning(
-                f"Prior runs of {dirname} exist, use --new or name one explicitly"
+                f"Prior runs of {results_dir} exist, use --new or name one explicitly"
             )
             for prior in priors:
                 logger.warning(prior)
             return
 
-    if not re.match(r"\d\d\d\d-\d\d-\d\d-", str(dirname)):
+    if not re.match(r"\d\d\d\d-\d\d-\d\d-", str(results_dir)):
         now = datetime.datetime.now()
         now = now.strftime("%Y-%m-%d-%H-%M-%S--")
-        dirname = now + dirname.name
+        results_dir = now + results_dir.name
 
-    logger.debug(f"resolved {dirname}")
-    dirname = BENCHMARK_DNAME / dirname
-    return dirname
+    logger.debug(f"resolved {results_dir}")
+    results_dir = BENCHMARK_DNAME / results_dir
+    logger.info(f"updated results_dir: {results_dir}")
+    return results_dir
 
 
 @app.command()
 def main(
-    dirnames: Optional[List[str]] = typer.Argument(None, help="Directory names"),
+    results_dir: Optional[str] = typer.Argument(RESULTS_DIR_DEFAULT, help="Results directory"),
     model: str = typer.Option("gpt-3.5-turbo", "--model", "-m", help="Model name"),
     sleep: float = typer.Option(
         0, "--sleep", help="Sleep seconds between tests when single threaded"
@@ -161,6 +166,7 @@ def main(
         False, "--dry", help="Run in dry mode (no aider, no tests)"
     ),
 ):
+    # setup logging and verbosity
     if quiet:
         log_level = logging.WARNING
     elif verbose > 0:
@@ -174,26 +180,7 @@ def main(
         no_aider = True
         no_unit_tests = True
 
-    if dirnames is None:
-        dirnames = []
-
-    if len(dirnames) > 1:
-        logger.error("Only provide 1 dirname")
-        return 1
-
-    logger.info(f"dirnames: {dirnames}")
-
-    updated_dirnames = []
-    for dirname in dirnames:
-        dirname = Path(dirname)
-        dirname = resolve_dirname(dirname, cont, make_new)
-        if not dirname:
-            return 1
-        updated_dirnames.append(dirname)
-
-    logger.info(f"updated_dirnames: {updated_dirnames}")
-    assert len(updated_dirnames) == 1, updated_dirnames
-    dirname = updated_dirnames[0]
+    results_dir = resolve_dirname(results_dir, cont, make_new)
 
     # Lazy imports for the actual benchmark run
     import git  # Heavy
@@ -255,33 +242,33 @@ def main(
         logger.error("No exercise directories found")
         return 1
 
-    if clean and dirname.exists() and not dry:
-        logger.info(f"Cleaning up and replacing {dirname}")
-        dir_files = set(fn.name for fn in dirname.glob("*"))
+    if clean and results_dir.exists() and not dry:
+        logger.info(f"Cleaning up and replacing {results_dir}")
+        dir_files = set(fn.name for fn in results_dir.glob("*"))
         original_files = set(fn.name for fn in original_dname.glob("*"))
         if dir_files != original_files:
             logger.error(
-                f"ERROR: will not delete dir that does not look like original tests {dirname}"
+                f"ERROR: will not delete dir that does not look like original tests {results_dir}"
             )
             return
 
-        dest = dirname.parent / "OLD" / dirname.name
+        dest = results_dir.parent / "OLD" / results_dir.name
         if dest.exists():
             old_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-            dest = dirname.parent / "OLD" / (old_now + dirname.name)
+            dest = results_dir.parent / "OLD" / (old_now + results_dir.name)
 
-        dirname.rename(dest)
+        results_dir.rename(dest)
 
-    if not dirname.exists() and not dry:
-        logger.info(f"Copying {original_dname} -> {dirname} ...")
+    if not results_dir.exists() and not dry:
+        logger.info(f"Copying {original_dname} -> {results_dir} ...")
         # Only copy the practice subdirs with exercises
-        os.makedirs(dirname, exist_ok=True)
+        os.makedirs(results_dir, exist_ok=True)
         for lang_dir in original_dname.iterdir():
             if not lang_dir.is_dir():
                 continue
             practice_dir = lang_dir / "exercises" / "practice"
             if practice_dir.exists():
-                dest_lang_dir = dirname / lang_dir.name / "exercises" / "practice"
+                dest_lang_dir = results_dir / lang_dir.name / "exercises" / "practice"
                 os.makedirs(dest_lang_dir.parent, exist_ok=True)
                 shutil.copytree(practice_dir, dest_lang_dir)
         logger.info("...done")
@@ -329,7 +316,7 @@ def main(
         for test_path in test_dnames:
             results = run_test(
                 original_dname,
-                dirname / test_path,
+                results_dir / test_path,
                 model,
                 edit_format,
                 tries,
@@ -350,7 +337,7 @@ def main(
             )
 
             all_results.append(results)
-            summarize_results(dirname, verbose)
+            summarize_results(results_dir, verbose)
             if sleep:
                 time.sleep(sleep)
     else:
@@ -358,7 +345,7 @@ def main(
         for test_path in test_dnames:
             run_test_threaded.scatter(
                 original_dname,
-                dirname / test_path,
+                results_dir / test_path,
                 model,
                 edit_format,
                 tries,
@@ -382,13 +369,13 @@ def main(
     print()
     print()
     print()
-    summarize_results(dirname, verbose)
+    summarize_results(results_dir, verbose)
 
     return 0
 
 
-def load_results(dirname, stats_languages=None):
-    dirname = Path(dirname)
+def load_results(results_dir, stats_languages=None):
+    results_dir = Path(results_dir)
     lang_to_results = {}
 
     if stats_languages:
@@ -400,7 +387,7 @@ def load_results(dirname, stats_languages=None):
         glob_patterns = ["*/exercises/practice/*/.aider.results.json"]
 
     for pattern in glob_patterns:
-        for fname in dirname.glob(pattern):
+        for fname in results_dir.glob(pattern):
             try:
                 results = json.loads(fname.read_text())
                 #      json / test / prac / exer / lang
@@ -412,11 +399,11 @@ def load_results(dirname, stats_languages=None):
     return lang_to_results
 
 
-def summarize_results(dirname, verbose, stats_languages=None):
-    lang_to_results = load_results(dirname, stats_languages)
+def summarize_results(results_dir, verbose, stats_languages=None):
+    lang_to_results = load_results(results_dir, stats_languages)
 
     res = SimpleNamespace()
-    res.total_tests = len(list(Path(dirname).glob("*/exercises/practice/*")))
+    res.total_tests = len(list(Path(results_dir).glob("*/exercises/practice/*")))
 
     try:
         tries = max(
@@ -428,7 +415,7 @@ def summarize_results(dirname, verbose, stats_languages=None):
     except ValueError:
         tries = 0
 
-    res.dir_name = str(dirname)
+    res.dir_name = str(results_dir)
 
     passed_tests = [0] * tries
 
@@ -555,11 +542,11 @@ def summarize_results(dirname, verbose, stats_languages=None):
     #    return
 
     console = Console(highlight=False)
-    console.rule(title=str(dirname))
+    console.rule(title=str(results_dir))
 
     commit_hashes = variants["commit_hash"]
     versions = get_versions(commit_hashes)
-    date = dirname.name[:10]
+    date = results_dir.name[:10]
 
     def show(stat, red="red"):
         val = getattr(res, stat)
@@ -574,7 +561,7 @@ def summarize_results(dirname, verbose, stats_languages=None):
         setattr(res, f"pass_rate_{i + 1}", f"{pass_rate:.1f}")
         setattr(res, f"pass_num_{i + 1}", passed_tests[i])
 
-    print(f"- dirname: {dirname.name}")
+    print(f"- results_dir: {results_dir.name}")
     style = None if res.completed_tests == res.total_tests else "red"
     console.print(f"  test_cases: {res.completed_tests}", style=style)
     for key, val in variants.items():
