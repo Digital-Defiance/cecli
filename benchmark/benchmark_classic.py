@@ -19,6 +19,7 @@ from typing import List, Optional
 Performance-oriented refactors:
 - Avoid heavy imports unless needed for a given code path.
 - Fast path for `--stats` to skip GitPython and benchmarking deps.
+- Build DataFrame / import plotting only when `--graphs` is true.
 - Use json.load for result file parsing to reduce memory churn.
 - Cache git version lookups across a single invocation.
 """
@@ -41,6 +42,101 @@ app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
 
 
 load_dotenv(override=True)
+
+
+def find_latest_benchmark_dir():
+    benchmark_dirs = [d for d in BENCHMARK_DNAME.iterdir() if d.is_dir()]
+    if not benchmark_dirs:
+        print("Error: No benchmark directories found under tmp.benchmarks.")
+        sys.exit(1)
+
+    # Get current time and 24 hours ago
+    now = datetime.datetime.now()
+    day_ago = now - datetime.timedelta(days=1)
+
+    # Filter directories by name pattern YYYY-MM-DD-HH-MM-SS--
+    recent_dirs = []
+    for d in benchmark_dirs:
+        try:
+            # Extract datetime from directory name
+            date_str = d.name[:19]  # Takes YYYY-MM-DD-HH-MM-SS
+            dir_date = datetime.datetime.strptime(date_str, "%Y-%m-%d-%H-%M-%S")
+            if dir_date >= day_ago:
+                recent_dirs.append(d)
+        except ValueError:
+            # Skip directories that don't match the expected format
+            continue
+
+    if not recent_dirs:
+        print("Error: No benchmark directories found from the last 24 hours.")
+        sys.exit(1)
+
+    # Find directory with most recently modified .md file
+    latest_dir = None
+    latest_time = 0
+
+    for d in recent_dirs:
+        # Look for .md files in subdirectories
+        for md_file in d.glob("*/exercises/practice/*/.*.md"):
+            if md_file.is_file():
+                mtime = md_file.stat().st_mtime
+                if mtime > latest_time:
+                    latest_time = mtime
+                    latest_dir = d
+
+    if not latest_dir:
+        print("Error: No .md files found in recent benchmark directories.")
+        sys.exit(1)
+
+    print(f"Using the most recently updated benchmark directory: {latest_dir.name}")
+    return latest_dir
+
+
+def show_stats(dirnames, graphs, verbose, stats_languages=None):
+    raw_rows = []
+    for dirname in dirnames:
+        row = summarize_results(dirname, verbose, stats_languages)
+        raw_rows.append(row)
+
+    # return
+
+    seen = dict()
+    rows = []
+    for row in raw_rows:
+        if not row:
+            continue
+
+        if row.completed_tests != row.total_tests:
+            print(
+                f"Warning: {row.dir_name} is incomplete: {row.completed_tests} of {row.total_tests}"
+            )
+
+        try:
+            kind = (row.model, row.edit_format)
+        except AttributeError:
+            return
+
+        if kind in seen:
+            dump(row.dir_name)
+            dump(seen[kind])
+            return
+
+        seen[kind] = row.dir_name
+        rows.append(vars(row))
+
+    repeat_hi = repeat_lo = repeat_avg = None  # noqa: F841
+
+    # Only build a DataFrame and import plotting libs when graphs are requested
+    if graphs:
+        import pandas as pd  # Lazy import
+        from plots import plot_refactoring  # Lazy import
+
+        df = pd.DataFrame.from_records(rows)
+        # plot_timing(df)
+        # plot_outcomes(df, repeats, repeat_hi, repeat_lo, repeat_avg)
+        # plot_outcomes_claude(df)
+        plot_refactoring(df)
+
 
 def resolve_dirname(dirname, use_single_prior, make_new):
     if len(dirname.parts) > 1:
@@ -70,6 +166,7 @@ def resolve_dirname(dirname, use_single_prior, make_new):
 @app.command()
 def main(
     dirnames: Optional[List[str]] = typer.Argument(None, help="Directory names"),
+    graphs: bool = typer.Option(False, "--graphs", help="Generate graphs"),
     model: str = typer.Option("gpt-3.5-turbo", "--model", "-m", help="Model name"),
     sleep: float = typer.Option(
         0, "--sleep", help="Sleep seconds between tests when single threaded"
@@ -96,6 +193,15 @@ def main(
     no_unit_tests: bool = typer.Option(False, "--no-unit-tests", help="Do not run unit tests"),
     no_aider: bool = typer.Option(False, "--no-aider", help="Do not run aider"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+    stats_only: bool = typer.Option(
+        False, "--stats", "-s", help="Do not run tests, just collect stats on completed tests"
+    ),
+    stats_languages: str = typer.Option(
+        None,
+        "--stats-languages",
+        help="Only include stats for specific languages (comma separated)",
+    ),
+    diffs_only: bool = typer.Option(False, "--diffs", help="Just diff the provided stats dirs"),
     tries: int = typer.Option(2, "--tries", "-r", help="Number of tries for running tests"),
     threads: int = typer.Option(1, "--threads", "-t", help="Number of threads to run in parallel"),
     num_tests: int = typer.Option(-1, "--num-tests", "-n", help="Number of tests to run"),
@@ -120,26 +226,36 @@ def main(
         EXERCISES_DIR_DEFAULT, "--exercises-dir", help="Directory with exercise files"
     ),
 ):
+    if stats_only and not dirnames:
+        latest_dir = find_latest_benchmark_dir()
+        dirnames = [str(latest_dir)]
+
     if dirnames is None:
         dirnames = []
 
-    if len(dirnames) > 1:
-        print("Only provide 1 dirname")
+    if len(dirnames) > 1 and not (stats_only or diffs_only):
+        print("Only provide 1 dirname unless running with --stats or --diffs")
         return 1
 
     updated_dirnames = []
     for dirname in dirnames:
         dirname = Path(dirname)
-        dirname = resolve_dirname(dirname, cont, make_new)
+        dirname = resolve_dirname(dirname, stats_only or cont, make_new)
         if not dirname:
             return 1
         updated_dirnames.append(dirname)
+
+    if stats_only:
+        return show_stats(updated_dirnames, graphs, verbose, stats_languages)
+
+    if diffs_only:
+        return show_diffs(updated_dirnames)
 
     assert len(updated_dirnames) == 1, updated_dirnames
     dirname = updated_dirnames[0]
 
     # Lazy imports for the actual benchmark run
-    import git  # Heavy
+    import git  # Heavy; avoid for --stats/--diffs
     import importlib_resources  # Used for model metadata registration
     import lox  # Only needed for threaded runs
 
@@ -152,8 +268,7 @@ def main(
         commit_hash += "-dirty"
 
     if "AIDER_DOCKER" not in os.environ:
-        print("Warning: Benchmarking runs unvetted code. Run in a docker container.")
-        print("Set AIDER_DOCKER in the environment to by-pass this check at your own risk.")
+        print("Warning: benchmarking runs unvetted code from GPT, run in a docker container")
         return
 
     assert BENCHMARK_DNAME.exists() and BENCHMARK_DNAME.is_dir(), BENCHMARK_DNAME
@@ -316,6 +431,42 @@ def main(
 
     return 0
 
+
+def show_diffs(dirnames):
+    dirnames = sorted(dirnames)
+
+    all_results = dict((dirname, load_results(dirname)) for dirname in dirnames)
+    testcases = set()
+    for results in all_results.values():
+        testcases.update(result["testcase"] for result in results)
+
+    testcases = sorted(testcases)
+
+    unchanged = set()
+
+    for testcase in testcases:
+        all_outcomes = []
+        for dirname in dirnames:
+            results = all_results[dirname]
+            result = [r for r in results if r["testcase"] == testcase][0]
+
+            outcomes = tuple(result["tests_outcomes"])
+            all_outcomes.append(True in outcomes)
+
+        if len(set(all_outcomes)) == 1:
+            unchanged.add(testcase)
+            continue
+
+        print()
+        print(testcase)
+        for outcome, dirname in zip(all_outcomes, dirnames):
+            print(outcome, f"{dirname}/{testcase}/.aider.chat.history.md")
+
+    changed = set(testcases) - unchanged
+    print()
+    print("changed:", len(changed), ",".join(sorted(changed)))
+    print()
+    print("unchanged:", len(unchanged), ",".join(sorted(unchanged)))
 
 
 def load_results(dirname, stats_languages=None):
