@@ -214,10 +214,13 @@ def main(
         if repo.is_dirty():
             commit_hash += "-dirty"
 
-    results_dir = resolve_dirname(results_dir, cont, make_new)
+    resolved_results_dir = resolve_dirname(results_dir, cont, make_new)
 
-    if not results_dir:
+    if not resolved_results_dir:
+        logger.error(f"Could not resolve results directory from slug: {results_dir}")
+        logger.error(f"Checked in {BENCHMARK_DNAME}")
         return 1
+    results_dir = resolved_results_dir
 
     if not dry and "AIDER_DOCKER" not in os.environ:
         logger.warning(
