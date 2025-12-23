@@ -331,16 +331,13 @@ def main(
 
     if not results_dir.exists() and not dry:
         logger.info(f"Copying {original_dname} -> {results_dir} ...")
-        # Only copy the practice subdirs with exercises
         os.makedirs(results_dir, exist_ok=True)
-        for lang_dir in original_dname.iterdir():
-            if not lang_dir.is_dir():
-                continue
-            practice_dir = lang_dir / "exercises" / "practice"
-            if practice_dir.exists():
-                dest_lang_dir = results_dir / lang_dir.name / "exercises" / "practice"
-                os.makedirs(dest_lang_dir.parent, exist_ok=True)
-                shutil.copytree(practice_dir, dest_lang_dir)
+        for exercise_dir in exercise_dirs:
+            rel_path = exercise_dir.relative_to(original_dname)
+            dest_dir = results_dir / rel_path
+            os.makedirs(dest_dir.parent, exist_ok=True)
+            if not dest_dir.exists():
+                shutil.copytree(exercise_dir, dest_dir)
         logger.info("...done")
 
     test_dnames = sorted(str(d.relative_to(original_dname)) for d in exercise_dirs)
@@ -400,6 +397,7 @@ def main(
         map_tokens=map_tokens,
         repomap_in_memory=repomap_in_memory,
         dry=dry,
+        results_dir=results_dir,
     )
 
     if threads > 1:
@@ -849,6 +847,7 @@ def run_test_real(
     read_model_settings=None,
     repomap_in_memory: bool = False,
     dry: bool = False,
+    results_dir=None,
 ):
     # Lazy imports: only needed in the actual benchmark execution path
     import git
@@ -859,6 +858,8 @@ def run_test_real(
     from aider.io import InputOutput
 
     if not os.path.isdir(testdir):
+        if dry:
+            return
         logger.error(f"Not a dir: {testdir}")
         return
 
@@ -917,19 +918,15 @@ def run_test_real(
             fnames.append(src)
             # restore the original file, in case we interrupted a prev run
             # Find the original file in the language-specific practice dir
-            if not dry:
-                lang_part = str(testdir).split("/exercises/practice/")[0]
-                original_fname = (
-                    original_dname
-                    / Path(lang_part).name
-                    / "exercises"
-                    / "practice"
-                    / testdir.name
-                    / file_path
-                )
-                if original_fname.exists():
-                    os.makedirs(src.parent, exist_ok=True)
-                    shutil.copy(original_fname, src)
+            if not dry and results_dir:
+                try:
+                    rel_path = testdir.relative_to(results_dir)
+                    original_fname = original_dname / rel_path / file_path
+                    if original_fname.exists():
+                        os.makedirs(src.parent, exist_ok=True)
+                        shutil.copy(original_fname, src)
+                except ValueError:
+                    pass
         else:
             logger.warning(f"Warning: Solution file not found: {src}")
 
