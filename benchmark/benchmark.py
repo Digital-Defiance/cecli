@@ -273,6 +273,7 @@ def main(
             try:
                 with open(cat_file, "r") as f:
                     metadata = yaml.safe_load(f)
+                    logger.info(f"found {metadata['name']} ({metadata['language']})")
             except Exception as e:
                 logger.warning(f"Failed to parse {cat_file}: {e}")
                 continue
@@ -290,6 +291,7 @@ def main(
 
             exercise_dirs.append(cat_file.parent)
 
+        logger.info(f"Found {len(exercise_dirs)} cats")
         return exercise_dirs
 
     exercise_dirs = get_exercise_dirs(
