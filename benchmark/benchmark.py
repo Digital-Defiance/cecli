@@ -199,7 +199,7 @@ def main(
     if dry:
         no_aider = True
         no_unit_tests = True
-        commit_hash = '???????'
+        commit_hash = "???????"
     else:
         # Lazy imports for the actual benchmark run
         import git  # Heavy
