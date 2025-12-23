@@ -78,7 +78,7 @@ def resolve_dirname(results_dir, use_single_prior, make_new):
             )
             for prior in priors:
                 logger.warning(prior)
-            return
+            sys.exit(1)
 
     if not re.match(r"\d\d\d\d-\d\d-\d\d-", str(results_dir)):
         now = datetime.datetime.now()
