@@ -37,8 +37,7 @@ logger = logging.getLogger("aider.benchmark")
 _VERSION_CACHE = {}
 
 BENCHMARK_DNAME = Path(os.environ.get("AIDER_BENCHMARK_DIR", "tmp.benchmarks"))
-
-EXERCISES_DIR_DEFAULT = "polyglot-benchmark"
+EXERCISES_DIR_DEFAULT = "cecli-cat"
 
 app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
 
@@ -68,6 +67,7 @@ def resolve_dirname(dirname, use_single_prior, make_new):
         now = now.strftime("%Y-%m-%d-%H-%M-%S--")
         dirname = now + dirname.name
 
+    logger.debug(f"resolved {dirname}")
     dirname = BENCHMARK_DNAME / dirname
     return dirname
 
