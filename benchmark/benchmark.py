@@ -46,6 +46,13 @@ load_dotenv(override=True)
 
 
 def resolve_dirname(dirname, use_single_prior, make_new):
+    """
+    Determines the actual directory path used for storing benchmark results.
+
+    1. Resuming a previous run: If the --cont flag is used and exactly one matching previous run exists, it selects that existing directory.
+    2. Safety check: If previous runs exist but the user didn't specify --new or --cont, it warns the user and aborts to prevent accidental overwrites or confusion.
+    3. Creating a new run: If no prior run exists (or --new is used), it prepends the current timestamp to the directory name to ensure a unique workspace.
+    """
     if len(dirname.parts) > 1:
         return dirname
 
@@ -174,6 +181,8 @@ def main(
         logger.error("Only provide 1 dirname")
         return 1
 
+    logger.info(f"dirnames: {dirnames}")
+
     updated_dirnames = []
     for dirname in dirnames:
         dirname = Path(dirname)
@@ -182,6 +191,7 @@ def main(
             return 1
         updated_dirnames.append(dirname)
 
+    logger.info(f"updated_dirnames: {updated_dirnames}")
     assert len(updated_dirnames) == 1, updated_dirnames
     dirname = updated_dirnames[0]
 
