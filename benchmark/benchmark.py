@@ -194,6 +194,7 @@ def main(
     if dry:
         no_aider = True
         no_unit_tests = True
+        commit_hash = '???????'
     else:
         # Lazy imports for the actual benchmark run
         import git  # Heavy
@@ -364,11 +365,12 @@ def main(
     if num_tests > 0:
         test_dnames = test_dnames[:num_tests]
 
-    # Don't give up when benchmarking
-    LONG_TIMEOUT = 24 * 60 * 60
-    sendchat.RETRY_TIMEOUT = LONG_TIMEOUT
-    base_coder.RETRY_TIMEOUT = LONG_TIMEOUT
-    models.RETRY_TIMEOUT = LONG_TIMEOUT
+    if not no_aider:
+        # Don't give up when benchmarking
+        LONG_TIMEOUT = 24 * 60 * 60
+        sendchat.RETRY_TIMEOUT = LONG_TIMEOUT
+        base_coder.RETRY_TIMEOUT = LONG_TIMEOUT
+        models.RETRY_TIMEOUT = LONG_TIMEOUT
 
     # Enable in-memory RepoMap cache when running multiple threads to avoid SQLite contention
     repomap_in_memory = threads > 1
