@@ -216,6 +216,9 @@ def main(
 
     results_dir = resolve_dirname(results_dir, cont, make_new)
 
+    if not results_dir:
+        return 1
+
     if not dry and "AIDER_DOCKER" not in os.environ:
         logger.warning(
             "Warning: Benchmarking runs unvetted code. Run in a docker container."
