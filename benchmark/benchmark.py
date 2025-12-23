@@ -87,7 +87,7 @@ def resolve_dirname(results_dir, use_single_prior, make_new):
 @app.command()
 def main(
     results_dir: Optional[str] = typer.Argument(
-        RESULTS_DIR_DEFAULT, help="Results directory"
+        "unnamed", help="Results directory slug"
     ),
     model: str = typer.Option("gpt-3.5-turbo", "--model", "-m", help="Model name"),
     sleep: float = typer.Option(
@@ -181,21 +181,20 @@ def main(
     if dry:
         no_aider = True
         no_unit_tests = True
+    else:
+        # Lazy imports for the actual benchmark run
+        import git  # Heavy
+        import importlib_resources  # Used for model metadata registration
+        import lox  # Only needed for threaded runs
+        from aider import models, sendchat
+        from aider.coders import base_coder
+        repo = git.Repo(search_parent_directories=True)
+        commit_hash = repo.head.object.hexsha[:7]
+        if repo.is_dirty():
+            commit_hash += "-dirty"
 
     results_dir = resolve_dirname(results_dir, cont, make_new)
 
-    # Lazy imports for the actual benchmark run
-    import git  # Heavy
-    import importlib_resources  # Used for model metadata registration
-    import lox  # Only needed for threaded runs
-
-    from aider import models, sendchat
-    from aider.coders import base_coder
-
-    repo = git.Repo(search_parent_directories=True)
-    commit_hash = repo.head.object.hexsha[:7]
-    if repo.is_dirty():
-        commit_hash += "-dirty"
 
     if not dry and "AIDER_DOCKER" not in os.environ:
         logger.warning(
@@ -206,13 +205,21 @@ def main(
         )
         return
 
+    # Check dirs exist
     if not (BENCHMARK_DNAME.exists() and BENCHMARK_DNAME.is_dir()):
         logger.error(f"Benchmark directory not found: {BENCHMARK_DNAME}")
         sys.exit(1)
+    original_dname = BENCHMARK_DNAME / exercises_dir
+    if not (original_dname.exists() and original_dname.is_dir()):
+        logger.error(f"Exercises directory not found: {original_dname}")
+        sys.exit(1)
 
-    def get_exercise_dirs(base_dir, languages=None):
-        """Get all exercise directories for specified languages (or all if none specified)"""
+    def legacy_get_exercise_dirs(base_dir, languages=None):
+        """Get all exercise directories for specified languages (or all if none specified).
+        Uses the legacy `excerises/practice` pattern.
+        """
         base_dir = Path(base_dir)
+        logger.info(f"Looking for exercises in {base_dir}")
 
         # Get available language dirs
         lang_dirs = [d for d in base_dir.iterdir() if d.is_dir()]
@@ -237,10 +244,7 @@ def main(
 
         return exercise_dirs
 
-    original_dname = BENCHMARK_DNAME / exercises_dir
-    if not (original_dname.exists() and original_dname.is_dir()):
-        logger.error(f"Exercises directory not found: {original_dname}")
-        sys.exit(1)
+    def get_exercise_dirs(base_dir, languages=None):
 
     exercise_dirs = get_exercise_dirs(original_dname, languages)
 
