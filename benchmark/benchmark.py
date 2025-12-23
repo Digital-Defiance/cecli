@@ -346,14 +346,12 @@ def main(
         logger.info(f"Copying {original_dname} -> {results_dir} ...")
         os.makedirs(results_dir, exist_ok=True)
         for exercise_dir in exercise_dirs:
-            rel_path = exercise_dir.relative_to(original_dname)
-            dest_dir = results_dir / rel_path
-            os.makedirs(dest_dir.parent, exist_ok=True)
+            dest_dir = results_dir / exercise_dir.name
             if not dest_dir.exists():
                 shutil.copytree(exercise_dir, dest_dir)
         logger.info("...done")
 
-    test_dnames = sorted(str(d.relative_to(original_dname)) for d in exercise_dirs)
+    test_dnames = sorted(d.name for d in exercise_dirs)
 
     resource_metadata = importlib_resources.files("aider.resources").joinpath(
         "model-metadata.json"
@@ -441,36 +439,38 @@ def load_results(results_dir, stats_languages=None):
     results_dir = Path(results_dir)
     lang_to_results = {}
 
-    if stats_languages:
-        languages = [lang.strip().lower() for lang in stats_languages.split(",")]
-        glob_patterns = [
-            f"{lang}/exercises/practice/*/.aider.results.json" for lang in languages
-        ]
-    else:
-        glob_patterns = ["*/exercises/practice/*/.aider.results.json"]
+    # BUG20251223
+    logger.debug(f"Globbing {results_dir} for results")
+    files = list(results_dir.glob("*/.aider.results.json"))
+    logger.debug(f"Found {len(files)} files")
 
-    for pattern in glob_patterns:
-        # BUG20251223
-        logger.debug(f"Globbing {results_dir} with {pattern}")
-        files = list(results_dir.glob(pattern))
-        logger.debug(f"Found {len(files)} files")
+    for fname in files:
+        try:
+            results = json.loads(fname.read_text())
+            # BUG20251223
+            logger.debug(f"Processing result file: {fname}")
 
-        for fname in files:
-            try:
-                results = json.loads(fname.read_text())
-                #      json / test / prac / exer / lang
-                # BUG20251223
-                logger.debug(f"Processing result file: {fname}")
-                if len(fname.parts) > 4:
-                    lang = fname.parent.parent.parent.parent.name
-                else:
-                    lang = "unknown"
-                logger.debug(f"Derived lang: {lang}")
+            # Try to get language from cat.yaml if it exists in the same dir
+            lang = "unknown"
+            cat_yaml = fname.parent / "cat.yaml"
+            if cat_yaml.exists():
+                try:
+                    with open(cat_yaml, "r") as f:
+                        metadata = yaml.safe_load(f)
+                        lang = metadata.get("language", "unknown")
+                except Exception:
+                    pass
 
-                lang_to_results.setdefault(lang, []).append(results)
-            except json.JSONDecodeError:
-                logger.warning(f"json.JSONDecodeError {fname}")
-                continue
+            if stats_languages:
+                languages = [lang.strip().lower() for lang in stats_languages.split(",")]
+                if lang.lower() not in languages:
+                    continue
+
+            logger.debug(f"Derived lang: {lang}")
+            lang_to_results.setdefault(lang, []).append(results)
+        except json.JSONDecodeError:
+            logger.warning(f"json.JSONDecodeError {fname}")
+            continue
     return lang_to_results
 
 
@@ -478,7 +478,7 @@ def summarize_results(results_dir, verbose, stats_languages=None):
     lang_to_results = load_results(results_dir, stats_languages)
 
     res = SimpleNamespace()
-    res.total_tests = len(list(Path(results_dir).glob("*/exercises/practice/*")))
+    res.total_tests = len(list(Path(results_dir).glob("*/.aider.results.json")))
 
     try:
         tries = max(
@@ -936,6 +936,25 @@ async def run_test_real(
     # Remove any ignore files from the solution set that LLM will edit
     solution_files.difference_update(ignore_files)
 
+    # Try to find original relative path from cat.yaml
+    original_rel_path = None
+    cat_yaml = testdir / "cat.yaml"
+    if cat_yaml.exists():
+        try:
+            with open(cat_yaml, "r") as f:
+                metadata = yaml.safe_load(f)
+                # We need to find where this exercise was in original_dname.
+                # Since we don't store the full relative path in cat.yaml,
+                # we have to search for it or rely on the fact that we know
+                # it was copied from original_dname.
+                # A better way is to look for the directory with the same name (hash)
+                # in original_dname.
+                matches = list(original_dname.rglob(testdir.name))
+                if matches:
+                    original_rel_path = matches[0].relative_to(original_dname)
+        except Exception:
+            pass
+
     # Copy all solution files
     for file_path in solution_files:
         src = testdir / Path(file_path)
@@ -943,15 +962,11 @@ async def run_test_real(
             fnames.append(src)
             # restore the original file, in case we interrupted a prev run
             # Find the original file in the language-specific practice dir
-            if not dry and results_dir:
-                try:
-                    rel_path = testdir.relative_to(results_dir)
-                    original_fname = original_dname / rel_path / file_path
-                    if original_fname.exists():
-                        os.makedirs(src.parent, exist_ok=True)
-                        shutil.copy(original_fname, src)
-                except ValueError:
-                    pass
+            if not dry and original_rel_path:
+                original_fname = original_dname / original_rel_path / file_path
+                if original_fname.exists():
+                    os.makedirs(src.parent, exist_ok=True)
+                    shutil.copy(original_fname, src)
         else:
             logger.warning(f"Warning: Solution file not found: {src}")
 
@@ -1200,6 +1215,12 @@ async def run_test_real(
 def run_unit_tests(original_dname, testdir, history_fname, test_files):
     timeout = 60 * 3
 
+    # Find original relative path
+    original_rel_path = None
+    matches = list(original_dname.rglob(testdir.name))
+    if matches:
+        original_rel_path = matches[0].relative_to(original_dname)
+
     # Map of file extensions to test commands
     TEST_COMMANDS = {
         ".py": ["pytest"],
@@ -1227,7 +1248,9 @@ def run_unit_tests(original_dname, testdir, history_fname, test_files):
 
     # Copy test files from original directory
     for file_path in test_files:
-        src = original_dname / Path(*testdir.parts[-4:]) / file_path
+        if not original_rel_path:
+            break
+        src = original_dname / original_rel_path / file_path
         dst = testdir / file_path
         if src.exists():
             logger.info(f"copying {src} {dst}")
