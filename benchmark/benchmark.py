@@ -927,7 +927,11 @@ def run_test_real(
                     cw.set_value("user", "email", "aider-benchmark@example.com")
                 # Add existing files (solution set and any current files)
                 r.index.add(
-                    [str(p.relative_to(testdir)) for p in testdir.rglob("*") if p.is_file()]
+                    [
+                        str(p.relative_to(testdir))
+                        for p in testdir.rglob("*")
+                        if p.is_file()
+                    ]
                 )
                 r.index.commit("Initial commit for aider benchmark")
         except Exception as e:
@@ -1062,7 +1066,9 @@ def run_test_real(
             try:
                 shutil.rmtree(node_modules_dir)
                 if verbose:
-                    print(f"Cleaned up Node.js node_modules directory: {node_modules_dir}")
+                    print(
+                        f"Cleaned up Node.js node_modules directory: {node_modules_dir}"
+                    )
             except (OSError, shutil.Error, PermissionError) as e:
                 if verbose:
                     print(f"Failed to clean up Node.js node_modules directory: {e}")
