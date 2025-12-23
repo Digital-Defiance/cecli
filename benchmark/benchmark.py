@@ -222,7 +222,9 @@ def main(
             lang_dirs = [d for d in lang_dirs if d.name.lower() in requested]
             dump(lang_dirs)
             if not lang_dirs:
-                logger.warning(f"No matching language directories found for: {languages}")
+                logger.warning(
+                    f"No matching language directories found for: {languages}"
+                )
                 return []
 
         # Get all exercise dirs under exercises/practice for each language
