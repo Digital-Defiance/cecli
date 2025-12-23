@@ -160,13 +160,19 @@ You can see examples of the benchmark report yaml in the
 - Some of these tools are written as `bash` scripts, so it will be hard to use
   them on Windows.
 
+## What's new with Cecli Cats?
+
+The benchmark has evolved into a collection of **Cecli Atomic Tests (Cats)**.
+
+- **YAML Metadata**: Every Cat has its own `cat.yaml` file containing metadata, including a unique UUID that may or may not be useful later.
+- **Evolving Collection**: The directory structure of the Cats is laid out to facilitate the growth and evolution of the collection. As the benchmark matures, Cats will come and go.
+- **Simplified Runner**: The test runner is being simplified to focus on its core job: executing tests and recording results. Downstream aggregation and analysis of results will be shifted to other tools and projects.
+
 ## Enhancements
 
 The `aider-ce` benchmark harness includes several enhancements over the original
 `aider` benchmark:
 
-- **YAML Metadata**: Exercises now use `cat.yaml` files for metadata, allowing
-  for richer categorization and filtering.
 - **Subset Filtering**: Use the `--sets` option to run specific groups of tests
   (e.g., `--sets core,strings`).
 - **K-fold Evaluation Slicing**: The `--hash-re` option allows for deterministic
