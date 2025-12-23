@@ -9,6 +9,7 @@ import subprocess
 import sys
 import time
 import traceback
+import yaml
 from collections import defaultdict
 from json.decoder import JSONDecodeError
 from pathlib import Path
@@ -164,6 +165,15 @@ def main(
     exercises_dir: str = typer.Option(
         EXERCISES_DIR_DEFAULT, "--exercises-dir", help="Directory with exercise files"
     ),
+    legacy: bool = typer.Option(
+        False, "--legacy", help="Use legacy exercise directory structure"
+    ),
+    sets: Optional[str] = typer.Option(
+        None, "--sets", help="Only run tests for specific sets (comma separated)"
+    ),
+    hash_re: Optional[str] = typer.Option(
+        None, "--hash-re", help="Regex to filter exercise hashes"
+    ),
     dry: bool = typer.Option(
         False, "--dry", help="Run in dry mode (no aider, no tests)"
     ),
@@ -244,9 +254,45 @@ def main(
 
         return exercise_dirs
 
-    def get_exercise_dirs(base_dir, languages=None):
+    def get_exercise_dirs(base_dir, languages=None, sets=None, hash_re=None, legacy=False):
+        if legacy:
+            return legacy_get_exercise_dirs(base_dir, languages)
 
-    exercise_dirs = get_exercise_dirs(original_dname, languages)
+        base_dir = Path(base_dir)
+        logger.info(f"Scanning for cat.yaml in {base_dir}")
+
+        lang_filter = (
+            set(l.strip().lower() for l in languages.split(",")) if languages else None
+        )
+        set_filter = set(s.strip().lower() for s in sets.split(",")) if sets else None
+
+        exercise_dirs = []
+        for cat_file in base_dir.rglob("cat.yaml"):
+            try:
+                with open(cat_file, "r") as f:
+                    metadata = yaml.safe_load(f)
+            except Exception as e:
+                logger.warning(f"Failed to parse {cat_file}: {e}")
+                continue
+
+            if lang_filter and metadata.get("language", "").lower() not in lang_filter:
+                continue
+
+            if set_filter:
+                cat_sets = set(s.lower() for s in metadata.get("sets", []))
+                if not (set_filter & cat_sets):
+                    continue
+
+            if hash_re and not re.search(hash_re, metadata.get("hash", "")):
+                continue
+
+            exercise_dirs.append(cat_file.parent)
+
+        return exercise_dirs
+
+    exercise_dirs = get_exercise_dirs(
+        original_dname, languages, sets, hash_re, legacy=legacy
+    )
 
     if not exercise_dirs:
         logger.error("No exercise directories found")
