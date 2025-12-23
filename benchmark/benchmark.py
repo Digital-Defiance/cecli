@@ -177,7 +177,8 @@ def main(
         "--hash-re",
         help=(
             "Regex to filter exercise hashes. Useful for dividing the set into fractions using"
-            " hex chars: '^0' for 1/16, '^[01]' for 1/8, '^[0-3]' for 1/4."
+            " hex chars: '^0' for 1/16, '^[01]' for 1/8, '^[0-3]' for 1/4. Use '^.{n}x' to"
+            " match the nth character (e.g., '^.{2}[4-7]' for the 3rd char in range 4-7)."
         ),
     ),
     dry: bool = typer.Option(
