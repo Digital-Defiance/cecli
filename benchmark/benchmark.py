@@ -64,6 +64,10 @@ def resolve_dirname(results_dir, use_single_prior, make_new):
         return results_dir
 
     priors = list(BENCHMARK_DNAME.glob(f"*--{results_dir}"))
+    # BUG20251223
+    logger.debug(f"Found priors: {priors}")
+    logger.debug(f"use_single_prior: {use_single_prior}, make_new: {make_new}")
+
     if len(priors) == 1 and use_single_prior:
         results_dir = priors[0].name
         logger.info(f"Using pre-existing {results_dir}")
@@ -446,11 +450,23 @@ def load_results(results_dir, stats_languages=None):
         glob_patterns = ["*/exercises/practice/*/.aider.results.json"]
 
     for pattern in glob_patterns:
-        for fname in results_dir.glob(pattern):
+        # BUG20251223
+        logger.debug(f"Globbing {results_dir} with {pattern}")
+        files = list(results_dir.glob(pattern))
+        logger.debug(f"Found {len(files)} files")
+
+        for fname in files:
             try:
                 results = json.loads(fname.read_text())
                 #      json / test / prac / exer / lang
-                lang = fname.parent.parent.parent.parent.name
+                # BUG20251223
+                logger.debug(f"Processing result file: {fname}")
+                if len(fname.parts) > 4:
+                    lang = fname.parent.parent.parent.parent.name
+                else:
+                    lang = "unknown"
+                logger.debug(f"Derived lang: {lang}")
+
                 lang_to_results.setdefault(lang, []).append(results)
             except json.JSONDecodeError:
                 logger.warning(f"json.JSONDecodeError {fname}")
