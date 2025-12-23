@@ -164,9 +164,14 @@ You can see examples of the benchmark report yaml in the
 
 The benchmark has evolved into a collection of **Cecli Atomic Tests (Cats)**.
 
-- **YAML Metadata**: Every Cat has its own `cat.yaml` file containing metadata, including a unique UUID that may or may not be useful later.
-- **Evolving Collection**: The directory structure of the Cats is laid out to facilitate the growth and evolution of the collection. As the benchmark matures, Cats will come and go.
-- **Simplified Runner**: The test runner is being simplified to focus on its core job: executing tests and recording results. Downstream aggregation and analysis of results will be shifted to other tools and projects.
+- **YAML Metadata**: Every Cat has its own `cat.yaml` file containing metadata,
+  including a unique UUID that may or may not be useful later.
+- **Evolving Collection**: The directory structure of the Cats is laid out to
+  facilitate the growth and evolution of the collection. As the benchmark
+  matures, Cats will come and go.
+- **Simplified Runner**: The test runner is being simplified to focus on its
+  core job: executing tests and recording results. Downstream aggregation and
+  analysis of results will be shifted to other tools and projects.
 
 ## Enhancements
 
