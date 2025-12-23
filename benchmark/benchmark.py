@@ -173,7 +173,12 @@ def main(
         None, "--sets", help="Only run tests for specific sets (comma separated)"
     ),
     hash_re: Optional[str] = typer.Option(
-        None, "--hash-re", help="Regex to filter exercise hashes"
+        None,
+        "--hash-re",
+        help=(
+            "Regex to filter exercise hashes. Useful for dividing the set into fractions using"
+            " hex chars: '^0' for 1/16, '^[01]' for 1/8, '^[0-3]' for 1/4."
+        ),
     ),
     dry: bool = typer.Option(
         False, "--dry", help="Run in dry mode (no aider, no tests)"
