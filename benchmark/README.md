@@ -1,4 +1,3 @@
-
 # Aider benchmark harness
 
 Before `cecli` was born, the old `aider` used benchmarks to quantitatively measure how well it works
@@ -29,17 +28,16 @@ Running inside a docker container helps limit the damage that could be done.
 
 ## Usage
 
-There are 3 main tasks involved in benchmarking aider:
+There are 3 main tasks involved in benchmarking:
 
-1. Install and setup for benchmarking.
+1. Install and setup.
 
-2. Run the benchmark to measure performance across all the exercises.
+2. Run the benchmark.
 
-3. Generate a summary report of how many of the exercises succeeded or failed.
+3. Analysis.
 
-### Setup for benchmarking
+### Setup
 
-First, prepare all the groundwork for running the benchmarks.
 These steps only need to be done once.
 
 ```
@@ -59,7 +57,7 @@ git clone https://github.com/$ORG/polyglot-benchmark tmp.benchmarks/polyglot-ben
 ./benchmark/docker_build.sh
 ```
 
-### Running the benchmark
+### Running the benchmarks
 
 Launch the docker container and run the benchmark inside it:
 
