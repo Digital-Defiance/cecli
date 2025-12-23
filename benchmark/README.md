@@ -147,3 +147,15 @@ You can see examples of the benchmark report yaml in the
 [aider leaderboard data files](https://github.com/$ORG/aider/blob/main/aider/website/_data/).
 - These scripts are not intended for use by typical aider end users.
 - Some of these tools are written as `bash` scripts, so it will be hard to use them on Windows.
+
+## Enhancements
+
+The `aider-ce` benchmark harness includes several enhancements over the original `aider` benchmark:
+
+- **YAML Metadata**: Exercises now use `cat.yaml` files for metadata, allowing for richer categorization and filtering.
+- **Subset Filtering**: Use the `--sets` option to run specific groups of tests (e.g., `--sets core,strings`).
+- **K-fold Evaluation Slicing**: The `--hash-re` option allows for deterministic slicing of the exercise set based on the exercise hash. This is useful for parallelizing runs or performing k-fold cross-validation.
+    - `^0`: 1/16 of the set.
+    - `^[01]`: 1/8 of the set.
+    - `^[0-3]`: 1/4 of the set.
+    - `^.{2}[4-7]`: Targets the 3rd character of the hash for more granular slicing.
