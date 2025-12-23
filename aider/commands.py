@@ -1606,19 +1606,29 @@ class Commands:
 
         from aider.coders.base_coder import Coder
 
+        user_msg = args
+
         original_main_model = self.coder.main_model
         original_edit_format = self.coder.edit_format
+        kwargs = {
+            "io": self.coder.io,
+            "from_coder": self.coder,
+            "edit_format": edit_format,
+            "summarize_from_coder": False,
+            "num_cache_warming_pings": 0,
+            "aider_commit_hashes": self.coder.aider_commit_hashes,
+            "args": self.coder.args,
+        }
 
-        coder = await Coder.create(
-            io=self.io,
-            from_coder=self.coder,
-            edit_format=edit_format,
-            summarize_from_coder=False,
-            num_cache_warming_pings=0,
-            aider_commit_hashes=self.coder.aider_commit_hashes,
-        )
+        kwargs["mcp_servers"] = []  # Empty to skip initialization
 
-        user_msg = args
+        coder = await Coder.create(**kwargs)
+        # Transfer MCP state to avoid re-initialization
+        coder.mcp_servers = self.coder.mcp_servers
+        coder.mcp_tools = self.coder.mcp_tools
+        # Transfer TUI app weak reference
+        coder.tui = self.coder.tui
+
         await coder.generate(user_message=user_msg, preproc=False)
         self.coder.aider_commit_hashes = coder.aider_commit_hashes
 
