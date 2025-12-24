@@ -939,7 +939,7 @@ class InputOutput:
                 coder = self.get_coder()
 
                 if coder:
-                    await coder.commands.cmd_exit(None)
+                    await coder.commands.do_run("exit", "")
                 else:
                     raise SystemExit
 
