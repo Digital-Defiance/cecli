@@ -64,7 +64,7 @@ Launch the docker container and run the benchmark inside it:
 ```
 # Launch the docker container
 # You probably want to tweak this script to import your service keys.
-# It's curretnly configured to import GEMINI_API_KEY only.
+# It's currently configured to import GEMINI_API_KEY only.
 # PR's welcome to more effectively grab the keys without causing anxiety.
 ./benchmark/docker.sh
 
@@ -148,13 +148,13 @@ Note the roadmap priorities:
 1. Complete 'set up records' to support smart caching.
 2. Atomic data collection. Most of the data is saved but need protocols for sharing.
 3. **Dimensional Parameter Walking** allowing for n-dimensional parameter tuning,
-   facilitating "gradient descent" approach to opimisation accross multiple parameters.
-   The test runner should accept n lists of options, e.g., ["thinking: 100", "thinking: 200", "thinking: 400"], ["optionA: B", "optionD: C"].
+   facilitating "gradient descent" approach to optimisation across multiple parameters.
+   The test runner should accept n lists of options, e.g., ["thinking: 100", "thinking: 200", "thinking: 400"], ["optional: B", "optionD: C"].
 4. Smart Caching so the runner can optionally skip any tests for which "similar" result data
    is already available based on fuzzy metadata matching. This aids iterative Testing as
    when adding a new option to a list of permutations, only the new permutations need to
    be run. Also when new Cats join the collection it is easy to incrementally collect the data.
-5. Data aggregation and analysis. These will be seperate specialised tools.
+5. Data aggregation and analysis. These will be separate specialised tools.
 
 ## Limitations
 
