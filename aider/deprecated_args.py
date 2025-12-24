@@ -86,13 +86,6 @@ def add_deprecated_model_args(parser, group):
     )
 
     #########
-    group = parser.add_argument_group("History Files (Deprecated)")
-    group.add_argument(
-        "--llm-history-file",
-        help=argparse.SUPPRESS,
-    )
-
-    #########
     group = parser.add_argument_group("API Keys and Settings (Deprecated)")
     group.add_argument(
         "--openai-api-type",
@@ -108,6 +101,13 @@ def add_deprecated_model_args(parser, group):
     )
     group.add_argument(
         "--openai-organization-id",
+        help=argparse.SUPPRESS,
+    )
+
+    #########
+    group = parser.add_argument_group("History Files (Deprecated)")
+    group.add_argument(
+        "--llm-history-file",
         help=argparse.SUPPRESS,
     )
 

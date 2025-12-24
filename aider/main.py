@@ -747,7 +747,6 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             dry_run=args.dry_run,
             encoding=args.encoding,
             line_endings=args.line_endings,
-            llm_history_file=args.llm_history_file,
             editingmode=editing_mode,
             fancy_input=args.fancy_input,
             multiline_mode=args.multiline,

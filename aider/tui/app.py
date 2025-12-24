@@ -6,11 +6,11 @@ import queue
 
 from textual.app import App, ComposeResult
 
-from aider.editor import pipe_editor
-
 # from textual.binding import Binding
 from textual.containers import Vertical
 from textual.theme import Theme
+
+from aider.editor import pipe_editor
 
 from .widgets import (
     AiderFooter,
@@ -52,7 +52,7 @@ class TUI(App):
         colors = self.tui_config.get("colors", {})
         other = self.tui_config.get("other", {})
         BASE_THEME = Theme(
-            name="aider",
+            name="cecli",
             primary=colors.get("primary", "#00ff5f"),
             secondary=colors.get("secondary", "#888888"),
             accent=colors.get("accent", "#00ff87"),  # Cecli green
@@ -96,6 +96,12 @@ class TUI(App):
         )
 
         self.bind(
+            self._encode_keys(self.get_keys_for("editor")),
+            "open_editor",
+            description="Editor",
+            show=True,
+        )
+        self.bind(
             self._encode_keys(self.get_keys_for("focus")),
             "focus_input",
             description="Focus Input",
@@ -116,15 +122,14 @@ class TUI(App):
         self.bind(
             self._encode_keys(self.get_keys_for("quit")), "quit", description="Quit", show=True
         )
-        self.bind(
-            self._encode_keys(self.get_keys_for("editor")),
-            "open_editor",
-            description="Editor",
-            show=True,
-        )
 
         self.register_theme(BASE_THEME)
-        self.theme = "aider"
+        self.theme = "cecli"
+
+    @property
+    def render_markdown(self):
+        """Return whether markdown rendering is enabled."""
+        return self.tui_config.get("other", {}).get("render_markdown", True)
 
     def _get_config(self):
         """
@@ -188,11 +193,11 @@ class TUI(App):
             "stop": "escape",
             "cycle_forward": "tab",
             "cycle_backward": "shift+tab",
+            "editor": "ctrl+o",
             "focus": "ctrl+f",
             "cancel": "ctrl+c",
             "clear": "ctrl+l",
             "quit": "ctrl+q",
-            "editor": "ctrl+o",
         }
 
         # Default settings for the "other" section
@@ -468,7 +473,11 @@ class TUI(App):
 
         # Intercept /editor and /edit commands to handle with TUI suspension
         stripped = user_input.strip()
-        if stripped in ("/editor", "/edit") or stripped.startswith("/editor ") or stripped.startswith("/edit "):
+        if (
+            stripped in ("/editor", "/edit")
+            or stripped.startswith("/editor ")
+            or stripped.startswith("/edit ")
+        ):
             # Extract initial content if provided (e.g., "/editor some text")
             initial_content = ""
             if stripped.startswith("/editor "):
@@ -573,7 +582,9 @@ class TUI(App):
             # Show notification
             try:
                 status_bar = self.query_one("#status-bar", StatusBar)
-                status_bar.show_notification("Editor content loaded", severity="information", timeout=2)
+                status_bar.show_notification(
+                    "Editor content loaded", severity="information", timeout=2
+                )
             except Exception:
                 pass
         else:
@@ -599,11 +610,6 @@ class TUI(App):
     def get_keys_for(self, type):
         allowed_keys = self.tui_config["key_bindings"][type]
         return self._decode_keys(allowed_keys)
-
-    @property
-    def render_markdown(self):
-        """Return whether markdown rendering is enabled."""
-        return self.tui_config.get("other", {}).get("render_markdown", True)
 
     def _do_quit(self):
         """Perform the actual quit after UI updates."""
