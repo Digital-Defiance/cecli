@@ -151,15 +151,21 @@ class OutputContainer(RichLog):
             content = Text()
             if i == 0:
                 # First line: reformat "Tool Call: server • function" to "Tool Call · server · function"
-                clean_line = clean_line.replace("Tool Call:", "Tool Call ·").replace(" • ", " · ")
-                content.append(clean_line, style="#00ff87")  # $accent
+                clean_line = clean_line.replace("Tool Call:", "Tool Call •")
+                content.append(clean_line, style="dim bright_cyan")  # $accent
             else:
                 # Subsequent lines (arguments) - prefix with corner to show they belong to the call
-                content.append("⎿ ", style="#00ff87")
-                content.append(clean_line, style="dim")
+                arg_string_list = re.split(r"(^\S+:)", clean_line, maxsplit=1)[1:]
+
+                if len(arg_string_list) > 1:
+                    content.append(f"ᴸ{arg_string_list[0]}", style="dim bright_cyan")
+                    content.append(arg_string_list[1], style="dim")
+                else:
+                    content.append("ᴸ", style="dim bright_cyan")
+                    content.append(clean_line, style="dim")
 
             self.set_last_write_type("tool_call")
-            self.output(Padding(content, (0, 0, 0, 1)))
+            self.output(Padding(content, (0, 0, 0, 2)))
 
     def add_tool_result(self, text: str):
         """Add a tool result.
@@ -211,7 +217,7 @@ class OutputContainer(RichLog):
             render_markdown: If True and app config allows, render as markdown
         """
         # Check if we should render as markdown
-        if render_markdown and hasattr(self.app, 'render_markdown') and self.app.render_markdown:
+        if render_markdown and hasattr(self.app, "render_markdown") and self.app.render_markdown:
             # Only render string content as markdown
             if isinstance(text, str):
                 text = Markdown(text)
