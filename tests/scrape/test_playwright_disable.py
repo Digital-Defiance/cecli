@@ -64,7 +64,7 @@ async def test_commands_web_disable_playwright(monkeypatch):
             self.outputs = []
             self.warnings = []
             self.errors = []
-            self.args = {"disable_playwright": True}
+            self.args = type("Args", (), {"disable_playwright": True})()
 
         def tool_output(self, msg, *a, **k):
             self.outputs.append(msg)
