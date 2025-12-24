@@ -64,7 +64,6 @@ async def test_commands_web_disable_playwright(monkeypatch):
             self.outputs = []
             self.warnings = []
             self.errors = []
-            self.args = type("Args", (), {"disable_playwright": True})()
 
         def tool_output(self, msg, *a, **k):
             self.outputs.append(msg)
@@ -89,7 +88,7 @@ async def test_commands_web_disable_playwright(monkeypatch):
         def __init__(self):
             self.cur_messages = []
             self.main_model = type("M", (), {"edit_format": "code", "name": "dummy", "info": {}})
-            self.args = None  # Add args attribute for WebCommand
+            self.args = type("Args", (), {"disable_playwright": True})()
 
         def get_rel_fname(self, fname):
             return fname
