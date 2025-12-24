@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import asyncio
 import datetime
-import importlib_resources
 import json
+import logging
 import os
 import random
 import re
@@ -11,13 +11,14 @@ import subprocess
 import sys
 import time
 import traceback
-import yaml
 from collections import defaultdict
 from json.decoder import JSONDecodeError
 from pathlib import Path
 from types import SimpleNamespace
-from typing import List, Optional
-import logging
+from typing import Optional
+
+import importlib_resources
+import yaml
 
 """
 Performance-oriented refactors:
@@ -53,9 +54,12 @@ def resolve_dirname(results_dir, use_single_prior, make_new):
     """
     Determines the actual directory path used for storing benchmark results.
 
-    1. Resuming a previous run: If the --cont flag is used and exactly one matching previous run exists, it selects that existing directory.
-    2. Safety check: If previous runs exist but the user didn't specify --new or --cont, it warns the user and aborts to prevent accidental overwrites or confusion.
-    3. Creating a new run: If no prior run exists (or --new is used), it prepends the current timestamp to the directory name to ensure a unique workspace.
+    1. Resuming a previous run: If the --cont flag is used and exactly one matching previous run exists,
+       it selects that existing directory.
+    2. Safety check: If previous runs exist but the user didn't specify --new or --cont,
+       it warns the user and aborts to prevent accidental overwrites or confusion.
+    3. Creating a new run: If no prior run exists (or --new is used),
+       it prepends the current timestamp to the directory name to ensure a unique workspace.
     """
     logger.debug(f"initial results_dir: {results_dir}")
     results_dir = Path(results_dir)
@@ -73,9 +77,7 @@ def resolve_dirname(results_dir, use_single_prior, make_new):
         logger.info(f"Using pre-existing {results_dir}")
     elif len(priors):
         if not make_new:
-            logger.warning(
-                f"Prior runs of {results_dir} exist, use --new or name one explicitly"
-            )
+            logger.warning(f"Prior runs of {results_dir} exist, use --new or name one explicitly")
             for prior in priors:
                 logger.warning(prior)
             sys.exit(1)
@@ -93,12 +95,8 @@ def resolve_dirname(results_dir, use_single_prior, make_new):
 
 @app.command()
 def main(
-    results_dir: Optional[str] = typer.Argument(
-        "unnamed", help="Results directory slug"
-    ),
-    model: str = typer.Option(
-        "gemini/gemini-3-flash-preview", "--model", "-m", help="Model name"
-    ),
+    results_dir: Optional[str] = typer.Argument("unnamed", help="Results directory slug"),
+    model: str = typer.Option("gemini/gemini-3-flash-preview", "--model", "-m", help="Model name"),
     sleep: float = typer.Option(
         0, "--sleep", help="Sleep seconds between tests when single threaded"
     ),
@@ -110,9 +108,7 @@ def main(
     ),
     edit_format: str = typer.Option(None, "--edit-format", "-e", help="Edit format"),
     editor_model: str = typer.Option(None, "--editor-model", help="Editor model name"),
-    editor_edit_format: str = typer.Option(
-        None, "--editor-edit-format", help="Editor edit format"
-    ),
+    editor_edit_format: str = typer.Option(None, "--editor-edit-format", help="Editor edit format"),
     replay: str = typer.Option(
         None,
         "--replay",
@@ -130,27 +126,15 @@ def main(
         "-c",
         help="Discard the existing testdir and make a clean copy",
     ),
-    cont: bool = typer.Option(
-        False, "--cont", help="Continue the (single) matching testdir"
-    ),
+    cont: bool = typer.Option(False, "--cont", help="Continue the (single) matching testdir"),
     make_new: bool = typer.Option(False, "--new", help="Make a new dated testdir"),
-    no_unit_tests: bool = typer.Option(
-        False, "--no-unit-tests", help="Do not run unit tests"
-    ),
+    no_unit_tests: bool = typer.Option(False, "--no-unit-tests", help="Do not run unit tests"),
     no_aider: bool = typer.Option(False, "--no-aider", help="Do not run aider"),
-    verbose: int = typer.Option(
-        0, "--verbose", "-v", count=True, help="Verbose output"
-    ),
+    verbose: int = typer.Option(0, "--verbose", "-v", count=True, help="Verbose output"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Quiet output"),
-    tries: int = typer.Option(
-        2, "--tries", "-r", help="Number of tries for running tests"
-    ),
-    threads: int = typer.Option(
-        1, "--threads", "-t", help="Number of threads to run in parallel"
-    ),
-    num_tests: int = typer.Option(
-        -1, "--num-tests", "-n", help="Number of tests to run"
-    ),
+    tries: int = typer.Option(2, "--tries", "-r", help="Number of tries for running tests"),
+    threads: int = typer.Option(1, "--threads", "-t", help="Number of threads to run in parallel"),
+    num_tests: int = typer.Option(-1, "--num-tests", "-n", help="Number of tests to run"),
     num_ctx: Optional[int] = typer.Option(
         None, "--num-ctx", help="Override model context window size"
     ),
@@ -173,9 +157,7 @@ def main(
     exercises_dir: str = typer.Option(
         EXERCISES_DIR_DEFAULT, "--exercises-dir", help="Directory with exercise files"
     ),
-    legacy: bool = typer.Option(
-        False, "--legacy", help="Use legacy exercise directory structure"
-    ),
+    legacy: bool = typer.Option(False, "--legacy", help="Use legacy exercise directory structure"),
     sets: Optional[str] = typer.Option(
         None, "--sets", help="Only run tests for specific sets (comma separated)"
     ),
@@ -188,9 +170,7 @@ def main(
             " match the nth character (e.g., '^.{2}[4-7]' for the 3rd char in range 4-7)."
         ),
     ),
-    dry: bool = typer.Option(
-        False, "--dry", help="Run in dry mode (no aider, no tests)"
-    ),
+    dry: bool = typer.Option(False, "--dry", help="Run in dry mode (no aider, no tests)"),
 ):
     # setup logging and verbosity
     if quiet:
@@ -212,6 +192,7 @@ def main(
         # Lazy imports for the actual benchmark run
         import git  # Heavy
         import lox  # Only needed for threaded runs
+
         from aider import sendchat
         from aider.coders import base_coder
 
@@ -229,9 +210,7 @@ def main(
     results_dir = resolved_results_dir
 
     if not dry and "AIDER_DOCKER" not in os.environ:
-        logger.warning(
-            "Warning: Benchmarking runs unvetted code. Run in a docker container."
-        )
+        logger.warning("Warning: Benchmarking runs unvetted code. Run in a docker container.")
         logger.warning(
             "Set AIDER_DOCKER in the environment to by-pass this check at your own risk."
         )
@@ -248,7 +227,7 @@ def main(
 
     def legacy_get_exercise_dirs(base_dir, languages=None):
         """Get all exercise directories for specified languages (or all if none specified).
-        Uses the legacy `excerises/practice` pattern.
+        Uses the legacy `exercises/practice` pattern.
         """
         base_dir = Path(base_dir)
         logger.info(f"Looking for exercises in {base_dir}")
@@ -262,9 +241,7 @@ def main(
             lang_dirs = [d for d in lang_dirs if d.name.lower() in requested]
             dump(lang_dirs)
             if not lang_dirs:
-                logger.warning(
-                    f"No matching language directories found for: {languages}"
-                )
+                logger.warning(f"No matching language directories found for: {languages}")
                 return []
 
         # Get all exercise dirs under exercises/practice for each language
@@ -276,9 +253,7 @@ def main(
 
         return exercise_dirs
 
-    def get_exercise_dirs(
-        base_dir, languages=None, sets=None, hash_re=None, legacy=False
-    ):
+    def get_exercise_dirs(base_dir, languages=None, sets=None, hash_re=None, legacy=False):
         if legacy:
             return legacy_get_exercise_dirs(base_dir, languages)
 
@@ -286,9 +261,9 @@ def main(
         logger.info(f"Scanning for cat.yaml in {base_dir}")
 
         lang_filter = (
-            set(l.strip().lower() for l in languages.split(",")) if languages else None
+            set(lang.strip().lower() for lang in languages.split(",")) if languages else None
         )
-        set_filter = set(s.strip().lower() for s in sets.split(",")) if sets else None
+        set_filter = set(sf.strip().lower() for sf in sets.split(",")) if sets else None
 
         exercise_dirs = []
         for cat_file in base_dir.rglob("cat.yaml"):
@@ -296,9 +271,7 @@ def main(
                 with open(cat_file, "r") as f:
                     metadata = yaml.safe_load(f)
                     if verbose > 1:
-                        logger.debug(
-                            f"found {metadata['name']} ({metadata['language']})"
-                        )
+                        logger.debug(f"found {metadata['name']} ({metadata['language']})")
             except Exception as e:
                 logger.warning(f"Failed to parse {cat_file}: {e}")
                 continue
@@ -319,9 +292,7 @@ def main(
         logger.info(f"Found {len(exercise_dirs)} cats")
         return exercise_dirs
 
-    exercise_dirs = get_exercise_dirs(
-        original_dname, languages, sets, hash_re, legacy=legacy
-    )
+    exercise_dirs = get_exercise_dirs(original_dname, languages, sets, hash_re, legacy=legacy)
 
     if not exercise_dirs:
         logger.error("No exercise directories found")
@@ -362,9 +333,7 @@ def main(
 
     test_dnames = sorted(d.name for d in exercise_dirs)
 
-    resource_metadata = importlib_resources.files("aider.resources").joinpath(
-        "model-metadata.json"
-    )
+    resource_metadata = importlib_resources.files("aider.resources").joinpath("model-metadata.json")
     model_metadata_files_loaded = models.register_litellm_models([resource_metadata])
     dump(model_metadata_files_loaded)
 
@@ -381,9 +350,7 @@ def main(
 
     if keywords:
         keywords = keywords.split(",")
-        test_dnames = [
-            dn for dn in test_dnames for keyword in keywords if keyword in dn
-        ]
+        test_dnames = [dn for dn in test_dnames for keyword in keywords if keyword in dn]
 
     random.shuffle(test_dnames)
     if num_tests > 0:
@@ -423,9 +390,7 @@ def main(
     if threads > 1:
         run_test_threaded = lox.thread(threads)(run_test)
         for test_path in test_dnames:
-            run_test_threaded.scatter(
-                original_dname, results_dir / test_path, **test_args
-            )
+            run_test_threaded.scatter(original_dname, results_dir / test_path, **test_args)
         all_results = run_test_threaded.gather(tqdm=True)
     else:
         all_results = []
@@ -471,9 +436,7 @@ def load_results(results_dir, stats_languages=None):
                     pass
 
             if stats_languages:
-                languages = [
-                    lang.strip().lower() for lang in stats_languages.split(",")
-                ]
+                languages = [lang.strip().lower() for lang in stats_languages.split(",")]
                 if lang.lower() not in languages:
                     continue
 
@@ -612,11 +575,7 @@ def summarize_results(results_dir, verbose, stats_languages=None):
             res.thinking_tokens = results.get("thinking_tokens")
             res.map_tokens = results.get("map_tokens")
 
-            for (
-                key
-            ) in (
-                "model edit_format commit_hash editor_model editor_edit_format".split()
-            ):
+            for key in "model edit_format commit_hash editor_model editor_edit_format".split():
                 val = results.get(key)
                 if val:
                     variants[key].add(val)
@@ -739,9 +698,7 @@ def summarize_results(results_dir, verbose, stats_languages=None):
         def compute_lang_to_col_widths(lang_to_stats):
             lang_to_col_widths = {}
             for lang, lang_stats in lang_to_stats.items():
-                lang_stat_attrs = [
-                    getattr(lang_stats, attr) for attr in lang_stats.__dict__
-                ]
+                lang_stat_attrs = [getattr(lang_stats, attr) for attr in lang_stats.__dict__]
                 lang_col_width = max(len(lang), len(max(lang_stat_attrs, key=len)))
                 lang_to_col_widths[lang] = lang_col_width
 
@@ -751,10 +708,7 @@ def summarize_results(results_dir, verbose, stats_languages=None):
         print("======== Stats by language ========")
         print()
 
-        [
-            format_lang_stats(lang, lang_stats)
-            for lang, lang_stats in lang_to_stats.items()
-        ]
+        [format_lang_stats(lang, lang_stats) for lang, lang_stats in lang_to_stats.items()]
         lang_to_col_widths = compute_lang_to_col_widths(lang_to_stats)
 
         any_stats = list(lang_to_stats.values())[0]
@@ -841,11 +795,7 @@ def get_replayed_content(replay_dname, test_dname):
     return res
 
     res = res.splitlines(keepends=True)
-    res = [
-        line
-        for line in res
-        if not line.startswith("> ") and not line.startswith("#### ")
-    ]
+    res = [line for line in res if not line.startswith("> ") and not line.startswith("#### ")]
     return "".join(res)
 
 
@@ -953,7 +903,6 @@ async def run_test_real(
     if cat_yaml.exists():
         try:
             with open(cat_yaml, "r") as f:
-                metadata = yaml.safe_load(f)
                 # We need to find where this exercise was in original_dname.
                 # Since we don't store the full relative path in cat.yaml,
                 # we have to search for it or rely on the fact that we know
@@ -1042,11 +991,7 @@ async def run_test_real(
                     cw.set_value("user", "email", "aider-benchmark@example.com")
                 # Add existing files (solution set and any current files)
                 r.index.add(
-                    [
-                        str(p.relative_to(testdir))
-                        for p in testdir.rglob("*")
-                        if p.is_file()
-                    ]
+                    [str(p.relative_to(testdir)) for p in testdir.rglob("*") if p.is_file()]
                 )
                 r.index.commit("Initial commit for aider benchmark")
         except Exception as e:
@@ -1141,9 +1086,7 @@ async def run_test_real(
         errors = errors.splitlines()
 
         syntax_errors += sum(1 for line in errors if line.startswith("SyntaxError"))
-        indentation_errors += sum(
-            1 for line in errors if line.startswith("IndentationError")
-        )
+        indentation_errors += sum(1 for line in errors if line.startswith("IndentationError"))
 
         logger.info(errors[-1])
         errors = "\n".join(errors)
@@ -1175,9 +1118,7 @@ async def run_test_real(
         if node_modules_dir.exists():
             try:
                 shutil.rmtree(node_modules_dir)
-                logger.debug(
-                    f"Cleaned up Node.js node_modules directory: {node_modules_dir}"
-                )
+                logger.debug(f"Cleaned up Node.js node_modules directory: {node_modules_dir}")
             except (OSError, shutil.Error, PermissionError) as e:
                 logger.debug(f"Failed to clean up Node.js node_modules directory: {e}")
 
@@ -1212,9 +1153,7 @@ async def run_test_real(
     )
 
     if edit_format == "architect":
-        results["editor_model"] = (
-            main_model.editor_model.name if main_model.editor_model else None
-        )
+        results["editor_model"] = main_model.editor_model.name if main_model.editor_model else None
         results["editor_edit_format"] = main_model.editor_edit_format
     dump(results)
 
@@ -1253,9 +1192,7 @@ def run_unit_tests(original_dname, testdir, history_fname, test_files):
             break
 
     if not command:
-        raise ValueError(
-            f"No test command found for files with extensions: {extensions}"
-        )
+        raise ValueError(f"No test command found for files with extensions: {extensions}")
 
     # Copy test files from original directory
     for file_path in test_files:
