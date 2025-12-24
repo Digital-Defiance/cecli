@@ -158,10 +158,10 @@ class OutputContainer(RichLog):
                 arg_string_list = re.split(r"(^\S+:)", clean_line, maxsplit=1)[1:]
 
                 if len(arg_string_list) > 1:
-                    content.append(f"{arg_string_list[0]}", style="dim bright_cyan")
+                    content.append(f"ᴸ{arg_string_list[0]}", style="dim bright_cyan")
                     content.append(arg_string_list[1], style="dim")
                 else:
-                    # content.append("", style="dim bright_cyan")
+                    content.append("ᴸ", style="dim bright_cyan")
                     content.append(clean_line, style="dim")
 
             self.set_last_write_type("tool_call")
