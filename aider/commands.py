@@ -1,3 +1,4 @@
+import asyncio
 import re
 import sys
 from pathlib import Path
@@ -62,7 +63,8 @@ class Commands:
 
         # Store the original read-only filenames provided via args.read
         self.original_read_only_fnames = set(original_read_only_fnames or [])
-        self.cmd_running = False
+        self.cmd_running_event = asyncio.Event()
+        self.cmd_running_event.set()  # Initially set, meaning no command is running
 
     def is_command(self, inp):
         return inp[0] in "/!"
@@ -108,6 +110,7 @@ class Commands:
             self.io.tool_output(f"Error: Command {cmd_name} not found.")
             return
 
+        self.cmd_running_event.clear()  # Command is running
         try:
             return await CommandRegistry.execute(
                 cmd_name,
@@ -124,6 +127,8 @@ class Commands:
         except Exception as e:
             self.io.tool_error(f"Error executing command {cmd_name}: {str(e)}")
             return
+        finally:
+            self.cmd_running_event.set()  # Command finished
 
     def matching_commands(self, inp):
         words = inp.strip().split()
