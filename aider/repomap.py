@@ -678,11 +678,17 @@ class RepoMap:
         else:
             showing_bar = False
 
+        num_fnames = len(fnames)
+        fname_index = 0
         for fname in fnames:
             if self.verbose:
                 self.io.tool_output(f"Processing {fname}")
-            if progress and not showing_bar:
-                self.io.update_spinner(f"{UPDATING_REPO_MAP_MESSAGE}: {fname}")
+            if progress:
+                if showing_bar:
+                    fname_index += 1
+                    self.io.update_spinner(f"Scanning repo: {fname_index}/{num_fnames}")
+                else:
+                    self.io.update_spinner(f"{UPDATING_REPO_MAP_MESSAGE}: {fname}")
 
             try:
                 file_ok = Path(fname).is_file()
