@@ -691,7 +691,7 @@ class RepoMap:
                     self.io.update_spinner(f"{UPDATING_REPO_MAP_MESSAGE}: {fname}")
 
             try:
-                file_ok = Path(fname).is_file()
+                file_ok = os.path.isfile(fname)
             except OSError:
                 file_ok = False
 
@@ -1341,7 +1341,7 @@ def get_supported_languages_md():
 
     for lang, ext in data:
         fn = get_scm_fname(lang)
-        repo_map = "✓" if Path(fn).exists() else ""
+        repo_map = "✓" if fn and os.path.exists(fn) else ""
         linter_support = "✓"
         res += f"| {lang:20} | {ext:20} | {repo_map:^8} | {linter_support:^6} |\n"
 
@@ -1356,7 +1356,7 @@ if __name__ == "__main__":
     chat_fnames = []
     other_fnames = []
     for fname in sys.argv[1:]:
-        if Path(fname).is_dir():
+        if os.path.isdir(fname):
             chat_fnames += find_src_files(fname)
         else:
             chat_fnames.append(fname)
