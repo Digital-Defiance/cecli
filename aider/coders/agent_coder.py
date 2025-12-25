@@ -374,7 +374,7 @@ class AgentCoder(Coder):
         if not local_tools:
             return
 
-        local_server_config = {"name": "local_tools"}
+        local_server_config = {"name": "Local"}
         local_server = LocalServer(local_server_config)
 
         if not self.mcp_servers:

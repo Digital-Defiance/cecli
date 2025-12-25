@@ -144,28 +144,29 @@ class OutputContainer(RichLog):
         if not lines:
             return
 
+        self.set_last_write_type("tool_call")
         for i, line in enumerate(lines):
             # Strip Rich markup
             clean_line = line.replace("[bright_cyan]", "").replace("[/bright_cyan]", "")
 
-            content = Text()
             if i == 0:
                 # First line: reformat "Tool Call: server • function" to "Tool Call · server · function"
                 clean_line = clean_line.replace("Tool Call:", "Tool Call •")
-                content.append(clean_line, style="dim bright_cyan")  # $accent
+                self.output(Padding(Text(clean_line, style="dim bright_cyan"), (0, 0, 0, 2)))
             else:
                 # Subsequent lines (arguments) - prefix with corner to show they belong to the call
                 arg_string_list = re.split(r"(^\S+:)", clean_line, maxsplit=1)[1:]
 
                 if len(arg_string_list) > 1:
+                    content = Text()
                     content.append(f"ᴸ{arg_string_list[0]}", style="dim bright_cyan")
                     content.append(arg_string_list[1], style="dim")
+                    self.output(Padding(content, (0, 0, 0, 2)))
                 else:
-                    content.append("ᴸ", style="dim bright_cyan")
-                    content.append(clean_line, style="dim")
+                    self.output(Padding(Text(clean_line, style="dim"), (0, 0, 0, 3)))
 
-            self.set_last_write_type("tool_call")
-            self.output(Padding(content, (0, 0, 0, 2)))
+            # self.set_last_write_type("tool_call")
+            # self.output(Padding(content, (0, 0, 0, 2)))
 
     def add_tool_result(self, text: str):
         """Add a tool result.
