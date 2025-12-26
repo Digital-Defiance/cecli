@@ -129,6 +129,8 @@ class Commands:
             return
         finally:
             self.cmd_running_event.set()  # Command finished
+            if self.coder.tui and self.coder.tui():
+                self.coder.tui().refresh()
 
     def matching_commands(self, inp):
         words = inp.strip().split()
