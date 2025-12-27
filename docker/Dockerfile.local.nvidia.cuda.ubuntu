@@ -1,77 +1,90 @@
-# Usage: docker build -t aider-local-nvidia-cuda13.1.0-ubuntu24.04:latest .
-#        docker run -it --rm --network host --runtime=nvidia --gpus all -v "$(pwd)":/workspace aider-local-nvidia-cuda13.1.0-ubuntu24.04:latest
+# Usage steps:
+# docker build -f Dockerfile.local.nvidia.cuda.ubuntu -t aider-ce:local-nvidia-cuda13.1.0-ubuntu24.04 .
+# docker run -it --rm --network host --runtime=nvidia --gpus all -v "$(pwd)":/app aider-ce:local-nvidia-cuda13.1.0-ubuntu24.04
 FROM nvidia/cuda:13.1.0-runtime-ubuntu24.04
 
 ARG DEFAULTUSER=ubuntu
 ARG DEFAULTGROUP=ubuntu
 ENV OLDHOME=/home/${DEFAULTUSER}
-ENV DEBIAN_FRONTEND=noninteractive
 
-# Keep basic utilities and lib paths available
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl wget gnupg2 apt-transport-https \
-    python3.12 python3-pip python3-full python3-venv python3.12-venv \
-    build-essential git unzip pkg-config procps jq udev \
-    libnss3 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libx11-xcb1 \
-    libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libpangocairo-1.0-0 \
-    libglvnd0 libglvnd-core-dev libegl1 libgl1 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Node for Playwright and other tools
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get update && apt-get install -y --no-install-recommends nodejs && \
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y python3.12 python3-pip python3-full python3-venv python3.12-venv curl jq nvidia-utils-580 && \
+    apt-get install --no-install-recommends -y build-essential fzf git libportaudio2 pandoc wget fonts-unifont fontconfig  && \
+    wget -O /tmp/fonts-ubuntu.deb http://ftp.de.debian.org/debian/pool/non-free/f/fonts-ubuntu/fonts-ubuntu_0.83-6_all.deb && \
+    wget -O /tmp/ttf-unifont.deb http://ftp.de.debian.org/debian/pool/main/u/unifont/ttf-unifont_13.0.06-1_all.deb && \
+    wget -O /tmp/ttf-ubuntu-font-family.deb http://ftp.de.debian.org/debian/pool/non-free/f/fonts-ubuntu/ttf-ubuntu-font-family_0.83-4_all.deb && \
+    dpkg -i /tmp/fonts-ubuntu.deb /tmp/ttf-unifont.deb /tmp/ttf-ubuntu-font-family.deb && \
+    apt-get install -f -y && \
+    rm /tmp/fonts-ubuntu.deb /tmp/ttf-unifont.deb /tmp/ttf-ubuntu-font-family.deb && \
+    fc-cache -fv && \
+    rm -rf /var/lib/apt/lists/* && \    
     rm -rf /var/lib/apt/lists/*
 
-# Optional: install nvidia-container-toolkit client utilities for diagnostics
-# Note: this does NOT replace host installation of nvidia-container-toolkit
-#RUN apt-get update && apt-get install -y --no-install-recommends \
-#    nvidia-utils-525 || true && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
-# create venv as root, install packages, then chown venv to user
-RUN python3 -m venv /opt/venv
-RUN /opt/venv/bin/python -m pip install --upgrade pip setuptools wheel
-RUN /opt/venv/bin/pip install --upgrade httpx pygments psutil
+# Create virtual environment
+RUN ln -s /usr/bin/python3 /usr/bin/python
+RUN python -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+RUN /venv/bin/python -m pip install --no-cache-dir uv
 
-# use a build-time HOME so aider-install writes into /opt/venv/.local/bin and is on PATH
-ENV HOME=/opt/venv
-ENV PATH=/opt/venv/.local/bin:/opt/venv/bin:/workspace:${PATH}
-RUN /opt/venv/bin/python -m pip install --upgrade aider-install uv && \
-    /opt/venv/bin/aider-install --no-update-shell
-
-# ensure venv and workspace are owned by user
-RUN chown -R ${DEFAULTUSER}:${DEFAULTGROUP} /opt/venv 
-
-# install playwright browsers (uses venv python/playwright)
-ENV PLAYWRIGHT_BROWSERS_PATH=/home/appuser/pw-browsers
+# Playwright browser settings
+ENV PLAYWRIGHT_BROWSERS_PATH=${OLDHOME}/pw-browsers
 ENV PLAYWRIGHT_SKIP_BROWSER_GC=1
-# not recognized: RUN /opt/venv/bin/python -m playwright install --with-deps chromium
-RUN /opt/venv/.local/share/uv/tools/aider-chat/bin/python -m pip install --no-cache-dir playwright && \
-    /opt/venv/.local/share/uv/tools/aider-chat/bin/python -m playwright install --with-deps chromium
 
-# reuse existing DEFAULTUSER user (UID/GID 1000) and ensure /workspace owned by it
-RUN mkdir -p /workspace
-RUN chown -R ${DEFAULTUSER}:${DEFAULTGROUP} /workspace
+# Create directories with proper permissions
+RUN mkdir -p ${OLDHOME}/.aider ${OLDHOME}/.cache ${OLDHOME}/pw-browsers && \
+    chown -R ${DEFAULTUSER}:${DEFAULTGROUP} ${OLDHOME} /app /venv && \
+    chmod -R 777 ${OLDHOME}/.aider ${OLDHOME}/.cache ${OLDHOME}/pw-browsers
+
+# So git doesn't complain about unusual permissions
+RUN git config --system --add safe.directory /app
+
+# This puts the container's ~/.aider into the host's project directory (usually host's cwd).
+# That way caches, version checks, etc get stored in the host filesystem not
+# simply discarded every time the container exits.
+ENV HOME=/app
+
+# Copy requirements files
+COPY requirements.txt /tmp/aider/
+COPY requirements/ /tmp/aider/requirements/
+
+# Install dependencies as root
+RUN uv pip install --no-cache-dir -r /tmp/aider/requirements.txt && \
+    rm -rf /tmp/aider
+
+# Install playwright browsers
+RUN uv pip install --no-cache-dir playwright && \
+    /venv/bin/python -m playwright install --with-deps chromium
+
+# Fix site-packages permissions
+RUN find /venv/lib/python3.12/site-packages \( -type d -exec chmod a+rwx {} + \) -o \( -type f -exec chmod a+rw {} + \)
+
+# Copy the rest of the application code
+COPY . /app/
+
+# Install the application as a package
+RUN uv pip install . && \
+    find . -mindepth 1 -delete
 
 # give some guidance
-ENV HOME=${OLDHOME}
-RUN mkdir -p ${HOME}
-# stream: false, see https://github.com/Aider-AI/aider/issues/4594
-RUN echo "alias aider='aider --no-stream \$@'" >> ${HOME}/.bash_aliases
-RUN echo "[ -f $(dirname $0)/.bash_aliases ] && source $(dirname $0)/.bash_aliases" >> ${HOME}/.bashrc
-RUN echo "export OLLAMA_API_BASE=http://localhost:11434" >> ${HOME}/.bashrc
-RUN echo "echo activating venv" >> ${HOME}/.bashrc
-RUN echo "source /opt/venv/bin/activate" >> ${HOME}/.bashrc
-RUN echo "echo Checking GPU availability" >> ${HOME}/.bashrc
-RUN echo "nvidia-smi -L" >> ${HOME}/.bashrc
-RUN echo "echo Checking ollama model list" >> ${HOME}/.bashrc
-RUN echo "curl -sS http://localhost:11434/v1/models | jq .data[].id | tr -d '\"'" >> ${HOME}/.bashrc
-RUN echo "alias | grep aider" >> ${HOME}/.bashrc
-RUN echo "echo 'Use aider --model <your model, pick from the list above>, later you can add it to .aider.conf.yml, see https://aider.chat/docs/config/aider_conf.html'" >> ${HOME}/.bashrc
+RUN cat >> ${OLDHOME}/.bashrc <<'EOF'
+export OLLAMA_API_BASE=http://localhost:11434
+echo '* Activating venv'
+source /venv/bin/activate
+echo '* Checking GPU availability'
+nvidia-smi -L
+echo '* Checking available models'
+curl -sS http://localhost:11434/v1/models | jq .data[].id | tr -d '\"'
+echo '* Start cecli with stream: false, see https://github.com/Aider-AI/aider/issues/4594'
+echo 'cecli --no-stream --model ollama/<pick your model from the list above>'
+echo '  later you can best add it to .aider.conf.yml, see https://aider.chat/docs/config/aider_conf.html'
+EOF
 
-# switch to non-root and set the host-mounted /workspace to HOME to persist ~/.aider
+# switch to non-root and set the host-mounted /app to HOME to persist ~/.aider
 USER ${DEFAULTUSER}
-ENV HOME=/workspace
-WORKDIR /workspace
+ENV HOME=/app
 
 # WARNING! entrypoint must use explicit path, perhaps needs an update to OLDHOME
 ENTRYPOINT ["/bin/bash", "--rcfile", "/home/ubuntu/.bashrc", "-i"]
