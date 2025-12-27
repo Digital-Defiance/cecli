@@ -876,6 +876,10 @@ class AgentCoder(Coder):
                 tool_context = self._generate_tool_context(repetitive_tools)
                 if tool_context:
                     post_message_blocks.append(tool_context)
+            else:
+                write_context = self._generate_write_context()
+                if write_context:
+                    post_message_blocks.append(write_context)
 
         if static_blocks:
             for block in static_blocks:
@@ -1933,6 +1937,27 @@ class AgentCoder(Coder):
 
         context_parts.append("</context>")
         return "\n".join(context_parts)
+
+    def _generate_write_context(self):
+        if self.last_round_tools:
+            last_round_has_write = any(
+                tool.lower() in self.write_tools for tool in self.last_round_tools
+            )
+            if last_round_has_write:
+                context_parts = [
+                    '<context name="tool_usage_history">',
+                    "You've just written to a file.",
+                    (
+                        "Make sure there are proper implementation details and not just comments"
+                        " and/or logging statements."
+                    ),
+                    "Do not be lazy. You are intelligent and capable!",
+                    "</context>",
+                ]
+
+                return "\n".join(context_parts)
+
+        return ""
 
     async def _apply_edits_from_response(self):
         """
