@@ -253,6 +253,35 @@ def test_get_api_key_prefers_first_valid(monkeypatch, tmp_path):
     assert manager._get_api_key("demo") == "secret"
 
 
+def test_refresh_provider_cache_uses_static_models(monkeypatch, tmp_path):
+    config = {
+        "demo": {
+            "api_base": "https://example.com/v1",
+            "static_models": [
+                {
+                    "id": "demo/foo",
+                    "max_input_tokens": 1024,
+                    "pricing": {"prompt": "0.5", "completion": "1.0"},
+                }
+            ],
+        }
+    }
+
+    manager = _make_manager(tmp_path, config)
+
+    def _failing_fetch(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("requests.get", _failing_fetch)
+
+    refreshed = manager.refresh_provider_cache("demo")
+
+    assert refreshed is True
+    info = manager.get_model_info("demo/demo/foo")
+    assert info["max_input_tokens"] == 1024
+    assert info["input_cost_per_token"] == 0.5
+
+
 def test_model_info_manager_delegates_to_provider(monkeypatch, tmp_path):
     monkeypatch.setattr(
         "aider.models.litellm",
