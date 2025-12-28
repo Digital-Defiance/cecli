@@ -72,7 +72,6 @@ from aider.tools import (
     view_files_with_symbol,
 )
 
-from .agent_prompts import AgentPrompts
 from .base_coder import ChatChunks, Coder
 from .editblock_coder import do_replace, find_original_update_blocks, find_similar_lines
 
@@ -81,7 +80,7 @@ class AgentCoder(Coder):
     """Mode where the LLM autonomously manages which files are in context."""
 
     edit_format = "agent"
-    gpt_prompts = AgentPrompts()
+    prompt_format = "agent"
 
     def __init__(self, *args, **kwargs):
         # Dictionary to track recently removed files
@@ -1946,13 +1945,12 @@ class AgentCoder(Coder):
             if last_round_has_write:
                 context_parts = [
                     '<context name="tool_usage_history">',
-                    "You've just written to a file.",
+                    "A file was just edited.",
                     (
-                        "Make sure there are proper implementation details and not just comments"
-                        " and/or logging statements."
+                        " Do not just modify comments"
+                        " and/or logging statements with placeholder information."
                     ),
-                    "Do not be lazy. You are intelligent and capable!",
-                    "</context>",
+                    "Make sure that something of value was done.</context>",
                 ]
 
                 return "\n".join(context_parts)

@@ -58,6 +58,7 @@ from aider.tools.utils.output import print_tool_response
 from aider.utils import format_tokens, is_image_file
 
 from ..dump import dump  # noqa: F401
+from ..prompts.utils.prompt_registry import registry
 from .chat_chunks import ChatChunks
 
 
@@ -154,6 +155,8 @@ class Coder:
 
     # Weak reference to TUI app instance (when running in TUI mode)
     tui = None
+
+    _prompt_cache = {}
 
     @classmethod
     async def create(
@@ -555,6 +558,45 @@ class Coder:
             if self.verbose:
                 self.io.tool_output("JSON Schema:")
                 self.io.tool_output(json.dumps(self.functions, indent=4))
+
+    @property
+    def gpt_prompts(self):
+        """Get prompts from the registry based on the coder type."""
+        cls = self.__class__
+
+        # Every coder class MUST have a prompt_format attribute
+        if not hasattr(cls, "prompt_format"):
+            raise AttributeError(
+                f"Coder class {cls.__name__} must have a 'prompt_format' attribute. "
+                "Add 'prompt_format = \"<format_name>\"' to the class definition."
+            )
+
+        if cls.prompt_format is None:
+            raise AttributeError(
+                f"Coder class {cls.__name__} has prompt_format=None. "
+                "It must have a valid prompt format name."
+            )
+
+        prompt_name = cls.prompt_format
+
+        # Check cache first
+        if prompt_name in Coder._prompt_cache:
+            return Coder._prompt_cache[prompt_name]
+
+        # Get prompts from registry
+        prompts = registry.get_prompt(prompt_name)
+
+        # Create a simple object that allows attribute access
+        class PromptObject:
+            def __init__(self, prompts_dict):
+                for key, value in prompts_dict.items():
+                    setattr(self, key, value)
+
+        # Cache the prompt object
+        prompt_obj = PromptObject(prompts)
+        Coder._prompt_cache[prompt_name] = prompt_obj
+
+        return prompt_obj
 
     def get_announcements(self):
         lines = []
