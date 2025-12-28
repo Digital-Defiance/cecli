@@ -17,8 +17,7 @@ from aider.reasoning_tags import (
 
 
 class TestReasoning(unittest.TestCase):
-    SYNTHETIC_COMPLETION = textwrap.dedent(
-        """\
+    SYNTHETIC_COMPLETION = textwrap.dedent("""\
         {
           "id": "test-completion",
           "created": 0,
@@ -53,8 +52,8 @@ class TestReasoning(unittest.TestCase):
           },
           "prompt_token_ids": null
         }
-        """
-    )
+        """)
+
     async def test_send_with_reasoning_content(self):
         """Test that reasoning content is properly formatted and output."""
         # Setup IO with no pretty

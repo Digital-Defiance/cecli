@@ -1,9 +1,9 @@
 import json
 import math
-from pathlib import Path
 import sys
 import types
-import pytest
+from pathlib import Path
+
 if "PIL" not in sys.modules:
     pil_module = types.ModuleType("PIL")
     image_module = types.ModuleType("PIL.Image")
@@ -209,7 +209,6 @@ def test_provider_manager_get_model_info_from_cache(monkeypatch, tmp_path):
     assert manager._cache_loaded["openai"]
 
 
-
 def test_provider_manager_models_endpoint_fetch(monkeypatch, tmp_path):
     """OpenAIProviderManager should fetch and cache the /models payload when missing."""
 
@@ -244,8 +243,6 @@ def test_provider_manager_models_endpoint_fetch(monkeypatch, tmp_path):
     assert info["max_tokens"] == 131072
     assert info["input_cost_per_token"] == 0.00000055
     assert info["output_cost_per_token"] == 0.00000219
-
-    info_again = manager.get_model_info("openai/zai-org/GLM-4.6")
 
 
 def test_provider_static_models_used_without_api_key(monkeypatch, tmp_path):

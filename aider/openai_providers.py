@@ -11,11 +11,11 @@ from __future__ import annotations
 import importlib.resources as importlib_resources
 import json
 import os
+import re
 import time
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Iterable, Optional
-import re
 
 import requests
 
@@ -68,8 +68,10 @@ class _JSONOpenAIProvider(CustomLLM if CustomLLM is not None else object):  # ty
         self._chat_handler = OpenAILikeChatHandler()
 
     def _resolve_api_base(self, api_base: Optional[str]) -> str:
-        base = api_base or _first_env_value(self.config.get("base_url_env")) or self.config.get(
-            "api_base"
+        base = (
+            api_base
+            or _first_env_value(self.config.get("base_url_env"))
+            or self.config.get("api_base")
         )
         if not base:
             raise CustomLLMError(500, f"{self.slug} missing base URL")  # type: ignore[misc]
@@ -467,7 +469,9 @@ class OpenAIProviderManager:
         self.verify_ssl: bool = True
 
         self.provider_configs = provider_configs or deepcopy(PROVIDER_CONFIGS)
-        self._provider_cache: Dict[str, Dict | None] = {name: None for name in self.provider_configs}
+        self._provider_cache: Dict[str, Dict | None] = {
+            name: None for name in self.provider_configs
+        }
         self._cache_loaded: Dict[str, bool] = {name: False for name in self.provider_configs}
 
     # ------------------------------------------------------------------ #

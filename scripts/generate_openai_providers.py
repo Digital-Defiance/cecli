@@ -9,8 +9,8 @@ clean_metadata.py (prompting when decisions are needed).
 
 from __future__ import annotations
 
-import json
 import argparse
+import json
 from pathlib import Path
 from typing import Any, Dict, Iterable
 
@@ -82,7 +82,7 @@ def ensure_json_object(prompt_text: str, default: Dict[str, Any] | None = None) 
             print(f"Invalid JSON ({exc}). Please try again.")
             continue
         if not isinstance(parsed, dict):
-            print("Please provide a JSON object (e.g., {\"Header\": \"value\"}).")
+            print('Please provide a JSON object (e.g., {"Header": "value"}).')
             continue
         return parsed
 
@@ -164,7 +164,10 @@ def main():
             continue
 
         display_name = prompt_value(
-            "Display name", existing_entry.get("display_name") or litellm_entry.get("display_name") or provider_name
+            "Display name",
+            existing_entry.get("display_name")
+            or litellm_entry.get("display_name")
+            or provider_name,
         )
         api_base = prompt_value(
             "API base URL",
@@ -176,7 +179,8 @@ def main():
         )
         api_key_env = prompt_value(
             "Comma-separated env vars for API key lookup",
-            _list_to_csv(existing_entry.get("api_key_env", litellm_entry.get("api_key_env", []))) or "",
+            _list_to_csv(existing_entry.get("api_key_env", litellm_entry.get("api_key_env", [])))
+            or "",
         )
         models_url = prompt_value(
             "Models endpoint URL (leave blank if none)",

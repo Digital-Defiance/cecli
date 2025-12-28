@@ -19,8 +19,8 @@ from aider import __version__
 from aider.dump import dump  # noqa: F401
 from aider.helpers.requests import model_request_parser
 from aider.llm import litellm
-from aider.openrouter import OpenRouterModelManager
 from aider.openai_providers import OpenAIProviderManager
+from aider.openrouter import OpenRouterModelManager
 from aider.sendchat import sanity_check_messages
 from aider.utils import check_pip_install_extra
 
@@ -853,7 +853,9 @@ class Model(ModelSettings):
             and provider
             and model_info_manager.openai_provider_manager.supports_provider(provider)
         ):
-            provider_keys = model_info_manager.openai_provider_manager.get_required_api_keys(provider)
+            provider_keys = model_info_manager.openai_provider_manager.get_required_api_keys(
+                provider
+            )
             for env_var in provider_keys:
                 if os.environ.get(env_var):
                     return dict(keys_in_environment=[env_var], missing_keys=[])
