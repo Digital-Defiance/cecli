@@ -34,7 +34,8 @@ from litellm.types.utils import ModelResponse
 from prompt_toolkit.patch_stdout import patch_stdout
 from rich.console import Console
 
-from aider import __version__, models, prompts, urls, utils
+import aider.prompts.utils.system as prompts
+from aider import __version__, models, urls, utils
 from aider.commands import Commands, SwitchCoder
 from aider.exceptions import LiteLLMExceptions
 from aider.helpers import coroutines
