@@ -1,7 +1,9 @@
 import json
+import math
 from pathlib import Path
 import sys
 import types
+import pytest
 if "PIL" not in sys.modules:
     pil_module = types.ModuleType("PIL")
     image_module = types.ModuleType("PIL.Image")
@@ -262,6 +264,33 @@ def test_provider_static_models_used_without_api_key(monkeypatch, tmp_path):
 
     assert info["litellm_provider"] == "openai"
     assert info["max_tokens"] == 131072
+
+
+def test_provider_models_price_strings(monkeypatch, tmp_path):
+    payload = {
+        "data": [
+            {
+                "id": "demo/model",
+                "max_input_tokens": 4096,
+                "pricing": {"prompt": "$0.00000055", "completion": "$0.00000219"},
+            }
+        ]
+    }
+
+    provider_config = _test_provider_config()
+    provider_config["openai"]["static_models"] = payload["data"]
+
+    def _fail_request(*args, **kwargs):  # pragma: no cover - should not run
+        raise AssertionError("Network fetch should be skipped when static models exist")
+
+    monkeypatch.setattr("requests.get", _fail_request)
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
+
+    manager = OpenAIProviderManager(provider_configs=provider_config)
+    info = manager.get_model_info("openai/demo/model")
+
+    assert math.isclose(info["input_cost_per_token"], 0.00000055)
+    assert math.isclose(info["output_cost_per_token"], 0.00000219)
 
 
 def test_model_info_manager_uses_openai_provider_manager(monkeypatch):

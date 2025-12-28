@@ -7,6 +7,7 @@ cecli to look up provider details and model metadata.
 """
 
 from __future__ import annotations
+
 import importlib.resources as importlib_resources
 import json
 import os
@@ -14,6 +15,7 @@ import time
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Iterable, Optional
+import re
 
 import requests
 
@@ -424,12 +426,23 @@ def ensure_litellm_providers_registered() -> None:
     _PROVIDERS_REGISTERED = True
 
 
+_NUMBER_RE = re.compile(r"-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
+
+
 def _cost_per_token(val: Optional[str | float | int]) -> Optional[float]:
     """Convert a price value (USD per token) to a float."""
     if val in (None, "", "-", "N/A"):
         return None
     if val == "0":
         return 0.0
+    if isinstance(val, str):
+        cleaned = val.strip().replace(",", "")
+        if cleaned.startswith("$"):
+            cleaned = cleaned[1:]
+        match = _NUMBER_RE.search(cleaned)
+        if not match:
+            return None
+        val = match.group(0)
     try:
         return float(val)
     except (TypeError, ValueError):
