@@ -4,6 +4,8 @@ Historically aider kept separate modules per provider (OpenRouter vs OpenAI-like
 Those grew unwieldy and duplicated caching, request, and normalization logic.
 This helper centralizes that behavior so every OpenAI-compatible endpoint defines
 a small config blob and inherits the same cache + LiteLLM registration plumbing.
+Provider configs remain curated via ``scripts/generate_providers.py`` and the
+static per-model fallback metadata is still cleaned up with ``clean_metadata.py``.
 """
 
 from __future__ import annotations
