@@ -1,14 +1,13 @@
 import asyncio
 
 from ..commands import SwitchCoder
-from .architect_prompts import ArchitectPrompts
 from .ask_coder import AskCoder
 from .base_coder import Coder
 
 
 class ArchitectCoder(AskCoder):
     edit_format = "architect"
-    gpt_prompts = ArchitectPrompts()
+    prompt_format = "architect"
     auto_accept_architect = False
 
     async def reply_completed(self):
