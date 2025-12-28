@@ -119,7 +119,7 @@ if "pypandoc" not in sys.modules:
 import aider.models as models_module
 from aider.commands.model import ModelCommand
 from aider.models import ModelInfoManager
-from aider.openai_providers import OpenAIProviderManager, _JSONOpenAIProvider
+from aider.helpers.model_providers import ModelProviderManager, _JSONOpenAIProvider
 
 
 class DummyResponse:
@@ -183,7 +183,7 @@ def _test_provider_config():
 
 
 def test_provider_manager_get_model_info_from_cache(monkeypatch, tmp_path):
-    """OpenAIProviderManager should hydrate from cached payloads."""
+    """ModelProviderManager should hydrate from cached payloads."""
 
     payload = _load_openai_fixture()
 
@@ -193,7 +193,7 @@ def test_provider_manager_get_model_info_from_cache(monkeypatch, tmp_path):
     monkeypatch.setattr("requests.get", _fail_request)
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
 
-    manager = OpenAIProviderManager(provider_configs=_test_provider_config())
+    manager = ModelProviderManager(provider_configs=_test_provider_config())
     manager.cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = manager._get_cache_file("openai")
     cache_file.write_text(json.dumps(payload))
@@ -210,7 +210,7 @@ def test_provider_manager_get_model_info_from_cache(monkeypatch, tmp_path):
 
 
 def test_provider_manager_models_endpoint_fetch(monkeypatch, tmp_path):
-    """OpenAIProviderManager should fetch and cache the /models payload when missing."""
+    """ModelProviderManager should fetch and cache the /models payload when missing."""
 
     payload = _load_openai_fixture()
     call_args = []
@@ -224,7 +224,7 @@ def test_provider_manager_models_endpoint_fetch(monkeypatch, tmp_path):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
     provider_config = _test_provider_config()
-    manager = OpenAIProviderManager(provider_configs=provider_config)
+    manager = ModelProviderManager(provider_configs=provider_config)
     manager.set_verify_ssl(False)
 
     info = manager.get_model_info("openai/zai-org/GLM-4.6:extended")
@@ -256,7 +256,7 @@ def test_provider_static_models_used_without_api_key(monkeypatch, tmp_path):
     monkeypatch.setattr("requests.get", _fail_request)
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
 
-    manager = OpenAIProviderManager(provider_configs=provider_config)
+    manager = ModelProviderManager(provider_configs=provider_config)
     info = manager.get_model_info("openai/zai-org/GLM-4.6")
 
     assert info["litellm_provider"] == "openai"
@@ -283,15 +283,15 @@ def test_provider_models_price_strings(monkeypatch, tmp_path):
     monkeypatch.setattr("requests.get", _fail_request)
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
 
-    manager = OpenAIProviderManager(provider_configs=provider_config)
+    manager = ModelProviderManager(provider_configs=provider_config)
     info = manager.get_model_info("openai/demo/model")
 
     assert math.isclose(info["input_cost_per_token"], 0.00000055)
     assert math.isclose(info["output_cost_per_token"], 0.00000219)
 
 
-def test_model_info_manager_uses_openai_provider_manager(monkeypatch):
-    """ModelInfoManager should delegate to OpenAIProviderManager for openai-like models."""
+def test_model_info_manager_uses_provider_manager(monkeypatch):
+    """ModelInfoManager should delegate to ModelProviderManager for openai-like models."""
 
     monkeypatch.setattr(
         models_module,
@@ -309,7 +309,7 @@ def test_model_info_manager_uses_openai_provider_manager(monkeypatch):
     }
 
     monkeypatch.setattr(
-        "aider.models.OpenAIProviderManager.get_model_info",
+        "aider.helpers.model_providers.ModelProviderManager.get_model_info",
         lambda self, model: stub_info,
     )
 
@@ -319,10 +319,10 @@ def test_model_info_manager_uses_openai_provider_manager(monkeypatch):
     assert info == stub_info
 
 
-def test_openai_provider_manager_listing(monkeypatch, tmp_path):
+def test_provider_manager_listing(monkeypatch, tmp_path):
     payload = _load_openai_fixture()
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-    manager = OpenAIProviderManager(provider_configs=_test_provider_config())
+    manager = ModelProviderManager(provider_configs=_test_provider_config())
     manager.cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = manager._get_cache_file("openai")
     cache_file.write_text(json.dumps(payload))
@@ -342,10 +342,10 @@ def test_chat_model_names_include_openai_provider_models(monkeypatch, tmp_path):
 
     models_module.litellm = types.SimpleNamespace(model_cost={}, _lazy_module=None)
     models_module.model_info_manager = models_module.ModelInfoManager()
-    models_module.model_info_manager.openai_provider_manager = OpenAIProviderManager(
+    models_module.model_info_manager.provider_manager = ModelProviderManager(
         provider_configs=_test_provider_config()
     )
-    manager = models_module.model_info_manager.openai_provider_manager
+    manager = models_module.model_info_manager.provider_manager
     manager.cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = manager._get_cache_file("openai")
     cache_file.write_text(json.dumps(payload))
@@ -363,10 +363,10 @@ def test_model_command_completions_include_openai_provider_models(monkeypatch, t
 
     models_module.litellm = types.SimpleNamespace(model_cost={}, _lazy_module=None)
     models_module.model_info_manager = models_module.ModelInfoManager()
-    models_module.model_info_manager.openai_provider_manager = OpenAIProviderManager(
+    models_module.model_info_manager.provider_manager = ModelProviderManager(
         provider_configs=_test_provider_config()
     )
-    manager = models_module.model_info_manager.openai_provider_manager
+    manager = models_module.model_info_manager.provider_manager
     manager.cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = manager._get_cache_file("openai")
     cache_file.write_text(json.dumps(payload))
@@ -385,7 +385,7 @@ def test_model_disables_streaming_for_non_streaming_providers(monkeypatch):
         }
     }
 
-    provider_manager = OpenAIProviderManager(provider_configs=provider_configs)
+    provider_manager = ModelProviderManager(provider_configs=provider_configs)
     fake_info = {
         "max_input_tokens": 4096,
         "max_tokens": 4096,
@@ -395,7 +395,7 @@ def test_model_disables_streaming_for_non_streaming_providers(monkeypatch):
 
     fake_model_info_manager = types.SimpleNamespace(
         get_model_info=lambda model: fake_info,
-        openai_provider_manager=provider_manager,
+        provider_manager=provider_manager,
     )
 
     monkeypatch.setenv("SYNTHETIC_API_KEY", "test-key")

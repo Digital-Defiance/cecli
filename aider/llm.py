@@ -6,7 +6,7 @@ import warnings
 from collections.abc import Coroutine
 
 from aider.dump import dump  # noqa: F401
-from aider.openai_providers import ensure_litellm_providers_registered
+from aider.helpers.model_providers import ensure_litellm_providers_registered
 
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 

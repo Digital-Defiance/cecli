@@ -1,10 +1,4 @@
-"""OpenAI-compatible provider metadata caching and lookup.
-
-This module keeps local cached copies of provider-specific ``/models`` payloads
-for OpenAI-compatible endpoints (Synthetic and others). The primary public API
-is :class:`OpenAIProviderManager`, which exposes helper methods used throughout
-cecli to look up provider details and model metadata.
-"""
+"""Unified model provider metadata caching and lookup."""
 
 from __future__ import annotations
 
@@ -15,7 +9,7 @@ import re
 import time
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, Iterable, Optional
+from typing import Dict, Optional
 
 import requests
 
@@ -225,12 +219,6 @@ class _JSONOpenAIProvider(CustomLLM if CustomLLM is not None else object):  # ty
         timeout=None,
         client=None,
     ):
-        # The synchronous OpenAILikeChatHandler handles both regular and streaming
-        # responses; we reuse it even when LiteLLM calls into the async wrappers,
-        # since many OpenAI-compatible providers (Synthetic, Venice, etc.) only
-        # support the non-streaming /chat/completions endpoint. True streaming for
-        # those providers would require a dedicated SSE client layered on top of
-        # httpx, so for now we normalize them through the sync path.
         return self._invoke_handler(
             model=model,
             messages=messages,
@@ -326,7 +314,6 @@ class _JSONOpenAIProvider(CustomLLM if CustomLLM is not None else object):  # ty
 
 
 def _register_provider_with_litellm(slug: str, config: Dict) -> None:
-    """Register provider with litellm's registry and custom handler."""
     try:
         from litellm.llms.openai_like.json_loader import (
             JSONProviderRegistry,
@@ -406,7 +393,7 @@ def _load_provider_configs() -> Dict[str, Dict]:
     try:
         resource = importlib_resources.files("aider.resources").joinpath(RESOURCE_FILE)
         data = json.loads(resource.read_text())
-    except (FileNotFoundError, json.JSONDecodeError):  # pragma: no cover - fallback path
+    except (FileNotFoundError, json.JSONDecodeError):  # pragma: no cover
         data = {}
 
     for provider, override in data.items():
@@ -419,66 +406,20 @@ def _load_provider_configs() -> Dict[str, Dict]:
 PROVIDER_CONFIGS = _load_provider_configs()
 
 
-def ensure_litellm_providers_registered() -> None:
-    global _PROVIDERS_REGISTERED
-    if _PROVIDERS_REGISTERED:
-        return
-    for slug, cfg in PROVIDER_CONFIGS.items():
-        _register_provider_with_litellm(slug, cfg)
-    _PROVIDERS_REGISTERED = True
-
-
-_NUMBER_RE = re.compile(r"-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
-
-
-def _cost_per_token(val: Optional[str | float | int]) -> Optional[float]:
-    """Convert a price value (USD per token) to a float."""
-    if val in (None, "", "-", "N/A"):
-        return None
-    if val == "0":
-        return 0.0
-    if isinstance(val, str):
-        cleaned = val.strip().replace(",", "")
-        if cleaned.startswith("$"):
-            cleaned = cleaned[1:]
-        match = _NUMBER_RE.search(cleaned)
-        if not match:
-            return None
-        val = match.group(0)
-    try:
-        return float(val)
-    except (TypeError, ValueError):
-        return None
-
-
-def _first_value(record: Dict, *keys: Iterable[str]) -> Optional[float]:
-    """Return the first non-None value from record for the provided keys."""
-    for key in keys:
-        if key in record and record[key] not in (None, ""):
-            return record[key]
-    return None
-
-
-class OpenAIProviderManager:
-    """Cached metadata manager for OpenAI-compatible providers."""
-
+class ModelProviderManager:
     CACHE_TTL = 60 * 60 * 24  # 24 hours
 
     def __init__(self, provider_configs: Optional[Dict[str, Dict]] = None) -> None:
         self.cache_dir = Path.home() / ".aider" / "caches"
         self.verify_ssl: bool = True
-
         self.provider_configs = provider_configs or deepcopy(PROVIDER_CONFIGS)
-        self._provider_cache: Dict[str, Dict | None] = {
-            name: None for name in self.provider_configs
-        }
-        self._cache_loaded: Dict[str, bool] = {name: False for name in self.provider_configs}
+        self._provider_cache: Dict[str, Dict | None] = {}
+        self._cache_loaded: Dict[str, bool] = {}
+        for name in self.provider_configs:
+            self._provider_cache[name] = None
+            self._cache_loaded[name] = False
 
-    # ------------------------------------------------------------------ #
-    # Provider helpers                                                   #
-    # ------------------------------------------------------------------ #
     def set_verify_ssl(self, verify_ssl: bool) -> None:
-        """Enable/disable SSL verification for API requests."""
         self.verify_ssl = verify_ssl
 
     def supports_provider(self, provider: Optional[str]) -> bool:
@@ -498,7 +439,8 @@ class OpenAIProviderManager:
         config = self.get_provider_config(provider)
         if not config:
             return None
-        for env_var in config.get("base_url_env", []):
+        base_envs = config.get("base_url_env") or []
+        for env_var in base_envs:
             val = os.environ.get(env_var)
             if val:
                 return val.rstrip("/")
@@ -510,36 +452,23 @@ class OpenAIProviderManager:
             return []
         return list(config.get("api_key_env", []))
 
-    # ------------------------------------------------------------------ #
-    # Model metadata API                                                 #
-    # ------------------------------------------------------------------ #
     def get_model_info(self, model: str) -> Dict:
-        """Return metadata for *model* or an empty ``dict`` when unknown."""
         provider, route = self._split_model(model)
-        if not self.supports_provider(provider):
+        if not provider or not self._ensure_provider_state(provider):
             return {}
 
         content = self._ensure_content(provider)
-        if not content or "data" not in content:
-            return {}
-
-        candidates = {route}
-        if ":" in route:
-            candidates.add(route.split(":", 1)[0])
-
-        record = next(
-            (item for item in content["data"] if item.get("id") in candidates),
-            None,
-        )
+        record = self._find_record(content, route)
+        if not record and self.refresh_provider_cache(provider):
+            content = self._provider_cache.get(provider)
+            record = self._find_record(content, route)
         if not record:
             return {}
-
         return self._record_to_info(record, provider)
 
     def get_models_for_listing(self) -> Dict[str, Dict]:
-        """Return all known models keyed by their bare ids across providers."""
         listings: Dict[str, Dict] = {}
-        for provider in self.provider_configs:
+        for provider in list(self.provider_configs.keys()):
             content = self._ensure_content(provider)
             if not content or "data" not in content:
                 continue
@@ -548,14 +477,28 @@ class OpenAIProviderManager:
                 if not model_id:
                     continue
                 info = self._record_to_info(record, provider)
-                if not info:
-                    continue
-                listings[model_id] = info
+                if info:
+                    listings[model_id] = info
         return listings
 
-    # ------------------------------------------------------------------ #
-    # Internal helpers                                                   #
-    # ------------------------------------------------------------------ #
+    def refresh_provider_cache(self, provider: str) -> bool:
+        if not self._ensure_provider_state(provider):
+            return False
+        config = self.provider_configs[provider]
+        if not config.get("models_url") and not config.get("api_base"):
+            return False
+        self._provider_cache[provider] = None
+        self._cache_loaded[provider] = True
+        self._update_cache(provider)
+        return bool(self._provider_cache.get(provider))
+
+    def _ensure_provider_state(self, provider: str) -> bool:
+        if provider not in self.provider_configs:
+            return False
+        self._provider_cache.setdefault(provider, None)
+        self._cache_loaded.setdefault(provider, False)
+        return True
+
     def _split_model(self, model: str) -> tuple[Optional[str], str]:
         if "/" not in model:
             return None, model
@@ -568,6 +511,14 @@ class OpenAIProviderManager:
             self._update_cache(provider)
         return self._provider_cache.get(provider)
 
+    def _find_record(self, content: Optional[Dict], route: str) -> Optional[Dict]:
+        if not content or "data" not in content:
+            return None
+        candidates = {route}
+        if ":" in route:
+            candidates.add(route.split(":", 1)[0])
+        return next((item for item in content["data"] if item.get("id") in candidates), None)
+
     def _record_to_info(self, record: Dict, provider: str) -> Dict:
         context_len = _first_value(
             record,
@@ -577,9 +528,13 @@ class OpenAIProviderManager:
             "context_length",
             "context_window",
             "top_provider_context_length",
+            "top_provider",
         )
-        pricing = record.get("pricing", {}) if isinstance(record.get("pricing"), dict) else {}
 
+        if isinstance(context_len, dict):
+            context_len = context_len.get("context_length") or context_len.get("max_tokens")
+
+        pricing = record.get("pricing", {}) if isinstance(record.get("pricing"), dict) else {}
         input_cost = _cost_per_token(
             _first_value(pricing, "prompt", "input", "prompt_tokens")
             or _first_value(record, "input_cost_per_token", "prompt_cost_per_token")
@@ -620,20 +575,7 @@ class OpenAIProviderManager:
             "litellm_provider": provider,
             "mode": record.get("mode", "chat"),
         }
-
         return {k: v for k, v in info.items() if v is not None}
-
-    def refresh_provider_cache(self, provider: str) -> bool:
-        """Force-refresh the provider's /models cache if supported."""
-        if not self.supports_provider(provider):
-            return False
-        config = self.provider_configs[provider]
-        if not config.get("models_url"):
-            return False
-        self._provider_cache[provider] = None
-        self._cache_loaded[provider] = True
-        self._update_cache(provider)
-        return bool(self._provider_cache.get(provider))
 
     def _get_cache_file(self, provider: str) -> Path:
         fname = f"{provider}_models.json"
@@ -714,3 +656,42 @@ class OpenAIProviderManager:
             if value:
                 return value
         return None
+
+
+def ensure_litellm_providers_registered() -> None:
+    global _PROVIDERS_REGISTERED
+    if _PROVIDERS_REGISTERED:
+        return
+    for slug, cfg in PROVIDER_CONFIGS.items():
+        _register_provider_with_litellm(slug, cfg)
+    _PROVIDERS_REGISTERED = True
+
+
+_NUMBER_RE = re.compile(r"-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
+
+
+def _cost_per_token(val: Optional[str | float | int]) -> Optional[float]:
+    if val in (None, "", "-", "N/A"):
+        return None
+    if val == "0":
+        return 0.0
+    if isinstance(val, str):
+        cleaned = val.strip().replace(",", "")
+        if cleaned.startswith("$"):
+            cleaned = cleaned[1:]
+        match = _NUMBER_RE.search(cleaned)
+        if not match:
+            return None
+        val = match.group(0)
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def _first_value(record: Dict, *keys: str):
+    for key in keys:
+        value = record.get(key)
+        if value not in (None, ""):
+            return value
+    return None

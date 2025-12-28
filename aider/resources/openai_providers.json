@@ -1,4 +1,16 @@
 {
+  "openrouter": {
+    "api_base": "https://openrouter.ai/api/v1",
+    "models_url": "https://openrouter.ai/api/v1/models",
+    "api_key_env": [
+      "OPENROUTER_API_KEY"
+    ],
+    "requires_api_key": false,
+    "default_headers": {
+      "HTTP-Referer": "https://aider.chat",
+      "X-Title": "aider"
+    }
+  },
   "openai": {
     "api_base": "https://api.openai.com/v1",
     "models_url": "https://api.openai.com/v1/models",

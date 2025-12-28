@@ -19,8 +19,7 @@ from aider import __version__
 from aider.dump import dump  # noqa: F401
 from aider.helpers.requests import model_request_parser
 from aider.llm import litellm
-from aider.openai_providers import OpenAIProviderManager
-from aider.openrouter import OpenRouterModelManager
+from aider.helpers.model_providers import ModelProviderManager
 from aider.sendchat import sanity_check_messages
 from aider.utils import check_pip_install_extra
 
@@ -159,15 +158,12 @@ class ModelInfoManager:
         self._cache_loaded = False
 
         # Manager for provider-specific cached model databases
-        self.openrouter_manager = OpenRouterModelManager()
-        self.openai_provider_manager = OpenAIProviderManager()
+        self.provider_manager = ModelProviderManager()
+        self.openai_provider_manager = self.provider_manager  # Backwards compatibility alias
 
     def set_verify_ssl(self, verify_ssl):
         self.verify_ssl = verify_ssl
-        if hasattr(self, "openrouter_manager"):
-            self.openrouter_manager.set_verify_ssl(verify_ssl)
-        if hasattr(self, "openai_provider_manager"):
-            self.openai_provider_manager.set_verify_ssl(verify_ssl)
+        self.provider_manager.set_verify_ssl(verify_ssl)
 
     def _load_cache(self):
         if self._cache_loaded:
@@ -245,32 +241,45 @@ class ModelInfoManager:
                 if "model_prices_and_context_window.json" not in str(ex):
                     print(str(ex))
 
+        provider_info = self._resolve_via_provider(model, cached_info)
+        if provider_info:
+            return provider_info
+
         if litellm_info:
             return litellm_info
 
-        if not cached_info and model.startswith("openrouter/"):
-            # First try using the locally cached OpenRouter model database
-            openrouter_info = self.openrouter_manager.get_model_info(model)
-            if openrouter_info:
-                return openrouter_info
+        return cached_info
 
-            # Fallback to legacy web-scraping if the API cache does not contain the model
-            openrouter_info = self.fetch_openrouter_model_info(model)
-            if openrouter_info:
-                return openrouter_info
+    def _resolve_via_provider(self, model, cached_info):
+        if cached_info:
+            return None
 
         provider = model.split("/", 1)[0] if "/" in model else None
-        if self.openai_provider_manager.supports_provider(provider):
-            provider_info = self.openai_provider_manager.get_model_info(model)
-            if not provider_info and not cached_info:
-                refreshed = self.openai_provider_manager.refresh_provider_cache(provider)
-                if refreshed:
-                    provider_info = self.openai_provider_manager.get_model_info(model)
-            if provider_info:
-                self.local_model_metadata[model] = provider_info
-                return provider_info
+        if not self.provider_manager.supports_provider(provider):
+            return None
 
-        return cached_info
+        provider_info = self.provider_manager.get_model_info(model)
+        if provider_info:
+            self._record_dynamic_model(model, provider_info)
+            return provider_info
+
+        if provider == "openrouter":
+            openrouter_info = self.fetch_openrouter_model_info(model)
+            if openrouter_info:
+                openrouter_info.setdefault("litellm_provider", "openrouter")
+                self._record_dynamic_model(model, openrouter_info)
+                return openrouter_info
+
+        return None
+
+    def _record_dynamic_model(self, model, info):
+        self.local_model_metadata[model] = info
+        self._ensure_model_settings_entry(model)
+
+    def _ensure_model_settings_entry(self, model):
+        if any(ms.name == model for ms in MODEL_SETTINGS):
+            return
+        MODEL_SETTINGS.append(ModelSettings(name=model))
 
     def fetch_openrouter_model_info(self, model):
         """
@@ -315,6 +324,7 @@ class ModelInfoManager:
                 "max_output_tokens": context_size,
                 "input_cost_per_token": input_cost,
                 "output_cost_per_token": output_cost,
+                "litellm_provider": "openrouter",
             }
             return params
         except Exception as e:
@@ -720,7 +730,7 @@ class Model(ModelSettings):
         if not provider:
             return
 
-        provider_config = model_info_manager.openai_provider_manager.get_provider_config(provider)
+        provider_config = model_info_manager.provider_manager.get_provider_config(provider)
         if not provider_config:
             return
 
@@ -735,7 +745,7 @@ class Model(ModelSettings):
             # standard completions for those providers.
             self.streaming = False
 
-        base_url = model_info_manager.openai_provider_manager.get_provider_base_url(provider)
+        base_url = model_info_manager.provider_manager.get_provider_base_url(provider)
         if base_url:
             self.extra_params.setdefault("base_url", base_url)
 
@@ -851,9 +861,9 @@ class Model(ModelSettings):
         if (
             not var
             and provider
-            and model_info_manager.openai_provider_manager.supports_provider(provider)
+            and model_info_manager.provider_manager.supports_provider(provider)
         ):
-            provider_keys = model_info_manager.openai_provider_manager.get_required_api_keys(
+            provider_keys = model_info_manager.provider_manager.get_required_api_keys(
                 provider
             )
             for env_var in provider_keys:
@@ -890,7 +900,7 @@ class Model(ModelSettings):
             return res
 
         provider = self.info.get("litellm_provider", "").lower()
-        provider_config = model_info_manager.openai_provider_manager.get_provider_config(provider)
+        provider_config = model_info_manager.provider_manager.get_provider_config(provider)
         if provider_config:
             envs = provider_config.get("api_key_env", [])
             available = [env for env in envs if os.environ.get(env)]
@@ -1389,7 +1399,7 @@ def get_chat_model_names():
     model_metadata = list(litellm.model_cost.items())
     model_metadata += list(model_info_manager.local_model_metadata.items())
 
-    openai_provider_models = model_info_manager.openai_provider_manager.get_models_for_listing()
+    openai_provider_models = model_info_manager.provider_manager.get_models_for_listing()
     model_metadata += list(openai_provider_models.items())
 
     for orig_model, attrs in model_metadata:

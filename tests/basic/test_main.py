@@ -1420,7 +1420,7 @@ class TestMain(TestCase):
         import aider.models as models_module
 
         provider_name = "openai"
-        manager = models_module.model_info_manager.openai_provider_manager
+        manager = models_module.model_info_manager.provider_manager
         provider_config = {
             "api_base": "https://api.openai.com/v1",
             "models_url": "https://api.openai.com/v1/models",
@@ -1450,7 +1450,7 @@ class TestMain(TestCase):
             ]
         }
 
-        def _fake_get(url, *, timeout=None, verify=None):
+        def _fake_get(url, *, headers=None, timeout=None, verify=None):
             return types.SimpleNamespace(status_code=200, json=lambda: payload)
 
         try:
