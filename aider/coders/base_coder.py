@@ -3266,8 +3266,20 @@ class Coder:
         self.partial_response_reasoning_content = reasoning_content or ""
 
         try:
-            if not self.partial_response_reasoning_content:
-                self.partial_response_content = response.choices[0].message.content or ""
+            content = response.choices[0].message.content
+            if isinstance(content, list):
+                # OpenAI-compatible APIs sometimes return content as a list
+                # of blocks; join the textual pieces for display.
+                content = "".join(
+                    block.get("text", "")
+                    for block in content
+                    if isinstance(block, dict) and block.get("type") == "output_text"
+                ) or "".join(
+                    block.get("text", "")
+                    for block in content
+                    if isinstance(block, dict) and block.get("type") == "text"
+                )
+            self.partial_response_content = content or ""
         except AttributeError as e:
             content_err = e
 
