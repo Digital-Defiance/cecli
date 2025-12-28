@@ -29,6 +29,7 @@ _CUSTOM_HANDLERS: Dict[str, "_JSONOpenAIProvider"] = {}
 
 
 def _coerce_str(value):
+    """Return the first string representation that litellm expects."""
     if isinstance(value, str):
         return value
     if isinstance(value, list) and value:
@@ -37,6 +38,7 @@ def _coerce_str(value):
 
 
 def _first_env_value(names):
+    """Return the first non-empty environment variable for the provided names."""
     if not names:
         return None
     if isinstance(names, str):
@@ -314,6 +316,7 @@ class _JSONOpenAIProvider(CustomLLM if CustomLLM is not None else object):  # ty
 
 
 def _register_provider_with_litellm(slug: str, config: Dict) -> None:
+    """Register provider metadata and custom handlers with LiteLLM."""
     try:
         from litellm.llms.openai_like.json_loader import (
             JSONProviderRegistry,
@@ -379,6 +382,7 @@ def _register_provider_with_litellm(slug: str, config: Dict) -> None:
 
 
 def _deep_merge(base: Dict, override: Dict) -> Dict:
+    """Recursively merge override dict into base without mutating inputs."""
     result = deepcopy(base)
     for key, value in override.items():
         if isinstance(value, dict) and isinstance(result.get(key), dict):
@@ -389,6 +393,7 @@ def _deep_merge(base: Dict, override: Dict) -> Dict:
 
 
 def _load_provider_configs() -> Dict[str, Dict]:
+    """Load provider configuration overrides from the packaged JSON file."""
     configs: Dict[str, Dict] = {}
     try:
         resource = importlib_resources.files("aider.resources").joinpath(RESOURCE_FILE)
@@ -659,6 +664,7 @@ class ModelProviderManager:
 
 
 def ensure_litellm_providers_registered() -> None:
+    """One-time registration guard for LiteLLM provider metadata."""
     global _PROVIDERS_REGISTERED
     if _PROVIDERS_REGISTERED:
         return
@@ -671,6 +677,7 @@ _NUMBER_RE = re.compile(r"-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
 
 
 def _cost_per_token(val: Optional[str | float | int]) -> Optional[float]:
+    """Parse token pricing strings into floats, tolerating currency prefixes."""
     if val in (None, "", "-", "N/A"):
         return None
     if val == "0":
@@ -690,6 +697,7 @@ def _cost_per_token(val: Optional[str | float | int]) -> Optional[float]:
 
 
 def _first_value(record: Dict, *keys: str):
+    """Return the first non-empty value for the provided keys."""
     for key in keys:
         value = record.get(key)
         if value not in (None, ""):
