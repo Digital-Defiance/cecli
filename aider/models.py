@@ -17,9 +17,9 @@ from PIL import Image
 
 from aider import __version__
 from aider.dump import dump  # noqa: F401
+from aider.helpers.model_providers import ModelProviderManager
 from aider.helpers.requests import model_request_parser
 from aider.llm import litellm
-from aider.helpers.model_providers import ModelProviderManager
 from aider.sendchat import sanity_check_messages
 from aider.utils import check_pip_install_extra
 
@@ -858,14 +858,8 @@ class Model(ModelSettings):
         if var and os.environ.get(var):
             return dict(keys_in_environment=[var], missing_keys=[])
 
-        if (
-            not var
-            and provider
-            and model_info_manager.provider_manager.supports_provider(provider)
-        ):
-            provider_keys = model_info_manager.provider_manager.get_required_api_keys(
-                provider
-            )
+        if not var and provider and model_info_manager.provider_manager.supports_provider(provider):
+            provider_keys = model_info_manager.provider_manager.get_required_api_keys(provider)
             for env_var in provider_keys:
                 if os.environ.get(env_var):
                     return dict(keys_in_environment=[env_var], missing_keys=[])

@@ -119,8 +119,8 @@ def _install_stubs():
 
 _install_stubs()
 
-from aider.helpers.model_providers import ModelProviderManager
-from aider.models import MODEL_SETTINGS, Model, ModelInfoManager
+from aider.helpers.model_providers import ModelProviderManager  # noqa: E402
+from aider.models import MODEL_SETTINGS, Model, ModelInfoManager  # noqa: E402
 
 
 class DummyResponse:
