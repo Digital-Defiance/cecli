@@ -23,7 +23,7 @@ except Exception:  # pragma: no cover - only during partial installs
     OpenAILikeChatHandler = None  # type: ignore
     HTTPHandler = None  # type: ignore
 
-RESOURCE_FILE = "openai_providers.json"
+RESOURCE_FILE = "providers.json"
 _PROVIDERS_REGISTERED = False
 _CUSTOM_HANDLERS: Dict[str, "_JSONOpenAIProvider"] = {}
 
