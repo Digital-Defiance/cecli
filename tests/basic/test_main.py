@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import tempfile
+import types
 from io import StringIO
 from pathlib import Path
 from unittest import TestCase
@@ -1414,6 +1415,71 @@ class TestMain(TestCase):
 
                 # Check that both models appear in the output
                 self.assertIn("test-provider/metadata-only-model", output)
+
+    async def test_list_models_includes_openai_provider(self):
+        import aider.models as models_module
+
+        provider_name = "openai"
+        manager = models_module.model_info_manager.openai_provider_manager
+        provider_config = {
+            "api_base": "https://api.openai.com/v1",
+            "models_url": "https://api.openai.com/v1/models",
+            "api_key_env": ["OPENAI_API_KEY"],
+            "base_url_env": ["OPENAI_API_BASE"],
+            "default_headers": {},
+        }
+
+        had_config = provider_name in manager.provider_configs
+        previous_config = manager.provider_configs.get(provider_name)
+        had_cache = provider_name in manager._provider_cache
+        previous_cache = manager._provider_cache.get(provider_name)
+        had_loaded = provider_name in manager._cache_loaded
+        previous_loaded = manager._cache_loaded.get(provider_name)
+
+        manager.provider_configs[provider_name] = provider_config
+        manager._provider_cache[provider_name] = None
+        manager._cache_loaded[provider_name] = False
+
+        payload = {
+            "data": [
+                {
+                    "id": "demo/foo",
+                    "max_input_tokens": 4096,
+                    "pricing": {"prompt": "0.0001", "completion": "0.0002"},
+                }
+            ]
+        }
+
+        def _fake_get(url, *, timeout=None, verify=None):
+            return types.SimpleNamespace(status_code=200, json=lambda: payload)
+
+        try:
+            with GitTemporaryDirectory():
+                with patch("requests.get", _fake_get):
+                    with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
+                        await main(
+                            ["--list-models", "openai/demo/foo", "--yes", "--no-gitignore"],
+                            input=DummyInput(),
+                            output=DummyOutput(),
+                        )
+
+                    output = mock_stdout.getvalue()
+                    self.assertIn("openai/demo/foo", output)
+        finally:
+            if had_config:
+                manager.provider_configs[provider_name] = previous_config
+            else:
+                manager.provider_configs.pop(provider_name, None)
+
+            if had_cache:
+                manager._provider_cache[provider_name] = previous_cache
+            else:
+                manager._provider_cache.pop(provider_name, None)
+
+            if had_loaded:
+                manager._cache_loaded[provider_name] = previous_loaded
+            else:
+                manager._cache_loaded.pop(provider_name, None)
 
     async def test_check_model_accepts_settings_flag(self):
         # Test that --check-model-accepts-settings affects whether settings are applied
