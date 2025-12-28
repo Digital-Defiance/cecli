@@ -1,4 +1,10 @@
-"""Unified model provider metadata caching and lookup."""
+"""Unified model provider metadata caching and lookup.
+
+Historically aider kept separate modules per provider (OpenRouter vs OpenAI-like).
+Those grew unwieldy and duplicated caching, request, and normalization logic.
+This helper centralizes that behavior so every OpenAI-compatible endpoint defines
+a small config blob and inherits the same cache + LiteLLM registration plumbing.
+"""
 
 from __future__ import annotations
 
