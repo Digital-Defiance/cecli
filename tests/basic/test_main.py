@@ -5,7 +5,6 @@ import subprocess
 import tempfile
 from io import StringIO
 from pathlib import Path
-from unittest import TestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import git
@@ -75,7 +74,7 @@ def test_env(request):
     webbrowser_patcher.stop()
 
 
-class TestMain(TestCase):
+class TestMain:
 
     def test_main_with_empty_dir_no_files_on_command(self):
         main(["--no-git", "--exit", "--yes-always"], input=DummyInput(), output=DummyOutput())
