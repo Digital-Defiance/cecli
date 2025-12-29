@@ -1096,33 +1096,35 @@ class TestMain:
             result = main(["--set-env", "INVALID_FORMAT", "--exit", "--yes-always"])
             assert result == 1
 
-    def test_api_key_single(self):
-        # Test setting a single API key
+    @pytest.mark.parametrize(
+        "api_key_args,expected_env,expected_result",
+        [
+            (
+                ["--api-key", "anthropic=test-key"],
+                {"ANTHROPIC_API_KEY": "test-key"},
+                None,
+            ),
+            (
+                ["--api-key", "anthropic=key1", "--api-key", "openai=key2"],
+                {"ANTHROPIC_API_KEY": "key1", "OPENAI_API_KEY": "key2"},
+                None,
+            ),
+            (
+                ["--api-key", "INVALID_FORMAT"],
+                {},
+                1,
+            ),
+        ],
+        ids=["single", "multiple", "invalid_format"],
+    )
+    def test_api_key(self, api_key_args, expected_env, expected_result):
         with GitTemporaryDirectory():
-            main(["--api-key", "anthropic=test-key", "--exit", "--yes-always"])
-            assert os.environ.get("ANTHROPIC_API_KEY") == "test-key"
-
-    def test_api_key_multiple(self):
-        # Test setting multiple API keys
-        with GitTemporaryDirectory():
-            main(
-                [
-                    "--api-key",
-                    "anthropic=key1",
-                    "--api-key",
-                    "openai=key2",
-                    "--exit",
-                    "--yes-always",
-                ]
-            )
-            assert os.environ.get("ANTHROPIC_API_KEY") == "key1"
-            assert os.environ.get("OPENAI_API_KEY") == "key2"
-
-    def test_api_key_invalid_format(self):
-        # Test invalid format handling
-        with GitTemporaryDirectory():
-            result = main(["--api-key", "INVALID_FORMAT", "--exit", "--yes-always"])
-            assert result == 1
+            args = api_key_args + ["--exit", "--yes-always"]
+            result = main(args)
+            if expected_result is not None:
+                assert result == expected_result
+            for env_var, expected_value in expected_env.items():
+                assert os.environ.get(env_var) == expected_value
 
     def test_git_config_include(self):
         # Test that aider respects git config includes for user.name and user.email
