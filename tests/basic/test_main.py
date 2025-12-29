@@ -1234,69 +1234,76 @@ class TestMain:
                 assert "invalid choice" in stderr_output
                 assert "not-a-real-format" in stderr_output
 
-    def test_default_model_selection(self):
+    @pytest.mark.parametrize(
+        "api_key_env,expected_model_substr",
+        [
+            ("ANTHROPIC_API_KEY", "sonnet"),
+            ("DEEPSEEK_API_KEY", "deepseek"),
+            ("OPENROUTER_API_KEY", "openrouter/"),
+            ("OPENAI_API_KEY", "gpt-4"),
+            ("GEMINI_API_KEY", "gemini"),
+        ],
+        ids=["anthropic", "deepseek", "openrouter", "openai", "gemini"],
+    )
+    def test_default_model_selection(self, api_key_env, expected_model_substr):
         with GitTemporaryDirectory():
-            # Test Anthropic API key
-            os.environ["ANTHROPIC_API_KEY"] = "test-key"
-            coder = main(
-                ["--exit", "--yes-always"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-            assert "sonnet" in coder.main_model.name.lower()
-            del os.environ["ANTHROPIC_API_KEY"]
+            # Save and clear all API keys to test each one in isolation
+            saved_keys = {}
+            api_keys = [
+                "ANTHROPIC_API_KEY",
+                "DEEPSEEK_API_KEY",
+                "OPENROUTER_API_KEY",
+                "OPENAI_API_KEY",
+                "GEMINI_API_KEY",
+            ]
+            for key in api_keys:
+                if key in os.environ:
+                    saved_keys[key] = os.environ[key]
+                    del os.environ[key]
 
-            # Test DeepSeek API key
-            os.environ["DEEPSEEK_API_KEY"] = "test-key"
-            coder = main(
-                ["--exit", "--yes-always"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-            assert "deepseek" in coder.main_model.name.lower()
-            del os.environ["DEEPSEEK_API_KEY"]
+            try:
+                os.environ[api_key_env] = "test-key"
+                coder = main(
+                    ["--exit", "--yes-always"],
+                    input=DummyInput(),
+                    output=DummyOutput(),
+                    return_coder=True,
+                )
+                assert expected_model_substr in coder.main_model.name.lower()
+            finally:
+                # Restore saved API keys
+                if api_key_env in os.environ:
+                    del os.environ[api_key_env]
+                for key, value in saved_keys.items():
+                    os.environ[key] = value
 
-            # Test OpenRouter API key
-            os.environ["OPENROUTER_API_KEY"] = "test-key"
-            coder = main(
-                ["--exit", "--yes-always"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-            assert "openrouter/" in coder.main_model.name.lower()
-            del os.environ["OPENROUTER_API_KEY"]
+    def test_default_model_selection_oauth_fallback(self):
+        # Test no API keys - should offer OpenRouter OAuth
+        with GitTemporaryDirectory():
+            # Clear all API keys to simulate no configured keys
+            saved_keys = {}
+            api_keys = [
+                "ANTHROPIC_API_KEY",
+                "DEEPSEEK_API_KEY",
+                "OPENROUTER_API_KEY",
+                "OPENAI_API_KEY",
+                "GEMINI_API_KEY",
+            ]
+            for key in api_keys:
+                if key in os.environ:
+                    saved_keys[key] = os.environ[key]
+                    del os.environ[key]
 
-            # Test OpenAI API key
-            os.environ["OPENAI_API_KEY"] = "test-key"
-            coder = main(
-                ["--exit", "--yes-always"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-            assert "gpt-4" in coder.main_model.name.lower()
-            del os.environ["OPENAI_API_KEY"]
-
-            # Test Gemini API key
-            os.environ["GEMINI_API_KEY"] = "test-key"
-            coder = main(
-                ["--exit", "--yes-always"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-            assert "gemini" in coder.main_model.name.lower()
-            del os.environ["GEMINI_API_KEY"]
-
-            # Test no API keys - should offer OpenRouter OAuth
-            with patch("aider.onboarding.offer_openrouter_oauth") as mock_offer_oauth:
-                mock_offer_oauth.return_value = None  # Simulate user declining or failure
-                result = main(["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput())
-                assert result == 1  # Expect failure since no model could be selected
-                mock_offer_oauth.assert_called_once()
+            try:
+                with patch("aider.onboarding.offer_openrouter_oauth") as mock_offer_oauth:
+                    mock_offer_oauth.return_value = None  # Simulate user declining or failure
+                    result = main(["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput())
+                    assert result == 1  # Expect failure since no model could be selected
+                    mock_offer_oauth.assert_called_once()
+            finally:
+                # Restore saved API keys
+                for key, value in saved_keys.items():
+                    os.environ[key] = value
 
     def test_model_precedence(self):
         with GitTemporaryDirectory():
