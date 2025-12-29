@@ -9,6 +9,7 @@ from unittest import TestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import git
+import pytest
 from prompt_toolkit.input import DummyInput
 from prompt_toolkit.output import DummyOutput
 
@@ -29,32 +30,52 @@ def mock_autosave_future():
     return AsyncMock()()
 
 
-class TestMain(TestCase):
-    def setUp(self):
-        self.original_env = os.environ.copy()
-        os.environ["OPENAI_API_KEY"] = "deadbeef"
-        os.environ["AIDER_CHECK_UPDATE"] = "false"
-        os.environ["AIDER_ANALYTICS"] = "false"
-        self.original_cwd = os.getcwd()
-        self.tempdir_obj = IgnorantTemporaryDirectory()
-        self.tempdir = self.tempdir_obj.name
-        os.chdir(self.tempdir)
-        # Fake home directory prevents tests from using the real ~/.aider.conf.yml file:
-        self.homedir_obj = IgnorantTemporaryDirectory()
-        os.environ["HOME"] = self.homedir_obj.name
-        self.input_patcher = patch("builtins.input", return_value=None)
-        self.mock_input = self.input_patcher.start()
-        self.webbrowser_patcher = patch("aider.io.webbrowser.open")
-        self.mock_webbrowser = self.webbrowser_patcher.start()
+@pytest.fixture(autouse=True)
+def test_env(request):
+    """Autouse fixture providing test environment (replaces setUp/tearDown)."""
+    # Setup (formerly setUp)
+    original_env = os.environ.copy()
+    os.environ["OPENAI_API_KEY"] = "deadbeef"
+    os.environ["AIDER_CHECK_UPDATE"] = "false"
+    os.environ["AIDER_ANALYTICS"] = "false"
+    original_cwd = os.getcwd()
+    tempdir_obj = IgnorantTemporaryDirectory()
+    tempdir = tempdir_obj.name
+    os.chdir(tempdir)
+    # Fake home directory prevents tests from using the real ~/.aider.conf.yml file:
+    homedir_obj = IgnorantTemporaryDirectory()
+    os.environ["HOME"] = homedir_obj.name
 
-    def tearDown(self):
-        os.chdir(self.original_cwd)
-        self.tempdir_obj.cleanup()
-        self.homedir_obj.cleanup()
-        os.environ.clear()
-        os.environ.update(self.original_env)
-        self.input_patcher.stop()
-        self.webbrowser_patcher.stop()
+    input_patcher = patch("builtins.input", return_value=None)
+    mock_input = input_patcher.start()
+    webbrowser_patcher = patch("aider.io.webbrowser.open")
+    mock_webbrowser = webbrowser_patcher.start()
+
+    # Make values available to tests via request.instance
+    if request.instance:
+        request.instance.tempdir = tempdir
+        request.instance.tempdir_obj = tempdir_obj
+        request.instance.homedir_obj = homedir_obj
+        request.instance.original_env = original_env
+        request.instance.original_cwd = original_cwd
+        request.instance.mock_input = mock_input
+        request.instance.mock_webbrowser = mock_webbrowser
+        request.instance.input_patcher = input_patcher
+        request.instance.webbrowser_patcher = webbrowser_patcher
+
+    yield
+
+    # Teardown (formerly tearDown)
+    os.chdir(original_cwd)
+    tempdir_obj.cleanup()
+    homedir_obj.cleanup()
+    os.environ.clear()
+    os.environ.update(original_env)
+    input_patcher.stop()
+    webbrowser_patcher.stop()
+
+
+class TestMain(TestCase):
 
     def test_main_with_empty_dir_no_files_on_command(self):
         main(["--no-git", "--exit", "--yes-always"], input=DummyInput(), output=DummyOutput())
