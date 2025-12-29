@@ -1,4 +1,5 @@
 import os
+import platform
 
 import pytest
 from prompt_toolkit.input import DummyInput
@@ -15,10 +16,14 @@ def isolated_env(tmp_path, monkeypatch, mocker):
 
     clean_env = {
         "OPENAI_API_KEY": "test-key",
-        "HOME": str(fake_home),
         "AIDER_CHECK_UPDATE": "false",
         "AIDER_ANALYTICS": "false",
     }
+
+    if platform.system() == "Windows":
+        clean_env["USERPROFILE"] = str(fake_home)
+    else:
+        clean_env["HOME"] = str(fake_home)
 
     mocker.patch.dict(os.environ, clean_env, clear=True)
     mocker.patch(
