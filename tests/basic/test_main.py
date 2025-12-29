@@ -14,6 +14,7 @@ from prompt_toolkit.input import DummyInput
 from prompt_toolkit.output import DummyOutput
 
 from aider.coders import Coder, CopyPasteCoder
+from aider.commands import SwitchCoder
 from aider.dump import dump  # noqa: F401
 from aider.io import InputOutput
 from aider.main import check_gitignore, load_dotenv_files, main, setup_git
@@ -262,7 +263,6 @@ class TestMain(TestCase):
             # Verify the ignored file is not in the chat
             self.assertNotIn(abs_ignored_file, coder.abs_fnames)
 
-    @pytest.mark.xfail(reason="TODO: Commands.cmd_add no longer exists, test needs refactoring")
     def test_add_command_gitignore_files_flag(self):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
@@ -288,8 +288,10 @@ class TestMain(TestCase):
                 force_git_root=git_dir,
             )
 
-            with patch.object(coder.io, "confirm_ask", return_value=True):
-                coder.commands.cmd_add(rel_ignored_file)
+            try:
+                asyncio.run(coder.commands.do_run("add", rel_ignored_file))
+            except SwitchCoder:
+                pass
 
             # Verify the ignored file is not in the chat
             self.assertNotIn(abs_ignored_file, coder.abs_fnames)
@@ -302,8 +304,10 @@ class TestMain(TestCase):
                 return_coder=True,
                 force_git_root=git_dir,
             )
-            with patch.object(coder.io, "confirm_ask", return_value=True):
-                coder.commands.cmd_add(rel_ignored_file)
+            try:
+                asyncio.run(coder.commands.do_run("add", rel_ignored_file))
+            except SwitchCoder:
+                pass
 
             # Verify the ignored file is in the chat
             self.assertIn(abs_ignored_file, coder.abs_fnames)
@@ -317,8 +321,10 @@ class TestMain(TestCase):
                 force_git_root=git_dir,
             )
 
-            with patch.object(coder.io, "confirm_ask", return_value=True):
-                coder.commands.cmd_add(rel_ignored_file)
+            try:
+                asyncio.run(coder.commands.do_run("add", rel_ignored_file))
+            except SwitchCoder:
+                pass
 
             # Verify the ignored file is not in the chat
             self.assertNotIn(abs_ignored_file, coder.abs_fnames)
