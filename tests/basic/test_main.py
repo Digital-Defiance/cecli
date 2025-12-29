@@ -86,13 +86,13 @@ class TestMain(TestCase):
             input=DummyInput(),
             output=DummyOutput(),
         )
-        self.assertTrue(os.path.exists("foo.txt"))
+        assert os.path.exists("foo.txt")
 
     @patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
     def test_main_with_empty_git_dir_new_file(self, _):
         make_repo()
         main(["--yes-always", "foo.txt", "--exit"], input=DummyInput(), output=DummyOutput())
-        self.assertTrue(os.path.exists("foo.txt"))
+        assert os.path.exists("foo.txt")
 
     @patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
     def test_main_with_empty_git_dir_new_files(self, _):
@@ -102,15 +102,15 @@ class TestMain(TestCase):
             input=DummyInput(),
             output=DummyOutput(),
         )
-        self.assertTrue(os.path.exists("foo.txt"))
-        self.assertTrue(os.path.exists("bar.txt"))
+        assert os.path.exists("foo.txt")
+        assert os.path.exists("bar.txt")
 
     def test_main_with_dname_and_fname(self):
         subdir = Path("subdir")
         subdir.mkdir()
         make_repo(str(subdir))
         res = main(["subdir", "foo.txt"], input=DummyInput(), output=DummyOutput())
-        self.assertNotEqual(res, None)
+        assert res is not None
 
     @patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
     def test_main_with_subdir_repo_fnames(self, _):
@@ -122,8 +122,8 @@ class TestMain(TestCase):
             input=DummyInput(),
             output=DummyOutput(),
         )
-        self.assertTrue((subdir / "foo.txt").exists())
-        self.assertTrue((subdir / "bar.txt").exists())
+        assert (subdir / "foo.txt").exists()
+        assert (subdir / "bar.txt").exists()
 
     def test_main_copy_paste_model_overrides(self):
         overrides = json.dumps({"gpt-4o": {"fast": {"temperature": 0.42}}})
@@ -201,13 +201,13 @@ class TestMain(TestCase):
         io = InputOutput(pretty=False, yes=True)
         git_root = asyncio.run(setup_git(None, io))
         git_root = Path(git_root).resolve()
-        self.assertEqual(git_root, Path(self.tempdir).resolve())
+        assert git_root == Path(self.tempdir).resolve()
 
-        self.assertTrue(git.Repo(self.tempdir))
+        assert git.Repo(self.tempdir)
 
         gitignore = Path.cwd() / ".gitignore"
-        self.assertTrue(gitignore.exists())
-        self.assertEqual(".aider*", gitignore.read_text().splitlines()[0])
+        assert gitignore.exists()
+        assert ".aider*" == gitignore.read_text().splitlines()[0]
 
     def test_check_gitignore(self):
         with GitTemporaryDirectory():
@@ -217,22 +217,22 @@ class TestMain(TestCase):
             cwd = Path.cwd()
             gitignore = cwd / ".gitignore"
 
-            self.assertFalse(gitignore.exists())
+            assert not gitignore.exists()
             asyncio.run(check_gitignore(cwd, io))
-            self.assertTrue(gitignore.exists())
+            assert gitignore.exists()
 
-            self.assertEqual(".aider*", gitignore.read_text().splitlines()[0])
+            assert ".aider*" == gitignore.read_text().splitlines()[0]
 
             # Test without .env file present
             gitignore.write_text("one\ntwo\n")
             asyncio.run(check_gitignore(cwd, io))
-            self.assertEqual("one\ntwo\n.aider*\n", gitignore.read_text())
+            assert "one\ntwo\n.aider*\n" == gitignore.read_text()
 
             # Test with .env file present
             env_file = cwd / ".env"
             env_file.touch()
             asyncio.run(check_gitignore(cwd, io))
-            self.assertEqual("one\ntwo\n.aider*\n.env\n", gitignore.read_text())
+            assert "one\ntwo\n.aider*\n.env\n" == gitignore.read_text()
             del os.environ["GIT_CONFIG_GLOBAL"]
 
     def test_command_line_gitignore_files_flag(self):
@@ -895,7 +895,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertIsInstance(result, Coder)
+            assert isinstance(result, Coder)
 
             result = main(
                 ["--exit", "--yes-always"],
@@ -903,7 +903,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=False,
             )
-            self.assertEqual(result, 0)
+            assert result == 0
 
     def test_map_mul_option(self):
         with GitTemporaryDirectory():
