@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import subprocess
@@ -175,10 +176,9 @@ class TestMain(TestCase):
         # Because aider will try and `git add` a file that's already in the repo.
         main(["--yes-always", str(fname), "--exit"], input=DummyInput(), output=DummyOutput())
 
-    @pytest.mark.skip(reason="TODO: Needs refactoring to call async helpers via asyncio.run()")
-    async def test_setup_git(self):
+    def test_setup_git(self):
         io = InputOutput(pretty=False, yes=True)
-        git_root = await setup_git(None, io)
+        git_root = asyncio.run(setup_git(None, io))
         git_root = Path(git_root).resolve()
         self.assertEqual(git_root, Path(self.tempdir).resolve())
 
@@ -188,8 +188,7 @@ class TestMain(TestCase):
         self.assertTrue(gitignore.exists())
         self.assertEqual(".aider*", gitignore.read_text().splitlines()[0])
 
-    @pytest.mark.skip(reason="TODO: Needs refactoring to call async helpers via asyncio.run()")
-    async def test_check_gitignore(self):
+    def test_check_gitignore(self):
         with GitTemporaryDirectory():
             os.environ["GIT_CONFIG_GLOBAL"] = "globalgitconfig"
 
@@ -198,20 +197,20 @@ class TestMain(TestCase):
             gitignore = cwd / ".gitignore"
 
             self.assertFalse(gitignore.exists())
-            await check_gitignore(cwd, io)
+            asyncio.run(check_gitignore(cwd, io))
             self.assertTrue(gitignore.exists())
 
             self.assertEqual(".aider*", gitignore.read_text().splitlines()[0])
 
             # Test without .env file present
             gitignore.write_text("one\ntwo\n")
-            await check_gitignore(cwd, io)
+            asyncio.run(check_gitignore(cwd, io))
             self.assertEqual("one\ntwo\n.aider*\n", gitignore.read_text())
 
             # Test with .env file present
             env_file = cwd / ".env"
             env_file.touch()
-            await check_gitignore(cwd, io)
+            asyncio.run(check_gitignore(cwd, io))
             self.assertEqual("one\ntwo\n.aider*\n.env\n", gitignore.read_text())
             del os.environ["GIT_CONFIG_GLOBAL"]
 
@@ -1639,8 +1638,7 @@ class TestMain(TestCase):
         for call in mock_io_instance.tool_warning.call_args_list:
             self.assertNotIn("Cost estimates may be inaccurate", call[0][0])
 
-    @pytest.mark.skip(reason="TODO: Needs refactoring to call async helpers via asyncio.run()")
-    async def test_argv_file_respects_git(self):
+    def test_argv_file_respects_git(self):
         with GitTemporaryDirectory():
             fname = Path("not_in_git.txt")
             fname.touch()
@@ -1653,7 +1651,7 @@ class TestMain(TestCase):
                 return_coder=True,
             )
             self.assertNotIn("not_in_git.txt", str(coder.abs_fnames))
-            self.assertFalse(await coder.allowed_to_edit("not_in_git.txt"))
+            self.assertFalse(asyncio.run(coder.allowed_to_edit("not_in_git.txt")))
 
     def test_load_dotenv_files_override(self):
         with GitTemporaryDirectory() as git_dir:
