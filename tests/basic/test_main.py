@@ -476,7 +476,7 @@ class TestMain(TestCase):
             _, kwargs = MockInputOutput.call_args
             self.assertEqual(kwargs["code_theme"], "default")
 
-    async def create_env_file(self, file_name, content):
+    def create_env_file(self, file_name, content):
         env_file_path = Path(self.tempdir) / file_name
         env_file_path.write_text(content)
         return env_file_path
