@@ -419,29 +419,32 @@ class TestMain(TestCase):
                 mock_check_version.assert_called_once()
                 mock_input_output.assert_called_once()
 
-    @patch("aider.main.InputOutput")
+    @patch("aider.main.InputOutput", autospec=True)
     @patch("aider.coders.base_coder.Coder.run")
     def test_main_message_adds_to_input_history(self, mock_run, MockInputOutput):
         test_message = "test message"
         mock_io_instance = MockInputOutput.return_value
+        mock_io_instance.pretty = True
 
         main(["--message", test_message], input=DummyInput(), output=DummyOutput())
 
         mock_io_instance.add_to_input_history.assert_called_once_with(test_message)
 
-    @patch("aider.main.InputOutput")
+    @patch("aider.main.InputOutput", autospec=True)
     @patch("aider.coders.base_coder.Coder.run")
     def test_yes(self, mock_run, MockInputOutput):
         test_message = "test message"
+        MockInputOutput.return_value.pretty = True
 
         main(["--yes-always", "--message", test_message])
         args, kwargs = MockInputOutput.call_args
         self.assertTrue(args[1])
 
-    @patch("aider.main.InputOutput")
+    @patch("aider.main.InputOutput", autospec=True)
     @patch("aider.coders.base_coder.Coder.run")
     def test_default_yes(self, mock_run, MockInputOutput):
         test_message = "test message"
+        MockInputOutput.return_value.pretty = True
 
         main(["--message", test_message])
         args, kwargs = MockInputOutput.call_args
@@ -1530,9 +1533,10 @@ class TestMain(TestCase):
                 mock_instance.set_reasoning_effort.assert_called_once_with("3")
                 mock_instance.set_thinking_tokens.assert_not_called()
 
-    @patch("aider.main.InputOutput")
+    @patch("aider.main.InputOutput", autospec=True)
     def test_stream_and_cache_warning(self, MockInputOutput):
         mock_io_instance = MockInputOutput.return_value
+        mock_io_instance.pretty = True
         with GitTemporaryDirectory():
             main(
                 ["--stream", "--cache-prompts", "--exit", "--yes-always"],
@@ -1543,9 +1547,10 @@ class TestMain(TestCase):
             "Cost estimates may be inaccurate when using streaming and caching."
         )
 
-    @patch("aider.main.InputOutput")
+    @patch("aider.main.InputOutput", autospec=True)
     def test_stream_without_cache_no_warning(self, MockInputOutput):
         mock_io_instance = MockInputOutput.return_value
+        mock_io_instance.pretty = True
         with GitTemporaryDirectory():
             main(
                 ["--stream", "--exit", "--yes-always"],
@@ -1630,9 +1635,10 @@ class TestMain(TestCase):
             # Restore CWD
             os.chdir(original_cwd)
 
-    @patch("aider.main.InputOutput")
+    @patch("aider.main.InputOutput", autospec=True)
     def test_cache_without_stream_no_warning(self, MockInputOutput):
         mock_io_instance = MockInputOutput.return_value
+        mock_io_instance.pretty = True
         with GitTemporaryDirectory():
             main(
                 ["--cache-prompts", "--exit", "--yes-always", "--no-stream"],
