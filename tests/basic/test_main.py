@@ -142,10 +142,10 @@ class TestMain(TestCase):
             return_coder=True,
         )
 
-        self.assertIsInstance(coder, CopyPasteCoder)
-        self.assertTrue(coder.main_model.copy_paste_mode)
-        self.assertEqual(coder.main_model.copy_paste_transport, "clipboard")
-        self.assertEqual(coder.main_model.override_kwargs, {"temperature": 0.42})
+        assert isinstance(coder, CopyPasteCoder)
+        assert coder.main_model.copy_paste_mode
+        assert coder.main_model.copy_paste_transport == "clipboard"
+        assert coder.main_model.override_kwargs == {"temperature": 0.42}
 
     @patch("aider.main.ClipboardWatcher")
     def test_main_copy_paste_flag_sets_mode(self, mock_watcher):
@@ -158,11 +158,11 @@ class TestMain(TestCase):
             return_coder=True,
         )
 
-        self.assertNotIsInstance(coder, CopyPasteCoder)
-        self.assertTrue(coder.main_model.copy_paste_mode)
-        self.assertEqual(coder.main_model.copy_paste_transport, "api")
-        self.assertTrue(coder.copy_paste_mode)
-        self.assertFalse(coder.manual_copy_paste)
+        assert not isinstance(coder, CopyPasteCoder)
+        assert coder.main_model.copy_paste_mode
+        assert coder.main_model.copy_paste_transport == "api"
+        assert coder.copy_paste_mode
+        assert not coder.manual_copy_paste
 
     def test_main_with_git_config_yml(self):
         make_repo()
@@ -793,7 +793,7 @@ class TestMain(TestCase):
                 return_coder=True,
             )
 
-            self.assertIn(str(Path(test_file).resolve()), coder.abs_read_only_fnames)
+            assert str(Path(test_file).resolve()) in coder.abs_read_only_fnames
 
     def test_read_option_with_external_file(self):
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as external_file:
@@ -810,7 +810,7 @@ class TestMain(TestCase):
                 )
 
                 real_external_file_path = os.path.realpath(external_file_path)
-                self.assertIn(real_external_file_path, coder.abs_read_only_fnames)
+                assert real_external_file_path in coder.abs_read_only_fnames
         finally:
             os.unlink(external_file_path)
 
@@ -845,7 +845,7 @@ class TestMain(TestCase):
                 return_coder=True,
             )
 
-            self.assertEqual(coder.main_model.info["max_input_tokens"], 1234)
+            assert coder.main_model.info["max_input_tokens"] == 1234
 
     def test_sonnet_and_cache_options(self):
         with GitTemporaryDirectory():
@@ -862,9 +862,7 @@ class TestMain(TestCase):
 
                 MockRepoMap.assert_called_once()
                 call_args, call_kwargs = MockRepoMap.call_args
-                self.assertEqual(
-                    call_kwargs.get("refresh"), "files"
-                )  # Check the 'refresh' keyword argument
+                assert call_kwargs.get("refresh") == "files"  # Check the 'refresh' keyword argument
 
     def test_sonnet_and_cache_prompts_options(self):
         with GitTemporaryDirectory():
@@ -875,7 +873,7 @@ class TestMain(TestCase):
                 return_coder=True,
             )
 
-            self.assertTrue(coder.add_cache_headers)
+            assert coder.add_cache_headers
 
     def test_4o_and_cache_options(self):
         with GitTemporaryDirectory():
@@ -886,7 +884,7 @@ class TestMain(TestCase):
                 return_coder=True,
             )
 
-            self.assertFalse(coder.add_cache_headers)
+            assert not coder.add_cache_headers
 
     def test_return_coder(self):
         with GitTemporaryDirectory():
@@ -1243,34 +1241,32 @@ class TestMain(TestCase):
 
         # Test with absolute path
         abs_path = os.path.abspath("/tmp/test/.aiderignore")
-        self.assertEqual(resolve_aiderignore_path(abs_path), abs_path)
+        assert resolve_aiderignore_path(abs_path) == abs_path
 
         # Test with relative path and git root
         git_root = "/path/to/git/root"
         rel_path = ".aiderignore"
-        self.assertEqual(
-            resolve_aiderignore_path(rel_path, git_root), str(Path(git_root) / rel_path)
-        )
+        assert resolve_aiderignore_path(rel_path, git_root) == str(Path(git_root) / rel_path)
 
         # Test with relative path and no git root
         rel_path = ".aiderignore"
-        self.assertEqual(resolve_aiderignore_path(rel_path), rel_path)
+        assert resolve_aiderignore_path(rel_path) == rel_path
 
     def test_invalid_edit_format(self):
         with GitTemporaryDirectory():
             # Suppress stderr for this test as argparse prints an error message
             with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
-                with self.assertRaises(SystemExit) as cm:
+                with pytest.raises(SystemExit) as cm:
                     _ = main(
                         ["--edit-format", "not-a-real-format", "--exit", "--yes-always"],
                         input=DummyInput(),
                         output=DummyOutput(),
                     )
                 # argparse.ArgumentParser.exit() is called with status 2 for invalid choice
-                self.assertEqual(cm.exception.code, 2)
+                assert cm.value.code == 2
                 stderr_output = mock_stderr.getvalue()
-                self.assertIn("invalid choice", stderr_output)
-                self.assertIn("not-a-real-format", stderr_output)
+                assert "invalid choice" in stderr_output
+                assert "not-a-real-format" in stderr_output
 
     def test_default_model_selection(self):
         with GitTemporaryDirectory():
@@ -1282,7 +1278,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertIn("sonnet", coder.main_model.name.lower())
+            assert "sonnet" in coder.main_model.name.lower()
             del os.environ["ANTHROPIC_API_KEY"]
 
             # Test DeepSeek API key
@@ -1293,7 +1289,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertIn("deepseek", coder.main_model.name.lower())
+            assert "deepseek" in coder.main_model.name.lower()
             del os.environ["DEEPSEEK_API_KEY"]
 
             # Test OpenRouter API key
@@ -1304,7 +1300,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertIn("openrouter/", coder.main_model.name.lower())
+            assert "openrouter/" in coder.main_model.name.lower()
             del os.environ["OPENROUTER_API_KEY"]
 
             # Test OpenAI API key
@@ -1315,7 +1311,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertIn("gpt-4", coder.main_model.name.lower())
+            assert "gpt-4" in coder.main_model.name.lower()
             del os.environ["OPENAI_API_KEY"]
 
             # Test Gemini API key
@@ -1326,14 +1322,14 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertIn("gemini", coder.main_model.name.lower())
+            assert "gemini" in coder.main_model.name.lower()
             del os.environ["GEMINI_API_KEY"]
 
             # Test no API keys - should offer OpenRouter OAuth
             with patch("aider.onboarding.offer_openrouter_oauth") as mock_offer_oauth:
                 mock_offer_oauth.return_value = None  # Simulate user declining or failure
                 result = main(["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput())
-                self.assertEqual(result, 1)  # Expect failure since no model could be selected
+                assert result == 1  # Expect failure since no model could be selected
                 mock_offer_oauth.assert_called_once()
 
     def test_model_precedence(self):
@@ -1347,7 +1343,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertIn("sonnet", coder.main_model.name.lower())
+            assert "sonnet" in coder.main_model.name.lower()
             del os.environ["ANTHROPIC_API_KEY"]
             del os.environ["OPENAI_API_KEY"]
 
@@ -1395,12 +1391,9 @@ class TestMain(TestCase):
                         matched_call_found = True
                         break
 
-                self.assertTrue(
-                    matched_call_found,
-                    (
-                        "Expected a Model call with base name 'gpt-4o' and override_kwargs"
-                        " {'temperature': 0.1}"
-                    ),
+                assert matched_call_found, (
+                    "Expected a Model call with base name 'gpt-4o' and override_kwargs"
+                    " {'temperature': 0.1}"
                 )
 
     def test_model_overrides_no_match_preserves_model_name(self):
@@ -1442,12 +1435,9 @@ class TestMain(TestCase):
                         matched_call_found = True
                         break
 
-                self.assertTrue(
-                    matched_call_found,
-                    (
-                        "Expected a Model call with the full model name preserved and empty"
-                        " override_kwargs"
-                    ),
+                assert matched_call_found, (
+                    "Expected a Model call with the full model name preserved and empty"
+                    " override_kwargs"
                 )
 
     def test_chat_language_spanish(self):
@@ -1459,7 +1449,7 @@ class TestMain(TestCase):
                 return_coder=True,
             )
             system_info = coder.get_platform_info()
-            self.assertIn("Spanish", system_info)
+            assert "Spanish" in system_info
 
     def test_commit_language_japanese(self):
         with GitTemporaryDirectory():
@@ -1469,18 +1459,14 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertIn("japanese", coder.commit_language)
+            assert "japanese" in coder.commit_language
 
     @patch("git.Repo.init")
     def test_main_exit_with_git_command_not_found(self, mock_git_init):
         mock_git_init.side_effect = git.exc.GitCommandNotFound("git", "Command 'git' not found")
 
-        try:
-            result = main(["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput())
-        except Exception as e:
-            self.fail(f"main() raised an unexpected exception: {e}")
-
-        self.assertEqual(result, 0, "main() should return 0 (success) when called with --exit")
+        result = main(["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput())
+        assert result == 0, "main() should return 0 (success) when called with --exit"
 
     def test_reasoning_effort_option(self):
         coder = main(
@@ -1495,9 +1481,7 @@ class TestMain(TestCase):
             output=DummyOutput(),
             return_coder=True,
         )
-        self.assertEqual(
-            coder.main_model.extra_params.get("extra_body", {}).get("reasoning_effort"), "3"
-        )
+        assert coder.main_model.extra_params.get("extra_body", {}).get("reasoning_effort") == "3"
 
     def test_thinking_tokens_option(self):
         coder = main(
@@ -1506,9 +1490,7 @@ class TestMain(TestCase):
             output=DummyOutput(),
             return_coder=True,
         )
-        self.assertEqual(
-            coder.main_model.extra_params.get("thinking", {}).get("budget_tokens"), 1000
-        )
+        assert coder.main_model.extra_params.get("thinking", {}).get("budget_tokens") == 1000
 
     def test_list_models_includes_metadata_models(self):
         # Test that models from model-metadata.json appear in list-models output
@@ -1546,7 +1528,7 @@ class TestMain(TestCase):
                 output = mock_stdout.getvalue()
 
                 # Check that the unique model name from our metadata file is listed
-                self.assertIn("test-provider/unique-model-name", output)
+                assert "test-provider/unique-model-name" in output
 
     def test_list_models_includes_all_model_sources(self):
         # Test that models from both litellm.model_cost and model-metadata.json
@@ -1582,7 +1564,7 @@ class TestMain(TestCase):
                 dump(output)
 
                 # Check that both models appear in the output
-                self.assertIn("test-provider/metadata-only-model", output)
+                assert "test-provider/metadata-only-model" in output
 
     def test_check_model_accepts_settings_flag(self):
         # Test that --check-model-accepts-settings affects whether settings are applied
@@ -1638,7 +1620,7 @@ class TestMain(TestCase):
                     output = mock_stdout.getvalue()
 
                     # Check that the resource model appears in the output
-                    self.assertIn("resource-provider/special-model", output)
+                    assert "resource-provider/special-model" in output
 
             # When flag is off, setting should be applied regardless of support
             with patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning:
@@ -1720,7 +1702,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
             )
         for call in mock_io_instance.tool_warning.call_args_list:
-            self.assertNotIn("Cost estimates may be inaccurate", call[0][0])
+            assert "Cost estimates may be inaccurate" not in call[0][0]
 
     def test_argv_file_respects_git(self):
         with GitTemporaryDirectory():
@@ -1807,7 +1789,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
             )
         for call in mock_io_instance.tool_warning.call_args_list:
-            self.assertNotIn("Cost estimates may be inaccurate", call[0][0])
+            assert "Cost estimates may be inaccurate" not in call[0][0]
 
     @patch("aider.coders.Coder.create")
     def test_mcp_servers_parsing(self, mock_coder_create):
