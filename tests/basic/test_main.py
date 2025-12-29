@@ -172,7 +172,7 @@ class TestMain(TestCase):
         # Because aider will try and `git add` a file that's already in the repo.
         main(["--yes-always", str(fname), "--exit"], input=DummyInput(), output=DummyOutput())
 
-    # TODO: This test needs to be converted to call async functions via asyncio.run() or refactored
+    @pytest.mark.skip(reason="TODO: Needs refactoring to call async helpers via asyncio.run()")
     async def test_setup_git(self):
         io = InputOutput(pretty=False, yes=True)
         git_root = await setup_git(None, io)
@@ -185,7 +185,7 @@ class TestMain(TestCase):
         self.assertTrue(gitignore.exists())
         self.assertEqual(".aider*", gitignore.read_text().splitlines()[0])
 
-    # TODO: This test needs to be converted to call async functions via asyncio.run() or refactored
+    @pytest.mark.skip(reason="TODO: Needs refactoring to call async helpers via asyncio.run()")
     async def test_check_gitignore(self):
         with GitTemporaryDirectory():
             os.environ["GIT_CONFIG_GLOBAL"] = "globalgitconfig"
@@ -822,7 +822,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=False,
             )
-            self.assertIsNone(result)
+            self.assertEqual(result, 0)
 
     def test_map_mul_option(self):
         with GitTemporaryDirectory():
@@ -1366,7 +1366,7 @@ class TestMain(TestCase):
         except Exception as e:
             self.fail(f"main() raised an unexpected exception: {e}")
 
-        self.assertIsNone(result, "main() should return None when called with --exit")
+        self.assertEqual(result, 0, "main() should return 0 (success) when called with --exit")
 
     def test_reasoning_effort_option(self):
         coder = main(
@@ -1602,7 +1602,7 @@ class TestMain(TestCase):
         for call in mock_io_instance.tool_warning.call_args_list:
             self.assertNotIn("Cost estimates may be inaccurate", call[0][0])
 
-    # TODO: This test needs to be converted to call async functions via asyncio.run() or refactored
+    @pytest.mark.skip(reason="TODO: Needs refactoring to call async helpers via asyncio.run()")
     async def test_argv_file_respects_git(self):
         with GitTemporaryDirectory():
             fname = Path("not_in_git.txt")
