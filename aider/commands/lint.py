@@ -32,7 +32,7 @@ class LintCommand(BaseCommand):
             fnames = coder.get_inchat_relative_files()
 
         # If still no files, get all dirty files in the repo
-        if not fnames and coder.repo:
+        if not fnames:
             fnames = coder.repo.get_dirty_files()
 
         if not fnames:
