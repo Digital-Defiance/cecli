@@ -15,7 +15,7 @@ from aider.waiting import Spinner
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp", ".pdf"}
 
 
-def expand_glob_patterns(patterns, root="."):
+def expand_glob_patterns(patterns):
     """Expand glob patterns in a list of file paths."""
     expanded_files = []
     for pattern in patterns:
