@@ -506,27 +506,24 @@ class TestMain:
         args, kwargs = MockInputOutput.call_args
         assert args[1] is None
 
-    def test_dark_mode_sets_code_theme(self):
+    @pytest.mark.parametrize(
+        "mode_flag,expected_theme",
+        [
+            ("--dark-mode", "monokai"),
+            ("--light-mode", "default"),
+        ],
+        ids=["dark_mode", "light_mode"],
+    )
+    def test_mode_sets_code_theme(self, mode_flag, expected_theme):
         # Mock InputOutput to capture the configuration
         with patch("aider.main.InputOutput") as MockInputOutput:
             MockInputOutput.return_value.get_input.return_value = None
-            main(["--dark-mode", "--no-git", "--exit"], input=DummyInput(), output=DummyOutput())
+            main([mode_flag, "--no-git", "--exit"], input=DummyInput(), output=DummyOutput())
             # Ensure InputOutput was called
             MockInputOutput.assert_called_once()
-            # Check if the code_theme setting is for dark mode
+            # Check if the code_theme setting matches expected
             _, kwargs = MockInputOutput.call_args
-            assert kwargs["code_theme"] == "monokai"
-
-    def test_light_mode_sets_code_theme(self):
-        # Mock InputOutput to capture the configuration
-        with patch("aider.main.InputOutput") as MockInputOutput:
-            MockInputOutput.return_value.get_input.return_value = None
-            main(["--light-mode", "--no-git", "--exit"], input=DummyInput(), output=DummyOutput())
-            # Ensure InputOutput was called
-            MockInputOutput.assert_called_once()
-            # Check if the code_theme setting is for light mode
-            _, kwargs = MockInputOutput.call_args
-            assert kwargs["code_theme"] == "default"
+            assert kwargs["code_theme"] == expected_theme
 
     def create_env_file(self, file_name, content):
         env_file_path = Path(self.tempdir) / file_name
