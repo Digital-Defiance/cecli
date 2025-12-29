@@ -414,11 +414,11 @@ class TestMain(TestCase):
             with patch("pathlib.Path.home", return_value=fake_home):
                 main(["--yes-always", "--exit", "--env-file", str(named_env)])
 
-            self.assertEqual(os.environ["A"], "named")
-            self.assertEqual(os.environ["B"], "cwd")
-            self.assertEqual(os.environ["C"], "git")
-            self.assertEqual(os.environ["D"], "home")
-            self.assertEqual(os.environ["E"], "existing")
+            assert os.environ["A"] == "named"
+            assert os.environ["B"] == "cwd"
+            assert os.environ["C"] == "git"
+            assert os.environ["D"] == "home"
+            assert os.environ["E"] == "existing"
 
     def test_message_file_flag(self):
         message_file_content = "This is a test message from a file."
@@ -548,7 +548,7 @@ class TestMain(TestCase):
             MockInputOutput.assert_called_once()
             # Check if the color settings are for dark mode
             _, kwargs = MockInputOutput.call_args
-            self.assertEqual(kwargs["code_theme"], "monokai")
+            assert kwargs["code_theme"] == "monokai"
 
     def test_default_env_file_sets_automatic_variable(self):
         self.create_env_file(".env", "AIDER_DARK_MODE=True")
@@ -560,7 +560,7 @@ class TestMain(TestCase):
             MockInputOutput.assert_called_once()
             # Check if the color settings are for dark mode
             _, kwargs = MockInputOutput.call_args
-            self.assertEqual(kwargs["code_theme"], "monokai")
+            assert kwargs["code_theme"] == "monokai"
 
     def test_false_vals_in_env_file(self):
         self.create_env_file(".env", "AIDER_SHOW_DIFFS=off")
@@ -570,7 +570,7 @@ class TestMain(TestCase):
             main(["--no-git", "--yes-always"], input=DummyInput(), output=DummyOutput())
             MockCoder.assert_called_once()
             _, kwargs = MockCoder.call_args
-            self.assertEqual(kwargs["show_diffs"], False)
+            assert kwargs["show_diffs"] is False
 
     def test_true_vals_in_env_file(self):
         self.create_env_file(".env", "AIDER_SHOW_DIFFS=on")
@@ -580,7 +580,7 @@ class TestMain(TestCase):
             main(["--no-git", "--yes-always"], input=DummyInput(), output=DummyOutput())
             MockCoder.assert_called_once()
             _, kwargs = MockCoder.call_args
-            self.assertEqual(kwargs["show_diffs"], True)
+            assert kwargs["show_diffs"] is True
 
     def test_lint_option(self):
         with GitTemporaryDirectory() as git_dir:
@@ -687,10 +687,11 @@ class TestMain(TestCase):
                 for line in output.splitlines()
                 if "AIDER_DARK_MODE" in line or "dark_mode" in line
             )  # this bit just helps failing assertions to be easier to read
-            self.assertIn("AIDER_DARK_MODE", relevant_output)
-            self.assertIn("dark_mode", relevant_output)
-            self.assertRegex(relevant_output, r"AIDER_DARK_MODE:\s+on")
-            self.assertRegex(relevant_output, r"dark_mode:\s+True")
+            assert "AIDER_DARK_MODE" in relevant_output
+            assert "dark_mode" in relevant_output
+            import re
+            assert re.search(r"AIDER_DARK_MODE:\s+on", relevant_output)
+            assert re.search(r"dark_mode:\s+True", relevant_output)
 
     def test_yaml_config_file_loading(self):
         with GitTemporaryDirectory() as git_dir:
@@ -730,33 +731,33 @@ class TestMain(TestCase):
                     output=DummyOutput(),
                 )
                 _, kwargs = MockCoder.call_args
-                self.assertEqual(kwargs["main_model"].name, "gpt-4-1106-preview")
-                self.assertEqual(kwargs["map_tokens"], 8192)
+                assert kwargs["main_model"].name == "gpt-4-1106-preview"
+                assert kwargs["map_tokens"] == 8192
 
                 # Test loading from current working directory
                 mock_coder_instance._autosave_future = mock_autosave_future()
                 main(["--yes-always", "--exit"], input=DummyInput(), output=DummyOutput())
                 _, kwargs = MockCoder.call_args
                 print("kwargs:", kwargs)  # Add this line for debugging
-                self.assertIn("main_model", kwargs, "main_model key not found in kwargs")
-                self.assertEqual(kwargs["main_model"].name, "gpt-4-32k")
-                self.assertEqual(kwargs["map_tokens"], 4096)
+                assert "main_model" in kwargs, "main_model key not found in kwargs"
+                assert kwargs["main_model"].name == "gpt-4-32k"
+                assert kwargs["map_tokens"] == 4096
 
                 # Test loading from git root
                 cwd_config.unlink()
                 mock_coder_instance._autosave_future = mock_autosave_future()
                 main(["--yes-always", "--exit"], input=DummyInput(), output=DummyOutput())
                 _, kwargs = MockCoder.call_args
-                self.assertEqual(kwargs["main_model"].name, "gpt-4")
-                self.assertEqual(kwargs["map_tokens"], 2048)
+                assert kwargs["main_model"].name == "gpt-4"
+                assert kwargs["map_tokens"] == 2048
 
                 # Test loading from home directory
                 git_config.unlink()
                 mock_coder_instance._autosave_future = mock_autosave_future()
                 main(["--yes-always", "--exit"], input=DummyInput(), output=DummyOutput())
                 _, kwargs = MockCoder.call_args
-                self.assertEqual(kwargs["main_model"].name, "gpt-3.5-turbo")
-                self.assertEqual(kwargs["map_tokens"], 1024)
+                assert kwargs["main_model"].name == "gpt-3.5-turbo"
+                assert kwargs["map_tokens"] == 1024
 
     def test_map_tokens_option(self):
         with GitTemporaryDirectory():
@@ -1095,13 +1096,13 @@ class TestMain(TestCase):
 
     def test_pytest_env_vars(self):
         # Verify that environment variables from pytest.ini are properly set
-        self.assertEqual(os.environ.get("AIDER_ANALYTICS"), "false")
+        assert os.environ.get("AIDER_ANALYTICS") == "false"
 
     def test_set_env_single(self):
         # Test setting a single environment variable
         with GitTemporaryDirectory():
             main(["--set-env", "TEST_VAR=test_value", "--exit", "--yes-always"])
-            self.assertEqual(os.environ.get("TEST_VAR"), "test_value")
+            assert os.environ.get("TEST_VAR") == "test_value"
 
     def test_set_env_multiple(self):
         # Test setting multiple environment variables
@@ -1116,26 +1117,26 @@ class TestMain(TestCase):
                     "--yes-always",
                 ]
             )
-            self.assertEqual(os.environ.get("TEST_VAR1"), "value1")
-            self.assertEqual(os.environ.get("TEST_VAR2"), "value2")
+            assert os.environ.get("TEST_VAR1") == "value1"
+            assert os.environ.get("TEST_VAR2") == "value2"
 
     def test_set_env_with_spaces(self):
         # Test setting env var with spaces in value
         with GitTemporaryDirectory():
             main(["--set-env", "TEST_VAR=test value with spaces", "--exit", "--yes-always"])
-            self.assertEqual(os.environ.get("TEST_VAR"), "test value with spaces")
+            assert os.environ.get("TEST_VAR") == "test value with spaces"
 
     def test_set_env_invalid_format(self):
         # Test invalid format handling
         with GitTemporaryDirectory():
             result = main(["--set-env", "INVALID_FORMAT", "--exit", "--yes-always"])
-            self.assertEqual(result, 1)
+            assert result == 1
 
     def test_api_key_single(self):
         # Test setting a single API key
         with GitTemporaryDirectory():
             main(["--api-key", "anthropic=test-key", "--exit", "--yes-always"])
-            self.assertEqual(os.environ.get("ANTHROPIC_API_KEY"), "test-key")
+            assert os.environ.get("ANTHROPIC_API_KEY") == "test-key"
 
     def test_api_key_multiple(self):
         # Test setting multiple API keys
@@ -1150,14 +1151,14 @@ class TestMain(TestCase):
                     "--yes-always",
                 ]
             )
-            self.assertEqual(os.environ.get("ANTHROPIC_API_KEY"), "key1")
-            self.assertEqual(os.environ.get("OPENAI_API_KEY"), "key2")
+            assert os.environ.get("ANTHROPIC_API_KEY") == "key1"
+            assert os.environ.get("OPENAI_API_KEY") == "key2"
 
     def test_api_key_invalid_format(self):
         # Test invalid format handling
         with GitTemporaryDirectory():
             result = main(["--api-key", "INVALID_FORMAT", "--exit", "--yes-always"])
-            self.assertEqual(result, 1)
+            assert result == 1
 
     def test_git_config_include(self):
         # Test that aider respects git config includes for user.name and user.email
@@ -1176,8 +1177,8 @@ class TestMain(TestCase):
             repo.git.config("--local", "include.path", str(include_path))
 
             # Verify the config is set up correctly using git command
-            self.assertEqual(repo.git.config("user.name"), "Included User")
-            self.assertEqual(repo.git.config("user.email"), "included@example.com")
+            assert repo.git.config("user.name") == "Included User"
+            assert repo.git.config("user.email") == "included@example.com"
 
             # Manually check the git config file to confirm include directive
             git_config_path = git_dir / ".git" / "config"
@@ -1188,12 +1189,12 @@ class TestMain(TestCase):
 
             # Check that the user settings are still the same using git command
             repo = git.Repo(git_dir)  # Re-open repo to ensure we get fresh config
-            self.assertEqual(repo.git.config("user.name"), "Included User")
-            self.assertEqual(repo.git.config("user.email"), "included@example.com")
+            assert repo.git.config("user.name") == "Included User"
+            assert repo.git.config("user.email") == "included@example.com"
 
             # Manually check the git config file again to ensure it wasn't modified
             git_config_content_after = git_config_path.read_text()
-            self.assertEqual(git_config_content, git_config_content_after)
+            assert git_config_content == git_config_content_after
 
     def test_git_config_include_directive(self):
         # Test that aider respects the include directive in git config
@@ -1217,24 +1218,24 @@ class TestMain(TestCase):
             modified_config_content = git_config.read_text()
 
             # Verify the include directive was added correctly
-            self.assertIn("[include]", modified_config_content)
+            assert "[include]" in modified_config_content
 
             # Verify the config is set up correctly using git command
             repo = git.Repo(git_dir)
-            self.assertEqual(repo.git.config("user.name"), "Directive User")
-            self.assertEqual(repo.git.config("user.email"), "directive@example.com")
+            assert repo.git.config("user.name") == "Directive User"
+            assert repo.git.config("user.email") == "directive@example.com"
 
             # Run aider and verify it doesn't change the git config
             main(["--yes-always", "--exit"], input=DummyInput(), output=DummyOutput())
 
             # Check that the git config file wasn't modified
             config_after_aider = git_config.read_text()
-            self.assertEqual(modified_config_content, config_after_aider)
+            assert modified_config_content == config_after_aider
 
             # Check that the user settings are still the same using git command
             repo = git.Repo(git_dir)  # Re-open repo to ensure we get fresh config
-            self.assertEqual(repo.git.config("user.name"), "Directive User")
-            self.assertEqual(repo.git.config("user.email"), "directive@example.com")
+            assert repo.git.config("user.name") == "Directive User"
+            assert repo.git.config("user.email") == "directive@example.com"
 
     def test_resolve_aiderignore_path(self):
         # Import the function directly to test it
@@ -1773,24 +1774,24 @@ class TestMain(TestCase):
                 loaded_files = load_dotenv_files(str(git_dir), None)
 
                 # Assert files were loaded in expected order (oauth first)
-                self.assertIn(str(oauth_keys_file.resolve()), loaded_files)
-                self.assertIn(str(git_root_env.resolve()), loaded_files)
-                self.assertIn(str(cwd_env.resolve()), loaded_files)
-                self.assertLess(
-                    loaded_files.index(str(oauth_keys_file.resolve())),
-                    loaded_files.index(str(git_root_env.resolve())),
+                assert str(oauth_keys_file.resolve()) in loaded_files
+                assert str(git_root_env.resolve()) in loaded_files
+                assert str(cwd_env.resolve()) in loaded_files
+                assert (
+                    loaded_files.index(str(oauth_keys_file.resolve()))
+                    < loaded_files.index(str(git_root_env.resolve()))
                 )
-                self.assertLess(
-                    loaded_files.index(str(git_root_env.resolve())),
-                    loaded_files.index(str(cwd_env.resolve())),
+                assert (
+                    loaded_files.index(str(git_root_env.resolve()))
+                    < loaded_files.index(str(cwd_env.resolve()))
                 )
 
                 # Assert environment variables reflect the override order
-                self.assertEqual(os.environ.get("OAUTH_VAR"), "oauth_val")
-                self.assertEqual(os.environ.get("GIT_VAR"), "git_val")
-                self.assertEqual(os.environ.get("CWD_VAR"), "cwd_val")
+                assert os.environ.get("OAUTH_VAR") == "oauth_val"
+                assert os.environ.get("GIT_VAR") == "git_val"
+                assert os.environ.get("CWD_VAR") == "cwd_val"
                 # SHARED_VAR should be overridden by the last loaded file (cwd .env)
-                self.assertEqual(os.environ.get("SHARED_VAR"), "cwd_shared")
+                assert os.environ.get("SHARED_VAR") == "cwd_shared"
 
             # Restore CWD
             os.chdir(original_cwd)
