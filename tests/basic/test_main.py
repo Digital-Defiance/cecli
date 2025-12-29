@@ -914,65 +914,32 @@ class TestMain:
             assert isinstance(coder, Coder)
             assert coder.repo_map.map_mul_no_files == 5
 
-    def test_suggest_shell_commands_default(self):
+    @pytest.mark.parametrize(
+        "flag_arg,attr_name,expected",
+        [
+            (None, "suggest_shell_commands", True),
+            ("--no-suggest-shell-commands", "suggest_shell_commands", False),
+            ("--suggest-shell-commands", "suggest_shell_commands", True),
+            (None, "detect_urls", True),
+            ("--no-detect-urls", "detect_urls", False),
+            ("--detect-urls", "detect_urls", True),
+        ],
+        ids=[
+            "suggest_default",
+            "suggest_disabled",
+            "suggest_enabled",
+            "urls_default",
+            "urls_disabled",
+            "urls_enabled",
+        ],
+    )
+    def test_boolean_flags(self, flag_arg, attr_name, expected):
         with GitTemporaryDirectory():
-            coder = main(
-                ["--exit", "--yes-always"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-            assert coder.suggest_shell_commands
-
-    def test_suggest_shell_commands_disabled(self):
-        with GitTemporaryDirectory():
-            coder = main(
-                ["--no-suggest-shell-commands", "--exit", "--yes-always"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-            assert not coder.suggest_shell_commands
-
-    def test_suggest_shell_commands_enabled(self):
-        with GitTemporaryDirectory():
-            coder = main(
-                ["--suggest-shell-commands", "--exit", "--yes-always"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-            assert coder.suggest_shell_commands
-
-    def test_detect_urls_default(self):
-        with GitTemporaryDirectory():
-            coder = main(
-                ["--exit", "--yes-always"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-            assert coder.detect_urls
-
-    def test_detect_urls_disabled(self):
-        with GitTemporaryDirectory():
-            coder = main(
-                ["--no-detect-urls", "--exit", "--yes-always"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-            assert not coder.detect_urls
-
-    def test_detect_urls_enabled(self):
-        with GitTemporaryDirectory():
-            coder = main(
-                ["--detect-urls", "--exit", "--yes-always"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-            assert coder.detect_urls
+            args = ["--exit", "--yes-always"]
+            if flag_arg:
+                args.insert(0, flag_arg)
+            coder = main(args, input=DummyInput(), output=DummyOutput(), return_coder=True)
+            assert getattr(coder, attr_name) == expected
 
     def test_accepts_settings_warnings(self):
         # Test that appropriate warnings are shown based on accepts_settings configuration
