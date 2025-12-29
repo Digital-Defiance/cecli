@@ -259,7 +259,7 @@ class TestMain(TestCase):
                 force_git_root=git_dir,
             )
             # Verify the ignored file is not in the chat
-            self.assertNotIn(abs_ignored_file, coder.abs_fnames)
+            assert abs_ignored_file not in coder.abs_fnames
 
             # Test with --add-gitignore-files set to True
             coder = main(
@@ -270,7 +270,7 @@ class TestMain(TestCase):
                 force_git_root=git_dir,
             )
             # Verify the ignored file is in the chat
-            self.assertIn(abs_ignored_file, coder.abs_fnames)
+            assert abs_ignored_file in coder.abs_fnames
 
             # Test with --add-gitignore-files set to False
             coder = main(
@@ -281,7 +281,7 @@ class TestMain(TestCase):
                 force_git_root=git_dir,
             )
             # Verify the ignored file is not in the chat
-            self.assertNotIn(abs_ignored_file, coder.abs_fnames)
+            assert abs_ignored_file not in coder.abs_fnames
 
     def test_add_command_gitignore_files_flag(self):
         with GitTemporaryDirectory() as git_dir:
@@ -314,7 +314,7 @@ class TestMain(TestCase):
                 pass
 
             # Verify the ignored file is not in the chat
-            self.assertNotIn(abs_ignored_file, coder.abs_fnames)
+            assert abs_ignored_file not in coder.abs_fnames
 
             # Test with --add-gitignore-files set to True
             coder = main(
@@ -330,7 +330,7 @@ class TestMain(TestCase):
                 pass
 
             # Verify the ignored file is in the chat
-            self.assertIn(abs_ignored_file, coder.abs_fnames)
+            assert abs_ignored_file in coder.abs_fnames
 
             # Test with --add-gitignore-files set to False
             coder = main(
@@ -347,7 +347,7 @@ class TestMain(TestCase):
                 pass
 
             # Verify the ignored file is not in the chat
-            self.assertNotIn(abs_ignored_file, coder.abs_fnames)
+            assert abs_ignored_file not in coder.abs_fnames
 
     def test_main_args(self):
         with patch("aider.coders.Coder.create") as MockCoder:
@@ -457,7 +457,7 @@ class TestMain(TestCase):
                 with patch("aider.main.InputOutput") as MockSend:
 
                     def side_effect(*args, **kwargs):
-                        self.assertEqual(kwargs["encoding"], "iso-8859-15")
+                        assert kwargs["encoding"] == "iso-8859-15"
                         mock_io = MagicMock()
                         mock_io.confirm_ask = AsyncMock(return_value=True)
                         return mock_io
@@ -496,7 +496,7 @@ class TestMain(TestCase):
 
         main(["--yes-always", "--message", test_message])
         args, kwargs = MockInputOutput.call_args
-        self.assertTrue(args[1])
+        assert args[1]
 
     @patch("aider.main.InputOutput", autospec=True)
     @patch("aider.coders.base_coder.Coder.run")
@@ -506,7 +506,7 @@ class TestMain(TestCase):
 
         main(["--message", test_message])
         args, kwargs = MockInputOutput.call_args
-        self.assertEqual(args[1], None)
+        assert args[1] is None
 
     def test_dark_mode_sets_code_theme(self):
         # Mock InputOutput to capture the configuration
@@ -517,7 +517,7 @@ class TestMain(TestCase):
             MockInputOutput.assert_called_once()
             # Check if the code_theme setting is for dark mode
             _, kwargs = MockInputOutput.call_args
-            self.assertEqual(kwargs["code_theme"], "monokai")
+            assert kwargs["code_theme"] == "monokai"
 
     def test_light_mode_sets_code_theme(self):
         # Mock InputOutput to capture the configuration
@@ -528,7 +528,7 @@ class TestMain(TestCase):
             MockInputOutput.assert_called_once()
             # Check if the code_theme setting is for light mode
             _, kwargs = MockInputOutput.call_args
-            self.assertEqual(kwargs["code_theme"], "default")
+            assert kwargs["code_theme"] == "default"
 
     def create_env_file(self, file_name, content):
         env_file_path = Path(self.tempdir) / file_name
@@ -612,8 +612,8 @@ class TestMain(TestCase):
                 # but not ending in "subdir/dirty_file.py"
                 MockLinter.assert_called_once()
                 called_arg = MockLinter.call_args[0][0]
-                self.assertTrue(called_arg.endswith("dirty_file.py"))
-                self.assertFalse(called_arg.endswith(f"subdir{os.path.sep}dirty_file.py"))
+                assert called_arg.endswith("dirty_file.py")
+                assert not called_arg.endswith(f"subdir{os.path.sep}dirty_file.py")
 
     def test_lint_option_with_explicit_files(self):
         with GitTemporaryDirectory():
@@ -635,12 +635,12 @@ class TestMain(TestCase):
                 )
 
                 # Check if the Linter was called twice (once for each file)
-                self.assertEqual(MockLinter.call_count, 2)
+                assert MockLinter.call_count == 2
 
                 # Check that both files were linted
                 called_files = [call[0][0] for call in MockLinter.call_args_list]
-                self.assertTrue(any(f.endswith("file1.py") for f in called_files))
-                self.assertTrue(any(f.endswith("file2.py") for f in called_files))
+                assert any(f.endswith("file1.py") for f in called_files)
+                assert any(f.endswith("file2.py") for f in called_files)
 
     def test_lint_option_with_glob_pattern(self):
         with GitTemporaryDirectory():
@@ -664,14 +664,14 @@ class TestMain(TestCase):
                 )
 
                 # Check if the Linter was called for Python files matching the glob
-                self.assertGreaterEqual(MockLinter.call_count, 2)
+                assert MockLinter.call_count >= 2
 
                 # Check that Python files were linted
                 called_files = [call[0][0] for call in MockLinter.call_args_list]
-                self.assertTrue(any(f.endswith("test1.py") for f in called_files))
-                self.assertTrue(any(f.endswith("test2.py") for f in called_files))
+                assert any(f.endswith("test1.py") for f in called_files)
+                assert any(f.endswith("test2.py") for f in called_files)
                 # Check that non-Python file was not linted
-                self.assertFalse(any(f.endswith("readme.txt") for f in called_files))
+                assert not any(f.endswith("readme.txt") for f in called_files)
 
     def test_verbose_mode_lists_env_vars(self):
         self.create_env_file(".env", "AIDER_DARK_MODE=on")
@@ -912,8 +912,8 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertIsInstance(coder, Coder)
-            self.assertEqual(coder.repo_map.map_mul_no_files, 5)
+            assert isinstance(coder, Coder)
+            assert coder.repo_map.map_mul_no_files == 5
 
     def test_suggest_shell_commands_default(self):
         with GitTemporaryDirectory():
@@ -923,7 +923,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertTrue(coder.suggest_shell_commands)
+            assert coder.suggest_shell_commands
 
     def test_suggest_shell_commands_disabled(self):
         with GitTemporaryDirectory():
@@ -933,7 +933,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertFalse(coder.suggest_shell_commands)
+            assert not coder.suggest_shell_commands
 
     def test_suggest_shell_commands_enabled(self):
         with GitTemporaryDirectory():
@@ -943,7 +943,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertTrue(coder.suggest_shell_commands)
+            assert coder.suggest_shell_commands
 
     def test_detect_urls_default(self):
         with GitTemporaryDirectory():
@@ -953,7 +953,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertTrue(coder.detect_urls)
+            assert coder.detect_urls
 
     def test_detect_urls_disabled(self):
         with GitTemporaryDirectory():
@@ -963,7 +963,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertFalse(coder.detect_urls)
+            assert not coder.detect_urls
 
     def test_detect_urls_enabled(self):
         with GitTemporaryDirectory():
@@ -973,7 +973,7 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertTrue(coder.detect_urls)
+            assert coder.detect_urls
 
     def test_accepts_settings_warnings(self):
         # Test that appropriate warnings are shown based on accepts_settings configuration
@@ -997,7 +997,7 @@ class TestMain(TestCase):
                 )
                 # No warning should be shown as this model accepts thinking_tokens
                 for call in mock_warning.call_args_list:
-                    self.assertNotIn("thinking_tokens", call[0][0])
+                    assert "thinking_tokens" not in call[0][0]
                 # Method should be called
                 mock_set_thinking.assert_called_once_with("1000")
 
@@ -1024,7 +1024,7 @@ class TestMain(TestCase):
                 for call in mock_warning.call_args_list:
                     if "thinking_tokens" in call[0][0]:
                         warning_shown = True
-                self.assertTrue(warning_shown)
+                assert warning_shown
                 # Method should NOT be called because model doesn't support it and check flag is on
                 mock_set_thinking.assert_not_called()
 
@@ -1040,7 +1040,7 @@ class TestMain(TestCase):
                 )
                 # No warning should be shown as this model accepts reasoning_effort
                 for call in mock_warning.call_args_list:
-                    self.assertNotIn("reasoning_effort", call[0][0])
+                    assert "reasoning_effort" not in call[0][0]
                 # Method should be called
                 mock_set_reasoning.assert_called_once_with("3")
 
@@ -1066,7 +1066,7 @@ class TestMain(TestCase):
                 for call in mock_warning.call_args_list:
                     if "reasoning_effort" in call[0][0]:
                         warning_shown = True
-                self.assertTrue(warning_shown)
+                assert warning_shown
                 # Method should still be called by default
                 mock_set_reasoning.assert_not_called()
 
@@ -1716,8 +1716,8 @@ class TestMain(TestCase):
                 output=DummyOutput(),
                 return_coder=True,
             )
-            self.assertNotIn("not_in_git.txt", str(coder.abs_fnames))
-            self.assertFalse(asyncio.run(coder.allowed_to_edit("not_in_git.txt")))
+            assert "not_in_git.txt" not in str(coder.abs_fnames)
+            assert not asyncio.run(coder.allowed_to_edit("not_in_git.txt"))
 
     def test_load_dotenv_files_override(self):
         with GitTemporaryDirectory() as git_dir:
@@ -1814,12 +1814,12 @@ class TestMain(TestCase):
             # Verify that Coder.create was called with mcp_servers parameter
             mock_coder_create.assert_called_once()
             _, kwargs = mock_coder_create.call_args
-            self.assertIn("mcp_servers", kwargs)
-            self.assertIsNotNone(kwargs["mcp_servers"])
+            assert "mcp_servers" in kwargs
+            assert kwargs["mcp_servers"] is not None
             # At least one server should be in the list
-            self.assertTrue(len(kwargs["mcp_servers"]) > 0)
+            assert len(kwargs["mcp_servers"]) > 0
             # First server should have a name attribute
-            self.assertTrue(hasattr(kwargs["mcp_servers"][0], "name"))
+            assert hasattr(kwargs["mcp_servers"][0], "name")
 
         # Test with --mcp-servers-file option
         mock_coder_create.reset_mock()
@@ -1840,9 +1840,9 @@ class TestMain(TestCase):
             # Verify that Coder.create was called with mcp_servers parameter
             mock_coder_create.assert_called_once()
             _, kwargs = mock_coder_create.call_args
-            self.assertIn("mcp_servers", kwargs)
-            self.assertIsNotNone(kwargs["mcp_servers"])
+            assert "mcp_servers" in kwargs
+            assert kwargs["mcp_servers"] is not None
             # At least one server should be in the list
-            self.assertTrue(len(kwargs["mcp_servers"]) > 0)
+            assert len(kwargs["mcp_servers"]) > 0
             # First server should have a name attribute
-            self.assertTrue(hasattr(kwargs["mcp_servers"][0], "name"))
+            assert hasattr(kwargs["mcp_servers"][0], "name")
