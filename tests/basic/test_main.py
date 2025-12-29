@@ -347,44 +347,25 @@ class TestMain:
             # Verify the ignored file is not in the chat
             assert abs_ignored_file not in coder.abs_fnames
 
-    def test_main_args(self):
+    @pytest.mark.parametrize(
+        "args,expected_kwargs",
+        [
+            (["--no-auto-commits", "--yes-always"], {"auto_commits": False}),
+            (["--auto-commits", "--no-git"], {"auto_commits": True}),
+            (["--no-git"], {"dirty_commits": True, "auto_commits": True}),
+            (["--no-dirty-commits", "--no-git"], {"dirty_commits": False}),
+            (["--dirty-commits", "--no-git"], {"dirty_commits": True}),
+        ],
+        ids=["no_auto_commits", "auto_commits", "defaults", "no_dirty_commits", "dirty_commits"],
+    )
+    def test_main_args(self, args, expected_kwargs):
         with patch("aider.coders.Coder.create") as MockCoder:
             mock_coder_instance = MockCoder.return_value
             mock_coder_instance._autosave_future = mock_autosave_future()
-            # --yes will just ok the git repo without blocking on input
-            # following calls to main will see the new repo already
-            main(["--no-auto-commits", "--yes-always"], input=DummyInput())
+            main(args, input=DummyInput())
             _, kwargs = MockCoder.call_args
-            assert kwargs["auto_commits"] is False
-
-        with patch("aider.coders.Coder.create") as MockCoder:
-            mock_coder_instance = MockCoder.return_value
-            mock_coder_instance._autosave_future = mock_autosave_future()
-            main(["--auto-commits"], input=DummyInput())
-            _, kwargs = MockCoder.call_args
-            assert kwargs["auto_commits"] is True
-
-        with patch("aider.coders.Coder.create") as MockCoder:
-            mock_coder_instance = MockCoder.return_value
-            mock_coder_instance._autosave_future = mock_autosave_future()
-            main([], input=DummyInput())
-            _, kwargs = MockCoder.call_args
-            assert kwargs["dirty_commits"] is True
-            assert kwargs["auto_commits"] is True
-
-        with patch("aider.coders.Coder.create") as MockCoder:
-            mock_coder_instance = MockCoder.return_value
-            mock_coder_instance._autosave_future = mock_autosave_future()
-            main(["--no-dirty-commits"], input=DummyInput())
-            _, kwargs = MockCoder.call_args
-            assert kwargs["dirty_commits"] is False
-
-        with patch("aider.coders.Coder.create") as MockCoder:
-            mock_coder_instance = MockCoder.return_value
-            mock_coder_instance._autosave_future = mock_autosave_future()
-            main(["--dirty-commits"], input=DummyInput())
-            _, kwargs = MockCoder.call_args
-            assert kwargs["dirty_commits"] is True
+            for key, expected_value in expected_kwargs.items():
+                assert kwargs[key] is expected_value
 
     def test_env_file_override(self):
         with GitTemporaryDirectory() as git_dir:
