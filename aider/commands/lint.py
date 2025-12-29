@@ -22,8 +22,7 @@ class LintCommand(BaseCommand):
             cli_file_arg = getattr(system_args, 'file', []) or []
             all_cli_files = cli_files + cli_file_arg
             if all_cli_files:
-                all_cli_files = expand_glob_patterns(all_cli_files)
-                fnames = [str(Path(f).resolve()) for f in all_cli_files]
+                fnames = expand_glob_patterns(all_cli_files)
 
         if not coder.repo:
             io.tool_error("No git repository found.")
