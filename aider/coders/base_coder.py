@@ -2969,6 +2969,7 @@ class Coder:
         self.partial_response_function_call = dict()
 
         completion = None
+        llm_start_time = time.time()
 
         try:
             hash_object, completion = await model.send_completion(
@@ -2982,19 +2983,21 @@ class Coder:
             self.chat_completion_call_hashes.append(hash_object.hexdigest())
 
             if not isinstance(completion, ModelResponse):
-                async for chunk in self.show_send_output_stream(completion):
+                async for chunk in self.show_send_output_stream(completion, llm_start_time):
                     yield chunk
             else:
                 self.show_send_output(completion)
 
-            # Calculate costs for successful responses
-            self.calculate_and_show_tokens_and_cost(messages, completion)
+            # Calculate costs after streaming completes (llm_elapsed set by show_send_output_stream)
+            llm_elapsed = getattr(self, 'llm_elapsed', time.time() - llm_start_time)
+            self.calculate_and_show_tokens_and_cost(messages, completion, llm_elapsed)
 
         except LiteLLMExceptions().exceptions_tuple() as err:
             ex_info = LiteLLMExceptions().get_ex_info(err)
             if ex_info.name == "ContextWindowExceededError":
                 # Still calculate costs for context window errors
-                self.calculate_and_show_tokens_and_cost(messages, completion)
+                llm_elapsed = time.time() - llm_start_time
+                self.calculate_and_show_tokens_and_cost(messages, completion, llm_elapsed)
             raise
         except KeyboardInterrupt as kbi:
             self.keyboard_interrupt()
@@ -3056,8 +3059,10 @@ class Coder:
         ):
             raise FinishReasonLength()
 
-    async def show_send_output_stream(self, completion):
+    async def show_send_output_stream(self, completion, llm_start_time=None):
         received_content = False
+        first_token_time = None
+        start_time = llm_start_time or time.time()
 
         async for chunk in completion:
             if self.args.debug:
@@ -3084,6 +3089,8 @@ class Coder:
                 try:
                     if chunk.choices[0].delta.tool_calls:
                         received_content = True
+                        if first_token_time is None:
+                            first_token_time = time.time()
                         for tool_call_chunk in chunk.choices[0].delta.tool_calls:
                             self.tool_reflection = True
 
@@ -3111,6 +3118,8 @@ class Coder:
                         self.io.update_spinner_suffix(v)
 
                     received_content = True
+                    if first_token_time is None:
+                        first_token_time = time.time()
                 except AttributeError:
                     pass
 
@@ -3130,6 +3139,8 @@ class Coder:
                     text += reasoning_content
                     self.got_reasoning_content = True
                     received_content = True
+                    if first_token_time is None:
+                        first_token_time = time.time()
                     self.io.update_spinner_suffix(reasoning_content)
                     self.partial_response_reasoning_content += reasoning_content
 
@@ -3142,6 +3153,8 @@ class Coder:
 
                         text += content
                         received_content = True
+                        if first_token_time is None:
+                            first_token_time = time.time()
                         self.io.update_spinner_suffix(content)
                 except AttributeError:
                     pass
@@ -3172,6 +3185,11 @@ class Coder:
 
         if not received_content and len(self.partial_response_tool_calls) == 0:
             self.io.tool_warning("Empty response received from LLM. Check your provider account?")
+
+        # Set timing info for reporting (after streaming completes)
+        self.llm_elapsed = time.time() - start_time
+        if first_token_time is not None:
+            self.first_token_time = first_token_time - start_time
 
     def consolidate_chunks(self):
         response = (
@@ -3333,7 +3351,7 @@ class Coder:
             self.reasoning_tag_name,
         )
 
-    def calculate_and_show_tokens_and_cost(self, messages, completion=None):
+    def calculate_and_show_tokens_and_cost(self, messages, completion=None, llm_elapsed=None):
         prompt_tokens = 0
         completion_tokens = 0
         cache_hit_tokens = 0
@@ -3372,6 +3390,8 @@ class Coder:
 
         if not self.main_model.info.get("input_cost_per_token"):
             self.usage_report = tokens_report
+            # Still add speed info even without cost
+            self._add_speed_info(llm_elapsed)
             return
 
         try:
@@ -3399,6 +3419,50 @@ class Coder:
             sep = " "
 
         self.usage_report = tokens_report + sep + cost_report
+
+        # Add LLM elapsed time and speed information
+        self._add_speed_info(llm_elapsed)
+
+    def _add_speed_info(self, llm_elapsed):
+        """Add LLM elapsed time and speed information to usage report."""
+        if llm_elapsed is None or self.usage_report is None:
+            return
+
+        # Check if speed display is enabled
+        show_speed = getattr(self.args, 'show_speed', False) if self.args else False
+
+        if not show_speed:
+            return
+
+        time_report = f"\nLLM elapsed time: {llm_elapsed:.2f} seconds"
+        # Add time to first token if available
+        if hasattr(self, 'first_token_time'):
+            time_report += f" (TtFT: {self.first_token_time:.2f}s)"
+
+        # Add processing and generation speeds if we have the data
+        if hasattr(self, 'message_tokens_sent') and hasattr(self, 'message_tokens_received'):
+            sent_tokens = self.message_tokens_sent
+            received_tokens = self.message_tokens_received
+            if sent_tokens > 0 and received_tokens > 0:
+                # Calculate prompt processing speed (tokens/sec) based on time to first token
+                if hasattr(self, 'first_token_time') and self.first_token_time > 0:
+                    prompt_processing_speed = sent_tokens / self.first_token_time
+                    time_report += f"\nSpeed: {prompt_processing_speed:.0f} prompt tokens/sec"
+
+                # Calculate token generation speed based on time after first token
+                if hasattr(self, 'first_token_time') and self.first_token_time > 0:
+                    generation_time = llm_elapsed - self.first_token_time
+                    if generation_time > 0:
+                        token_generation_speed = received_tokens / generation_time
+                        time_report += f", {token_generation_speed:.0f} output tokens/sec"
+                else:
+                    token_generation_speed = received_tokens / llm_elapsed
+                    if hasattr(self, 'first_token_time') and self.first_token_time > 0:
+                        time_report += f", {token_generation_speed:.0f} output tokens/sec"
+                    else:
+                        time_report += f"\nSpeed: {token_generation_speed:.0f} output tokens/sec"
+
+        self.usage_report += time_report
 
     def format_cost(self, value):
         if value == 0:
