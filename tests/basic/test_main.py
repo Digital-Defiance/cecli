@@ -46,25 +46,25 @@ class TestMain(TestCase):
         self.webbrowser_patcher.stop()
 
     def test_main_with_empty_dir_no_files_on_command(self):
-        main(["--no-git", "--exit", "--yes"], input=DummyInput(), output=DummyOutput())
+        main(["--no-git", "--exit", "--yes-always"], input=DummyInput(), output=DummyOutput())
 
     def test_main_with_emptqy_dir_new_file(self):
         main(
-            ["foo.txt", "--yes", "--no-git", "--exit"], input=DummyInput(), output=DummyOutput()
+            ["foo.txt", "--yes-always", "--no-git", "--exit"], input=DummyInput(), output=DummyOutput()
         )
         self.assertTrue(os.path.exists("foo.txt"))
 
     @patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
     def test_main_with_empty_git_dir_new_file(self, _):
         make_repo()
-        main(["--yes", "foo.txt", "--exit"], input=DummyInput(), output=DummyOutput())
+        main(["--yes-always", "foo.txt", "--exit"], input=DummyInput(), output=DummyOutput())
         self.assertTrue(os.path.exists("foo.txt"))
 
     @patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
     def test_main_with_empty_git_dir_new_files(self, _):
         make_repo()
         main(
-            ["--yes", "foo.txt", "bar.txt", "--exit"], input=DummyInput(), output=DummyOutput()
+            ["--yes-always", "foo.txt", "bar.txt", "--exit"], input=DummyInput(), output=DummyOutput()
         )
         self.assertTrue(os.path.exists("foo.txt"))
         self.assertTrue(os.path.exists("bar.txt"))
@@ -82,7 +82,7 @@ class TestMain(TestCase):
         subdir.mkdir()
         make_repo(str(subdir))
         main(
-            ["--yes", str(subdir / "foo.txt"), str(subdir / "bar.txt"), "--exit"],
+            ["--yes-always", str(subdir / "foo.txt"), str(subdir / "bar.txt"), "--exit"],
             input=DummyInput(),
             output=DummyOutput(),
         )
@@ -95,7 +95,7 @@ class TestMain(TestCase):
             [
                 "--no-git",
                 "--exit",
-                "--yes",
+                "--yes-always",
                 "--model",
                 "cp:gpt-4o:fast",
                 "--model-overrides",
@@ -116,7 +116,7 @@ class TestMain(TestCase):
         mock_watcher.return_value = MagicMock()
 
         coder = main(
-            ["--no-git", "--exit", "--yes", "--copy-paste"],
+            ["--no-git", "--exit", "--yes-always", "--copy-paste"],
             input=DummyInput(),
             output=DummyOutput(),
             return_coder=True,
@@ -133,7 +133,7 @@ class TestMain(TestCase):
 
         Path(".aider.conf.yml").write_text("auto-commits: false\n")
         with patch("aider.coders.Coder.create") as MockCoder:
-            main(["--yes"], input=DummyInput(), output=DummyOutput())
+            main(["--yes-always"], input=DummyInput(), output=DummyOutput())
             _, kwargs = MockCoder.call_args
             assert kwargs["auto_commits"] is False
 
@@ -155,7 +155,7 @@ class TestMain(TestCase):
         # This will throw a git error on windows if get_tracked_files doesn't
         # properly convert git/posix/paths to git\posix\paths.
         # Because aider will try and `git add` a file that's already in the repo.
-        main(["--yes", str(fname), "--exit"], input=DummyInput(), output=DummyOutput())
+        main(["--yes-always", str(fname), "--exit"], input=DummyInput(), output=DummyOutput())
 
     # TODO: This test needs to be converted to call async functions via asyncio.run() or refactored
     async def test_setup_git(self):
@@ -214,7 +214,7 @@ class TestMain(TestCase):
 
             # Test without the --add-gitignore-files flag (default: False)
             coder = main(
-                ["--exit", "--yes", abs_ignored_file],
+                ["--exit", "--yes-always", abs_ignored_file],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -225,7 +225,7 @@ class TestMain(TestCase):
 
             # Test with --add-gitignore-files set to True
             coder = main(
-                ["--add-gitignore-files", "--exit", "--yes", abs_ignored_file],
+                ["--add-gitignore-files", "--exit", "--yes-always", abs_ignored_file],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -236,7 +236,7 @@ class TestMain(TestCase):
 
             # Test with --add-gitignore-files set to False
             coder = main(
-                ["--no-add-gitignore-files", "--exit", "--yes", abs_ignored_file],
+                ["--no-add-gitignore-files", "--exit", "--yes-always", abs_ignored_file],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -263,7 +263,7 @@ class TestMain(TestCase):
 
             # Test without the --add-gitignore-files flag (default: False)
             coder = main(
-                ["--exit", "--yes"],
+                ["--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -278,7 +278,7 @@ class TestMain(TestCase):
 
             # Test with --add-gitignore-files set to True
             coder = main(
-                ["--add-gitignore-files", "--exit", "--yes"],
+                ["--add-gitignore-files", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -292,7 +292,7 @@ class TestMain(TestCase):
 
             # Test with --add-gitignore-files set to False
             coder = main(
-                ["--no-add-gitignore-files", "--exit", "--yes"],
+                ["--no-add-gitignore-files", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -309,7 +309,7 @@ class TestMain(TestCase):
         with patch("aider.coders.Coder.create") as MockCoder:
             # --yes will just ok the git repo without blocking on input
             # following calls to main will see the new repo already
-            main(["--no-auto-commits", "--yes"], input=DummyInput())
+            main(["--no-auto-commits", "--yes-always"], input=DummyInput())
             _, kwargs = MockCoder.call_args
             assert kwargs["auto_commits"] is False
 
@@ -358,7 +358,7 @@ class TestMain(TestCase):
             named_env.write_text("A=named")
 
             with patch("pathlib.Path.home", return_value=fake_home):
-                main(["--yes", "--exit", "--env-file", str(named_env)])
+                main(["--yes-always", "--exit", "--env-file", str(named_env)])
 
             self.assertEqual(os.environ["A"], "named")
             self.assertEqual(os.environ["B"], "cwd")
@@ -383,7 +383,7 @@ class TestMain(TestCase):
             MockCoder.return_value = mock_coder_instance
 
             main(
-                ["--yes", "--message-file", message_file_path],
+                ["--yes-always", "--message-file", message_file_path],
                 input=DummyInput(),
                 output=DummyOutput(),
             )
@@ -405,7 +405,7 @@ class TestMain(TestCase):
 
                     MockSend.side_effect = side_effect
 
-                    main(["--yes", fname, "--encoding", "iso-8859-15"])
+                    main(["--yes-always", fname, "--encoding", "iso-8859-15"])
 
     def test_main_exit_calls_version_check(self):
         with GitTemporaryDirectory():
@@ -432,7 +432,7 @@ class TestMain(TestCase):
     def test_yes(self, mock_run, MockInputOutput):
         test_message = "test message"
 
-        main(["--yes", "--message", test_message])
+        main(["--yes-always", "--message", test_message])
         args, kwargs = MockInputOutput.call_args
         self.assertTrue(args[1])
 
@@ -506,7 +506,7 @@ class TestMain(TestCase):
     def test_false_vals_in_env_file(self):
         self.create_env_file(".env", "AIDER_SHOW_DIFFS=off")
         with patch("aider.coders.Coder.create") as MockCoder:
-            main(["--no-git", "--yes"], input=DummyInput(), output=DummyOutput())
+            main(["--no-git", "--yes-always"], input=DummyInput(), output=DummyOutput())
             MockCoder.assert_called_once()
             _, kwargs = MockCoder.call_args
             self.assertEqual(kwargs["show_diffs"], False)
@@ -514,7 +514,7 @@ class TestMain(TestCase):
     def test_true_vals_in_env_file(self):
         self.create_env_file(".env", "AIDER_SHOW_DIFFS=on")
         with patch("aider.coders.Coder.create") as MockCoder:
-            main(["--no-git", "--yes"], input=DummyInput(), output=DummyOutput())
+            main(["--no-git", "--yes-always"], input=DummyInput(), output=DummyOutput())
             MockCoder.assert_called_once()
             _, kwargs = MockCoder.call_args
             self.assertEqual(kwargs["show_diffs"], True)
@@ -543,7 +543,7 @@ class TestMain(TestCase):
                 MockLinter.return_value = ""
 
                 # Run main with --lint option
-                main(["--lint", "--yes"])
+                main(["--lint", "--yes-always"])
 
                 # Check if the Linter was called with a filename ending in "dirty_file.py"
                 # but not ending in "subdir/dirty_file.py"
@@ -556,7 +556,7 @@ class TestMain(TestCase):
         self.create_env_file(".env", "AIDER_DARK_MODE=on")
         with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
             main(
-                ["--no-git", "--verbose", "--exit", "--yes"],
+                ["--no-git", "--verbose", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
             )
@@ -602,7 +602,7 @@ class TestMain(TestCase):
             ):
                 # Test loading from specified config file
                 main(
-                    ["--yes", "--exit", "--config", str(named_config)],
+                    ["--yes-always", "--exit", "--config", str(named_config)],
                     input=DummyInput(),
                     output=DummyOutput(),
                 )
@@ -611,7 +611,7 @@ class TestMain(TestCase):
                 self.assertEqual(kwargs["map_tokens"], 8192)
 
                 # Test loading from current working directory
-                main(["--yes", "--exit"], input=DummyInput(), output=DummyOutput())
+                main(["--yes-always", "--exit"], input=DummyInput(), output=DummyOutput())
                 _, kwargs = MockCoder.call_args
                 print("kwargs:", kwargs)  # Add this line for debugging
                 self.assertIn("main_model", kwargs, "main_model key not found in kwargs")
@@ -620,14 +620,14 @@ class TestMain(TestCase):
 
                 # Test loading from git root
                 cwd_config.unlink()
-                main(["--yes", "--exit"], input=DummyInput(), output=DummyOutput())
+                main(["--yes-always", "--exit"], input=DummyInput(), output=DummyOutput())
                 _, kwargs = MockCoder.call_args
                 self.assertEqual(kwargs["main_model"].name, "gpt-4")
                 self.assertEqual(kwargs["map_tokens"], 2048)
 
                 # Test loading from home directory
                 git_config.unlink()
-                main(["--yes", "--exit"], input=DummyInput(), output=DummyOutput())
+                main(["--yes-always", "--exit"], input=DummyInput(), output=DummyOutput())
                 _, kwargs = MockCoder.call_args
                 self.assertEqual(kwargs["main_model"].name, "gpt-3.5-turbo")
                 self.assertEqual(kwargs["map_tokens"], 1024)
@@ -637,7 +637,7 @@ class TestMain(TestCase):
             with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
                 MockRepoMap.return_value.max_map_tokens = 0
                 main(
-                    ["--model", "gpt-4", "--map-tokens", "0", "--exit", "--yes"],
+                    ["--model", "gpt-4", "--map-tokens", "0", "--exit", "--yes-always"],
                     input=DummyInput(),
                     output=DummyOutput(),
                 )
@@ -648,7 +648,7 @@ class TestMain(TestCase):
             with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
                 MockRepoMap.return_value.max_map_tokens = 1000
                 main(
-                    ["--model", "gpt-4", "--map-tokens", "1000", "--exit", "--yes"],
+                    ["--model", "gpt-4", "--map-tokens", "1000", "--exit", "--yes-always"],
                     input=DummyInput(),
                     output=DummyOutput(),
                 )
@@ -660,7 +660,7 @@ class TestMain(TestCase):
             Path(test_file).touch()
 
             coder = main(
-                ["--read", test_file, "--exit", "--yes"],
+                ["--read", test_file, "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -676,7 +676,7 @@ class TestMain(TestCase):
         try:
             with GitTemporaryDirectory():
                 coder = main(
-                    ["--read", external_file_path, "--exit", "--yes"],
+                    ["--read", external_file_path, "--exit", "--yes-always"],
                     input=DummyInput(),
                     output=DummyOutput(),
                     return_coder=True,
@@ -711,7 +711,7 @@ class TestMain(TestCase):
                     "--model-metadata-file",
                     str(metadata_file),
                     "--exit",
-                    "--yes",
+                    "--yes-always",
                 ],
                 input=DummyInput(),
                 output=DummyOutput(),
@@ -728,7 +728,7 @@ class TestMain(TestCase):
                 MockRepoMap.return_value = mock_repo_map
 
                 main(
-                    ["--sonnet", "--cache-prompts", "--exit", "--yes"],
+                    ["--sonnet", "--cache-prompts", "--exit", "--yes-always"],
                     input=DummyInput(),
                     output=DummyOutput(),
                 )
@@ -742,7 +742,7 @@ class TestMain(TestCase):
     def test_sonnet_and_cache_prompts_options(self):
         with GitTemporaryDirectory():
             coder = main(
-                ["--sonnet", "--cache-prompts", "--exit", "--yes"],
+                ["--sonnet", "--cache-prompts", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -753,7 +753,7 @@ class TestMain(TestCase):
     def test_4o_and_cache_options(self):
         with GitTemporaryDirectory():
             coder = main(
-                ["--4o", "--cache-prompts", "--exit", "--yes"],
+                ["--4o", "--cache-prompts", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -764,7 +764,7 @@ class TestMain(TestCase):
     def test_return_coder(self):
         with GitTemporaryDirectory():
             result = main(
-                ["--exit", "--yes"],
+                ["--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -772,7 +772,7 @@ class TestMain(TestCase):
             self.assertIsInstance(result, Coder)
 
             result = main(
-                ["--exit", "--yes"],
+                ["--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=False,
@@ -782,7 +782,7 @@ class TestMain(TestCase):
     def test_map_mul_option(self):
         with GitTemporaryDirectory():
             coder = main(
-                ["--map-mul", "5", "--exit", "--yes"],
+                ["--map-mul", "5", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -793,7 +793,7 @@ class TestMain(TestCase):
     def test_suggest_shell_commands_default(self):
         with GitTemporaryDirectory():
             coder = main(
-                ["--exit", "--yes"],
+                ["--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -803,7 +803,7 @@ class TestMain(TestCase):
     def test_suggest_shell_commands_disabled(self):
         with GitTemporaryDirectory():
             coder = main(
-                ["--no-suggest-shell-commands", "--exit", "--yes"],
+                ["--no-suggest-shell-commands", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -813,7 +813,7 @@ class TestMain(TestCase):
     def test_suggest_shell_commands_enabled(self):
         with GitTemporaryDirectory():
             coder = main(
-                ["--suggest-shell-commands", "--exit", "--yes"],
+                ["--suggest-shell-commands", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -823,7 +823,7 @@ class TestMain(TestCase):
     def test_detect_urls_default(self):
         with GitTemporaryDirectory():
             coder = main(
-                ["--exit", "--yes"],
+                ["--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -833,7 +833,7 @@ class TestMain(TestCase):
     def test_detect_urls_disabled(self):
         with GitTemporaryDirectory():
             coder = main(
-                ["--no-detect-urls", "--exit", "--yes"],
+                ["--no-detect-urls", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -843,7 +843,7 @@ class TestMain(TestCase):
     def test_detect_urls_enabled(self):
         with GitTemporaryDirectory():
             coder = main(
-                ["--detect-urls", "--exit", "--yes"],
+                ["--detect-urls", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -864,7 +864,7 @@ class TestMain(TestCase):
                         "anthropic/claude-3-7-sonnet-20250219",
                         "--thinking-tokens",
                         "1000",
-                        "--yes",
+                        "--yes-always",
                         "--exit",
                     ],
                     input=DummyInput(),
@@ -888,7 +888,7 @@ class TestMain(TestCase):
                         "--thinking-tokens",
                         "1000",
                         "--check-model-accepts-settings",
-                        "--yes",
+                        "--yes-always",
                         "--exit",
                     ],
                     input=DummyInput(),
@@ -909,7 +909,7 @@ class TestMain(TestCase):
                 patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning,
             ):
                 main(
-                    ["--model", "o1", "--reasoning-effort", "3", "--yes", "--exit"],
+                    ["--model", "o1", "--reasoning-effort", "3", "--yes-always", "--exit"],
                     input=DummyInput(),
                     output=DummyOutput(),
                 )
@@ -925,7 +925,7 @@ class TestMain(TestCase):
                 patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning,
             ):
                 main(
-                    ["--model", "gpt-3.5-turbo", "--reasoning-effort", "3", "--yes", "--exit"],
+                    ["--model", "gpt-3.5-turbo", "--reasoning-effort", "3", "--yes-always", "--exit"],
                     input=DummyInput(),
                     output=DummyOutput(),
                 )
@@ -954,7 +954,7 @@ class TestMain(TestCase):
                 # Mock fuzzy_match_models to avoid string operations on MagicMock
                 with patch("aider.models.fuzzy_match_models", return_value=[]):
                     main(
-                        ["--no-verify-ssl", "--exit", "--yes"],
+                        ["--no-verify-ssl", "--exit", "--yes-always"],
                         input=DummyInput(),
                         output=DummyOutput(),
                     )
@@ -967,7 +967,7 @@ class TestMain(TestCase):
     def test_set_env_single(self):
         # Test setting a single environment variable
         with GitTemporaryDirectory():
-            main(["--set-env", "TEST_VAR=test_value", "--exit", "--yes"])
+            main(["--set-env", "TEST_VAR=test_value", "--exit", "--yes-always"])
             self.assertEqual(os.environ.get("TEST_VAR"), "test_value")
 
     def test_set_env_multiple(self):
@@ -980,7 +980,7 @@ class TestMain(TestCase):
                     "--set-env",
                     "TEST_VAR2=value2",
                     "--exit",
-                    "--yes",
+                    "--yes-always",
                 ]
             )
             self.assertEqual(os.environ.get("TEST_VAR1"), "value1")
@@ -989,26 +989,26 @@ class TestMain(TestCase):
     def test_set_env_with_spaces(self):
         # Test setting env var with spaces in value
         with GitTemporaryDirectory():
-            main(["--set-env", "TEST_VAR=test value with spaces", "--exit", "--yes"])
+            main(["--set-env", "TEST_VAR=test value with spaces", "--exit", "--yes-always"])
             self.assertEqual(os.environ.get("TEST_VAR"), "test value with spaces")
 
     def test_set_env_invalid_format(self):
         # Test invalid format handling
         with GitTemporaryDirectory():
-            result = main(["--set-env", "INVALID_FORMAT", "--exit", "--yes"])
+            result = main(["--set-env", "INVALID_FORMAT", "--exit", "--yes-always"])
             self.assertEqual(result, 1)
 
     def test_api_key_single(self):
         # Test setting a single API key
         with GitTemporaryDirectory():
-            main(["--api-key", "anthropic=test-key", "--exit", "--yes"])
+            main(["--api-key", "anthropic=test-key", "--exit", "--yes-always"])
             self.assertEqual(os.environ.get("ANTHROPIC_API_KEY"), "test-key")
 
     def test_api_key_multiple(self):
         # Test setting multiple API keys
         with GitTemporaryDirectory():
             main(
-                ["--api-key", "anthropic=key1", "--api-key", "openai=key2", "--exit", "--yes"]
+                ["--api-key", "anthropic=key1", "--api-key", "openai=key2", "--exit", "--yes-always"]
             )
             self.assertEqual(os.environ.get("ANTHROPIC_API_KEY"), "key1")
             self.assertEqual(os.environ.get("OPENAI_API_KEY"), "key2")
@@ -1016,7 +1016,7 @@ class TestMain(TestCase):
     def test_api_key_invalid_format(self):
         # Test invalid format handling
         with GitTemporaryDirectory():
-            result = main(["--api-key", "INVALID_FORMAT", "--exit", "--yes"])
+            result = main(["--api-key", "INVALID_FORMAT", "--exit", "--yes-always"])
             self.assertEqual(result, 1)
 
     def test_git_config_include(self):
@@ -1044,7 +1044,7 @@ class TestMain(TestCase):
             git_config_content = git_config_path.read_text()
 
             # Run aider and verify it doesn't change the git config
-            main(["--yes", "--exit"], input=DummyInput(), output=DummyOutput())
+            main(["--yes-always", "--exit"], input=DummyInput(), output=DummyOutput())
 
             # Check that the user settings are still the same using git command
             repo = git.Repo(git_dir)  # Re-open repo to ensure we get fresh config
@@ -1085,7 +1085,7 @@ class TestMain(TestCase):
             self.assertEqual(repo.git.config("user.email"), "directive@example.com")
 
             # Run aider and verify it doesn't change the git config
-            main(["--yes", "--exit"], input=DummyInput(), output=DummyOutput())
+            main(["--yes-always", "--exit"], input=DummyInput(), output=DummyOutput())
 
             # Check that the git config file wasn't modified
             config_after_aider = git_config.read_text()
@@ -1121,7 +1121,7 @@ class TestMain(TestCase):
             with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
                 with self.assertRaises(SystemExit) as cm:
                     _ = main(
-                        ["--edit-format", "not-a-real-format", "--exit", "--yes"],
+                        ["--edit-format", "not-a-real-format", "--exit", "--yes-always"],
                         input=DummyInput(),
                         output=DummyOutput(),
                     )
@@ -1136,7 +1136,7 @@ class TestMain(TestCase):
             # Test Anthropic API key
             os.environ["ANTHROPIC_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
             )
             self.assertIn("sonnet", coder.main_model.name.lower())
             del os.environ["ANTHROPIC_API_KEY"]
@@ -1144,7 +1144,7 @@ class TestMain(TestCase):
             # Test DeepSeek API key
             os.environ["DEEPSEEK_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
             )
             self.assertIn("deepseek", coder.main_model.name.lower())
             del os.environ["DEEPSEEK_API_KEY"]
@@ -1152,7 +1152,7 @@ class TestMain(TestCase):
             # Test OpenRouter API key
             os.environ["OPENROUTER_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
             )
             self.assertIn("openrouter/", coder.main_model.name.lower())
             del os.environ["OPENROUTER_API_KEY"]
@@ -1160,7 +1160,7 @@ class TestMain(TestCase):
             # Test OpenAI API key
             os.environ["OPENAI_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
             )
             self.assertIn("gpt-4", coder.main_model.name.lower())
             del os.environ["OPENAI_API_KEY"]
@@ -1168,7 +1168,7 @@ class TestMain(TestCase):
             # Test Gemini API key
             os.environ["GEMINI_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
             )
             self.assertIn("gemini", coder.main_model.name.lower())
             del os.environ["GEMINI_API_KEY"]
@@ -1176,7 +1176,7 @@ class TestMain(TestCase):
             # Test no API keys - should offer OpenRouter OAuth
             with patch("aider.onboarding.offer_openrouter_oauth") as mock_offer_oauth:
                 mock_offer_oauth.return_value = None  # Simulate user declining or failure
-                result = main(["--exit", "--yes"], input=DummyInput(), output=DummyOutput())
+                result = main(["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput())
                 self.assertEqual(result, 1)  # Expect failure since no model could be selected
                 mock_offer_oauth.assert_called_once()
 
@@ -1186,7 +1186,7 @@ class TestMain(TestCase):
             os.environ["ANTHROPIC_API_KEY"] = "test-key"
             os.environ["OPENAI_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
             )
             self.assertIn("sonnet", coder.main_model.name.lower())
             del os.environ["ANTHROPIC_API_KEY"]
@@ -1217,7 +1217,7 @@ class TestMain(TestCase):
                 mock_instance.get_weak_model.return_value = None
 
                 main(
-                    ["--model", "gpt-4o:fast", "--exit", "--yes", "--no-git"],
+                    ["--model", "gpt-4o:fast", "--exit", "--yes-always", "--no-git"],
                     input=DummyInput(),
                     output=DummyOutput(),
                     force_git_root=git_dir,
@@ -1268,7 +1268,7 @@ class TestMain(TestCase):
                 model_name = "hf:moonshotai/Kimi-K2-Thinking"
 
                 main(
-                    ["--model", model_name, "--exit", "--yes", "--no-git"],
+                    ["--model", model_name, "--exit", "--yes-always", "--no-git"],
                     input=DummyInput(),
                     output=DummyOutput(),
                     force_git_root=git_dir,
@@ -1292,7 +1292,7 @@ class TestMain(TestCase):
     def test_chat_language_spanish(self):
         with GitTemporaryDirectory():
             coder = main(
-                ["--chat-language", "Spanish", "--exit", "--yes"],
+                ["--chat-language", "Spanish", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -1303,7 +1303,7 @@ class TestMain(TestCase):
     def test_commit_language_japanese(self):
         with GitTemporaryDirectory():
             coder = main(
-                ["--commit-language", "japanese", "--exit", "--yes"],
+                ["--commit-language", "japanese", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
                 return_coder=True,
@@ -1315,7 +1315,7 @@ class TestMain(TestCase):
         mock_git_init.side_effect = git.exc.GitCommandNotFound("git", "Command 'git' not found")
 
         try:
-            result = main(["--exit", "--yes"], input=DummyInput(), output=DummyOutput())
+            result = main(["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput())
         except Exception as e:
             self.fail(f"main() raised an unexpected exception: {e}")
 
@@ -1323,7 +1323,7 @@ class TestMain(TestCase):
 
     def test_reasoning_effort_option(self):
         coder = main(
-            ["--reasoning-effort", "3", "--no-check-model-accepts-settings", "--yes", "--exit"],
+            ["--reasoning-effort", "3", "--no-check-model-accepts-settings", "--yes-always", "--exit"],
             input=DummyInput(),
             output=DummyOutput(),
             return_coder=True,
@@ -1334,7 +1334,7 @@ class TestMain(TestCase):
 
     def test_thinking_tokens_option(self):
         coder = main(
-            ["--model", "sonnet", "--thinking-tokens", "1000", "--yes", "--exit"],
+            ["--model", "sonnet", "--thinking-tokens", "1000", "--yes-always", "--exit"],
             input=DummyInput(),
             output=DummyOutput(),
             return_coder=True,
@@ -1370,7 +1370,7 @@ class TestMain(TestCase):
                         "unique-model",
                         "--model-metadata-file",
                         str(metadata_file),
-                        "--yes",
+                        "--yes-always",
                         "--no-gitignore",
                     ],
                     input=DummyInput(),
@@ -1404,7 +1404,7 @@ class TestMain(TestCase):
                         "metadata-only-model",
                         "--model-metadata-file",
                         str(metadata_file),
-                        "--yes",
+                        "--yes-always",
                         "--no-gitignore",
                     ],
                     input=DummyInput(),
@@ -1429,7 +1429,7 @@ class TestMain(TestCase):
                         "--thinking-tokens",
                         "1000",
                         "--check-model-accepts-settings",
-                        "--yes",
+                        "--yes-always",
                         "--exit",
                     ],
                     input=DummyInput(),
@@ -1464,7 +1464,7 @@ class TestMain(TestCase):
                 # Capture stdout to check the output
                 with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
                     main(
-                        ["--list-models", "special", "--yes", "--no-gitignore"],
+                        ["--list-models", "special", "--yes-always", "--no-gitignore"],
                         input=DummyInput(),
                         output=DummyOutput(),
                     )
@@ -1482,7 +1482,7 @@ class TestMain(TestCase):
                         "--reasoning-effort",
                         "3",
                         "--no-check-model-accepts-settings",
-                        "--yes",
+                        "--yes-always",
                         "--exit",
                     ],
                     input=DummyInput(),
@@ -1517,7 +1517,7 @@ class TestMain(TestCase):
                         "--thinking-tokens",
                         "1000",
                         "--check-model-accepts-settings",
-                        "--yes",
+                        "--yes-always",
                         "--exit",
                     ],
                     input=DummyInput(),
@@ -1533,7 +1533,7 @@ class TestMain(TestCase):
         mock_io_instance = MockInputOutput.return_value
         with GitTemporaryDirectory():
             main(
-                ["--stream", "--cache-prompts", "--exit", "--yes"],
+                ["--stream", "--cache-prompts", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
             )
@@ -1546,7 +1546,7 @@ class TestMain(TestCase):
         mock_io_instance = MockInputOutput.return_value
         with GitTemporaryDirectory():
             main(
-                ["--stream", "--exit", "--yes"],
+                ["--stream", "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
             )
@@ -1633,7 +1633,7 @@ class TestMain(TestCase):
         mock_io_instance = MockInputOutput.return_value
         with GitTemporaryDirectory():
             main(
-                ["--cache-prompts", "--exit", "--yes", "--no-stream"],
+                ["--cache-prompts", "--exit", "--yes-always", "--no-stream"],
                 input=DummyInput(),
                 output=DummyOutput(),
             )
@@ -1653,7 +1653,7 @@ class TestMain(TestCase):
                     "--mcp-servers",
                     '{"mcpServers":{"git":{"command":"uvx","args":["mcp-server-git"]}}}',
                     "--exit",
-                    "--yes",
+                    "--yes-always",
                 ],
                 input=DummyInput(),
                 output=DummyOutput(),
@@ -1679,7 +1679,7 @@ class TestMain(TestCase):
             mcp_file.write_text(json.dumps(mcp_content))
 
             main(
-                ["--mcp-servers-file", str(mcp_file), "--exit", "--yes"],
+                ["--mcp-servers-file", str(mcp_file), "--exit", "--yes-always"],
                 input=DummyInput(),
                 output=DummyOutput(),
             )
