@@ -10,7 +10,6 @@ except Exception as e:
     pass
 
 import asyncio
-import glob
 import json
 import os
 import re
@@ -513,8 +512,6 @@ async def sanity_check_repo(repo, io):
     io.tool_error("Unable to read git repository, it may be corrupt?")
     io.tool_output(error_msg)
     return False
-
-
 
 
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))

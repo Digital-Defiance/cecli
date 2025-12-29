@@ -9,7 +9,6 @@ from unittest import TestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import git
-import pytest
 from prompt_toolkit.input import DummyInput
 from prompt_toolkit.output import DummyOutput
 

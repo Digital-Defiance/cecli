@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import List
 
 from aider.commands.utils.base_command import BaseCommand
@@ -18,8 +17,8 @@ class LintCommand(BaseCommand):
         # Get files from CLI arguments if available
         system_args = kwargs.get("system_args")
         if system_args:
-            cli_files = getattr(system_args, 'files', []) or []
-            cli_file_arg = getattr(system_args, 'file', []) or []
+            cli_files = getattr(system_args, "files", []) or []
+            cli_file_arg = getattr(system_args, "file", []) or []
             all_cli_files = cli_files + cli_file_arg
             if all_cli_files:
                 fnames = expand_glob_patterns(all_cli_files)
