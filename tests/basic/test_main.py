@@ -562,7 +562,6 @@ class TestMain(TestCase):
             _, kwargs = MockCoder.call_args
             self.assertEqual(kwargs["show_diffs"], True)
 
-    @pytest.mark.xfail(reason="TODO: Commands.cmd_lint no longer exists, test needs refactoring")
     def test_lint_option(self):
         with GitTemporaryDirectory() as git_dir:
             # Create a dirty file in the root
@@ -587,7 +586,7 @@ class TestMain(TestCase):
                 MockLinter.return_value = ""
 
                 # Run main with --lint option
-                main(["--lint", "--yes-always"])
+                main(["--lint", "--yes-always"], input=DummyInput(), output=DummyOutput())
 
                 # Check if the Linter was called with a filename ending in "dirty_file.py"
                 # but not ending in "subdir/dirty_file.py"
@@ -595,6 +594,64 @@ class TestMain(TestCase):
                 called_arg = MockLinter.call_args[0][0]
                 self.assertTrue(called_arg.endswith("dirty_file.py"))
                 self.assertFalse(called_arg.endswith(f"subdir{os.path.sep}dirty_file.py"))
+
+    def test_lint_option_with_explicit_files(self):
+        with GitTemporaryDirectory():
+            # Create two files
+            file1 = Path("file1.py")
+            file1.write_text("def foo(): pass")
+            file2 = Path("file2.py")
+            file2.write_text("def bar(): pass")
+
+            # Mock the Linter class
+            with patch("aider.linter.Linter.lint") as MockLinter:
+                MockLinter.return_value = ""
+
+                # Run main with --lint and explicit files
+                main(
+                    ["--lint", "file1.py", "file2.py", "--yes-always"],
+                    input=DummyInput(),
+                    output=DummyOutput(),
+                )
+
+                # Check if the Linter was called twice (once for each file)
+                self.assertEqual(MockLinter.call_count, 2)
+
+                # Check that both files were linted
+                called_files = [call[0][0] for call in MockLinter.call_args_list]
+                self.assertTrue(any(f.endswith("file1.py") for f in called_files))
+                self.assertTrue(any(f.endswith("file2.py") for f in called_files))
+
+    def test_lint_option_with_glob_pattern(self):
+        with GitTemporaryDirectory():
+            # Create multiple Python files
+            file1 = Path("test1.py")
+            file1.write_text("def foo(): pass")
+            file2 = Path("test2.py")
+            file2.write_text("def bar(): pass")
+            file3 = Path("readme.txt")
+            file3.write_text("not a python file")
+
+            # Mock the Linter class
+            with patch("aider.linter.Linter.lint") as MockLinter:
+                MockLinter.return_value = ""
+
+                # Run main with --lint and glob pattern
+                main(
+                    ["--lint", "test*.py", "--yes-always"],
+                    input=DummyInput(),
+                    output=DummyOutput(),
+                )
+
+                # Check if the Linter was called for Python files matching the glob
+                self.assertGreaterEqual(MockLinter.call_count, 2)
+
+                # Check that Python files were linted
+                called_files = [call[0][0] for call in MockLinter.call_args_list]
+                self.assertTrue(any(f.endswith("test1.py") for f in called_files))
+                self.assertTrue(any(f.endswith("test2.py") for f in called_files))
+                # Check that non-Python file was not linted
+                self.assertFalse(any(f.endswith("readme.txt") for f in called_files))
 
     def test_verbose_mode_lists_env_vars(self):
         self.create_env_file(".env", "AIDER_DARK_MODE=on")
