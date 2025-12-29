@@ -1,4 +1,3 @@
-import asyncio
 import json
 import os
 import subprocess
@@ -61,7 +60,9 @@ class TestMain(TestCase):
 
     def test_main_with_emptqy_dir_new_file(self):
         main(
-            ["foo.txt", "--yes-always", "--no-git", "--exit"], input=DummyInput(), output=DummyOutput()
+            ["foo.txt", "--yes-always", "--no-git", "--exit"],
+            input=DummyInput(),
+            output=DummyOutput(),
         )
         self.assertTrue(os.path.exists("foo.txt"))
 
@@ -75,7 +76,9 @@ class TestMain(TestCase):
     def test_main_with_empty_git_dir_new_files(self, _):
         make_repo()
         main(
-            ["--yes-always", "foo.txt", "bar.txt", "--exit"], input=DummyInput(), output=DummyOutput()
+            ["--yes-always", "foo.txt", "bar.txt", "--exit"],
+            input=DummyInput(),
+            output=DummyOutput(),
         )
         self.assertTrue(os.path.exists("foo.txt"))
         self.assertTrue(os.path.exists("bar.txt"))
@@ -484,9 +487,7 @@ class TestMain(TestCase):
         # Mock InputOutput to capture the configuration
         with patch("aider.main.InputOutput") as MockInputOutput:
             MockInputOutput.return_value.get_input.return_value = None
-            main(
-                ["--dark-mode", "--no-git", "--exit"], input=DummyInput(), output=DummyOutput()
-            )
+            main(["--dark-mode", "--no-git", "--exit"], input=DummyInput(), output=DummyOutput())
             # Ensure InputOutput was called
             MockInputOutput.assert_called_once()
             # Check if the code_theme setting is for dark mode
@@ -497,9 +498,7 @@ class TestMain(TestCase):
         # Mock InputOutput to capture the configuration
         with patch("aider.main.InputOutput") as MockInputOutput:
             MockInputOutput.return_value.get_input.return_value = None
-            main(
-                ["--light-mode", "--no-git", "--exit"], input=DummyInput(), output=DummyOutput()
-            )
+            main(["--light-mode", "--no-git", "--exit"], input=DummyInput(), output=DummyOutput())
             # Ensure InputOutput was called
             MockInputOutput.assert_called_once()
             # Check if the code_theme setting is for light mode
@@ -970,7 +969,14 @@ class TestMain(TestCase):
                 patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning,
             ):
                 main(
-                    ["--model", "gpt-3.5-turbo", "--reasoning-effort", "3", "--yes-always", "--exit"],
+                    [
+                        "--model",
+                        "gpt-3.5-turbo",
+                        "--reasoning-effort",
+                        "3",
+                        "--yes-always",
+                        "--exit",
+                    ],
                     input=DummyInput(),
                     output=DummyOutput(),
                 )
@@ -1053,7 +1059,14 @@ class TestMain(TestCase):
         # Test setting multiple API keys
         with GitTemporaryDirectory():
             main(
-                ["--api-key", "anthropic=key1", "--api-key", "openai=key2", "--exit", "--yes-always"]
+                [
+                    "--api-key",
+                    "anthropic=key1",
+                    "--api-key",
+                    "openai=key2",
+                    "--exit",
+                    "--yes-always",
+                ]
             )
             self.assertEqual(os.environ.get("ANTHROPIC_API_KEY"), "key1")
             self.assertEqual(os.environ.get("OPENAI_API_KEY"), "key2")
@@ -1181,7 +1194,10 @@ class TestMain(TestCase):
             # Test Anthropic API key
             os.environ["ANTHROPIC_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"],
+                input=DummyInput(),
+                output=DummyOutput(),
+                return_coder=True,
             )
             self.assertIn("sonnet", coder.main_model.name.lower())
             del os.environ["ANTHROPIC_API_KEY"]
@@ -1189,7 +1205,10 @@ class TestMain(TestCase):
             # Test DeepSeek API key
             os.environ["DEEPSEEK_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"],
+                input=DummyInput(),
+                output=DummyOutput(),
+                return_coder=True,
             )
             self.assertIn("deepseek", coder.main_model.name.lower())
             del os.environ["DEEPSEEK_API_KEY"]
@@ -1197,7 +1216,10 @@ class TestMain(TestCase):
             # Test OpenRouter API key
             os.environ["OPENROUTER_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"],
+                input=DummyInput(),
+                output=DummyOutput(),
+                return_coder=True,
             )
             self.assertIn("openrouter/", coder.main_model.name.lower())
             del os.environ["OPENROUTER_API_KEY"]
@@ -1205,7 +1227,10 @@ class TestMain(TestCase):
             # Test OpenAI API key
             os.environ["OPENAI_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"],
+                input=DummyInput(),
+                output=DummyOutput(),
+                return_coder=True,
             )
             self.assertIn("gpt-4", coder.main_model.name.lower())
             del os.environ["OPENAI_API_KEY"]
@@ -1213,7 +1238,10 @@ class TestMain(TestCase):
             # Test Gemini API key
             os.environ["GEMINI_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"],
+                input=DummyInput(),
+                output=DummyOutput(),
+                return_coder=True,
             )
             self.assertIn("gemini", coder.main_model.name.lower())
             del os.environ["GEMINI_API_KEY"]
@@ -1231,7 +1259,10 @@ class TestMain(TestCase):
             os.environ["ANTHROPIC_API_KEY"] = "test-key"
             os.environ["OPENAI_API_KEY"] = "test-key"
             coder = main(
-                ["--exit", "--yes-always"], input=DummyInput(), output=DummyOutput(), return_coder=True
+                ["--exit", "--yes-always"],
+                input=DummyInput(),
+                output=DummyOutput(),
+                return_coder=True,
             )
             self.assertIn("sonnet", coder.main_model.name.lower())
             del os.environ["ANTHROPIC_API_KEY"]
@@ -1370,7 +1401,13 @@ class TestMain(TestCase):
 
     def test_reasoning_effort_option(self):
         coder = main(
-            ["--reasoning-effort", "3", "--no-check-model-accepts-settings", "--yes-always", "--exit"],
+            [
+                "--reasoning-effort",
+                "3",
+                "--no-check-model-accepts-settings",
+                "--yes-always",
+                "--exit",
+            ],
             input=DummyInput(),
             output=DummyOutput(),
             return_coder=True,

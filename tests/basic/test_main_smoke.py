@@ -21,7 +21,10 @@ def isolated_env(tmp_path, monkeypatch, mocker):
     }
 
     mocker.patch.dict(os.environ, clean_env, clear=True)
-    mocker.patch("aider.io.webbrowser.open", side_effect=AssertionError("Browser should not open during tests"))
+    mocker.patch(
+        "aider.io.webbrowser.open",
+        side_effect=AssertionError("Browser should not open during tests"),
+    )
     mocker.patch("builtins.input", return_value=None)
     monkeypatch.chdir(tmp_path)
 
