@@ -430,7 +430,9 @@ class TestMain(TestCase):
 
                     def side_effect(*args, **kwargs):
                         self.assertEqual(kwargs["encoding"], "iso-8859-15")
-                        return MagicMock()
+                        mock_io = MagicMock()
+                        mock_io.confirm_ask = AsyncMock(return_value=True)
+                        return mock_io
 
                     MockSend.side_effect = side_effect
 
