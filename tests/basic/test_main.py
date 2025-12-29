@@ -1062,39 +1062,40 @@ class TestMain:
         # Verify that environment variables from pytest.ini are properly set
         assert os.environ.get("AIDER_ANALYTICS") == "false"
 
-    def test_set_env_single(self):
-        # Test setting a single environment variable
+    @pytest.mark.parametrize(
+        "set_env_args,expected_env,expected_result",
+        [
+            (
+                ["--set-env", "TEST_VAR=test_value"],
+                {"TEST_VAR": "test_value"},
+                None,
+            ),
+            (
+                ["--set-env", "TEST_VAR1=value1", "--set-env", "TEST_VAR2=value2"],
+                {"TEST_VAR1": "value1", "TEST_VAR2": "value2"},
+                None,
+            ),
+            (
+                ["--set-env", "TEST_VAR=test value with spaces"],
+                {"TEST_VAR": "test value with spaces"},
+                None,
+            ),
+            (
+                ["--set-env", "INVALID_FORMAT"],
+                {},
+                1,
+            ),
+        ],
+        ids=["single", "multiple", "with_spaces", "invalid_format"],
+    )
+    def test_set_env(self, set_env_args, expected_env, expected_result):
         with GitTemporaryDirectory():
-            main(["--set-env", "TEST_VAR=test_value", "--exit", "--yes-always"])
-            assert os.environ.get("TEST_VAR") == "test_value"
-
-    def test_set_env_multiple(self):
-        # Test setting multiple environment variables
-        with GitTemporaryDirectory():
-            main(
-                [
-                    "--set-env",
-                    "TEST_VAR1=value1",
-                    "--set-env",
-                    "TEST_VAR2=value2",
-                    "--exit",
-                    "--yes-always",
-                ]
-            )
-            assert os.environ.get("TEST_VAR1") == "value1"
-            assert os.environ.get("TEST_VAR2") == "value2"
-
-    def test_set_env_with_spaces(self):
-        # Test setting env var with spaces in value
-        with GitTemporaryDirectory():
-            main(["--set-env", "TEST_VAR=test value with spaces", "--exit", "--yes-always"])
-            assert os.environ.get("TEST_VAR") == "test value with spaces"
-
-    def test_set_env_invalid_format(self):
-        # Test invalid format handling
-        with GitTemporaryDirectory():
-            result = main(["--set-env", "INVALID_FORMAT", "--exit", "--yes-always"])
-            assert result == 1
+            args = set_env_args + ["--exit", "--yes-always"]
+            result = main(args)
+            if expected_result is not None:
+                assert result == expected_result
+            for env_var, expected_value in expected_env.items():
+                assert os.environ.get(env_var) == expected_value
 
     @pytest.mark.parametrize(
         "api_key_args,expected_env,expected_result",
