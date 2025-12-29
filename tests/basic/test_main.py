@@ -75,7 +75,6 @@ def test_env(request):
 
 
 class TestMain:
-
     def test_main_with_empty_dir_no_files_on_command(self):
         main(["--no-git", "--exit", "--yes-always"], input=DummyInput(), output=DummyOutput())
 
@@ -689,6 +688,7 @@ class TestMain:
             assert "AIDER_DARK_MODE" in relevant_output
             assert "dark_mode" in relevant_output
             import re
+
             assert re.search(r"AIDER_DARK_MODE:\s+on", relevant_output)
             assert re.search(r"dark_mode:\s+True", relevant_output)
 
@@ -1758,13 +1758,11 @@ class TestMain:
                 assert str(oauth_keys_file.resolve()) in loaded_files
                 assert str(git_root_env.resolve()) in loaded_files
                 assert str(cwd_env.resolve()) in loaded_files
-                assert (
-                    loaded_files.index(str(oauth_keys_file.resolve()))
-                    < loaded_files.index(str(git_root_env.resolve()))
+                assert loaded_files.index(str(oauth_keys_file.resolve())) < loaded_files.index(
+                    str(git_root_env.resolve())
                 )
-                assert (
-                    loaded_files.index(str(git_root_env.resolve()))
-                    < loaded_files.index(str(cwd_env.resolve()))
+                assert loaded_files.index(str(git_root_env.resolve())) < loaded_files.index(
+                    str(cwd_env.resolve())
                 )
 
                 # Assert environment variables reflect the override order
