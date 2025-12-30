@@ -69,14 +69,14 @@ def temp_home():
 def test_env(mocker, temp_cwd, temp_home):
     """Provide isolated test environment for all tests.
 
-    Automatically sets up and tears down:
+    Automatically sets up:
     - Fake API keys and environment variables (completely isolated)
     - Temporary working directory (with automatic chdir)
     - Fake home directory to prevent ~/.aider.conf.yml interference
     - Mocked user input and browser opening
     - Windows compatibility (USERPROFILE vs HOME)
 
-    All environment changes are automatically cleaned up after each test.
+    All resources are automatically cleaned up by dependency fixtures and mocker.
     """
     clean_env = {
         "OPENAI_API_KEY": "deadbeef",
@@ -92,8 +92,6 @@ def test_env(mocker, temp_cwd, temp_home):
     mocker.patch.dict(os.environ, clean_env, clear=True)
     mocker.patch("builtins.input", return_value=None)
     mocker.patch("aider.io.webbrowser.open")
-
-    yield
 
 
 @pytest.fixture
