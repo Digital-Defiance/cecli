@@ -553,7 +553,7 @@ class TestMain:
         _, kwargs = mock_coder.call_args
         assert kwargs["show_diffs"] is True
 
-    def test_lint_option(self, dummy_io, git_temp_dir):
+    def test_lint_option(self, dummy_io, git_temp_dir, mocker):
         with GitTemporaryDirectory() as git_dir:
             # Create a dirty file in the root
             dirty_file = Path("dirty_file.py")
@@ -573,20 +573,20 @@ class TestMain:
             os.chdir(subdir)
 
             # Mock the Linter class
-            with patch("aider.linter.Linter.lint") as MockLinter:
-                MockLinter.return_value = ""
+            MockLinter = mocker.patch("aider.linter.Linter.lint")
+            MockLinter.return_value = ""
 
-                # Run main with --lint option
-                main(["--lint", "--yes-always"], **dummy_io)
+            # Run main with --lint option
+            main(["--lint", "--yes-always"], **dummy_io)
 
-                # Check if the Linter was called with a filename ending in "dirty_file.py"
-                # but not ending in "subdir/dirty_file.py"
-                MockLinter.assert_called_once()
-                called_arg = MockLinter.call_args[0][0]
-                assert called_arg.endswith("dirty_file.py")
-                assert not called_arg.endswith(f"subdir{os.path.sep}dirty_file.py")
+            # Check if the Linter was called with a filename ending in "dirty_file.py"
+            # but not ending in "subdir/dirty_file.py"
+            MockLinter.assert_called_once()
+            called_arg = MockLinter.call_args[0][0]
+            assert called_arg.endswith("dirty_file.py")
+            assert not called_arg.endswith(f"subdir{os.path.sep}dirty_file.py")
 
-    def test_lint_option_with_explicit_files(self, dummy_io, git_temp_dir):
+    def test_lint_option_with_explicit_files(self, dummy_io, git_temp_dir, mocker):
         # Create two files
         file1 = Path("file1.py")
         file1.write_text("def foo(): pass")
@@ -594,24 +594,24 @@ class TestMain:
         file2.write_text("def bar(): pass")
 
         # Mock the Linter class
-        with patch("aider.linter.Linter.lint") as MockLinter:
-            MockLinter.return_value = ""
+        MockLinter = mocker.patch("aider.linter.Linter.lint")
+        MockLinter.return_value = ""
 
-            # Run main with --lint and explicit files
-            main(
-                ["--lint", "file1.py", "file2.py", "--yes-always"],
-                **dummy_io,
-            )
+        # Run main with --lint and explicit files
+        main(
+            ["--lint", "file1.py", "file2.py", "--yes-always"],
+            **dummy_io,
+        )
 
-            # Check if the Linter was called twice (once for each file)
-            assert MockLinter.call_count == 2
+        # Check if the Linter was called twice (once for each file)
+        assert MockLinter.call_count == 2
 
-            # Check that both files were linted
-            called_files = [call[0][0] for call in MockLinter.call_args_list]
-            assert any(f.endswith("file1.py") for f in called_files)
-            assert any(f.endswith("file2.py") for f in called_files)
+        # Check that both files were linted
+        called_files = [call[0][0] for call in MockLinter.call_args_list]
+        assert any(f.endswith("file1.py") for f in called_files)
+        assert any(f.endswith("file2.py") for f in called_files)
 
-    def test_lint_option_with_glob_pattern(self, dummy_io, git_temp_dir):
+    def test_lint_option_with_glob_pattern(self, dummy_io, git_temp_dir, mocker):
         # Create multiple Python files
         file1 = Path("test1.py")
         file1.write_text("def foo(): pass")
@@ -621,24 +621,24 @@ class TestMain:
         file3.write_text("not a python file")
 
         # Mock the Linter class
-        with patch("aider.linter.Linter.lint") as MockLinter:
-            MockLinter.return_value = ""
+        MockLinter = mocker.patch("aider.linter.Linter.lint")
+        MockLinter.return_value = ""
 
-            # Run main with --lint and glob pattern
-            main(
-                ["--lint", "test*.py", "--yes-always"],
-                **dummy_io,
-            )
+        # Run main with --lint and glob pattern
+        main(
+            ["--lint", "test*.py", "--yes-always"],
+            **dummy_io,
+        )
 
-            # Check if the Linter was called for Python files matching the glob
-            assert MockLinter.call_count >= 2
+        # Check if the Linter was called for Python files matching the glob
+        assert MockLinter.call_count >= 2
 
-            # Check that Python files were linted
-            called_files = [call[0][0] for call in MockLinter.call_args_list]
-            assert any(f.endswith("test1.py") for f in called_files)
-            assert any(f.endswith("test2.py") for f in called_files)
-            # Check that non-Python file was not linted
-            assert not any(f.endswith("readme.txt") for f in called_files)
+        # Check that Python files were linted
+        called_files = [call[0][0] for call in MockLinter.call_args_list]
+        assert any(f.endswith("test1.py") for f in called_files)
+        assert any(f.endswith("test2.py") for f in called_files)
+        # Check that non-Python file was not linted
+        assert not any(f.endswith("readme.txt") for f in called_files)
 
     def test_verbose_mode_lists_env_vars(self, dummy_io, create_env_file):
         create_env_file(".env", "AIDER_DARK_MODE=on")
@@ -725,23 +725,23 @@ class TestMain:
                 assert kwargs["main_model"].name == "gpt-3.5-turbo"
                 assert kwargs["map_tokens"] == 1024
 
-    def test_map_tokens_option(self, dummy_io, git_temp_dir):
-        with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
-            MockRepoMap.return_value.max_map_tokens = 0
-            main(
-                ["--model", "gpt-4", "--map-tokens", "0", "--exit", "--yes-always"],
-                **dummy_io,
-            )
-            MockRepoMap.assert_not_called()
+    def test_map_tokens_option(self, dummy_io, git_temp_dir, mocker):
+        MockRepoMap = mocker.patch("aider.coders.base_coder.RepoMap")
+        MockRepoMap.return_value.max_map_tokens = 0
+        main(
+            ["--model", "gpt-4", "--map-tokens", "0", "--exit", "--yes-always"],
+            **dummy_io,
+        )
+        MockRepoMap.assert_not_called()
 
-    def test_map_tokens_option_with_non_zero_value(self, dummy_io, git_temp_dir):
-        with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
-            MockRepoMap.return_value.max_map_tokens = 1000
-            main(
-                ["--model", "gpt-4", "--map-tokens", "1000", "--exit", "--yes-always"],
-                **dummy_io,
-            )
-            MockRepoMap.assert_called_once()
+    def test_map_tokens_option_with_non_zero_value(self, dummy_io, git_temp_dir, mocker):
+        MockRepoMap = mocker.patch("aider.coders.base_coder.RepoMap")
+        MockRepoMap.return_value.max_map_tokens = 1000
+        main(
+            ["--model", "gpt-4", "--map-tokens", "1000", "--exit", "--yes-always"],
+            **dummy_io,
+        )
+        MockRepoMap.assert_called_once()
 
     def test_read_option(self, dummy_io, git_temp_dir):
         test_file = "test_file.txt"
