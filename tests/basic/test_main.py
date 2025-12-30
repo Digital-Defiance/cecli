@@ -80,6 +80,15 @@ def dummy_io():
     return {"input": DummyInput(), "output": DummyOutput()}
 
 
+@pytest.fixture
+def mock_coder(mocker):
+    """Provide a properly configured Mock Coder with autosave future."""
+    MockCoder = mocker.patch("aider.coders.Coder.create")
+    mock_coder_instance = MockCoder.return_value
+    mock_coder_instance._autosave_future = mock_autosave_future()
+    return MockCoder
+
+
 class TestMain:
     def test_main_with_empty_dir_no_files_on_command(self, dummy_io):
         main(["--no-git", "--exit", "--yes-always"], **dummy_io)
@@ -160,24 +169,20 @@ class TestMain:
         assert coder.copy_paste_mode
         assert not coder.manual_copy_paste
 
-    def test_main_with_git_config_yml(self, dummy_io):
+    def test_main_with_git_config_yml(self, dummy_io, mock_coder):
         make_repo()
 
         Path(".aider.conf.yml").write_text("auto-commits: false\n")
-        with patch("aider.coders.Coder.create") as MockCoder:
-            mock_coder_instance = MockCoder.return_value
-            mock_coder_instance._autosave_future = mock_autosave_future()
-            main(["--yes-always"], **dummy_io)
-            _, kwargs = MockCoder.call_args
-            assert kwargs["auto_commits"] is False
+        main(["--yes-always"], **dummy_io)
+        _, kwargs = mock_coder.call_args
+        assert kwargs["auto_commits"] is False
 
         Path(".aider.conf.yml").write_text("auto-commits: true\n")
-        with patch("aider.coders.Coder.create") as MockCoder:
-            mock_coder_instance = MockCoder.return_value
-            mock_coder_instance._autosave_future = mock_autosave_future()
-            main([], **dummy_io)
-            _, kwargs = MockCoder.call_args
-            assert kwargs["auto_commits"] is True
+        mock_coder.reset_mock()
+        mock_coder.return_value._autosave_future = mock_autosave_future()
+        main([], **dummy_io)
+        _, kwargs = mock_coder.call_args
+        assert kwargs["auto_commits"] is True
 
     def test_main_with_empty_git_dir_new_subdir_file(self, dummy_io):
         make_repo()
@@ -350,14 +355,11 @@ class TestMain:
         ],
         ids=["no_auto_commits", "auto_commits", "defaults", "no_dirty_commits", "dirty_commits"],
     )
-    def test_main_args(self, args, expected_kwargs, dummy_io):
-        with patch("aider.coders.Coder.create") as MockCoder:
-            mock_coder_instance = MockCoder.return_value
-            mock_coder_instance._autosave_future = mock_autosave_future()
-            main(args, input=DummyInput())
-            _, kwargs = MockCoder.call_args
-            for key, expected_value in expected_kwargs.items():
-                assert kwargs[key] is expected_value
+    def test_main_args(self, args, expected_kwargs, dummy_io, mock_coder):
+        main(args, **dummy_io)
+        _, kwargs = mock_coder.call_args
+        for key, expected_value in expected_kwargs.items():
+            assert kwargs[key] is expected_value
 
     def test_env_file_override(self, dummy_io):
         with GitTemporaryDirectory() as git_dir:
@@ -528,25 +530,19 @@ class TestMain:
             _, kwargs = MockInputOutput.call_args
             assert kwargs["code_theme"] == "monokai"
 
-    def test_false_vals_in_env_file(self, dummy_io):
+    def test_false_vals_in_env_file(self, dummy_io, mock_coder):
         self.create_env_file(".env", "AIDER_SHOW_DIFFS=off")
-        with patch("aider.coders.Coder.create", autospec=True) as MockCoder:
-            mock_coder_instance = MockCoder.return_value
-            mock_coder_instance._autosave_future = mock_autosave_future()
-            main(["--no-git", "--yes-always"], **dummy_io)
-            MockCoder.assert_called_once()
-            _, kwargs = MockCoder.call_args
-            assert kwargs["show_diffs"] is False
+        main(["--no-git", "--yes-always"], **dummy_io)
+        mock_coder.assert_called_once()
+        _, kwargs = mock_coder.call_args
+        assert kwargs["show_diffs"] is False
 
-    def test_true_vals_in_env_file(self, dummy_io):
+    def test_true_vals_in_env_file(self, dummy_io, mock_coder):
         self.create_env_file(".env", "AIDER_SHOW_DIFFS=on")
-        with patch("aider.coders.Coder.create") as MockCoder:
-            mock_coder_instance = MockCoder.return_value
-            mock_coder_instance._autosave_future = mock_autosave_future()
-            main(["--no-git", "--yes-always"], **dummy_io)
-            MockCoder.assert_called_once()
-            _, kwargs = MockCoder.call_args
-            assert kwargs["show_diffs"] is True
+        main(["--no-git", "--yes-always"], **dummy_io)
+        mock_coder.assert_called_once()
+        _, kwargs = mock_coder.call_args
+        assert kwargs["show_diffs"] is True
 
     def test_lint_option(self, dummy_io):
         with GitTemporaryDirectory() as git_dir:
