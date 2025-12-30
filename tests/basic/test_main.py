@@ -22,6 +22,7 @@ Total: 92 tests
 import asyncio
 import json
 import os
+import platform
 import subprocess
 import tempfile
 from io import StringIO
@@ -55,26 +56,40 @@ def test_env(mocker):
     """Provide isolated test environment for all tests.
 
     Automatically sets up and tears down:
-    - Fake API keys and environment variables
+    - Fake API keys and environment variables (completely isolated)
     - Temporary working directory
     - Fake home directory to prevent ~/.aider.conf.yml interference
     - Mocked user input and browser opening
+    - Windows compatibility (USERPROFILE vs HOME)
 
     All environment changes are automatically cleaned up after each test.
     """
-    # Setup
-    original_env = os.environ.copy()
-    os.environ["OPENAI_API_KEY"] = "deadbeef"
-    os.environ["AIDER_CHECK_UPDATE"] = "false"
-    os.environ["AIDER_ANALYTICS"] = "false"
+    # Setup temporary directories (using IgnorantTemporaryDirectory for Windows compatibility)
     original_cwd = os.getcwd()
     tempdir_obj = IgnorantTemporaryDirectory()
     tempdir = tempdir_obj.name
     os.chdir(tempdir)
-    # Fake home directory prevents tests from using the real ~/.aider.conf.yml file:
-    homedir_obj = IgnorantTemporaryDirectory()
-    os.environ["HOME"] = homedir_obj.name
 
+    # Fake home directory prevents tests from using the real ~/.aider.conf.yml file
+    homedir_obj = IgnorantTemporaryDirectory()
+
+    # Create completely isolated environment
+    clean_env = {
+        "OPENAI_API_KEY": "deadbeef",
+        "AIDER_CHECK_UPDATE": "false",
+        "AIDER_ANALYTICS": "false",
+    }
+
+    # Windows uses USERPROFILE instead of HOME
+    if platform.system() == "Windows":
+        clean_env["USERPROFILE"] = homedir_obj.name
+    else:
+        clean_env["HOME"] = homedir_obj.name
+
+    # Completely replace os.environ with clean isolated environment
+    mocker.patch.dict(os.environ, clean_env, clear=True)
+
+    # Mock user interaction
     mocker.patch("builtins.input", return_value=None)
     mocker.patch("aider.io.webbrowser.open")
 
@@ -84,8 +99,6 @@ def test_env(mocker):
     os.chdir(original_cwd)
     tempdir_obj.cleanup()
     homedir_obj.cleanup()
-    os.environ.clear()
-    os.environ.update(original_env)
 
 
 @pytest.fixture
