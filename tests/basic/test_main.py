@@ -96,6 +96,16 @@ def git_temp_dir():
         yield Path(temp_dir)
 
 
+@pytest.fixture
+def create_env_file():
+    """Factory fixture to create environment files in the current test directory."""
+    def _create_env_file(file_name, content):
+        env_file_path = Path.cwd() / file_name
+        env_file_path.write_text(content)
+        return env_file_path
+    return _create_env_file
+
+
 class TestMain:
     def test_main_with_empty_dir_no_files_on_command(self, dummy_io):
         main(["--no-git", "--exit", "--yes-always"], **dummy_io)
@@ -503,13 +513,8 @@ class TestMain:
             _, kwargs = MockInputOutput.call_args
             assert kwargs["code_theme"] == expected_theme
 
-    def create_env_file(self, file_name, content):
-        env_file_path = Path(self.tempdir) / file_name
-        env_file_path.write_text(content)
-        return env_file_path
-
-    def test_env_file_flag_sets_automatic_variable(self, dummy_io):
-        env_file_path = self.create_env_file(".env.test", "AIDER_DARK_MODE=True")
+    def test_env_file_flag_sets_automatic_variable(self, dummy_io, create_env_file):
+        env_file_path = create_env_file(".env.test", "AIDER_DARK_MODE=True")
         with patch("aider.main.InputOutput") as MockInputOutput:
             MockInputOutput.return_value.get_input.return_value = None
             MockInputOutput.return_value.get_input.confirm_ask = True
@@ -522,8 +527,8 @@ class TestMain:
             _, kwargs = MockInputOutput.call_args
             assert kwargs["code_theme"] == "monokai"
 
-    def test_default_env_file_sets_automatic_variable(self, dummy_io):
-        self.create_env_file(".env", "AIDER_DARK_MODE=True")
+    def test_default_env_file_sets_automatic_variable(self, dummy_io, create_env_file):
+        create_env_file(".env", "AIDER_DARK_MODE=True")
         with patch("aider.main.InputOutput") as MockInputOutput:
             MockInputOutput.return_value.get_input.return_value = None
             MockInputOutput.return_value.get_input.confirm_ask = True
@@ -534,15 +539,15 @@ class TestMain:
             _, kwargs = MockInputOutput.call_args
             assert kwargs["code_theme"] == "monokai"
 
-    def test_false_vals_in_env_file(self, dummy_io, mock_coder):
-        self.create_env_file(".env", "AIDER_SHOW_DIFFS=off")
+    def test_false_vals_in_env_file(self, dummy_io, mock_coder, create_env_file):
+        create_env_file(".env", "AIDER_SHOW_DIFFS=off")
         main(["--no-git", "--yes-always"], **dummy_io)
         mock_coder.assert_called_once()
         _, kwargs = mock_coder.call_args
         assert kwargs["show_diffs"] is False
 
-    def test_true_vals_in_env_file(self, dummy_io, mock_coder):
-        self.create_env_file(".env", "AIDER_SHOW_DIFFS=on")
+    def test_true_vals_in_env_file(self, dummy_io, mock_coder, create_env_file):
+        create_env_file(".env", "AIDER_SHOW_DIFFS=on")
         main(["--no-git", "--yes-always"], **dummy_io)
         mock_coder.assert_called_once()
         _, kwargs = mock_coder.call_args
@@ -635,8 +640,8 @@ class TestMain:
             # Check that non-Python file was not linted
             assert not any(f.endswith("readme.txt") for f in called_files)
 
-    def test_verbose_mode_lists_env_vars(self, dummy_io):
-        self.create_env_file(".env", "AIDER_DARK_MODE=on")
+    def test_verbose_mode_lists_env_vars(self, dummy_io, create_env_file):
+        create_env_file(".env", "AIDER_DARK_MODE=on")
         with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
             main(
                 ["--no-git", "--verbose", "--exit", "--yes-always"],
