@@ -168,7 +168,7 @@ def test_model_provider_matches_suffix_variants(monkeypatch, tmp_path):
     info = manager.get_model_info("openrouter/demo/model:extended")
 
     assert info["max_input_tokens"] == 2048
-    assert info["input_cost_per_token"] == 1.0
+    assert info["input_cost_per_token"] == 1.0 / manager.DEFAULT_TOKEN_PRICE_RATIO
     assert info["litellm_provider"] == "openrouter"
 
 
@@ -279,7 +279,7 @@ def test_refresh_provider_cache_uses_static_models(monkeypatch, tmp_path):
     assert refreshed is True
     info = manager.get_model_info("demo/demo/foo")
     assert info["max_input_tokens"] == 1024
-    assert info["input_cost_per_token"] == 0.5
+    assert info["input_cost_per_token"] == 0.5 / manager.DEFAULT_TOKEN_PRICE_RATIO
 
 
 def test_model_info_manager_delegates_to_provider(monkeypatch, tmp_path):

@@ -421,6 +421,7 @@ PROVIDER_CONFIGS = _load_provider_configs()
 
 class ModelProviderManager:
     CACHE_TTL = 60 * 60 * 24  # 24 hours
+    DEFAULT_TOKEN_PRICE_RATIO = 1000000
 
     def __init__(self, provider_configs: Optional[Dict[str, Dict]] = None) -> None:
         self.cache_dir = Path.home() / ".aider" / "caches"
@@ -584,9 +585,9 @@ class ModelProviderManager:
             "max_tokens": max_tokens,
             "max_output_tokens": max_output_tokens,
             "input_cost_per_token": (
-                input_cost / 1000000
-            ),  # Might Only Apply to Chutes and Be a thing we configure per-provider
-            "output_cost_per_token": output_cost / 1000000,
+                input_cost or 0
+            ) / self.DEFAULT_TOKEN_PRICE_RATIO,  # Might Only Apply to Chutes and Be a thing we configure per-provider
+            "output_cost_per_token": (output_cost or 0) / self.DEFAULT_TOKEN_PRICE_RATIO,
             "litellm_provider": provider,
             "mode": record.get("mode", "chat"),
         }
