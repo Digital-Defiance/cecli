@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 from io import StringIO
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import git
 import pytest
@@ -30,7 +30,7 @@ def mock_autosave_future():
 
 
 @pytest.fixture(autouse=True)
-def test_env(request):
+def test_env(request, mocker):
     """Autouse fixture providing test environment (replaces setUp/tearDown)."""
     # Setup (formerly setUp)
     original_env = os.environ.copy()
@@ -45,10 +45,8 @@ def test_env(request):
     homedir_obj = IgnorantTemporaryDirectory()
     os.environ["HOME"] = homedir_obj.name
 
-    input_patcher = patch("builtins.input", return_value=None)
-    mock_input = input_patcher.start()
-    webbrowser_patcher = patch("aider.io.webbrowser.open")
-    mock_webbrowser = webbrowser_patcher.start()
+    mock_input = mocker.patch("builtins.input", return_value=None)
+    mock_webbrowser = mocker.patch("aider.io.webbrowser.open")
 
     # Make values available to tests via request.instance
     if request.instance:
@@ -59,8 +57,6 @@ def test_env(request):
         request.instance.original_cwd = original_cwd
         request.instance.mock_input = mock_input
         request.instance.mock_webbrowser = mock_webbrowser
-        request.instance.input_patcher = input_patcher
-        request.instance.webbrowser_patcher = webbrowser_patcher
 
     yield
 
@@ -70,8 +66,6 @@ def test_env(request):
     homedir_obj.cleanup()
     os.environ.clear()
     os.environ.update(original_env)
-    input_patcher.stop()
-    webbrowser_patcher.stop()
 
 
 @pytest.fixture
@@ -377,7 +371,7 @@ class TestMain:
         for key, expected_value in expected_kwargs.items():
             assert kwargs[key] is expected_value
 
-    def test_env_file_override(self, dummy_io, git_temp_dir):
+    def test_env_file_override(self, dummy_io, git_temp_dir, mocker):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
             git_env = git_dir / ".env"
@@ -400,8 +394,8 @@ class TestMain:
             cwd_env.write_text("A=cwd\nB=cwd")
             named_env.write_text("A=named")
 
-            with patch("pathlib.Path.home", return_value=fake_home):
-                main(["--yes-always", "--exit", "--env-file", str(named_env)])
+            mocker.patch("pathlib.Path.home", return_value=fake_home)
+            main(["--yes-always", "--exit", "--env-file", str(named_env)])
 
             assert os.environ["A"] == "named"
             assert os.environ["B"] == "cwd"
@@ -453,15 +447,13 @@ class TestMain:
 
         main(["--yes-always", fname, "--encoding", "iso-8859-15"])
 
-    def test_main_exit_calls_version_check(self, dummy_io, git_temp_dir):
-        with (
-            patch("aider.main.check_version") as mock_check_version,
-            patch("aider.main.InputOutput") as mock_input_output,
-        ):
-            mock_input_output.return_value.confirm_ask = AsyncMock(return_value=True)
-            main(["--exit", "--check-update"], **dummy_io)
-            mock_check_version.assert_called_once()
-            mock_input_output.assert_called_once()
+    def test_main_exit_calls_version_check(self, dummy_io, git_temp_dir, mocker):
+        mock_check_version = mocker.patch("aider.main.check_version")
+        mock_input_output = mocker.patch("aider.main.InputOutput")
+        mock_input_output.return_value.confirm_ask = AsyncMock(return_value=True)
+        main(["--exit", "--check-update"], **dummy_io)
+        mock_check_version.assert_called_once()
+        mock_input_output.assert_called_once()
 
     def test_main_message_adds_to_input_history(self, dummy_io, mocker):
         mock_run = mocker.patch("aider.coders.base_coder.Coder.run")
@@ -660,7 +652,7 @@ class TestMain:
         assert re.search(r"AIDER_DARK_MODE:\s+on", relevant_output)
         assert re.search(r"dark_mode:\s+True", relevant_output)
 
-    def test_yaml_config_file_loading(self, dummy_io, git_temp_dir):
+    def test_yaml_config_file_loading(self, dummy_io, git_temp_dir, mocker):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
 
@@ -685,45 +677,43 @@ class TestMain:
             home_config.write_text("model: gpt-3.5-turbo\nmap-tokens: 1024\n")
             named_config.write_text("model: gpt-4-1106-preview\nmap-tokens: 8192\n")
 
-            with (
-                patch("pathlib.Path.home", return_value=fake_home),
-                patch("aider.coders.Coder.create") as MockCoder,
-            ):
-                mock_coder_instance = MockCoder.return_value
-                mock_coder_instance._autosave_future = mock_autosave_future()
-                # Test loading from specified config file
-                main(
-                    ["--yes-always", "--exit", "--config", str(named_config)],
-                    **dummy_io,
-                )
-                _, kwargs = MockCoder.call_args
-                assert kwargs["main_model"].name == "gpt-4-1106-preview"
-                assert kwargs["map_tokens"] == 8192
+            mocker.patch("pathlib.Path.home", return_value=fake_home)
+            MockCoder = mocker.patch("aider.coders.Coder.create")
+            mock_coder_instance = MockCoder.return_value
+            mock_coder_instance._autosave_future = mock_autosave_future()
+            # Test loading from specified config file
+            main(
+                ["--yes-always", "--exit", "--config", str(named_config)],
+                **dummy_io,
+            )
+            _, kwargs = MockCoder.call_args
+            assert kwargs["main_model"].name == "gpt-4-1106-preview"
+            assert kwargs["map_tokens"] == 8192
 
-                # Test loading from current working directory
-                mock_coder_instance._autosave_future = mock_autosave_future()
-                main(["--yes-always", "--exit"], **dummy_io)
-                _, kwargs = MockCoder.call_args
-                print("kwargs:", kwargs)  # Add this line for debugging
-                assert "main_model" in kwargs, "main_model key not found in kwargs"
-                assert kwargs["main_model"].name == "gpt-4-32k"
-                assert kwargs["map_tokens"] == 4096
+            # Test loading from current working directory
+            mock_coder_instance._autosave_future = mock_autosave_future()
+            main(["--yes-always", "--exit"], **dummy_io)
+            _, kwargs = MockCoder.call_args
+            print("kwargs:", kwargs)  # Add this line for debugging
+            assert "main_model" in kwargs, "main_model key not found in kwargs"
+            assert kwargs["main_model"].name == "gpt-4-32k"
+            assert kwargs["map_tokens"] == 4096
 
-                # Test loading from git root
-                cwd_config.unlink()
-                mock_coder_instance._autosave_future = mock_autosave_future()
-                main(["--yes-always", "--exit"], **dummy_io)
-                _, kwargs = MockCoder.call_args
-                assert kwargs["main_model"].name == "gpt-4"
-                assert kwargs["map_tokens"] == 2048
+            # Test loading from git root
+            cwd_config.unlink()
+            mock_coder_instance._autosave_future = mock_autosave_future()
+            main(["--yes-always", "--exit"], **dummy_io)
+            _, kwargs = MockCoder.call_args
+            assert kwargs["main_model"].name == "gpt-4"
+            assert kwargs["map_tokens"] == 2048
 
-                # Test loading from home directory
-                git_config.unlink()
-                mock_coder_instance._autosave_future = mock_autosave_future()
-                main(["--yes-always", "--exit"], **dummy_io)
-                _, kwargs = MockCoder.call_args
-                assert kwargs["main_model"].name == "gpt-3.5-turbo"
-                assert kwargs["map_tokens"] == 1024
+            # Test loading from home directory
+            git_config.unlink()
+            mock_coder_instance._autosave_future = mock_autosave_future()
+            main(["--yes-always", "--exit"], **dummy_io)
+            _, kwargs = MockCoder.call_args
+            assert kwargs["main_model"].name == "gpt-3.5-turbo"
+            assert kwargs["map_tokens"] == 1024
 
     def test_map_tokens_option(self, dummy_io, git_temp_dir, mocker):
         MockRepoMap = mocker.patch("aider.coders.base_coder.RepoMap")
@@ -886,95 +876,87 @@ class TestMain:
         coder = main(args, **dummy_io, return_coder=True)
         assert getattr(coder, attr_name) == expected
 
-    def test_accepts_settings_warnings(self, dummy_io, git_temp_dir):
+    def test_accepts_settings_warnings(self, dummy_io, git_temp_dir, mocker):
         # Test that appropriate warnings are shown based on accepts_settings configuration
         # Test model that accepts the thinking_tokens setting
-        with (
-            patch("aider.io.InputOutput.tool_warning") as mock_warning,
-            patch("aider.models.Model.set_thinking_tokens") as mock_set_thinking,
-        ):
-            main(
-                [
-                    "--model",
-                    "anthropic/claude-3-7-sonnet-20250219",
-                    "--thinking-tokens",
-                    "1000",
-                    "--yes-always",
-                    "--exit",
-                ],
-                **dummy_io,
-            )
-            # No warning should be shown as this model accepts thinking_tokens
-            for call in mock_warning.call_args_list:
-                assert "thinking_tokens" not in call[0][0]
-            # Method should be called
-            mock_set_thinking.assert_called_once_with("1000")
+        mock_warning = mocker.patch("aider.io.InputOutput.tool_warning")
+        mock_set_thinking = mocker.patch("aider.models.Model.set_thinking_tokens")
+        main(
+            [
+                "--model",
+                "anthropic/claude-3-7-sonnet-20250219",
+                "--thinking-tokens",
+                "1000",
+                "--yes-always",
+                "--exit",
+            ],
+            **dummy_io,
+        )
+        # No warning should be shown as this model accepts thinking_tokens
+        for call in mock_warning.call_args_list:
+            assert "thinking_tokens" not in call[0][0]
+        # Method should be called
+        mock_set_thinking.assert_called_once_with("1000")
 
         # Test model that doesn't have accepts_settings for thinking_tokens
-        with (
-            patch("aider.io.InputOutput.tool_warning") as mock_warning,
-            patch("aider.models.Model.set_thinking_tokens") as mock_set_thinking,
-        ):
-            main(
-                [
-                    "--model",
-                    "gpt-4o",
-                    "--thinking-tokens",
-                    "1000",
-                    "--check-model-accepts-settings",
-                    "--yes-always",
-                    "--exit",
-                ],
-                **dummy_io,
-            )
-            # Warning should be shown
-            warning_shown = False
-            for call in mock_warning.call_args_list:
-                if "thinking_tokens" in call[0][0]:
-                    warning_shown = True
-            assert warning_shown
-            # Method should NOT be called because model doesn't support it and check flag is on
-            mock_set_thinking.assert_not_called()
+        mock_warning.reset_mock()
+        mock_set_thinking.reset_mock()
+        main(
+            [
+                "--model",
+                "gpt-4o",
+                "--thinking-tokens",
+                "1000",
+                "--check-model-accepts-settings",
+                "--yes-always",
+                "--exit",
+            ],
+            **dummy_io,
+        )
+        # Warning should be shown
+        warning_shown = False
+        for call in mock_warning.call_args_list:
+            if "thinking_tokens" in call[0][0]:
+                warning_shown = True
+        assert warning_shown
+        # Method should NOT be called because model doesn't support it and check flag is on
+        mock_set_thinking.assert_not_called()
 
         # Test model that accepts the reasoning_effort setting
-        with (
-            patch("aider.io.InputOutput.tool_warning") as mock_warning,
-            patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning,
-        ):
-            main(
-                ["--model", "o1", "--reasoning-effort", "3", "--yes-always", "--exit"],
-                **dummy_io,
-            )
-            # No warning should be shown as this model accepts reasoning_effort
-            for call in mock_warning.call_args_list:
-                assert "reasoning_effort" not in call[0][0]
-            # Method should be called
-            mock_set_reasoning.assert_called_once_with("3")
+        mock_warning.reset_mock()
+        mock_set_reasoning = mocker.patch("aider.models.Model.set_reasoning_effort")
+        main(
+            ["--model", "o1", "--reasoning-effort", "3", "--yes-always", "--exit"],
+            **dummy_io,
+        )
+        # No warning should be shown as this model accepts reasoning_effort
+        for call in mock_warning.call_args_list:
+            assert "reasoning_effort" not in call[0][0]
+        # Method should be called
+        mock_set_reasoning.assert_called_once_with("3")
 
         # Test model that doesn't have accepts_settings for reasoning_effort
-        with (
-            patch("aider.io.InputOutput.tool_warning") as mock_warning,
-            patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning,
-        ):
-            main(
-                [
-                    "--model",
-                    "gpt-3.5-turbo",
-                    "--reasoning-effort",
-                    "3",
-                    "--yes-always",
-                    "--exit",
-                ],
-                **dummy_io,
-            )
-            # Warning should be shown
-            warning_shown = False
-            for call in mock_warning.call_args_list:
-                if "reasoning_effort" in call[0][0]:
-                    warning_shown = True
-            assert warning_shown
-            # Method should still be called by default
-            mock_set_reasoning.assert_not_called()
+        mock_warning.reset_mock()
+        mock_set_reasoning.reset_mock()
+        main(
+            [
+                "--model",
+                "gpt-3.5-turbo",
+                "--reasoning-effort",
+                "3",
+                "--yes-always",
+                "--exit",
+            ],
+            **dummy_io,
+        )
+        # Warning should be shown
+        warning_shown = False
+        for call in mock_warning.call_args_list:
+            if "reasoning_effort" in call[0][0]:
+                warning_shown = True
+        assert warning_shown
+        # Method should still be called by default
+        mock_set_reasoning.assert_not_called()
 
     def test_no_verify_ssl_sets_model_info_manager(self, dummy_io, git_temp_dir, mocker):
         mock_set_verify_ssl = mocker.patch("aider.models.ModelInfoManager.set_verify_ssl")
@@ -1212,7 +1194,7 @@ class TestMain:
             for key, value in saved_keys.items():
                 os.environ[key] = value
 
-    def test_default_model_selection_oauth_fallback(self, dummy_io, git_temp_dir):
+    def test_default_model_selection_oauth_fallback(self, dummy_io, git_temp_dir, mocker):
         # Test no API keys - should offer OpenRouter OAuth
         # Clear all API keys to simulate no configured keys
         saved_keys = {}
@@ -1229,11 +1211,11 @@ class TestMain:
                 del os.environ[key]
 
         try:
-            with patch("aider.onboarding.offer_openrouter_oauth") as mock_offer_oauth:
-                mock_offer_oauth.return_value = None  # Simulate user declining or failure
-                result = main(["--exit", "--yes-always"], **dummy_io)
-                assert result == 1  # Expect failure since no model could be selected
-                mock_offer_oauth.assert_called_once()
+            mock_offer_oauth = mocker.patch("aider.onboarding.offer_openrouter_oauth")
+            mock_offer_oauth.return_value = None  # Simulate user declining or failure
+            result = main(["--exit", "--yes-always"], **dummy_io)
+            assert result == 1  # Expect failure since no model could be selected
+            mock_offer_oauth.assert_called_once()
         finally:
             # Restore saved API keys
             for key, value in saved_keys.items():
@@ -1252,96 +1234,92 @@ class TestMain:
         del os.environ["ANTHROPIC_API_KEY"]
         del os.environ["OPENAI_API_KEY"]
 
-    def test_model_overrides_suffix_applied(self, dummy_io, git_temp_dir):
+    def test_model_overrides_suffix_applied(self, dummy_io, git_temp_dir, mocker):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
             overrides_file = git_dir / ".aider.model.overrides.yml"
             overrides_file.write_text("gpt-4o:\n  fast:\n    temperature: 0.1\n")
 
-            with (
-                patch("aider.models.Model") as MockModel,
-                patch("aider.coders.Coder.create") as MockCoder,
-            ):
-                mock_coder_instance = MagicMock()
-                mock_coder_instance._autosave_future = mock_autosave_future()
-                MockCoder.return_value = mock_coder_instance
+            MockModel = mocker.patch("aider.models.Model")
+            MockCoder = mocker.patch("aider.coders.Coder.create")
+            mock_coder_instance = MagicMock()
+            mock_coder_instance._autosave_future = mock_autosave_future()
+            MockCoder.return_value = mock_coder_instance
 
-                mock_instance = MockModel.return_value
-                mock_instance.info = {}
-                mock_instance.name = "gpt-4o"
-                mock_instance.validate_environment.return_value = {
-                    "missing_keys": [],
-                    "keys_in_environment": [],
-                }
-                mock_instance.accepts_settings = []
-                mock_instance.weak_model_name = None
-                mock_instance.get_weak_model.return_value = None
+            mock_instance = MockModel.return_value
+            mock_instance.info = {}
+            mock_instance.name = "gpt-4o"
+            mock_instance.validate_environment.return_value = {
+                "missing_keys": [],
+                "keys_in_environment": [],
+            }
+            mock_instance.accepts_settings = []
+            mock_instance.weak_model_name = None
+            mock_instance.get_weak_model.return_value = None
 
-                main(
-                    ["--model", "gpt-4o:fast", "--exit", "--yes-always", "--no-git"],
-                    **dummy_io,
-                    force_git_root=git_dir,
-                )
+            main(
+                ["--model", "gpt-4o:fast", "--exit", "--yes-always", "--no-git"],
+                **dummy_io,
+                force_git_root=git_dir,
+            )
 
-                # Find the call that constructed the main model with overrides
-                matched_call_found = False
-                for call_args in MockModel.call_args_list:
-                    args, kwargs = call_args
-                    if (
-                        args
-                        and args[0] == "gpt-4o"
-                        and kwargs.get("override_kwargs") == {"temperature": 0.1}
-                    ):
-                        matched_call_found = True
-                        break
+            # Find the call that constructed the main model with overrides
+            matched_call_found = False
+            for call_args in MockModel.call_args_list:
+                args, kwargs = call_args
+                if (
+                    args
+                    and args[0] == "gpt-4o"
+                    and kwargs.get("override_kwargs") == {"temperature": 0.1}
+                ):
+                    matched_call_found = True
+                    break
 
-                assert matched_call_found, (
-                    "Expected a Model call with base name 'gpt-4o' and override_kwargs"
-                    " {'temperature': 0.1}"
-                )
+            assert matched_call_found, (
+                "Expected a Model call with base name 'gpt-4o' and override_kwargs"
+                " {'temperature': 0.1}"
+            )
 
-    def test_model_overrides_no_match_preserves_model_name(self, dummy_io, git_temp_dir):
+    def test_model_overrides_no_match_preserves_model_name(self, dummy_io, git_temp_dir, mocker):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
 
-            with (
-                patch("aider.models.Model") as MockModel,
-                patch("aider.coders.Coder.create") as MockCoder,
-            ):
-                mock_coder_instance = MagicMock()
-                mock_coder_instance._autosave_future = mock_autosave_future()
-                MockCoder.return_value = mock_coder_instance
+            MockModel = mocker.patch("aider.models.Model")
+            MockCoder = mocker.patch("aider.coders.Coder.create")
+            mock_coder_instance = MagicMock()
+            mock_coder_instance._autosave_future = mock_autosave_future()
+            MockCoder.return_value = mock_coder_instance
 
-                mock_instance = MockModel.return_value
-                mock_instance.info = {}
-                mock_instance.name = "test-model"
-                mock_instance.validate_environment.return_value = {
-                    "missing_keys": [],
-                    "keys_in_environment": [],
-                }
-                mock_instance.accepts_settings = []
-                mock_instance.weak_model_name = None
-                mock_instance.get_weak_model.return_value = None
+            mock_instance = MockModel.return_value
+            mock_instance.info = {}
+            mock_instance.name = "test-model"
+            mock_instance.validate_environment.return_value = {
+                "missing_keys": [],
+                "keys_in_environment": [],
+            }
+            mock_instance.accepts_settings = []
+            mock_instance.weak_model_name = None
+            mock_instance.get_weak_model.return_value = None
 
-                model_name = "hf:moonshotai/Kimi-K2-Thinking"
+            model_name = "hf:moonshotai/Kimi-K2-Thinking"
 
-                main(
-                    ["--model", model_name, "--exit", "--yes-always", "--no-git"],
-                    **dummy_io,
-                    force_git_root=git_dir,
-                )
+            main(
+                ["--model", model_name, "--exit", "--yes-always", "--no-git"],
+                **dummy_io,
+                force_git_root=git_dir,
+            )
 
-                matched_call_found = False
-                for call_args in MockModel.call_args_list:
-                    args, kwargs = call_args
-                    if args and args[0] == model_name and kwargs.get("override_kwargs") == {}:
-                        matched_call_found = True
-                        break
+            matched_call_found = False
+            for call_args in MockModel.call_args_list:
+                args, kwargs = call_args
+                if args and args[0] == model_name and kwargs.get("override_kwargs") == {}:
+                    matched_call_found = True
+                    break
 
-                assert matched_call_found, (
-                    "Expected a Model call with the full model name preserved and empty"
-                    " override_kwargs"
-                )
+            assert matched_call_found, (
+                "Expected a Model call with the full model name preserved and empty"
+                " override_kwargs"
+            )
 
     def test_chat_language_spanish(self, dummy_io, git_temp_dir):
         coder = main(
@@ -1528,40 +1506,40 @@ class TestMain:
         # Method should be called because flag is off
         mock_set_reasoning.assert_called_once_with("3")
 
-    def test_model_accepts_settings_attribute(self, dummy_io, git_temp_dir):
+    def test_model_accepts_settings_attribute(self, dummy_io, git_temp_dir, mocker):
         # Test with a model where we override the accepts_settings attribute
-        with patch("aider.models.Model") as MockModel:
-            # Setup mock model instance to simulate accepts_settings attribute
-            mock_instance = MockModel.return_value
-            mock_instance.name = "test-model"
-            mock_instance.accepts_settings = ["reasoning_effort"]
-            mock_instance.validate_environment.return_value = {
-                "missing_keys": [],
-                "keys_in_environment": [],
-            }
-            mock_instance.info = {}
-            mock_instance.weak_model_name = None
-            mock_instance.get_weak_model.return_value = None
+        MockModel = mocker.patch("aider.models.Model")
+        # Setup mock model instance to simulate accepts_settings attribute
+        mock_instance = MockModel.return_value
+        mock_instance.name = "test-model"
+        mock_instance.accepts_settings = ["reasoning_effort"]
+        mock_instance.validate_environment.return_value = {
+            "missing_keys": [],
+            "keys_in_environment": [],
+        }
+        mock_instance.info = {}
+        mock_instance.weak_model_name = None
+        mock_instance.get_weak_model.return_value = None
 
-            # Run with both settings, but model only accepts reasoning_effort
-            main(
-                [
-                    "--model",
-                    "test-model",
-                    "--reasoning-effort",
-                    "3",
-                    "--thinking-tokens",
-                    "1000",
-                    "--check-model-accepts-settings",
-                    "--yes-always",
-                    "--exit",
-                ],
-                **dummy_io,
-            )
+        # Run with both settings, but model only accepts reasoning_effort
+        main(
+            [
+                "--model",
+                "test-model",
+                "--reasoning-effort",
+                "3",
+                "--thinking-tokens",
+                "1000",
+                "--check-model-accepts-settings",
+                "--yes-always",
+                "--exit",
+            ],
+            **dummy_io,
+        )
 
-            # Only set_reasoning_effort should be called, not set_thinking_tokens
-            mock_instance.set_reasoning_effort.assert_called_once_with("3")
-            mock_instance.set_thinking_tokens.assert_not_called()
+        # Only set_reasoning_effort should be called, not set_thinking_tokens
+        mock_instance.set_reasoning_effort.assert_called_once_with("3")
+        mock_instance.set_thinking_tokens.assert_not_called()
 
     def test_stream_and_cache_warning(self, dummy_io, git_temp_dir, mocker):
         MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
@@ -1599,7 +1577,7 @@ class TestMain:
         assert "not_in_git.txt" not in str(coder.abs_fnames)
         assert not asyncio.run(coder.allowed_to_edit("not_in_git.txt"))
 
-    def test_load_dotenv_files_override(self, dummy_io, git_temp_dir):
+    def test_load_dotenv_files_override(self, dummy_io, git_temp_dir, mocker):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
 
@@ -1632,26 +1610,26 @@ class TestMain:
                 if var in os.environ:
                     del os.environ[var]
 
-            with patch("pathlib.Path.home", return_value=fake_home):
-                loaded_files = load_dotenv_files(str(git_dir), None)
+            mocker.patch("pathlib.Path.home", return_value=fake_home)
+            loaded_files = load_dotenv_files(str(git_dir), None)
 
-                # Assert files were loaded in expected order (oauth first)
-                assert str(oauth_keys_file.resolve()) in loaded_files
-                assert str(git_root_env.resolve()) in loaded_files
-                assert str(cwd_env.resolve()) in loaded_files
-                assert loaded_files.index(str(oauth_keys_file.resolve())) < loaded_files.index(
-                    str(git_root_env.resolve())
-                )
-                assert loaded_files.index(str(git_root_env.resolve())) < loaded_files.index(
-                    str(cwd_env.resolve())
-                )
+            # Assert files were loaded in expected order (oauth first)
+            assert str(oauth_keys_file.resolve()) in loaded_files
+            assert str(git_root_env.resolve()) in loaded_files
+            assert str(cwd_env.resolve()) in loaded_files
+            assert loaded_files.index(str(oauth_keys_file.resolve())) < loaded_files.index(
+                str(git_root_env.resolve())
+            )
+            assert loaded_files.index(str(git_root_env.resolve())) < loaded_files.index(
+                str(cwd_env.resolve())
+            )
 
-                # Assert environment variables reflect the override order
-                assert os.environ.get("OAUTH_VAR") == "oauth_val"
-                assert os.environ.get("GIT_VAR") == "git_val"
-                assert os.environ.get("CWD_VAR") == "cwd_val"
-                # SHARED_VAR should be overridden by the last loaded file (cwd .env)
-                assert os.environ.get("SHARED_VAR") == "cwd_shared"
+            # Assert environment variables reflect the override order
+            assert os.environ.get("OAUTH_VAR") == "oauth_val"
+            assert os.environ.get("GIT_VAR") == "git_val"
+            assert os.environ.get("CWD_VAR") == "cwd_val"
+            # SHARED_VAR should be overridden by the last loaded file (cwd .env)
+            assert os.environ.get("SHARED_VAR") == "cwd_shared"
 
             # Restore CWD
             os.chdir(original_cwd)
