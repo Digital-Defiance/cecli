@@ -1,11 +1,13 @@
 """Comprehensive tests for aider.main module.
 
-This test suite validates the main() and main_async() functions and their integration
-with various aider components including configuration loading, model selection, git
-operations, and command-line argument parsing.
+This test suite validates the main() function and its integration with various
+aider components including configuration loading, model selection, git operations,
+and command-line argument parsing.
+
+Note: main() is a thin wrapper around main_async() that uses asyncio.run(), so
+these tests validate both the synchronous and asynchronous entry points.
 
 Test coverage includes:
-- Smoke test for main_async() execution
 - Command-line argument parsing and validation
 - Configuration file loading (.aider.conf.yml, .env files)
 - Model selection and API key management
@@ -15,7 +17,7 @@ Test coverage includes:
 - Model overrides and metadata
 - MCP server configuration
 
-Total: 93 tests (92 comprehensive + 1 async smoke test)
+Total: 92 tests
 """
 import asyncio
 import json
@@ -116,13 +118,6 @@ def create_env_file():
         env_file_path.write_text(content)
         return env_file_path
     return _create_env_file
-
-
-# Smoke test - quick validation that main_async() executes
-async def test_main_async_executes(dummy_io):
-    """Smoke test: Verify main_async() executes without errors."""
-    from aider.main import main_async
-    await main_async(["--exit", "--yes-always"], **dummy_io)
 
 
 def test_main_with_empty_dir_no_files_on_command(dummy_io):
