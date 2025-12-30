@@ -89,6 +89,13 @@ def mock_coder(mocker):
     return MockCoder
 
 
+@pytest.fixture
+def git_temp_dir():
+    """Provide a temporary git directory."""
+    with GitTemporaryDirectory() as temp_dir:
+        yield Path(temp_dir)
+
+
 class TestMain:
     def test_main_with_empty_dir_no_files_on_command(self, dummy_io):
         main(["--no-git", "--exit", "--yes-always"], **dummy_io)
@@ -113,7 +120,7 @@ class TestMain:
         assert os.path.exists("foo.txt")
         assert os.path.exists("bar.txt")
 
-    def test_main_with_dname_and_fname(self, dummy_io):
+    def test_main_with_dname_and_fname(self, dummy_io, git_temp_dir):
         subdir = Path("subdir")
         subdir.mkdir()
         make_repo(str(subdir))
@@ -121,7 +128,7 @@ class TestMain:
         assert res is not None
 
     @patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
-    def test_main_with_subdir_repo_fnames(self, _, dummy_io):
+    def test_main_with_subdir_repo_fnames(self, _, dummy_io, git_temp_dir):
         subdir = Path("subdir")
         subdir.mkdir()
         make_repo(str(subdir))
@@ -132,7 +139,7 @@ class TestMain:
         assert (subdir / "foo.txt").exists()
         assert (subdir / "bar.txt").exists()
 
-    def test_main_copy_paste_model_overrides(self, dummy_io):
+    def test_main_copy_paste_model_overrides(self, dummy_io, git_temp_dir):
         overrides = json.dumps({"gpt-4o": {"fast": {"temperature": 0.42}}})
         coder = main(
             [
@@ -154,7 +161,7 @@ class TestMain:
         assert coder.main_model.override_kwargs == {"temperature": 0.42}
 
     @patch("aider.main.ClipboardWatcher")
-    def test_main_copy_paste_flag_sets_mode(self, mock_watcher, dummy_io):
+    def test_main_copy_paste_flag_sets_mode(self, mock_watcher, dummy_io, git_temp_dir):
         mock_watcher.return_value = MagicMock()
 
         coder = main(
@@ -169,7 +176,7 @@ class TestMain:
         assert coder.copy_paste_mode
         assert not coder.manual_copy_paste
 
-    def test_main_with_git_config_yml(self, dummy_io, mock_coder):
+    def test_main_with_git_config_yml(self, dummy_io, mock_coder, git_temp_dir):
         make_repo()
 
         Path(".aider.conf.yml").write_text("auto-commits: false\n")
@@ -184,7 +191,7 @@ class TestMain:
         _, kwargs = mock_coder.call_args
         assert kwargs["auto_commits"] is True
 
-    def test_main_with_empty_git_dir_new_subdir_file(self, dummy_io):
+    def test_main_with_empty_git_dir_new_subdir_file(self, dummy_io, git_temp_dir):
         make_repo()
         subdir = Path("subdir")
         subdir.mkdir()
@@ -210,31 +217,30 @@ class TestMain:
         assert gitignore.exists()
         assert ".aider*" == gitignore.read_text().splitlines()[0]
 
-    def test_check_gitignore(self, dummy_io):
-        with GitTemporaryDirectory():
-            os.environ["GIT_CONFIG_GLOBAL"] = "globalgitconfig"
+    def test_check_gitignore(self, dummy_io, git_temp_dir):
+        os.environ["GIT_CONFIG_GLOBAL"] = "globalgitconfig"
 
-            io = InputOutput(pretty=False, yes=True)
-            cwd = Path.cwd()
-            gitignore = cwd / ".gitignore"
+        io = InputOutput(pretty=False, yes=True)
+        cwd = Path.cwd()
+        gitignore = cwd / ".gitignore"
 
-            assert not gitignore.exists()
-            asyncio.run(check_gitignore(cwd, io))
-            assert gitignore.exists()
+        assert not gitignore.exists()
+        asyncio.run(check_gitignore(cwd, io))
+        assert gitignore.exists()
 
-            assert ".aider*" == gitignore.read_text().splitlines()[0]
+        assert ".aider*" == gitignore.read_text().splitlines()[0]
 
-            # Test without .env file present
-            gitignore.write_text("one\ntwo\n")
-            asyncio.run(check_gitignore(cwd, io))
-            assert "one\ntwo\n.aider*\n" == gitignore.read_text()
+        # Test without .env file present
+        gitignore.write_text("one\ntwo\n")
+        asyncio.run(check_gitignore(cwd, io))
+        assert "one\ntwo\n.aider*\n" == gitignore.read_text()
 
-            # Test with .env file present
-            env_file = cwd / ".env"
-            env_file.touch()
-            asyncio.run(check_gitignore(cwd, io))
-            assert "one\ntwo\n.aider*\n.env\n" == gitignore.read_text()
-            del os.environ["GIT_CONFIG_GLOBAL"]
+        # Test with .env file present
+        env_file = cwd / ".env"
+        env_file.touch()
+        asyncio.run(check_gitignore(cwd, io))
+        assert "one\ntwo\n.aider*\n.env\n" == gitignore.read_text()
+        del os.environ["GIT_CONFIG_GLOBAL"]
 
     def test_command_line_gitignore_files_flag(self, dummy_io):
         with GitTemporaryDirectory() as git_dir:
@@ -355,13 +361,13 @@ class TestMain:
         ],
         ids=["no_auto_commits", "auto_commits", "defaults", "no_dirty_commits", "dirty_commits"],
     )
-    def test_main_args(self, args, expected_kwargs, dummy_io, mock_coder):
+    def test_main_args(self, args, expected_kwargs, dummy_io, mock_coder, git_temp_dir):
         main(args, **dummy_io)
         _, kwargs = mock_coder.call_args
         for key, expected_value in expected_kwargs.items():
             assert kwargs[key] is expected_value
 
-    def test_env_file_override(self, dummy_io):
+    def test_env_file_override(self, dummy_io, git_temp_dir):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
             git_env = git_dir / ".env"
@@ -393,7 +399,7 @@ class TestMain:
             assert os.environ["D"] == "home"
             assert os.environ["E"] == "existing"
 
-    def test_message_file_flag(self, dummy_io):
+    def test_message_file_flag(self, dummy_io, git_temp_dir):
         message_file_content = "This is a test message from a file."
         message_file_path = tempfile.mktemp()
         with open(message_file_path, "w", encoding="utf-8") as message_file:
@@ -419,14 +425,13 @@ class TestMain:
 
         os.remove(message_file_path)
 
-    def test_encodings_arg(self, dummy_io):
+    def test_encodings_arg(self, dummy_io, git_temp_dir):
         fname = "foo.py"
 
-        with GitTemporaryDirectory():
-            with patch("aider.coders.Coder.create") as MockCoder:
-                mock_coder_instance = MockCoder.return_value
-                mock_coder_instance._autosave_future = mock_autosave_future()
-                with patch("aider.main.InputOutput") as MockSend:
+        with patch("aider.coders.Coder.create") as MockCoder:
+            mock_coder_instance = MockCoder.return_value
+            mock_coder_instance._autosave_future = mock_autosave_future()
+            with patch("aider.main.InputOutput") as MockSend:
 
                     def side_effect(*args, **kwargs):
                         assert kwargs["encoding"] == "iso-8859-15"
@@ -438,16 +443,15 @@ class TestMain:
 
                     main(["--yes-always", fname, "--encoding", "iso-8859-15"])
 
-    def test_main_exit_calls_version_check(self, dummy_io):
-        with GitTemporaryDirectory():
-            with (
-                patch("aider.main.check_version") as mock_check_version,
-                patch("aider.main.InputOutput") as mock_input_output,
-            ):
-                mock_input_output.return_value.confirm_ask = AsyncMock(return_value=True)
-                main(["--exit", "--check-update"], **dummy_io)
-                mock_check_version.assert_called_once()
-                mock_input_output.assert_called_once()
+    def test_main_exit_calls_version_check(self, dummy_io, git_temp_dir):
+        with (
+            patch("aider.main.check_version") as mock_check_version,
+            patch("aider.main.InputOutput") as mock_input_output,
+        ):
+            mock_input_output.return_value.confirm_ask = AsyncMock(return_value=True)
+            main(["--exit", "--check-update"], **dummy_io)
+            mock_check_version.assert_called_once()
+            mock_input_output.assert_called_once()
 
     @patch("aider.main.InputOutput", autospec=True)
     @patch("aider.coders.base_coder.Coder.run")
@@ -488,7 +492,7 @@ class TestMain:
         ],
         ids=["dark_mode", "light_mode"],
     )
-    def test_mode_sets_code_theme(self, mode_flag, expected_theme, dummy_io):
+    def test_mode_sets_code_theme(self, mode_flag, expected_theme, dummy_io, git_temp_dir):
         # Mock InputOutput to capture the configuration
         with patch("aider.main.InputOutput") as MockInputOutput:
             MockInputOutput.return_value.get_input.return_value = None
@@ -544,7 +548,7 @@ class TestMain:
         _, kwargs = mock_coder.call_args
         assert kwargs["show_diffs"] is True
 
-    def test_lint_option(self, dummy_io):
+    def test_lint_option(self, dummy_io, git_temp_dir):
         with GitTemporaryDirectory() as git_dir:
             # Create a dirty file in the root
             dirty_file = Path("dirty_file.py")
@@ -577,61 +581,59 @@ class TestMain:
                 assert called_arg.endswith("dirty_file.py")
                 assert not called_arg.endswith(f"subdir{os.path.sep}dirty_file.py")
 
-    def test_lint_option_with_explicit_files(self, dummy_io):
-        with GitTemporaryDirectory():
-            # Create two files
-            file1 = Path("file1.py")
-            file1.write_text("def foo(): pass")
-            file2 = Path("file2.py")
-            file2.write_text("def bar(): pass")
+    def test_lint_option_with_explicit_files(self, dummy_io, git_temp_dir):
+        # Create two files
+        file1 = Path("file1.py")
+        file1.write_text("def foo(): pass")
+        file2 = Path("file2.py")
+        file2.write_text("def bar(): pass")
 
-            # Mock the Linter class
-            with patch("aider.linter.Linter.lint") as MockLinter:
-                MockLinter.return_value = ""
+        # Mock the Linter class
+        with patch("aider.linter.Linter.lint") as MockLinter:
+            MockLinter.return_value = ""
 
-                # Run main with --lint and explicit files
-                main(
-                    ["--lint", "file1.py", "file2.py", "--yes-always"],
-                    **dummy_io,
-                )
+            # Run main with --lint and explicit files
+            main(
+                ["--lint", "file1.py", "file2.py", "--yes-always"],
+                **dummy_io,
+            )
 
-                # Check if the Linter was called twice (once for each file)
-                assert MockLinter.call_count == 2
+            # Check if the Linter was called twice (once for each file)
+            assert MockLinter.call_count == 2
 
-                # Check that both files were linted
-                called_files = [call[0][0] for call in MockLinter.call_args_list]
-                assert any(f.endswith("file1.py") for f in called_files)
-                assert any(f.endswith("file2.py") for f in called_files)
+            # Check that both files were linted
+            called_files = [call[0][0] for call in MockLinter.call_args_list]
+            assert any(f.endswith("file1.py") for f in called_files)
+            assert any(f.endswith("file2.py") for f in called_files)
 
-    def test_lint_option_with_glob_pattern(self, dummy_io):
-        with GitTemporaryDirectory():
-            # Create multiple Python files
-            file1 = Path("test1.py")
-            file1.write_text("def foo(): pass")
-            file2 = Path("test2.py")
-            file2.write_text("def bar(): pass")
-            file3 = Path("readme.txt")
-            file3.write_text("not a python file")
+    def test_lint_option_with_glob_pattern(self, dummy_io, git_temp_dir):
+        # Create multiple Python files
+        file1 = Path("test1.py")
+        file1.write_text("def foo(): pass")
+        file2 = Path("test2.py")
+        file2.write_text("def bar(): pass")
+        file3 = Path("readme.txt")
+        file3.write_text("not a python file")
 
-            # Mock the Linter class
-            with patch("aider.linter.Linter.lint") as MockLinter:
-                MockLinter.return_value = ""
+        # Mock the Linter class
+        with patch("aider.linter.Linter.lint") as MockLinter:
+            MockLinter.return_value = ""
 
-                # Run main with --lint and glob pattern
-                main(
-                    ["--lint", "test*.py", "--yes-always"],
-                    **dummy_io,
-                )
+            # Run main with --lint and glob pattern
+            main(
+                ["--lint", "test*.py", "--yes-always"],
+                **dummy_io,
+            )
 
-                # Check if the Linter was called for Python files matching the glob
-                assert MockLinter.call_count >= 2
+            # Check if the Linter was called for Python files matching the glob
+            assert MockLinter.call_count >= 2
 
-                # Check that Python files were linted
-                called_files = [call[0][0] for call in MockLinter.call_args_list]
-                assert any(f.endswith("test1.py") for f in called_files)
-                assert any(f.endswith("test2.py") for f in called_files)
-                # Check that non-Python file was not linted
-                assert not any(f.endswith("readme.txt") for f in called_files)
+            # Check that Python files were linted
+            called_files = [call[0][0] for call in MockLinter.call_args_list]
+            assert any(f.endswith("test1.py") for f in called_files)
+            assert any(f.endswith("test2.py") for f in called_files)
+            # Check that non-Python file was not linted
+            assert not any(f.endswith("readme.txt") for f in called_files)
 
     def test_verbose_mode_lists_env_vars(self, dummy_io):
         self.create_env_file(".env", "AIDER_DARK_MODE=on")
@@ -653,7 +655,7 @@ class TestMain:
             assert re.search(r"AIDER_DARK_MODE:\s+on", relevant_output)
             assert re.search(r"dark_mode:\s+True", relevant_output)
 
-    def test_yaml_config_file_loading(self, dummy_io):
+    def test_yaml_config_file_loading(self, dummy_io, git_temp_dir):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
 
@@ -718,58 +720,54 @@ class TestMain:
                 assert kwargs["main_model"].name == "gpt-3.5-turbo"
                 assert kwargs["map_tokens"] == 1024
 
-    def test_map_tokens_option(self, dummy_io):
-        with GitTemporaryDirectory():
-            with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
-                MockRepoMap.return_value.max_map_tokens = 0
-                main(
-                    ["--model", "gpt-4", "--map-tokens", "0", "--exit", "--yes-always"],
-                    **dummy_io,
-                )
-                MockRepoMap.assert_not_called()
-
-    def test_map_tokens_option_with_non_zero_value(self, dummy_io):
-        with GitTemporaryDirectory():
-            with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
-                MockRepoMap.return_value.max_map_tokens = 1000
-                main(
-                    ["--model", "gpt-4", "--map-tokens", "1000", "--exit", "--yes-always"],
-                    **dummy_io,
-                )
-                MockRepoMap.assert_called_once()
-
-    def test_read_option(self, dummy_io):
-        with GitTemporaryDirectory():
-            test_file = "test_file.txt"
-            Path(test_file).touch()
-
-            coder = main(
-                ["--read", test_file, "--exit", "--yes-always"],
+    def test_map_tokens_option(self, dummy_io, git_temp_dir):
+        with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
+            MockRepoMap.return_value.max_map_tokens = 0
+            main(
+                ["--model", "gpt-4", "--map-tokens", "0", "--exit", "--yes-always"],
                 **dummy_io,
-                return_coder=True,
             )
+            MockRepoMap.assert_not_called()
 
-            assert str(Path(test_file).resolve()) in coder.abs_read_only_fnames
+    def test_map_tokens_option_with_non_zero_value(self, dummy_io, git_temp_dir):
+        with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
+            MockRepoMap.return_value.max_map_tokens = 1000
+            main(
+                ["--model", "gpt-4", "--map-tokens", "1000", "--exit", "--yes-always"],
+                **dummy_io,
+            )
+            MockRepoMap.assert_called_once()
 
-    def test_read_option_with_external_file(self, dummy_io):
+    def test_read_option(self, dummy_io, git_temp_dir):
+        test_file = "test_file.txt"
+        Path(test_file).touch()
+
+        coder = main(
+            ["--read", test_file, "--exit", "--yes-always"],
+            **dummy_io,
+            return_coder=True,
+        )
+
+        assert str(Path(test_file).resolve()) in coder.abs_read_only_fnames
+
+    def test_read_option_with_external_file(self, dummy_io, git_temp_dir):
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as external_file:
             external_file.write("External file content")
             external_file_path = external_file.name
 
         try:
-            with GitTemporaryDirectory():
-                coder = main(
-                    ["--read", external_file_path, "--exit", "--yes-always"],
-                    **dummy_io,
-                    return_coder=True,
-                )
+            coder = main(
+                ["--read", external_file_path, "--exit", "--yes-always"],
+                **dummy_io,
+                return_coder=True,
+            )
 
-                real_external_file_path = os.path.realpath(external_file_path)
-                assert real_external_file_path in coder.abs_read_only_fnames
+            real_external_file_path = os.path.realpath(external_file_path)
+            assert real_external_file_path in coder.abs_read_only_fnames
         finally:
             os.unlink(external_file_path)
 
-    def test_model_metadata_file(self, dummy_io):
+    def test_model_metadata_file(self, dummy_io, git_temp_dir):
         # Re-init so we don't have old data lying around from earlier test cases
         from aider import models
 
@@ -779,89 +777,83 @@ class TestMain:
 
         litellm._lazy_module = None
 
-        with GitTemporaryDirectory():
-            metadata_file = Path(".aider.model.metadata.json")
+        metadata_file = Path(".aider.model.metadata.json")
 
-            # must be a fully qualified model name: provider/...
-            metadata_content = {"deepseek/deepseek-chat": {"max_input_tokens": 1234}}
-            metadata_file.write_text(json.dumps(metadata_content))
+        # must be a fully qualified model name: provider/...
+        metadata_content = {"deepseek/deepseek-chat": {"max_input_tokens": 1234}}
+        metadata_file.write_text(json.dumps(metadata_content))
 
-            coder = main(
-                [
-                    "--model",
-                    "deepseek/deepseek-chat",
-                    "--model-metadata-file",
-                    str(metadata_file),
-                    "--exit",
-                    "--yes-always",
-                ],
-                **dummy_io,
-                return_coder=True,
-            )
+        coder = main(
+            [
+                "--model",
+                "deepseek/deepseek-chat",
+                "--model-metadata-file",
+                str(metadata_file),
+                "--exit",
+                "--yes-always",
+            ],
+            **dummy_io,
+            return_coder=True,
+        )
 
-            assert coder.main_model.info["max_input_tokens"] == 1234
+        assert coder.main_model.info["max_input_tokens"] == 1234
 
-    def test_sonnet_and_cache_options(self, dummy_io):
-        with GitTemporaryDirectory():
-            with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
-                mock_repo_map = MagicMock()
-                mock_repo_map.max_map_tokens = 1000  # Set a specific value
-                MockRepoMap.return_value = mock_repo_map
+    def test_sonnet_and_cache_options(self, dummy_io, git_temp_dir):
+        with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
+            mock_repo_map = MagicMock()
+            mock_repo_map.max_map_tokens = 1000  # Set a specific value
+            MockRepoMap.return_value = mock_repo_map
 
-                main(
-                    ["--sonnet", "--cache-prompts", "--exit", "--yes-always"],
-                    **dummy_io,
-                )
-
-                MockRepoMap.assert_called_once()
-                call_args, call_kwargs = MockRepoMap.call_args
-                assert call_kwargs.get("refresh") == "files"  # Check the 'refresh' keyword argument
-
-    def test_sonnet_and_cache_prompts_options(self, dummy_io):
-        with GitTemporaryDirectory():
-            coder = main(
+            main(
                 ["--sonnet", "--cache-prompts", "--exit", "--yes-always"],
                 **dummy_io,
-                return_coder=True,
             )
 
-            assert coder.add_cache_headers
+            MockRepoMap.assert_called_once()
+            call_args, call_kwargs = MockRepoMap.call_args
+            assert call_kwargs.get("refresh") == "files"  # Check the 'refresh' keyword argument
 
-    def test_4o_and_cache_options(self, dummy_io):
-        with GitTemporaryDirectory():
-            coder = main(
-                ["--4o", "--cache-prompts", "--exit", "--yes-always"],
-                **dummy_io,
-                return_coder=True,
-            )
+    def test_sonnet_and_cache_prompts_options(self, dummy_io, git_temp_dir):
+        coder = main(
+            ["--sonnet", "--cache-prompts", "--exit", "--yes-always"],
+            **dummy_io,
+            return_coder=True,
+        )
 
-            assert not coder.add_cache_headers
+        assert coder.add_cache_headers
 
-    def test_return_coder(self, dummy_io):
-        with GitTemporaryDirectory():
-            result = main(
-                ["--exit", "--yes-always"],
-                **dummy_io,
-                return_coder=True,
-            )
-            assert isinstance(result, Coder)
+    def test_4o_and_cache_options(self, dummy_io, git_temp_dir):
+        coder = main(
+            ["--4o", "--cache-prompts", "--exit", "--yes-always"],
+            **dummy_io,
+            return_coder=True,
+        )
 
-            result = main(
-                ["--exit", "--yes-always"],
-                **dummy_io,
-                return_coder=False,
-            )
-            assert result == 0
+        assert not coder.add_cache_headers
 
-    def test_map_mul_option(self, dummy_io):
-        with GitTemporaryDirectory():
-            coder = main(
-                ["--map-mul", "5", "--exit", "--yes-always"],
-                **dummy_io,
-                return_coder=True,
-            )
-            assert isinstance(coder, Coder)
-            assert coder.repo_map.map_mul_no_files == 5
+    def test_return_coder(self, dummy_io, git_temp_dir):
+        result = main(
+            ["--exit", "--yes-always"],
+            **dummy_io,
+            return_coder=True,
+        )
+        assert isinstance(result, Coder)
+
+        result = main(
+            ["--exit", "--yes-always"],
+            **dummy_io,
+            return_coder=False,
+        )
+        assert result == 0
+
+    def test_map_mul_option(self, dummy_io, git_temp_dir):
+        coder = main(
+            ["--map-mul", "5", "--exit", "--yes-always"],
+            **dummy_io,
+            return_coder=True,
+        )
+        assert isinstance(coder, Coder)
+        assert coder.repo_map.map_mul_no_files == 5
 
     @pytest.mark.parametrize(
         "flag_arg,attr_name,expected",
@@ -882,127 +874,124 @@ class TestMain:
             "urls_enabled",
         ],
     )
-    def test_boolean_flags(self, flag_arg, attr_name, expected, dummy_io):
-        with GitTemporaryDirectory():
-            args = ["--exit", "--yes-always"]
-            if flag_arg:
-                args.insert(0, flag_arg)
-            coder = main(args, **dummy_io, return_coder=True)
-            assert getattr(coder, attr_name) == expected
+    def test_boolean_flags(self, flag_arg, attr_name, expected, dummy_io, git_temp_dir):
+        args = ["--exit", "--yes-always"]
+        if flag_arg:
+            args.insert(0, flag_arg)
+        coder = main(args, **dummy_io, return_coder=True)
+        assert getattr(coder, attr_name) == expected
 
-    def test_accepts_settings_warnings(self, dummy_io):
+    def test_accepts_settings_warnings(self, dummy_io, git_temp_dir):
         # Test that appropriate warnings are shown based on accepts_settings configuration
-        with GitTemporaryDirectory():
-            # Test model that accepts the thinking_tokens setting
-            with (
-                patch("aider.io.InputOutput.tool_warning") as mock_warning,
-                patch("aider.models.Model.set_thinking_tokens") as mock_set_thinking,
-            ):
-                main(
-                    [
-                        "--model",
-                        "anthropic/claude-3-7-sonnet-20250219",
-                        "--thinking-tokens",
-                        "1000",
-                        "--yes-always",
-                        "--exit",
-                    ],
-                    **dummy_io,
-                )
-                # No warning should be shown as this model accepts thinking_tokens
-                for call in mock_warning.call_args_list:
-                    assert "thinking_tokens" not in call[0][0]
-                # Method should be called
-                mock_set_thinking.assert_called_once_with("1000")
+        # Test model that accepts the thinking_tokens setting
+        with (
+            patch("aider.io.InputOutput.tool_warning") as mock_warning,
+            patch("aider.models.Model.set_thinking_tokens") as mock_set_thinking,
+        ):
+            main(
+                [
+                    "--model",
+                    "anthropic/claude-3-7-sonnet-20250219",
+                    "--thinking-tokens",
+                    "1000",
+                    "--yes-always",
+                    "--exit",
+                ],
+                **dummy_io,
+            )
+            # No warning should be shown as this model accepts thinking_tokens
+            for call in mock_warning.call_args_list:
+                assert "thinking_tokens" not in call[0][0]
+            # Method should be called
+            mock_set_thinking.assert_called_once_with("1000")
 
-            # Test model that doesn't have accepts_settings for thinking_tokens
-            with (
-                patch("aider.io.InputOutput.tool_warning") as mock_warning,
-                patch("aider.models.Model.set_thinking_tokens") as mock_set_thinking,
-            ):
-                main(
-                    [
-                        "--model",
-                        "gpt-4o",
-                        "--thinking-tokens",
-                        "1000",
-                        "--check-model-accepts-settings",
-                        "--yes-always",
-                        "--exit",
-                    ],
-                    **dummy_io,
-                )
-                # Warning should be shown
-                warning_shown = False
-                for call in mock_warning.call_args_list:
-                    if "thinking_tokens" in call[0][0]:
-                        warning_shown = True
-                assert warning_shown
-                # Method should NOT be called because model doesn't support it and check flag is on
-                mock_set_thinking.assert_not_called()
+        # Test model that doesn't have accepts_settings for thinking_tokens
+        with (
+            patch("aider.io.InputOutput.tool_warning") as mock_warning,
+            patch("aider.models.Model.set_thinking_tokens") as mock_set_thinking,
+        ):
+            main(
+                [
+                    "--model",
+                    "gpt-4o",
+                    "--thinking-tokens",
+                    "1000",
+                    "--check-model-accepts-settings",
+                    "--yes-always",
+                    "--exit",
+                ],
+                **dummy_io,
+            )
+            # Warning should be shown
+            warning_shown = False
+            for call in mock_warning.call_args_list:
+                if "thinking_tokens" in call[0][0]:
+                    warning_shown = True
+            assert warning_shown
+            # Method should NOT be called because model doesn't support it and check flag is on
+            mock_set_thinking.assert_not_called()
 
-            # Test model that accepts the reasoning_effort setting
-            with (
-                patch("aider.io.InputOutput.tool_warning") as mock_warning,
-                patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning,
-            ):
-                main(
-                    ["--model", "o1", "--reasoning-effort", "3", "--yes-always", "--exit"],
-                    **dummy_io,
-                )
-                # No warning should be shown as this model accepts reasoning_effort
-                for call in mock_warning.call_args_list:
-                    assert "reasoning_effort" not in call[0][0]
-                # Method should be called
-                mock_set_reasoning.assert_called_once_with("3")
+        # Test model that accepts the reasoning_effort setting
+        with (
+            patch("aider.io.InputOutput.tool_warning") as mock_warning,
+            patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning,
+        ):
+            main(
+                ["--model", "o1", "--reasoning-effort", "3", "--yes-always", "--exit"],
+                **dummy_io,
+            )
+            # No warning should be shown as this model accepts reasoning_effort
+            for call in mock_warning.call_args_list:
+                assert "reasoning_effort" not in call[0][0]
+            # Method should be called
+            mock_set_reasoning.assert_called_once_with("3")
 
-            # Test model that doesn't have accepts_settings for reasoning_effort
-            with (
-                patch("aider.io.InputOutput.tool_warning") as mock_warning,
-                patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning,
-            ):
-                main(
-                    [
-                        "--model",
-                        "gpt-3.5-turbo",
-                        "--reasoning-effort",
-                        "3",
-                        "--yes-always",
-                        "--exit",
-                    ],
-                    **dummy_io,
-                )
-                # Warning should be shown
-                warning_shown = False
-                for call in mock_warning.call_args_list:
-                    if "reasoning_effort" in call[0][0]:
-                        warning_shown = True
-                assert warning_shown
-                # Method should still be called by default
-                mock_set_reasoning.assert_not_called()
+        # Test model that doesn't have accepts_settings for reasoning_effort
+        with (
+            patch("aider.io.InputOutput.tool_warning") as mock_warning,
+            patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning,
+        ):
+            main(
+                [
+                    "--model",
+                    "gpt-3.5-turbo",
+                    "--reasoning-effort",
+                    "3",
+                    "--yes-always",
+                    "--exit",
+                ],
+                **dummy_io,
+            )
+            # Warning should be shown
+            warning_shown = False
+            for call in mock_warning.call_args_list:
+                if "reasoning_effort" in call[0][0]:
+                    warning_shown = True
+            assert warning_shown
+            # Method should still be called by default
+            mock_set_reasoning.assert_not_called()
 
     @patch("aider.models.ModelInfoManager.set_verify_ssl")
-    def test_no_verify_ssl_sets_model_info_manager(self, mock_set_verify_ssl, dummy_io):
-        with GitTemporaryDirectory():
-            # Mock Model class to avoid actual model initialization
-            with patch("aider.models.Model") as mock_model:
-                # Configure the mock to avoid the TypeError
-                mock_model.return_value.info = {}
-                mock_model.return_value.name = "gpt-4"  # Add a string name
-                mock_model.return_value.validate_environment.return_value = {
-                    "missing_keys": [],
-                    "keys_in_environment": [],
-                }
+    def test_no_verify_ssl_sets_model_info_manager(self, mock_set_verify_ssl, dummy_io, git_temp_dir):
+        # Mock Model class to avoid actual model initialization
+        with patch("aider.models.Model") as mock_model:
+            # Configure the mock to avoid the TypeError
+            mock_model.return_value.info = {}
+            mock_model.return_value.name = "gpt-4"  # Add a string name
+            mock_model.return_value.validate_environment.return_value = {
+                "missing_keys": [],
+                "keys_in_environment": [],
+            }
 
-                # Mock fuzzy_match_models to avoid string operations on MagicMock
-                with patch("aider.models.fuzzy_match_models", return_value=[]):
-                    main(
-                        ["--no-verify-ssl", "--exit", "--yes-always"],
-                        **dummy_io,
-                    )
-                mock_set_verify_ssl.assert_called_once_with(False)
+            # Mock fuzzy_match_models to avoid string operations on MagicMock
+            with patch("aider.models.fuzzy_match_models", return_value=[]):
+                main(
+                    ["--no-verify-ssl", "--exit", "--yes-always"],
+                    **dummy_io,
+                )
+            mock_set_verify_ssl.assert_called_once_with(False)
 
-    def test_pytest_env_vars(self, dummy_io):
+    def test_pytest_env_vars(self, dummy_io, git_temp_dir):
         # Verify that environment variables from pytest.ini are properly set
         assert os.environ.get("AIDER_ANALYTICS") == "false"
 
@@ -1032,14 +1021,13 @@ class TestMain:
         ],
         ids=["single", "multiple", "with_spaces", "invalid_format"],
     )
-    def test_set_env(self, set_env_args, expected_env, expected_result, dummy_io):
-        with GitTemporaryDirectory():
-            args = set_env_args + ["--exit", "--yes-always"]
-            result = main(args)
-            if expected_result is not None:
-                assert result == expected_result
-            for env_var, expected_value in expected_env.items():
-                assert os.environ.get(env_var) == expected_value
+    def test_set_env(self, set_env_args, expected_env, expected_result, dummy_io, git_temp_dir):
+        args = set_env_args + ["--exit", "--yes-always"]
+        result = main(args)
+        if expected_result is not None:
+            assert result == expected_result
+        for env_var, expected_value in expected_env.items():
+            assert os.environ.get(env_var) == expected_value
 
     @pytest.mark.parametrize(
         "api_key_args,expected_env,expected_result",
@@ -1062,16 +1050,15 @@ class TestMain:
         ],
         ids=["single", "multiple", "invalid_format"],
     )
-    def test_api_key(self, api_key_args, expected_env, expected_result, dummy_io):
-        with GitTemporaryDirectory():
-            args = api_key_args + ["--exit", "--yes-always"]
-            result = main(args)
-            if expected_result is not None:
-                assert result == expected_result
-            for env_var, expected_value in expected_env.items():
-                assert os.environ.get(env_var) == expected_value
+    def test_api_key(self, api_key_args, expected_env, expected_result, dummy_io, git_temp_dir):
+        args = api_key_args + ["--exit", "--yes-always"]
+        result = main(args)
+        if expected_result is not None:
+            assert result == expected_result
+        for env_var, expected_value in expected_env.items():
+            assert os.environ.get(env_var) == expected_value
 
-    def test_git_config_include(self, dummy_io):
+    def test_git_config_include(self, dummy_io, git_temp_dir):
         # Test that aider respects git config includes for user.name and user.email
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
@@ -1107,7 +1094,7 @@ class TestMain:
             git_config_content_after = git_config_path.read_text()
             assert git_config_content == git_config_content_after
 
-    def test_git_config_include_directive(self, dummy_io):
+    def test_git_config_include_directive(self, dummy_io, git_temp_dir):
         # Test that aider respects the include directive in git config
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
@@ -1148,7 +1135,7 @@ class TestMain:
             assert repo.git.config("user.name") == "Directive User"
             assert repo.git.config("user.email") == "directive@example.com"
 
-    def test_resolve_aiderignore_path(self, dummy_io):
+    def test_resolve_aiderignore_path(self, dummy_io, git_temp_dir):
         # Import the function directly to test it
         from aider.args import resolve_aiderignore_path
 
@@ -1165,20 +1152,19 @@ class TestMain:
         rel_path = ".aiderignore"
         assert resolve_aiderignore_path(rel_path) == rel_path
 
-    def test_invalid_edit_format(self, dummy_io):
-        with GitTemporaryDirectory():
-            # Suppress stderr for this test as argparse prints an error message
-            with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
-                with pytest.raises(SystemExit) as cm:
-                    _ = main(
-                        ["--edit-format", "not-a-real-format", "--exit", "--yes-always"],
-                        **dummy_io,
-                    )
-                # argparse.ArgumentParser.exit() is called with status 2 for invalid choice
-                assert cm.value.code == 2
-                stderr_output = mock_stderr.getvalue()
-                assert "invalid choice" in stderr_output
-                assert "not-a-real-format" in stderr_output
+    def test_invalid_edit_format(self, dummy_io, git_temp_dir):
+        # Suppress stderr for this test as argparse prints an error message
+        with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
+            with pytest.raises(SystemExit) as cm:
+                _ = main(
+                    ["--edit-format", "not-a-real-format", "--exit", "--yes-always"],
+                    **dummy_io,
+                )
+            # argparse.ArgumentParser.exit() is called with status 2 for invalid choice
+            assert cm.value.code == 2
+            stderr_output = mock_stderr.getvalue()
+            assert "invalid choice" in stderr_output
+            assert "not-a-real-format" in stderr_output
 
     @pytest.mark.parametrize(
         "api_key_env,expected_model_substr",
@@ -1191,80 +1177,77 @@ class TestMain:
         ],
         ids=["anthropic", "deepseek", "openrouter", "openai", "gemini"],
     )
-    def test_default_model_selection(self, api_key_env, expected_model_substr, dummy_io):
-        with GitTemporaryDirectory():
-            # Save and clear all API keys to test each one in isolation
-            saved_keys = {}
-            api_keys = [
-                "ANTHROPIC_API_KEY",
-                "DEEPSEEK_API_KEY",
-                "OPENROUTER_API_KEY",
-                "OPENAI_API_KEY",
-                "GEMINI_API_KEY",
-            ]
-            for key in api_keys:
-                if key in os.environ:
-                    saved_keys[key] = os.environ[key]
-                    del os.environ[key]
+    def test_default_model_selection(self, api_key_env, expected_model_substr, dummy_io, git_temp_dir):
+        # Save and clear all API keys to test each one in isolation
+        saved_keys = {}
+        api_keys = [
+            "ANTHROPIC_API_KEY",
+            "DEEPSEEK_API_KEY",
+            "OPENROUTER_API_KEY",
+            "OPENAI_API_KEY",
+            "GEMINI_API_KEY",
+        ]
+        for key in api_keys:
+            if key in os.environ:
+                saved_keys[key] = os.environ[key]
+                del os.environ[key]
 
-            try:
-                os.environ[api_key_env] = "test-key"
-                coder = main(
-                    ["--exit", "--yes-always"],
-                    **dummy_io,
-                    return_coder=True,
-                )
-                assert expected_model_substr in coder.main_model.name.lower()
-            finally:
-                # Restore saved API keys
-                if api_key_env in os.environ:
-                    del os.environ[api_key_env]
-                for key, value in saved_keys.items():
-                    os.environ[key] = value
-
-    def test_default_model_selection_oauth_fallback(self, dummy_io):
-        # Test no API keys - should offer OpenRouter OAuth
-        with GitTemporaryDirectory():
-            # Clear all API keys to simulate no configured keys
-            saved_keys = {}
-            api_keys = [
-                "ANTHROPIC_API_KEY",
-                "DEEPSEEK_API_KEY",
-                "OPENROUTER_API_KEY",
-                "OPENAI_API_KEY",
-                "GEMINI_API_KEY",
-            ]
-            for key in api_keys:
-                if key in os.environ:
-                    saved_keys[key] = os.environ[key]
-                    del os.environ[key]
-
-            try:
-                with patch("aider.onboarding.offer_openrouter_oauth") as mock_offer_oauth:
-                    mock_offer_oauth.return_value = None  # Simulate user declining or failure
-                    result = main(["--exit", "--yes-always"], **dummy_io)
-                    assert result == 1  # Expect failure since no model could be selected
-                    mock_offer_oauth.assert_called_once()
-            finally:
-                # Restore saved API keys
-                for key, value in saved_keys.items():
-                    os.environ[key] = value
-
-    def test_model_precedence(self, dummy_io):
-        with GitTemporaryDirectory():
-            # Test that earlier API keys take precedence
-            os.environ["ANTHROPIC_API_KEY"] = "test-key"
-            os.environ["OPENAI_API_KEY"] = "test-key"
+        try:
+            os.environ[api_key_env] = "test-key"
             coder = main(
                 ["--exit", "--yes-always"],
                 **dummy_io,
                 return_coder=True,
             )
-            assert "sonnet" in coder.main_model.name.lower()
-            del os.environ["ANTHROPIC_API_KEY"]
-            del os.environ["OPENAI_API_KEY"]
+            assert expected_model_substr in coder.main_model.name.lower()
+        finally:
+            # Restore saved API keys
+            if api_key_env in os.environ:
+                del os.environ[api_key_env]
+            for key, value in saved_keys.items():
+                os.environ[key] = value
 
-    def test_model_overrides_suffix_applied(self, dummy_io):
+    def test_default_model_selection_oauth_fallback(self, dummy_io, git_temp_dir):
+        # Test no API keys - should offer OpenRouter OAuth
+        # Clear all API keys to simulate no configured keys
+        saved_keys = {}
+        api_keys = [
+            "ANTHROPIC_API_KEY",
+            "DEEPSEEK_API_KEY",
+            "OPENROUTER_API_KEY",
+            "OPENAI_API_KEY",
+            "GEMINI_API_KEY",
+        ]
+        for key in api_keys:
+            if key in os.environ:
+                saved_keys[key] = os.environ[key]
+                del os.environ[key]
+
+        try:
+            with patch("aider.onboarding.offer_openrouter_oauth") as mock_offer_oauth:
+                mock_offer_oauth.return_value = None  # Simulate user declining or failure
+                result = main(["--exit", "--yes-always"], **dummy_io)
+                assert result == 1  # Expect failure since no model could be selected
+                mock_offer_oauth.assert_called_once()
+        finally:
+            # Restore saved API keys
+            for key, value in saved_keys.items():
+                os.environ[key] = value
+
+    def test_model_precedence(self, dummy_io, git_temp_dir):
+        # Test that earlier API keys take precedence
+        os.environ["ANTHROPIC_API_KEY"] = "test-key"
+        os.environ["OPENAI_API_KEY"] = "test-key"
+        coder = main(
+            ["--exit", "--yes-always"],
+            **dummy_io,
+            return_coder=True,
+        )
+        assert "sonnet" in coder.main_model.name.lower()
+        del os.environ["ANTHROPIC_API_KEY"]
+        del os.environ["OPENAI_API_KEY"]
+
+    def test_model_overrides_suffix_applied(self, dummy_io, git_temp_dir):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
             overrides_file = git_dir / ".aider.model.overrides.yml"
@@ -1312,7 +1295,7 @@ class TestMain:
                     " {'temperature': 0.1}"
                 )
 
-    def test_model_overrides_no_match_preserves_model_name(self, dummy_io):
+    def test_model_overrides_no_match_preserves_model_name(self, dummy_io, git_temp_dir):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
 
@@ -1355,33 +1338,31 @@ class TestMain:
                     " override_kwargs"
                 )
 
-    def test_chat_language_spanish(self, dummy_io):
-        with GitTemporaryDirectory():
-            coder = main(
-                ["--chat-language", "Spanish", "--exit", "--yes-always"],
-                **dummy_io,
-                return_coder=True,
-            )
-            system_info = coder.get_platform_info()
-            assert "Spanish" in system_info
+    def test_chat_language_spanish(self, dummy_io, git_temp_dir):
+        coder = main(
+            ["--chat-language", "Spanish", "--exit", "--yes-always"],
+            **dummy_io,
+            return_coder=True,
+        )
+        system_info = coder.get_platform_info()
+        assert "Spanish" in system_info
 
-    def test_commit_language_japanese(self, dummy_io):
-        with GitTemporaryDirectory():
-            coder = main(
-                ["--commit-language", "japanese", "--exit", "--yes-always"],
-                **dummy_io,
-                return_coder=True,
-            )
-            assert "japanese" in coder.commit_language
+    def test_commit_language_japanese(self, dummy_io, git_temp_dir):
+        coder = main(
+            ["--commit-language", "japanese", "--exit", "--yes-always"],
+            **dummy_io,
+            return_coder=True,
+        )
+        assert "japanese" in coder.commit_language
 
     @patch("git.Repo.init")
-    def test_main_exit_with_git_command_not_found(self, mock_git_init, dummy_io):
+    def test_main_exit_with_git_command_not_found(self, mock_git_init, dummy_io, git_temp_dir):
         mock_git_init.side_effect = git.exc.GitCommandNotFound("git", "Command 'git' not found")
 
         result = main(["--exit", "--yes-always"], **dummy_io)
         assert result == 0, "main() should return 0 (success) when called with --exit"
 
-    def test_reasoning_effort_option(self, dummy_io):
+    def test_reasoning_effort_option(self, dummy_io, git_temp_dir):
         coder = main(
             [
                 "--reasoning-effort",
@@ -1395,7 +1376,7 @@ class TestMain:
         )
         assert coder.main_model.extra_params.get("extra_body", {}).get("reasoning_effort") == "3"
 
-    def test_thinking_tokens_option(self, dummy_io):
+    def test_thinking_tokens_option(self, dummy_io, git_temp_dir):
         coder = main(
             ["--model", "sonnet", "--thinking-tokens", "1000", "--yes-always", "--exit"],
             **dummy_io,
@@ -1403,225 +1384,217 @@ class TestMain:
         )
         assert coder.main_model.extra_params.get("thinking", {}).get("budget_tokens") == 1000
 
-    def test_list_models_includes_metadata_models(self, dummy_io):
+    def test_list_models_includes_metadata_models(self, dummy_io, git_temp_dir):
         # Test that models from model-metadata.json appear in list-models output
-        with GitTemporaryDirectory():
-            # Create a temporary model-metadata.json with test models
-            metadata_file = Path(".aider.model.metadata.json")
-            test_models = {
-                "unique-model-name": {
-                    "max_input_tokens": 8192,
-                    "litellm_provider": "test-provider",
-                    "mode": "chat",  # Added mode attribute
-                },
-                "another-provider/another-unique-model": {
-                    "max_input_tokens": 4096,
-                    "litellm_provider": "another-provider",
-                    "mode": "chat",  # Added mode attribute
-                },
-            }
-            metadata_file.write_text(json.dumps(test_models))
+        # Create a temporary model-metadata.json with test models
+        metadata_file = Path(".aider.model.metadata.json")
+        test_models = {
+            "unique-model-name": {
+                "max_input_tokens": 8192,
+                "litellm_provider": "test-provider",
+                "mode": "chat",  # Added mode attribute
+            },
+            "another-provider/another-unique-model": {
+                "max_input_tokens": 4096,
+                "litellm_provider": "another-provider",
+                "mode": "chat",  # Added mode attribute
+            },
+        }
+        metadata_file.write_text(json.dumps(test_models))
 
-            # Capture stdout to check the output
-            with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-                main(
-                    [
-                        "--list-models",
-                        "unique-model",
-                        "--model-metadata-file",
-                        str(metadata_file),
-                        "--yes-always",
-                        "--no-gitignore",
-                    ],
-                    **dummy_io,
-                )
-                output = mock_stdout.getvalue()
+        # Capture stdout to check the output
+        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
+            main(
+                [
+                    "--list-models",
+                    "unique-model",
+                    "--model-metadata-file",
+                    str(metadata_file),
+                    "--yes-always",
+                    "--no-gitignore",
+                ],
+                **dummy_io,
+            )
+            output = mock_stdout.getvalue()
 
-                # Check that the unique model name from our metadata file is listed
-                assert "test-provider/unique-model-name" in output
+            # Check that the unique model name from our metadata file is listed
+            assert "test-provider/unique-model-name" in output
 
-    def test_list_models_includes_all_model_sources(self, dummy_io):
+    def test_list_models_includes_all_model_sources(self, dummy_io, git_temp_dir):
         # Test that models from both litellm.model_cost and model-metadata.json
         # appear in list-models
-        with GitTemporaryDirectory():
-            # Create a temporary model-metadata.json with test models
-            metadata_file = Path(".aider.model.metadata.json")
-            test_models = {
-                "metadata-only-model": {
-                    "max_input_tokens": 8192,
-                    "litellm_provider": "test-provider",
-                    "mode": "chat",  # Added mode attribute
-                }
+        # Create a temporary model-metadata.json with test models
+        metadata_file = Path(".aider.model.metadata.json")
+        test_models = {
+            "metadata-only-model": {
+                "max_input_tokens": 8192,
+                "litellm_provider": "test-provider",
+                "mode": "chat",  # Added mode attribute
             }
-            metadata_file.write_text(json.dumps(test_models))
+        }
+        metadata_file.write_text(json.dumps(test_models))
 
-            # Capture stdout to check the output
-            with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-                main(
-                    [
-                        "--list-models",
-                        "metadata-only-model",
-                        "--model-metadata-file",
-                        str(metadata_file),
-                        "--yes-always",
-                        "--no-gitignore",
-                    ],
-                    **dummy_io,
-                )
-                output = mock_stdout.getvalue()
+        # Capture stdout to check the output
+        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
+            main(
+                [
+                    "--list-models",
+                    "metadata-only-model",
+                    "--model-metadata-file",
+                    str(metadata_file),
+                    "--yes-always",
+                    "--no-gitignore",
+                ],
+                **dummy_io,
+            )
+            output = mock_stdout.getvalue()
 
-                dump(output)
+            dump(output)
 
-                # Check that both models appear in the output
-                assert "test-provider/metadata-only-model" in output
+            # Check that both models appear in the output
+            assert "test-provider/metadata-only-model" in output
 
-    def test_check_model_accepts_settings_flag(self, dummy_io):
+    def test_check_model_accepts_settings_flag(self, dummy_io, git_temp_dir):
         # Test that --check-model-accepts-settings affects whether settings are applied
-        with GitTemporaryDirectory():
-            # When flag is on, setting shouldn't be applied to non-supporting model
-            with patch("aider.models.Model.set_thinking_tokens") as mock_set_thinking:
-                main(
-                    [
-                        "--model",
-                        "gpt-4o",
-                        "--thinking-tokens",
-                        "1000",
-                        "--check-model-accepts-settings",
-                        "--yes-always",
-                        "--exit",
-                    ],
-                    **dummy_io,
-                )
-                # Method should not be called because model doesn't support it and flag is on
-                mock_set_thinking.assert_not_called()
+        # When flag is on, setting shouldn't be applied to non-supporting model
+        with patch("aider.models.Model.set_thinking_tokens") as mock_set_thinking:
+            main(
+                [
+                    "--model",
+                    "gpt-4o",
+                    "--thinking-tokens",
+                    "1000",
+                    "--check-model-accepts-settings",
+                    "--yes-always",
+                    "--exit",
+                ],
+                **dummy_io,
+            )
+            # Method should not be called because model doesn't support it and flag is on
+            mock_set_thinking.assert_not_called()
 
     def test_list_models_with_direct_resource_patch(self, dummy_io):
         # Test that models from resources/model-metadata.json are included in list-models output
-        with GitTemporaryDirectory():
-            # Create a temporary file with test model metadata
-            test_file = Path(self.tempdir) / "test-model-metadata.json"
-            test_resource_models = {
-                "special-model": {
-                    "max_input_tokens": 8192,
-                    "litellm_provider": "resource-provider",
-                    "mode": "chat",
-                }
+        # Create a temporary file with test model metadata
+        test_file = Path(self.tempdir) / "test-model-metadata.json"
+        test_resource_models = {
+            "special-model": {
+                "max_input_tokens": 8192,
+                "litellm_provider": "resource-provider",
+                "mode": "chat",
             }
-            test_file.write_text(json.dumps(test_resource_models))
+        }
+        test_file.write_text(json.dumps(test_resource_models))
 
-            # Create a mock for the resource file path
-            mock_resource_path = MagicMock()
-            mock_resource_path.__str__.return_value = str(test_file)
+        # Create a mock for the resource file path
+        mock_resource_path = MagicMock()
+        mock_resource_path.__str__.return_value = str(test_file)
 
-            # Create a mock for the files function that returns an object with joinpath
-            mock_files = MagicMock()
-            mock_files.joinpath.return_value = mock_resource_path
+        # Create a mock for the files function that returns an object with joinpath
+        mock_files = MagicMock()
+        mock_files.joinpath.return_value = mock_resource_path
 
-            with patch("aider.main.importlib_resources.files", return_value=mock_files):
-                # Capture stdout to check the output
-                with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-                    main(
-                        ["--list-models", "special", "--yes-always", "--no-gitignore"],
-                        **dummy_io,
-                    )
-                    output = mock_stdout.getvalue()
-
-                    # Check that the resource model appears in the output
-                    assert "resource-provider/special-model" in output
-
-            # When flag is off, setting should be applied regardless of support
-            with patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning:
+        with patch("aider.main.importlib_resources.files", return_value=mock_files):
+            # Capture stdout to check the output
+            with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
                 main(
-                    [
-                        "--model",
-                        "gpt-3.5-turbo",
-                        "--reasoning-effort",
-                        "3",
-                        "--no-check-model-accepts-settings",
-                        "--yes-always",
-                        "--exit",
-                    ],
+                    ["--list-models", "special", "--yes-always", "--no-gitignore"],
                     **dummy_io,
                 )
-                # Method should be called because flag is off
-                mock_set_reasoning.assert_called_once_with("3")
+                output = mock_stdout.getvalue()
 
-    def test_model_accepts_settings_attribute(self, dummy_io):
-        with GitTemporaryDirectory():
-            # Test with a model where we override the accepts_settings attribute
-            with patch("aider.models.Model") as MockModel:
-                # Setup mock model instance to simulate accepts_settings attribute
-                mock_instance = MockModel.return_value
-                mock_instance.name = "test-model"
-                mock_instance.accepts_settings = ["reasoning_effort"]
-                mock_instance.validate_environment.return_value = {
-                    "missing_keys": [],
-                    "keys_in_environment": [],
-                }
-                mock_instance.info = {}
-                mock_instance.weak_model_name = None
-                mock_instance.get_weak_model.return_value = None
+                # Check that the resource model appears in the output
+                assert "resource-provider/special-model" in output
 
-                # Run with both settings, but model only accepts reasoning_effort
-                main(
-                    [
-                        "--model",
-                        "test-model",
-                        "--reasoning-effort",
-                        "3",
-                        "--thinking-tokens",
-                        "1000",
-                        "--check-model-accepts-settings",
-                        "--yes-always",
-                        "--exit",
-                    ],
-                    **dummy_io,
-                )
-
-                # Only set_reasoning_effort should be called, not set_thinking_tokens
-                mock_instance.set_reasoning_effort.assert_called_once_with("3")
-                mock_instance.set_thinking_tokens.assert_not_called()
-
-    @patch("aider.main.InputOutput", autospec=True)
-    def test_stream_and_cache_warning(self, MockInputOutput, dummy_io):
-        mock_io_instance = MockInputOutput.return_value
-        mock_io_instance.pretty = True
-        with GitTemporaryDirectory():
+        # When flag is off, setting should be applied regardless of support
+        with patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning:
             main(
-                ["--stream", "--cache-prompts", "--exit", "--yes-always"],
+                [
+                    "--model",
+                    "gpt-3.5-turbo",
+                    "--reasoning-effort",
+                    "3",
+                    "--no-check-model-accepts-settings",
+                    "--yes-always",
+                    "--exit",
+                ],
                 **dummy_io,
             )
+            # Method should be called because flag is off
+            mock_set_reasoning.assert_called_once_with("3")
+
+    def test_model_accepts_settings_attribute(self, dummy_io, git_temp_dir):
+        # Test with a model where we override the accepts_settings attribute
+        with patch("aider.models.Model") as MockModel:
+            # Setup mock model instance to simulate accepts_settings attribute
+            mock_instance = MockModel.return_value
+            mock_instance.name = "test-model"
+            mock_instance.accepts_settings = ["reasoning_effort"]
+            mock_instance.validate_environment.return_value = {
+                "missing_keys": [],
+                "keys_in_environment": [],
+            }
+            mock_instance.info = {}
+            mock_instance.weak_model_name = None
+            mock_instance.get_weak_model.return_value = None
+
+            # Run with both settings, but model only accepts reasoning_effort
+            main(
+                [
+                    "--model",
+                    "test-model",
+                    "--reasoning-effort",
+                    "3",
+                    "--thinking-tokens",
+                    "1000",
+                    "--check-model-accepts-settings",
+                    "--yes-always",
+                    "--exit",
+                ],
+                **dummy_io,
+            )
+
+            # Only set_reasoning_effort should be called, not set_thinking_tokens
+            mock_instance.set_reasoning_effort.assert_called_once_with("3")
+            mock_instance.set_thinking_tokens.assert_not_called()
+
+    @patch("aider.main.InputOutput", autospec=True)
+    def test_stream_and_cache_warning(self, MockInputOutput, dummy_io, git_temp_dir):
+        mock_io_instance = MockInputOutput.return_value
+        mock_io_instance.pretty = True
+        main(
+            ["--stream", "--cache-prompts", "--exit", "--yes-always"],
+            **dummy_io,
+        )
         mock_io_instance.tool_warning.assert_called_with(
             "Cost estimates may be inaccurate when using streaming and caching."
         )
 
     @patch("aider.main.InputOutput", autospec=True)
-    def test_stream_without_cache_no_warning(self, MockInputOutput, dummy_io):
+    def test_stream_without_cache_no_warning(self, MockInputOutput, dummy_io, git_temp_dir):
         mock_io_instance = MockInputOutput.return_value
         mock_io_instance.pretty = True
-        with GitTemporaryDirectory():
-            main(
-                ["--stream", "--exit", "--yes-always"],
-                **dummy_io,
-            )
+        main(
+            ["--stream", "--exit", "--yes-always"],
+            **dummy_io,
+        )
         for call in mock_io_instance.tool_warning.call_args_list:
             assert "Cost estimates may be inaccurate" not in call[0][0]
 
-    def test_argv_file_respects_git(self, dummy_io):
-        with GitTemporaryDirectory():
-            fname = Path("not_in_git.txt")
-            fname.touch()
-            with open(".gitignore", "w+") as f:
-                f.write("not_in_git.txt")
-            coder = main(
-                argv=["--file", "not_in_git.txt"],
-                **dummy_io,
-                return_coder=True,
-            )
-            assert "not_in_git.txt" not in str(coder.abs_fnames)
-            assert not asyncio.run(coder.allowed_to_edit("not_in_git.txt"))
+    def test_argv_file_respects_git(self, dummy_io, git_temp_dir):
+        fname = Path("not_in_git.txt")
+        fname.touch()
+        with open(".gitignore", "w+") as f:
+            f.write("not_in_git.txt")
+        coder = main(
+            argv=["--file", "not_in_git.txt"],
+            **dummy_io,
+            return_coder=True,
+        )
+        assert "not_in_git.txt" not in str(coder.abs_fnames)
+        assert not asyncio.run(coder.allowed_to_edit("not_in_git.txt"))
 
-    def test_load_dotenv_files_override(self, dummy_io):
+    def test_load_dotenv_files_override(self, dummy_io, git_temp_dir):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
 
@@ -1679,45 +1652,43 @@ class TestMain:
             os.chdir(original_cwd)
 
     @patch("aider.main.InputOutput", autospec=True)
-    def test_cache_without_stream_no_warning(self, MockInputOutput, dummy_io):
+    def test_cache_without_stream_no_warning(self, MockInputOutput, dummy_io, git_temp_dir):
         mock_io_instance = MockInputOutput.return_value
         mock_io_instance.pretty = True
-        with GitTemporaryDirectory():
-            main(
-                ["--cache-prompts", "--exit", "--yes-always", "--no-stream"],
-                **dummy_io,
-            )
+        main(
+            ["--cache-prompts", "--exit", "--yes-always", "--no-stream"],
+            **dummy_io,
+        )
         for call in mock_io_instance.tool_warning.call_args_list:
             assert "Cost estimates may be inaccurate" not in call[0][0]
 
     @patch("aider.coders.Coder.create")
-    def test_mcp_servers_parsing(self, mock_coder_create, dummy_io):
+    def test_mcp_servers_parsing(self, mock_coder_create, dummy_io, git_temp_dir):
         # Setup mock coder
         mock_coder_instance = MagicMock()
         mock_coder_instance._autosave_future = mock_autosave_future()
         mock_coder_create.return_value = mock_coder_instance
 
         # Test with --mcp-servers option
-        with GitTemporaryDirectory():
-            main(
-                [
-                    "--mcp-servers",
-                    '{"mcpServers":{"git":{"command":"uvx","args":["mcp-server-git"]}}}',
-                    "--exit",
-                    "--yes-always",
-                ],
-                **dummy_io,
-            )
+        main(
+            [
+                "--mcp-servers",
+                '{"mcpServers":{"git":{"command":"uvx","args":["mcp-server-git"]}}}',
+                "--exit",
+                "--yes-always",
+            ],
+            **dummy_io,
+        )
 
-            # Verify that Coder.create was called with mcp_servers parameter
-            mock_coder_create.assert_called_once()
-            _, kwargs = mock_coder_create.call_args
-            assert "mcp_servers" in kwargs
-            assert kwargs["mcp_servers"] is not None
-            # At least one server should be in the list
-            assert len(kwargs["mcp_servers"]) > 0
-            # First server should have a name attribute
-            assert hasattr(kwargs["mcp_servers"][0], "name")
+        # Verify that Coder.create was called with mcp_servers parameter
+        mock_coder_create.assert_called_once()
+        _, kwargs = mock_coder_create.call_args
+        assert "mcp_servers" in kwargs
+        assert kwargs["mcp_servers"] is not None
+        # At least one server should be in the list
+        assert len(kwargs["mcp_servers"]) > 0
+        # First server should have a name attribute
+        assert hasattr(kwargs["mcp_servers"][0], "name")
 
         # Test with --mcp-servers-file option
         mock_coder_create.reset_mock()
