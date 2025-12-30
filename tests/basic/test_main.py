@@ -51,8 +51,15 @@ def mock_autosave_future():
     return AsyncMock()()
 
 
+@pytest.fixture
+def temp_home():
+    """Provide a temporary home directory."""
+    with IgnorantTemporaryDirectory() as homedir:
+        yield homedir
+
+
 @pytest.fixture(autouse=True)
-def test_env(mocker):
+def test_env(mocker, temp_home):
     """Provide isolated test environment for all tests.
 
     Automatically sets up and tears down:
@@ -64,8 +71,7 @@ def test_env(mocker):
 
     All environment changes are automatically cleaned up after each test.
     """
-    with ChdirTemporaryDirectory(), \
-         IgnorantTemporaryDirectory() as homedir:
+    with ChdirTemporaryDirectory():
         clean_env = {
             "OPENAI_API_KEY": "deadbeef",
             "AIDER_CHECK_UPDATE": "false",
@@ -73,9 +79,9 @@ def test_env(mocker):
         }
 
         if platform.system() == "Windows":
-            clean_env["USERPROFILE"] = homedir
+            clean_env["USERPROFILE"] = temp_home
         else:
-            clean_env["HOME"] = homedir
+            clean_env["HOME"] = temp_home
 
         mocker.patch.dict(os.environ, clean_env, clear=True)
         mocker.patch("builtins.input", return_value=None)
