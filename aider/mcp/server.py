@@ -109,7 +109,33 @@ class HttpBasedMcpServer(McpServer):
         if self.verbose and self.io:
             self.io.tool_output(f"Auto-derived OAuth server URL: {server_url}", log_only=True)
 
-        port = find_available_port()
+        # Check if we have existing client info with a redirect URI
+        server_info = get_mcp_oauth_token(self.name)
+        existing_redirect_uri = None
+
+        if "client_info" in server_info and "redirect_uris" in server_info["client_info"]:
+            redirect_uris = server_info["client_info"].get("redirect_uris", [])
+            if redirect_uris:
+                existing_redirect_uri = redirect_uris[0]
+                if self.verbose and self.io:
+                    self.io.tool_output(
+                        f"Found existing redirect URI: {existing_redirect_uri}", log_only=True
+                    )
+
+        # If we have an existing redirect URI, parse it to get the port
+        if existing_redirect_uri:
+            try:
+                parsed_uri = urlparse(existing_redirect_uri)
+                port = int(parsed_uri.netloc.split(":")[1])
+                if self.verbose and self.io:
+                    self.io.tool_output(f"Reusing existing port: {port}", log_only=True)
+            except (ValueError, IndexError):
+                # If we can't parse the port, find a new one
+                port = find_available_port()
+        else:
+            # No existing redirect URI, find an available port
+            port = find_available_port()
+
         if not port:
             raise Exception("Could not find available port for OAuth callback")
 
@@ -135,6 +161,7 @@ class HttpBasedMcpServer(McpServer):
         client_metadata = OAuthClientMetadata(
             client_name="Aider-CE",
             redirect_uris=[redirect_uri],
+            grant_types=["authorization_code", "refresh_token"],
         )
         oauth_provider = OAuthClientProvider(
             server_url=server_url,
