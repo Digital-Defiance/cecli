@@ -1165,6 +1165,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         if args.stream:
             io.tool_warning(
                 f"Warning: Streaming is not supported by {main_model.name}. Disabling streaming."
+                " Set stream: false in config file or use --no-stream to skip this warning."
             )
         args.stream = False
 
