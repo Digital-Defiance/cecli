@@ -123,7 +123,7 @@ def create_env_file():
 def test_main_with_empty_dir_no_files_on_command(dummy_io):
     main(["--no-git", "--exit", "--yes-always"], **dummy_io)
 
-def test_main_with_emptqy_dir_new_file(dummy_io):
+def test_main_with_empty_dir_new_file(dummy_io):
     main(["foo.txt", "--yes-always", "--no-git", "--exit"], **dummy_io)
     assert os.path.exists("foo.txt")
 
