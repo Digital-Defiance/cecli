@@ -1,24 +1,3 @@
-"""Comprehensive tests for aider.main module.
-
-This test suite validates the main() function and its integration with various
-aider components including configuration loading, model selection, git operations,
-and command-line argument parsing.
-
-Note: main() is a thin wrapper around main_async() that uses asyncio.run(), so
-these tests validate both the synchronous and asynchronous entry points.
-
-Test coverage includes:
-- Command-line argument parsing and validation
-- Configuration file loading (.aider.conf.yml, .env files)
-- Model selection and API key management
-- Git repository operations and setup
-- Environment variable handling
-- Feature flags and boolean options
-- Model overrides and metadata
-- MCP server configuration
-
-Total: 92 tests
-"""
 import asyncio
 import json
 import os
