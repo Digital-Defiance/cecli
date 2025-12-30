@@ -1425,7 +1425,7 @@ class TestMain:
         # Check that the unique model name from our metadata file is listed
         assert "test-provider/unique-model-name" in output
 
-    def test_list_models_includes_all_model_sources(self, dummy_io, git_temp_dir):
+    def test_list_models_includes_all_model_sources(self, dummy_io, git_temp_dir, mocker):
         # Test that models from both litellm.model_cost and model-metadata.json
         # appear in list-models
         # Create a temporary model-metadata.json with test models
@@ -1440,45 +1440,45 @@ class TestMain:
         metadata_file.write_text(json.dumps(test_models))
 
         # Capture stdout to check the output
-        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-            main(
-                [
-                    "--list-models",
-                    "metadata-only-model",
-                    "--model-metadata-file",
-                    str(metadata_file),
-                    "--yes-always",
-                    "--no-gitignore",
-                ],
-                **dummy_io,
-            )
-            output = mock_stdout.getvalue()
+        mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
+        main(
+            [
+                "--list-models",
+                "metadata-only-model",
+                "--model-metadata-file",
+                str(metadata_file),
+                "--yes-always",
+                "--no-gitignore",
+            ],
+            **dummy_io,
+        )
+        output = mock_stdout.getvalue()
 
-            dump(output)
+        dump(output)
 
-            # Check that both models appear in the output
-            assert "test-provider/metadata-only-model" in output
+        # Check that both models appear in the output
+        assert "test-provider/metadata-only-model" in output
 
-    def test_check_model_accepts_settings_flag(self, dummy_io, git_temp_dir):
+    def test_check_model_accepts_settings_flag(self, dummy_io, git_temp_dir, mocker):
         # Test that --check-model-accepts-settings affects whether settings are applied
         # When flag is on, setting shouldn't be applied to non-supporting model
-        with patch("aider.models.Model.set_thinking_tokens") as mock_set_thinking:
-            main(
-                [
-                    "--model",
-                    "gpt-4o",
-                    "--thinking-tokens",
-                    "1000",
-                    "--check-model-accepts-settings",
-                    "--yes-always",
-                    "--exit",
-                ],
-                **dummy_io,
-            )
-            # Method should not be called because model doesn't support it and flag is on
-            mock_set_thinking.assert_not_called()
+        mock_set_thinking = mocker.patch("aider.models.Model.set_thinking_tokens")
+        main(
+            [
+                "--model",
+                "gpt-4o",
+                "--thinking-tokens",
+                "1000",
+                "--check-model-accepts-settings",
+                "--yes-always",
+                "--exit",
+            ],
+            **dummy_io,
+        )
+        # Method should not be called because model doesn't support it and flag is on
+        mock_set_thinking.assert_not_called()
 
-    def test_list_models_with_direct_resource_patch(self, dummy_io):
+    def test_list_models_with_direct_resource_patch(self, dummy_io, mocker):
         # Test that models from resources/model-metadata.json are included in list-models output
         # Create a temporary file with test model metadata
         test_file = Path(self.tempdir) / "test-model-metadata.json"
@@ -1499,34 +1499,34 @@ class TestMain:
         mock_files = MagicMock()
         mock_files.joinpath.return_value = mock_resource_path
 
-        with patch("aider.main.importlib_resources.files", return_value=mock_files):
-            # Capture stdout to check the output
-            with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-                main(
-                    ["--list-models", "special", "--yes-always", "--no-gitignore"],
-                    **dummy_io,
-                )
-                output = mock_stdout.getvalue()
+        mocker.patch("aider.main.importlib_resources.files", return_value=mock_files)
+        # Capture stdout to check the output
+        mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
+        main(
+            ["--list-models", "special", "--yes-always", "--no-gitignore"],
+            **dummy_io,
+        )
+        output = mock_stdout.getvalue()
 
-                # Check that the resource model appears in the output
-                assert "resource-provider/special-model" in output
+        # Check that the resource model appears in the output
+        assert "resource-provider/special-model" in output
 
         # When flag is off, setting should be applied regardless of support
-        with patch("aider.models.Model.set_reasoning_effort") as mock_set_reasoning:
-            main(
-                [
-                    "--model",
-                    "gpt-3.5-turbo",
-                    "--reasoning-effort",
-                    "3",
-                    "--no-check-model-accepts-settings",
-                    "--yes-always",
-                    "--exit",
-                ],
-                **dummy_io,
-            )
-            # Method should be called because flag is off
-            mock_set_reasoning.assert_called_once_with("3")
+        mock_set_reasoning = mocker.patch("aider.models.Model.set_reasoning_effort")
+        main(
+            [
+                "--model",
+                "gpt-3.5-turbo",
+                "--reasoning-effort",
+                "3",
+                "--no-check-model-accepts-settings",
+                "--yes-always",
+                "--exit",
+            ],
+            **dummy_io,
+        )
+        # Method should be called because flag is off
+        mock_set_reasoning.assert_called_once_with("3")
 
     def test_model_accepts_settings_attribute(self, dummy_io, git_temp_dir):
         # Test with a model where we override the accepts_settings attribute
