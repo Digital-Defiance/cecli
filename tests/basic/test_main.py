@@ -39,7 +39,7 @@ from aider.commands import SwitchCoder
 from aider.dump import dump  # noqa: F401
 from aider.io import InputOutput
 from aider.main import check_gitignore, load_dotenv_files, main, setup_git
-from aider.utils import GitTemporaryDirectory, IgnorantTemporaryDirectory, make_repo
+from aider.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, IgnorantTemporaryDirectory, make_repo
 
 
 def mock_autosave_future():
@@ -57,20 +57,15 @@ def test_env(mocker):
 
     Automatically sets up and tears down:
     - Fake API keys and environment variables (completely isolated)
-    - Temporary working directory
+    - Temporary working directory (with automatic chdir)
     - Fake home directory to prevent ~/.aider.conf.yml interference
     - Mocked user input and browser opening
     - Windows compatibility (USERPROFILE vs HOME)
 
     All environment changes are automatically cleaned up after each test.
     """
-    original_cwd = os.getcwd()
-
-    # Using IgnorantTemporaryDirectory for Windows cleanup compatibility
-    with IgnorantTemporaryDirectory() as tempdir, \
+    with ChdirTemporaryDirectory(), \
          IgnorantTemporaryDirectory() as homedir:
-        os.chdir(tempdir)
-
         clean_env = {
             "OPENAI_API_KEY": "deadbeef",
             "AIDER_CHECK_UPDATE": "false",
@@ -87,8 +82,6 @@ def test_env(mocker):
         mocker.patch("aider.io.webbrowser.open")
 
         yield
-
-        os.chdir(original_cwd)
 
 
 @pytest.fixture
