@@ -211,8 +211,8 @@ class TestMain:
         assert gitignore.exists()
         assert ".aider*" == gitignore.read_text().splitlines()[0]
 
-    def test_check_gitignore(self, dummy_io, git_temp_dir):
-        os.environ["GIT_CONFIG_GLOBAL"] = "globalgitconfig"
+    def test_check_gitignore(self, dummy_io, git_temp_dir, monkeypatch):
+        monkeypatch.setenv("GIT_CONFIG_GLOBAL", "globalgitconfig")
 
         io = InputOutput(pretty=False, yes=True)
         cwd = Path.cwd()
@@ -234,7 +234,6 @@ class TestMain:
         env_file.touch()
         asyncio.run(check_gitignore(cwd, io))
         assert "one\ntwo\n.aider*\n.env\n" == gitignore.read_text()
-        del os.environ["GIT_CONFIG_GLOBAL"]
 
     def test_command_line_gitignore_files_flag(self, dummy_io):
         with GitTemporaryDirectory() as git_dir:
@@ -361,14 +360,14 @@ class TestMain:
         for key, expected_value in expected_kwargs.items():
             assert kwargs[key] is expected_value
 
-    def test_env_file_override(self, dummy_io, git_temp_dir, mocker):
+    def test_env_file_override(self, dummy_io, git_temp_dir, mocker, monkeypatch):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
             git_env = git_dir / ".env"
 
             fake_home = git_dir / "fake_home"
             fake_home.mkdir()
-            os.environ["HOME"] = str(fake_home)
+            monkeypatch.setenv("HOME", str(fake_home))
             home_env = fake_home / ".env"
 
             cwd = git_dir / "subdir"
@@ -378,7 +377,7 @@ class TestMain:
 
             named_env = git_dir / "named.env"
 
-            os.environ["E"] = "existing"
+            monkeypatch.setenv("E", "existing")
             home_env.write_text("A=home\nB=home\nC=home\nD=home")
             git_env.write_text("A=git\nB=git\nC=git")
             cwd_env.write_text("A=cwd\nB=cwd")
@@ -642,14 +641,14 @@ class TestMain:
         assert re.search(r"AIDER_DARK_MODE:\s+on", relevant_output)
         assert re.search(r"dark_mode:\s+True", relevant_output)
 
-    def test_yaml_config_file_loading(self, dummy_io, git_temp_dir, mocker):
+    def test_yaml_config_file_loading(self, dummy_io, git_temp_dir, mocker, monkeypatch):
         with GitTemporaryDirectory() as git_dir:
             git_dir = Path(git_dir)
 
             # Create fake home directory
             fake_home = git_dir / "fake_home"
             fake_home.mkdir()
-            os.environ["HOME"] = str(fake_home)
+            monkeypatch.setenv("HOME", str(fake_home))
 
             # Create subdirectory as current working directory
             cwd = git_dir / "subdir"
@@ -1211,18 +1210,16 @@ class TestMain:
             for key, value in saved_keys.items():
                 os.environ[key] = value
 
-    def test_model_precedence(self, dummy_io, git_temp_dir):
+    def test_model_precedence(self, dummy_io, git_temp_dir, monkeypatch):
         # Test that earlier API keys take precedence
-        os.environ["ANTHROPIC_API_KEY"] = "test-key"
-        os.environ["OPENAI_API_KEY"] = "test-key"
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
         coder = main(
             ["--exit", "--yes-always"],
             **dummy_io,
             return_coder=True,
         )
         assert "sonnet" in coder.main_model.name.lower()
-        del os.environ["ANTHROPIC_API_KEY"]
-        del os.environ["OPENAI_API_KEY"]
 
     def test_model_overrides_suffix_applied(self, dummy_io, git_temp_dir, mocker):
         with GitTemporaryDirectory() as git_dir:
