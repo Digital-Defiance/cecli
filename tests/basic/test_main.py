@@ -299,40 +299,37 @@ def test_check_gitignore(dummy_io, git_temp_dir, monkeypatch):
         "cmd_disabled",
     ],
 )
-def test_gitignore_files_flag(dummy_io, method, flag, should_include):
+def test_gitignore_files_flag(dummy_io, git_temp_dir, method, flag, should_include):
     """Test --add-gitignore-files flag with command-line and /add command."""
-    with GitTemporaryDirectory() as git_dir:
-        git_dir = Path(git_dir)
+    # Create a .gitignore file and an ignored file
+    gitignore_file = git_temp_dir / ".gitignore"
+    gitignore_file.write_text("ignored.txt\n")
+    ignored_file = git_temp_dir / "ignored.txt"
+    ignored_file.write_text("This file should be ignored.")
+    abs_ignored_file = str(ignored_file.resolve())
 
-        # Create a .gitignore file and an ignored file
-        gitignore_file = git_dir / ".gitignore"
-        gitignore_file.write_text("ignored.txt\n")
-        ignored_file = git_dir / "ignored.txt"
-        ignored_file.write_text("This file should be ignored.")
-        abs_ignored_file = str(ignored_file.resolve())
+    # Build args list with optional flag
+    args = ["--exit", "--yes-always"]
+    if flag:
+        args.insert(0, flag)
 
-        # Build args list with optional flag
-        args = ["--exit", "--yes-always"]
-        if flag:
-            args.insert(0, flag)
+    if method == "command_line":
+        # Add file via command line argument
+        args.append(abs_ignored_file)
+        coder = main(args, **dummy_io, return_coder=True, force_git_root=git_temp_dir)
+    else:
+        # Add file via /add command
+        coder = main(args, **dummy_io, return_coder=True, force_git_root=git_temp_dir)
+        try:
+            asyncio.run(coder.commands.do_run("add", "ignored.txt"))
+        except SwitchCoder:
+            pass
 
-        if method == "command_line":
-            # Add file via command line argument
-            args.append(abs_ignored_file)
-            coder = main(args, **dummy_io, return_coder=True, force_git_root=git_dir)
-        else:
-            # Add file via /add command
-            coder = main(args, **dummy_io, return_coder=True, force_git_root=git_dir)
-            try:
-                asyncio.run(coder.commands.do_run("add", "ignored.txt"))
-            except SwitchCoder:
-                pass
-
-        # Verify file is included or excluded as expected
-        if should_include:
-            assert abs_ignored_file in coder.abs_fnames
-        else:
-            assert abs_ignored_file not in coder.abs_fnames
+    # Verify file is included or excluded as expected
+    if should_include:
+        assert abs_ignored_file in coder.abs_fnames
+    else:
+        assert abs_ignored_file not in coder.abs_fnames
 
 @pytest.mark.parametrize(
     "args,expected_kwargs",
@@ -352,36 +349,34 @@ def test_main_args(args, expected_kwargs, dummy_io, mock_coder, git_temp_dir):
         assert kwargs[key] is expected_value
 
 def test_env_file_override(dummy_io, git_temp_dir, mocker, monkeypatch):
-    with GitTemporaryDirectory() as git_dir:
-        git_dir = Path(git_dir)
-        git_env = git_dir / ".env"
+    git_env = git_temp_dir / ".env"
 
-        fake_home = git_dir / "fake_home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-        home_env = fake_home / ".env"
+    fake_home = git_temp_dir / "fake_home"
+    fake_home.mkdir()
+    monkeypatch.setenv("HOME", str(fake_home))
+    home_env = fake_home / ".env"
 
-        cwd = git_dir / "subdir"
-        cwd.mkdir()
-        os.chdir(cwd)
-        cwd_env = cwd / ".env"
+    cwd = git_temp_dir / "subdir"
+    cwd.mkdir()
+    os.chdir(cwd)
+    cwd_env = cwd / ".env"
 
-        named_env = git_dir / "named.env"
+    named_env = git_temp_dir / "named.env"
 
-        monkeypatch.setenv("E", "existing")
-        home_env.write_text("A=home\nB=home\nC=home\nD=home")
-        git_env.write_text("A=git\nB=git\nC=git")
-        cwd_env.write_text("A=cwd\nB=cwd")
-        named_env.write_text("A=named")
+    monkeypatch.setenv("E", "existing")
+    home_env.write_text("A=home\nB=home\nC=home\nD=home")
+    git_env.write_text("A=git\nB=git\nC=git")
+    cwd_env.write_text("A=cwd\nB=cwd")
+    named_env.write_text("A=named")
 
-        mocker.patch("pathlib.Path.home", return_value=fake_home)
-        main(["--yes-always", "--exit", "--env-file", str(named_env)])
+    mocker.patch("pathlib.Path.home", return_value=fake_home)
+    main(["--yes-always", "--exit", "--env-file", str(named_env)])
 
-        assert os.environ["A"] == "named"
-        assert os.environ["B"] == "cwd"
-        assert os.environ["C"] == "git"
-        assert os.environ["D"] == "home"
-        assert os.environ["E"] == "existing"
+    assert os.environ["A"] == "named"
+    assert os.environ["B"] == "cwd"
+    assert os.environ["C"] == "git"
+    assert os.environ["D"] == "home"
+    assert os.environ["E"] == "existing"
 
 def test_message_file_flag(dummy_io, git_temp_dir, mocker):
     message_file_content = "This is a test message from a file."
@@ -530,37 +525,36 @@ def test_env_file_variables(
     assert kwargs[check_attribute] == expected_value
 
 def test_lint_option(dummy_io, git_temp_dir, mocker):
-    with GitTemporaryDirectory() as git_dir:
-        # Create a dirty file in the root
-        dirty_file = Path("dirty_file.py")
-        dirty_file.write_text("def foo():\n    return 'bar'")
+    # Create a dirty file in the root
+    dirty_file = Path("dirty_file.py")
+    dirty_file.write_text("def foo():\n    return 'bar'")
 
-        repo = git.Repo(".")
-        repo.git.add(str(dirty_file))
-        repo.git.commit("-m", "new")
+    repo = git.Repo(".")
+    repo.git.add(str(dirty_file))
+    repo.git.commit("-m", "new")
 
-        dirty_file.write_text("def foo():\n    return '!!!!!'")
+    dirty_file.write_text("def foo():\n    return '!!!!!'")
 
-        # Create a subdirectory
-        subdir = Path(git_dir) / "subdir"
-        subdir.mkdir()
+    # Create a subdirectory
+    subdir = git_temp_dir / "subdir"
+    subdir.mkdir()
 
-        # Change to the subdirectory
-        os.chdir(subdir)
+    # Change to the subdirectory
+    os.chdir(subdir)
 
-        # Mock the Linter class
-        MockLinter = mocker.patch("aider.linter.Linter.lint")
-        MockLinter.return_value = ""
+    # Mock the Linter class
+    MockLinter = mocker.patch("aider.linter.Linter.lint")
+    MockLinter.return_value = ""
 
-        # Run main with --lint option
-        main(["--lint", "--yes-always"], **dummy_io)
+    # Run main with --lint option
+    main(["--lint", "--yes-always"], **dummy_io)
 
-        # Check if the Linter was called with a filename ending in "dirty_file.py"
-        # but not ending in "subdir/dirty_file.py"
-        MockLinter.assert_called_once()
-        called_arg = MockLinter.call_args[0][0]
-        assert called_arg.endswith("dirty_file.py")
-        assert not called_arg.endswith(f"subdir{os.path.sep}dirty_file.py")
+    # Check if the Linter was called with a filename ending in "dirty_file.py"
+    # but not ending in "subdir/dirty_file.py"
+    MockLinter.assert_called_once()
+    called_arg = MockLinter.call_args[0][0]
+    assert called_arg.endswith("dirty_file.py")
+    assert not called_arg.endswith(f"subdir{os.path.sep}dirty_file.py")
 
 def test_lint_option_with_explicit_files(dummy_io, git_temp_dir, mocker):
     # Create two files
@@ -637,102 +631,95 @@ def test_verbose_mode_lists_env_vars(dummy_io, create_env_file, mocker):
     assert re.search(r"dark_mode:\s+True", relevant_output)
 
 def test_yaml_config_loads_from_named_file(dummy_io, git_temp_dir, mocker, monkeypatch):
-    with GitTemporaryDirectory() as git_dir:
-        git_dir = Path(git_dir)
-        fake_home = git_dir / "fake_home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-        mocker.patch("pathlib.Path.home", return_value=fake_home)
+    # git_temp_dir fixture already changed into the temp directory
+    fake_home = git_temp_dir / "fake_home"
+    fake_home.mkdir()
+    monkeypatch.setenv("HOME", str(fake_home))
+    mocker.patch("pathlib.Path.home", return_value=fake_home)
 
-        named_config = git_dir / "named.aider.conf.yml"
-        named_config.write_text("model: gpt-4-1106-preview\nmap-tokens: 8192\n")
+    named_config = git_temp_dir / "named.aider.conf.yml"
+    named_config.write_text("model: gpt-4-1106-preview\nmap-tokens: 8192\n")
 
-        MockCoder = mocker.patch("aider.coders.Coder.create")
-        mock_coder_instance = MockCoder.return_value
-        mock_coder_instance._autosave_future = mock_autosave_future()
+    MockCoder = mocker.patch("aider.coders.Coder.create")
+    mock_coder_instance = MockCoder.return_value
+    mock_coder_instance._autosave_future = mock_autosave_future()
 
-        main(["--yes-always", "--exit", "--config", str(named_config)], **dummy_io)
+    main(["--yes-always", "--exit", "--config", str(named_config)], **dummy_io)
 
-        _, kwargs = MockCoder.call_args
-        assert kwargs["main_model"].name == "gpt-4-1106-preview"
-        assert kwargs["map_tokens"] == 8192
+    _, kwargs = MockCoder.call_args
+    assert kwargs["main_model"].name == "gpt-4-1106-preview"
+    assert kwargs["map_tokens"] == 8192
 
 def test_yaml_config_loads_from_cwd(dummy_io, git_temp_dir, mocker, monkeypatch):
-    with GitTemporaryDirectory() as git_dir:
-        git_dir = Path(git_dir)
-        fake_home = git_dir / "fake_home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-        mocker.patch("pathlib.Path.home", return_value=fake_home)
+    fake_home = git_temp_dir / "fake_home"
+    fake_home.mkdir()
+    monkeypatch.setenv("HOME", str(fake_home))
+    mocker.patch("pathlib.Path.home", return_value=fake_home)
 
-        cwd = git_dir / "subdir"
-        cwd.mkdir()
-        os.chdir(cwd)
+    cwd = git_temp_dir / "subdir"
+    cwd.mkdir()
+    os.chdir(cwd)
 
-        cwd_config = cwd / ".aider.conf.yml"
-        cwd_config.write_text("model: gpt-4-32k\nmap-tokens: 4096\n")
+    cwd_config = cwd / ".aider.conf.yml"
+    cwd_config.write_text("model: gpt-4-32k\nmap-tokens: 4096\n")
 
-        MockCoder = mocker.patch("aider.coders.Coder.create")
-        mock_coder_instance = MockCoder.return_value
-        mock_coder_instance._autosave_future = mock_autosave_future()
+    MockCoder = mocker.patch("aider.coders.Coder.create")
+    mock_coder_instance = MockCoder.return_value
+    mock_coder_instance._autosave_future = mock_autosave_future()
 
-        main(["--yes-always", "--exit"], **dummy_io)
+    main(["--yes-always", "--exit"], **dummy_io)
 
-        _, kwargs = MockCoder.call_args
-        assert kwargs["main_model"].name == "gpt-4-32k"
-        assert kwargs["map_tokens"] == 4096
+    _, kwargs = MockCoder.call_args
+    assert kwargs["main_model"].name == "gpt-4-32k"
+    assert kwargs["map_tokens"] == 4096
 
 def test_yaml_config_loads_from_git_root(dummy_io, git_temp_dir, mocker, monkeypatch):
-    with GitTemporaryDirectory() as git_dir:
-        git_dir = Path(git_dir)
-        fake_home = git_dir / "fake_home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-        mocker.patch("pathlib.Path.home", return_value=fake_home)
+    fake_home = git_temp_dir / "fake_home"
+    fake_home.mkdir()
+    monkeypatch.setenv("HOME", str(fake_home))
+    mocker.patch("pathlib.Path.home", return_value=fake_home)
 
-        cwd = git_dir / "subdir"
-        cwd.mkdir()
-        os.chdir(cwd)
+    cwd = git_temp_dir / "subdir"
+    cwd.mkdir()
+    os.chdir(cwd)
 
-        # Create config only at git root, not in cwd
-        git_config = git_dir / ".aider.conf.yml"
-        git_config.write_text("model: gpt-4\nmap-tokens: 2048\n")
+    # Create config only at git root, not in cwd
+    git_config = git_temp_dir / ".aider.conf.yml"
+    git_config.write_text("model: gpt-4\nmap-tokens: 2048\n")
 
-        MockCoder = mocker.patch("aider.coders.Coder.create")
-        mock_coder_instance = MockCoder.return_value
-        mock_coder_instance._autosave_future = mock_autosave_future()
+    MockCoder = mocker.patch("aider.coders.Coder.create")
+    mock_coder_instance = MockCoder.return_value
+    mock_coder_instance._autosave_future = mock_autosave_future()
 
-        main(["--yes-always", "--exit"], **dummy_io)
+    main(["--yes-always", "--exit"], **dummy_io)
 
-        _, kwargs = MockCoder.call_args
-        assert kwargs["main_model"].name == "gpt-4"
-        assert kwargs["map_tokens"] == 2048
+    _, kwargs = MockCoder.call_args
+    assert kwargs["main_model"].name == "gpt-4"
+    assert kwargs["map_tokens"] == 2048
 
 def test_yaml_config_loads_from_home(dummy_io, git_temp_dir, mocker, monkeypatch):
-    with GitTemporaryDirectory() as git_dir:
-        git_dir = Path(git_dir)
-        fake_home = git_dir / "fake_home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-        mocker.patch("pathlib.Path.home", return_value=fake_home)
+    fake_home = git_temp_dir / "fake_home"
+    fake_home.mkdir()
+    monkeypatch.setenv("HOME", str(fake_home))
+    mocker.patch("pathlib.Path.home", return_value=fake_home)
 
-        cwd = git_dir / "subdir"
-        cwd.mkdir()
-        os.chdir(cwd)
+    cwd = git_temp_dir / "subdir"
+    cwd.mkdir()
+    os.chdir(cwd)
 
-        # Create config only in home directory
-        home_config = fake_home / ".aider.conf.yml"
-        home_config.write_text("model: gpt-3.5-turbo\nmap-tokens: 1024\n")
+    # Create config only in home directory
+    home_config = fake_home / ".aider.conf.yml"
+    home_config.write_text("model: gpt-3.5-turbo\nmap-tokens: 1024\n")
 
-        MockCoder = mocker.patch("aider.coders.Coder.create")
-        mock_coder_instance = MockCoder.return_value
-        mock_coder_instance._autosave_future = mock_autosave_future()
+    MockCoder = mocker.patch("aider.coders.Coder.create")
+    mock_coder_instance = MockCoder.return_value
+    mock_coder_instance._autosave_future = mock_autosave_future()
 
-        main(["--yes-always", "--exit"], **dummy_io)
+    main(["--yes-always", "--exit"], **dummy_io)
 
-        _, kwargs = MockCoder.call_args
-        assert kwargs["main_model"].name == "gpt-3.5-turbo"
-        assert kwargs["map_tokens"] == 1024
+    _, kwargs = MockCoder.call_args
+    assert kwargs["main_model"].name == "gpt-3.5-turbo"
+    assert kwargs["map_tokens"] == 1024
 
 def test_map_tokens_option(dummy_io, git_temp_dir, mocker):
     MockRepoMap = mocker.patch("aider.coders.base_coder.RepoMap")
@@ -1050,80 +1037,74 @@ def test_api_key(api_key_args, expected_env, expected_result, dummy_io, git_temp
 
 def test_git_config_include(dummy_io, git_temp_dir):
     # Test that aider respects git config includes for user.name and user.email
-    with GitTemporaryDirectory() as git_dir:
-        git_dir = Path(git_dir)
+    # Create an includable config file with user settings
+    include_config = git_temp_dir / "included.gitconfig"
+    include_config.write_text(
+        "[user]\n    name = Included User\n    email = included@example.com\n"
+    )
 
-        # Create an includable config file with user settings
-        include_config = git_dir / "included.gitconfig"
-        include_config.write_text(
-            "[user]\n    name = Included User\n    email = included@example.com\n"
-        )
+    # Set up main git config to include the other file
+    repo = git.Repo(git_temp_dir)
+    include_path = str(include_config).replace("\\", "/")
+    repo.git.config("--local", "include.path", str(include_path))
 
-        # Set up main git config to include the other file
-        repo = git.Repo(git_dir)
-        include_path = str(include_config).replace("\\", "/")
-        repo.git.config("--local", "include.path", str(include_path))
+    # Verify the config is set up correctly using git command
+    assert repo.git.config("user.name") == "Included User"
+    assert repo.git.config("user.email") == "included@example.com"
 
-        # Verify the config is set up correctly using git command
-        assert repo.git.config("user.name") == "Included User"
-        assert repo.git.config("user.email") == "included@example.com"
+    # Manually check the git config file to confirm include directive
+    git_config_path = git_temp_dir / ".git" / "config"
+    git_config_content = git_config_path.read_text()
 
-        # Manually check the git config file to confirm include directive
-        git_config_path = git_dir / ".git" / "config"
-        git_config_content = git_config_path.read_text()
+    # Run aider and verify it doesn't change the git config
+    main(["--yes-always", "--exit"], **dummy_io)
 
-        # Run aider and verify it doesn't change the git config
-        main(["--yes-always", "--exit"], **dummy_io)
+    # Check that the user settings are still the same using git command
+    repo = git.Repo(git_temp_dir)  # Re-open repo to ensure we get fresh config
+    assert repo.git.config("user.name") == "Included User"
+    assert repo.git.config("user.email") == "included@example.com"
 
-        # Check that the user settings are still the same using git command
-        repo = git.Repo(git_dir)  # Re-open repo to ensure we get fresh config
-        assert repo.git.config("user.name") == "Included User"
-        assert repo.git.config("user.email") == "included@example.com"
-
-        # Manually check the git config file again to ensure it wasn't modified
-        git_config_content_after = git_config_path.read_text()
-        assert git_config_content == git_config_content_after
+    # Manually check the git config file again to ensure it wasn't modified
+    git_config_content_after = git_config_path.read_text()
+    assert git_config_content == git_config_content_after
 
 def test_git_config_include_directive(dummy_io, git_temp_dir):
     # Test that aider respects the include directive in git config
-    with GitTemporaryDirectory() as git_dir:
-        git_dir = Path(git_dir)
+    # Create an includable config file with user settings
+    include_config = git_temp_dir / "included.gitconfig"
+    include_config.write_text(
+        "[user]\n    name = Directive User\n    email = directive@example.com\n"
+    )
 
-        # Create an includable config file with user settings
-        include_config = git_dir / "included.gitconfig"
-        include_config.write_text(
-            "[user]\n    name = Directive User\n    email = directive@example.com\n"
-        )
+    # Set up main git config with include directive
+    git_config = git_temp_dir / ".git" / "config"
+    # Use normalized path with forward slashes for git config
+    include_path = str(include_config).replace("\\", "/")
+    with open(git_config, "a") as f:
+        f.write(f"\n[include]\n    path = {include_path}\n")
 
-        # Set up main git config with include directive
-        git_config = git_dir / ".git" / "config"
-        # Use normalized path with forward slashes for git config
-        include_path = str(include_config).replace("\\", "/")
-        with open(git_config, "a") as f:
-            f.write(f"\n[include]\n    path = {include_path}\n")
+    # Read the modified config file
+    modified_config_content = git_config.read_text()
 
-        # Read the modified config file
-        modified_config_content = git_config.read_text()
+    # Verify the include directive was added correctly
+    assert "[include]" in modified_config_content
 
-        # Verify the include directive was added correctly
-        assert "[include]" in modified_config_content
+    # Verify the config is set up correctly using git command
+    repo = git.Repo(git_temp_dir)
+    assert repo.git.config("user.name") == "Directive User"
+    assert repo.git.config("user.email") == "directive@example.com"
 
-        # Verify the config is set up correctly using git command
-        repo = git.Repo(git_dir)
-        assert repo.git.config("user.name") == "Directive User"
-        assert repo.git.config("user.email") == "directive@example.com"
+    # Run aider and verify it doesn't change the git config
+    main(["--yes-always", "--exit"], **dummy_io)
 
-        # Run aider and verify it doesn't change the git config
-        main(["--yes-always", "--exit"], **dummy_io)
+    # Check that the git config file wasn't modified
+    config_after_aider = git_config.read_text()
+    assert modified_config_content == config_after_aider
 
-        # Check that the git config file wasn't modified
-        config_after_aider = git_config.read_text()
-        assert modified_config_content == config_after_aider
-
-        # Check that the user settings are still the same using git command
-        repo = git.Repo(git_dir)  # Re-open repo to ensure we get fresh config
-        assert repo.git.config("user.name") == "Directive User"
-        assert repo.git.config("user.email") == "directive@example.com"
+    # Check that the user settings are still the same using git command
+    repo = git.Repo(git_temp_dir)  # Re-open repo to ensure we get fresh config
+    assert repo.git.config("user.name") == "Directive User"
+    assert repo.git.config("user.email") == "directive@example.com"
 
 def test_resolve_aiderignore_path(dummy_io, git_temp_dir):
     # Import the function directly to test it
@@ -1236,91 +1217,86 @@ def test_model_precedence(dummy_io, git_temp_dir, monkeypatch):
     assert "sonnet" in coder.main_model.name.lower()
 
 def test_model_overrides_suffix_applied(dummy_io, git_temp_dir, mocker):
-    with GitTemporaryDirectory() as git_dir:
-        git_dir = Path(git_dir)
-        overrides_file = git_dir / ".aider.model.overrides.yml"
-        overrides_file.write_text("gpt-4o:\n  fast:\n    temperature: 0.1\n")
+    overrides_file = git_temp_dir / ".aider.model.overrides.yml"
+    overrides_file.write_text("gpt-4o:\n  fast:\n    temperature: 0.1\n")
 
-        MockModel = mocker.patch("aider.models.Model")
-        MockCoder = mocker.patch("aider.coders.Coder.create")
-        mock_coder_instance = MagicMock()
-        mock_coder_instance._autosave_future = mock_autosave_future()
-        MockCoder.return_value = mock_coder_instance
+    MockModel = mocker.patch("aider.models.Model")
+    MockCoder = mocker.patch("aider.coders.Coder.create")
+    mock_coder_instance = MagicMock()
+    mock_coder_instance._autosave_future = mock_autosave_future()
+    MockCoder.return_value = mock_coder_instance
 
-        mock_instance = MockModel.return_value
-        mock_instance.info = {}
-        mock_instance.name = "gpt-4o"
-        mock_instance.validate_environment.return_value = {
-            "missing_keys": [],
-            "keys_in_environment": [],
-        }
-        mock_instance.accepts_settings = []
-        mock_instance.weak_model_name = None
-        mock_instance.get_weak_model.return_value = None
+    mock_instance = MockModel.return_value
+    mock_instance.info = {}
+    mock_instance.name = "gpt-4o"
+    mock_instance.validate_environment.return_value = {
+        "missing_keys": [],
+        "keys_in_environment": [],
+    }
+    mock_instance.accepts_settings = []
+    mock_instance.weak_model_name = None
+    mock_instance.get_weak_model.return_value = None
 
-        main(
-            ["--model", "gpt-4o:fast", "--exit", "--yes-always", "--no-git"],
-            **dummy_io,
-            force_git_root=git_dir,
-        )
+    main(
+        ["--model", "gpt-4o:fast", "--exit", "--yes-always", "--no-git"],
+        **dummy_io,
+        force_git_root=git_temp_dir,
+    )
 
-        # Find the call that constructed the main model with overrides
-        matched_call_found = False
-        for call_args in MockModel.call_args_list:
-            args, kwargs = call_args
-            if (
-                args
-                and args[0] == "gpt-4o"
-                and kwargs.get("override_kwargs") == {"temperature": 0.1}
-            ):
-                matched_call_found = True
-                break
+    # Find the call that constructed the main model with overrides
+    matched_call_found = False
+    for call_args in MockModel.call_args_list:
+        args, kwargs = call_args
+        if (
+            args
+            and args[0] == "gpt-4o"
+            and kwargs.get("override_kwargs") == {"temperature": 0.1}
+        ):
+            matched_call_found = True
+            break
 
-        assert matched_call_found, (
-            "Expected a Model call with base name 'gpt-4o' and override_kwargs"
-            " {'temperature': 0.1}"
-        )
+    assert matched_call_found, (
+        "Expected a Model call with base name 'gpt-4o' and override_kwargs"
+        " {'temperature': 0.1}"
+    )
 
 def test_model_overrides_no_match_preserves_model_name(dummy_io, git_temp_dir, mocker):
-    with GitTemporaryDirectory() as git_dir:
-        git_dir = Path(git_dir)
+    MockModel = mocker.patch("aider.models.Model")
+    MockCoder = mocker.patch("aider.coders.Coder.create")
+    mock_coder_instance = MagicMock()
+    mock_coder_instance._autosave_future = mock_autosave_future()
+    MockCoder.return_value = mock_coder_instance
 
-        MockModel = mocker.patch("aider.models.Model")
-        MockCoder = mocker.patch("aider.coders.Coder.create")
-        mock_coder_instance = MagicMock()
-        mock_coder_instance._autosave_future = mock_autosave_future()
-        MockCoder.return_value = mock_coder_instance
+    mock_instance = MockModel.return_value
+    mock_instance.info = {}
+    mock_instance.name = "test-model"
+    mock_instance.validate_environment.return_value = {
+        "missing_keys": [],
+        "keys_in_environment": [],
+    }
+    mock_instance.accepts_settings = []
+    mock_instance.weak_model_name = None
+    mock_instance.get_weak_model.return_value = None
 
-        mock_instance = MockModel.return_value
-        mock_instance.info = {}
-        mock_instance.name = "test-model"
-        mock_instance.validate_environment.return_value = {
-            "missing_keys": [],
-            "keys_in_environment": [],
-        }
-        mock_instance.accepts_settings = []
-        mock_instance.weak_model_name = None
-        mock_instance.get_weak_model.return_value = None
+    model_name = "hf:moonshotai/Kimi-K2-Thinking"
 
-        model_name = "hf:moonshotai/Kimi-K2-Thinking"
+    main(
+        ["--model", model_name, "--exit", "--yes-always", "--no-git"],
+        **dummy_io,
+        force_git_root=git_temp_dir,
+    )
 
-        main(
-            ["--model", model_name, "--exit", "--yes-always", "--no-git"],
-            **dummy_io,
-            force_git_root=git_dir,
-        )
+    matched_call_found = False
+    for call_args in MockModel.call_args_list:
+        args, kwargs = call_args
+        if args and args[0] == model_name and kwargs.get("override_kwargs") == {}:
+            matched_call_found = True
+            break
 
-        matched_call_found = False
-        for call_args in MockModel.call_args_list:
-            args, kwargs = call_args
-            if args and args[0] == model_name and kwargs.get("override_kwargs") == {}:
-                matched_call_found = True
-                break
-
-        assert matched_call_found, (
-            "Expected a Model call with the full model name preserved and empty"
-            " override_kwargs"
-        )
+    assert matched_call_found, (
+        "Expected a Model call with the full model name preserved and empty"
+        " override_kwargs"
+    )
 
 def test_chat_language_spanish(dummy_io, git_temp_dir):
     coder = main(
@@ -1584,61 +1560,58 @@ def test_argv_file_respects_git(dummy_io, git_temp_dir):
     assert not asyncio.run(coder.allowed_to_edit("not_in_git.txt"))
 
 def test_load_dotenv_files_override(dummy_io, git_temp_dir, mocker):
-    with GitTemporaryDirectory() as git_dir:
-        git_dir = Path(git_dir)
+    # Create fake home and .aider directory
+    fake_home = git_temp_dir / "fake_home"
+    fake_home.mkdir()
+    aider_dir = fake_home / ".aider"
+    aider_dir.mkdir()
 
-        # Create fake home and .aider directory
-        fake_home = git_dir / "fake_home"
-        fake_home.mkdir()
-        aider_dir = fake_home / ".aider"
-        aider_dir.mkdir()
+    # Create oauth keys file
+    oauth_keys_file = aider_dir / "oauth-keys.env"
+    oauth_keys_file.write_text("OAUTH_VAR=oauth_val\nSHARED_VAR=oauth_shared\n")
 
-        # Create oauth keys file
-        oauth_keys_file = aider_dir / "oauth-keys.env"
-        oauth_keys_file.write_text("OAUTH_VAR=oauth_val\nSHARED_VAR=oauth_shared\n")
+    # Create git root .env file
+    git_root_env = git_temp_dir / ".env"
+    git_root_env.write_text("GIT_VAR=git_val\nSHARED_VAR=git_shared\n")
 
-        # Create git root .env file
-        git_root_env = git_dir / ".env"
-        git_root_env.write_text("GIT_VAR=git_val\nSHARED_VAR=git_shared\n")
+    # Create CWD .env file in a subdir
+    cwd_subdir = git_temp_dir / "subdir"
+    cwd_subdir.mkdir()
+    cwd_env = cwd_subdir / ".env"
+    cwd_env.write_text("CWD_VAR=cwd_val\nSHARED_VAR=cwd_shared\n")
 
-        # Create CWD .env file in a subdir
-        cwd_subdir = git_dir / "subdir"
-        cwd_subdir.mkdir()
-        cwd_env = cwd_subdir / ".env"
-        cwd_env.write_text("CWD_VAR=cwd_val\nSHARED_VAR=cwd_shared\n")
+    # Change to subdir
+    original_cwd = os.getcwd()
+    os.chdir(cwd_subdir)
 
-        # Change to subdir
-        original_cwd = os.getcwd()
-        os.chdir(cwd_subdir)
+    # Clear relevant env vars before test
+    for var in ["OAUTH_VAR", "SHARED_VAR", "GIT_VAR", "CWD_VAR"]:
+        if var in os.environ:
+            del os.environ[var]
 
-        # Clear relevant env vars before test
-        for var in ["OAUTH_VAR", "SHARED_VAR", "GIT_VAR", "CWD_VAR"]:
-            if var in os.environ:
-                del os.environ[var]
+    mocker.patch("pathlib.Path.home", return_value=fake_home)
+    loaded_files = load_dotenv_files(str(git_temp_dir), None)
 
-        mocker.patch("pathlib.Path.home", return_value=fake_home)
-        loaded_files = load_dotenv_files(str(git_dir), None)
+    # Assert files were loaded in expected order (oauth first)
+    assert str(oauth_keys_file.resolve()) in loaded_files
+    assert str(git_root_env.resolve()) in loaded_files
+    assert str(cwd_env.resolve()) in loaded_files
+    assert loaded_files.index(str(oauth_keys_file.resolve())) < loaded_files.index(
+        str(git_root_env.resolve())
+    )
+    assert loaded_files.index(str(git_root_env.resolve())) < loaded_files.index(
+        str(cwd_env.resolve())
+    )
 
-        # Assert files were loaded in expected order (oauth first)
-        assert str(oauth_keys_file.resolve()) in loaded_files
-        assert str(git_root_env.resolve()) in loaded_files
-        assert str(cwd_env.resolve()) in loaded_files
-        assert loaded_files.index(str(oauth_keys_file.resolve())) < loaded_files.index(
-            str(git_root_env.resolve())
-        )
-        assert loaded_files.index(str(git_root_env.resolve())) < loaded_files.index(
-            str(cwd_env.resolve())
-        )
+    # Assert environment variables reflect the override order
+    assert os.environ.get("OAUTH_VAR") == "oauth_val"
+    assert os.environ.get("GIT_VAR") == "git_val"
+    assert os.environ.get("CWD_VAR") == "cwd_val"
+    # SHARED_VAR should be overridden by the last loaded file (cwd .env)
+    assert os.environ.get("SHARED_VAR") == "cwd_shared"
 
-        # Assert environment variables reflect the override order
-        assert os.environ.get("OAUTH_VAR") == "oauth_val"
-        assert os.environ.get("GIT_VAR") == "git_val"
-        assert os.environ.get("CWD_VAR") == "cwd_val"
-        # SHARED_VAR should be overridden by the last loaded file (cwd .env)
-        assert os.environ.get("SHARED_VAR") == "cwd_shared"
-
-        # Restore CWD
-        os.chdir(original_cwd)
+    # Restore CWD
+    os.chdir(original_cwd)
 
 def test_mcp_servers_parsing(dummy_io, git_temp_dir, mocker):
     # Setup mock coder
@@ -1672,23 +1645,22 @@ def test_mcp_servers_parsing(dummy_io, git_temp_dir, mocker):
     mock_coder_create.reset_mock()
     mock_coder_instance._autosave_future = mock_autosave_future()
 
-    with GitTemporaryDirectory():
-        # Create a temporary MCP servers file
-        mcp_file = Path("mcp_servers.json")
-        mcp_content = {"mcpServers": {"git": {"command": "uvx", "args": ["mcp-server-git"]}}}
-        mcp_file.write_text(json.dumps(mcp_content))
+    # Create a temporary MCP servers file
+    mcp_file = Path("mcp_servers.json")
+    mcp_content = {"mcpServers": {"git": {"command": "uvx", "args": ["mcp-server-git"]}}}
+    mcp_file.write_text(json.dumps(mcp_content))
 
-        main(
-            ["--mcp-servers-file", str(mcp_file), "--exit", "--yes-always"],
-            **dummy_io,
-        )
+    main(
+        ["--mcp-servers-file", str(mcp_file), "--exit", "--yes-always"],
+        **dummy_io,
+    )
 
-        # Verify that Coder.create was called with mcp_servers parameter
-        mock_coder_create.assert_called_once()
-        _, kwargs = mock_coder_create.call_args
-        assert "mcp_servers" in kwargs
-        assert kwargs["mcp_servers"] is not None
-        # At least one server should be in the list
-        assert len(kwargs["mcp_servers"]) > 0
-        # First server should have a name attribute
-        assert hasattr(kwargs["mcp_servers"][0], "name")
+    # Verify that Coder.create was called with mcp_servers parameter
+    mock_coder_create.assert_called_once()
+    _, kwargs = mock_coder_create.call_args
+    assert "mcp_servers" in kwargs
+    assert kwargs["mcp_servers"] is not None
+    # At least one server should be in the list
+    assert len(kwargs["mcp_servers"]) > 0
+    # First server should have a name attribute
+    assert hasattr(kwargs["mcp_servers"][0], "name")
