@@ -768,7 +768,7 @@ def test_read_option_with_external_file(dummy_io, git_temp_dir, tmp_path):
         return_coder=True,
     )
 
-    real_external_file_path = os.path.realpath(str(external_file))
+    real_external_file_path = str(external_file.resolve())
     assert real_external_file_path in coder.abs_read_only_fnames
 
 
