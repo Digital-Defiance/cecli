@@ -369,23 +369,26 @@ class AgentCoder(Coder):
     async def initialize_mcp_tools(self):
         await super().initialize_mcp_tools()
 
-        local_tools = self.get_local_tool_schemas()
-        if not local_tools:
-            return
+        server_name = "Local"
 
-        local_server_config = {"name": "Local"}
-        local_server = LocalServer(local_server_config)
+        if server_name not in [name for name, _ in self.mcp_tools]:
+            local_tools = self.get_local_tool_schemas()
+            if not local_tools:
+                return
 
-        if not self.mcp_servers:
-            self.mcp_servers = []
-        if not any(isinstance(s, LocalServer) for s in self.mcp_servers):
-            self.mcp_servers.append(local_server)
+            local_server_config = {"name": server_name}
+            local_server = LocalServer(local_server_config)
 
-        if not self.mcp_tools:
-            self.mcp_tools = []
+            if not self.mcp_servers:
+                self.mcp_servers = []
+            if not any(isinstance(s, LocalServer) for s in self.mcp_servers):
+                self.mcp_servers.append(local_server)
 
-        if "local_tools" not in [name for name, _ in self.mcp_tools]:
-            self.mcp_tools.append((local_server.name, local_tools))
+            if not self.mcp_tools:
+                self.mcp_tools = []
+
+            if server_name not in [name for name, _ in self.mcp_tools]:
+                self.mcp_tools.append((local_server.name, local_tools))
 
     async def _execute_local_tool_calls(self, tool_calls_list):
         tool_responses = []

@@ -1,3 +1,4 @@
+import glob
 import os
 import platform
 import shutil
@@ -12,6 +13,25 @@ from aider.dump import dump  # noqa: F401
 from aider.waiting import Spinner
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp", ".pdf"}
+
+
+def expand_glob_patterns(patterns):
+    """Expand glob patterns in a list of file paths."""
+    expanded_files = []
+    for pattern in patterns:
+        # Check if the pattern contains glob characters
+        if any(c in pattern for c in "*?[]"):
+            # Use glob to expand the pattern
+            matches = glob.glob(pattern, recursive=True)
+            if matches:
+                expanded_files.extend(matches)
+            else:
+                # If no matches, keep the original pattern
+                expanded_files.append(pattern)
+        else:
+            # Not a glob pattern, keep as is
+            expanded_files.append(pattern)
+    return expanded_files
 
 
 def _execute_fzf(input_data, multi=False):
