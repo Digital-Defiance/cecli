@@ -4,6 +4,7 @@ import os
 import platform
 import subprocess
 import tempfile
+import types
 from io import StringIO
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -1455,6 +1456,70 @@ def test_list_models_includes_all_model_sources(dummy_io, git_temp_dir, mocker):
 
     # Check that both models appear in the output
     assert "test-provider/metadata-only-model" in output
+
+
+def test_list_models_includes_openai_provider(dummy_io, git_temp_dir, mocker):
+    import aider.models as models_module
+
+    provider_name = "openai"
+    manager = models_module.model_info_manager.provider_manager
+    provider_config = {
+        "api_base": "https://api.openai.com/v1",
+        "models_url": "https://api.openai.com/v1/models",
+        "api_key_env": ["OPENAI_API_KEY"],
+        "base_url_env": ["OPENAI_API_BASE"],
+        "default_headers": {},
+    }
+
+    had_config = provider_name in manager.provider_configs
+    previous_config = manager.provider_configs.get(provider_name)
+    had_cache = provider_name in manager._provider_cache
+    previous_cache = manager._provider_cache.get(provider_name)
+    had_loaded = provider_name in manager._cache_loaded
+    previous_loaded = manager._cache_loaded.get(provider_name)
+
+    manager.provider_configs[provider_name] = provider_config
+    manager._provider_cache[provider_name] = None
+    manager._cache_loaded[provider_name] = False
+
+    payload = {
+        "data": [
+            {
+                "id": "demo/foo",
+                "max_input_tokens": 4096,
+                "pricing": {"prompt": "0.0001", "completion": "0.0002"},
+            }
+        ]
+    }
+
+    def _fake_get(url, *, headers=None, timeout=None, verify=None):
+        return types.SimpleNamespace(status_code=200, json=lambda: payload)
+
+    try:
+        mocker.patch("requests.get", _fake_get)
+        mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
+        main(
+            ["--list-models", "openai/demo/foo", "--yes", "--no-gitignore"],
+            **dummy_io,
+        )
+
+        output = mock_stdout.getvalue()
+        assert "openai/demo/foo" in output
+    finally:
+        if had_config:
+            manager.provider_configs[provider_name] = previous_config
+        else:
+            manager.provider_configs.pop(provider_name, None)
+
+        if had_cache:
+            manager._provider_cache[provider_name] = previous_cache
+        else:
+            manager._provider_cache.pop(provider_name, None)
+
+        if had_loaded:
+            manager._cache_loaded[provider_name] = previous_loaded
+        else:
+            manager._cache_loaded.pop(provider_name, None)
 
 
 def test_check_model_accepts_settings_flag(dummy_io, git_temp_dir, mocker):
