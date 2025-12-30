@@ -18,7 +18,12 @@ from aider.commands import SwitchCoder
 from aider.dump import dump  # noqa: F401
 from aider.io import InputOutput
 from aider.main import check_gitignore, load_dotenv_files, main, setup_git
-from aider.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, IgnorantTemporaryDirectory, make_repo
+from aider.utils import (
+    ChdirTemporaryDirectory,
+    GitTemporaryDirectory,
+    IgnorantTemporaryDirectory,
+    make_repo,
+)
 
 
 def mock_autosave_future():
@@ -98,15 +103,18 @@ def git_temp_dir():
 def test_main_with_empty_dir_no_files_on_command(dummy_io):
     main(["--no-git", "--exit", "--yes-always"], **dummy_io)
 
+
 def test_main_with_empty_dir_new_file(dummy_io):
     main(["foo.txt", "--yes-always", "--no-git", "--exit"], **dummy_io)
     assert os.path.exists("foo.txt")
+
 
 def test_main_with_empty_git_dir_new_file(dummy_io, mocker):
     mocker.patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
     make_repo()
     main(["--yes-always", "foo.txt", "--exit"], **dummy_io)
     assert os.path.exists("foo.txt")
+
 
 def test_main_with_empty_git_dir_new_files(dummy_io, mocker):
     mocker.patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
@@ -118,12 +126,14 @@ def test_main_with_empty_git_dir_new_files(dummy_io, mocker):
     assert os.path.exists("foo.txt")
     assert os.path.exists("bar.txt")
 
+
 def test_main_with_dname_and_fname(dummy_io, git_temp_dir):
     subdir = Path("subdir")
     subdir.mkdir()
     make_repo(str(subdir))
     res = main(["subdir", "foo.txt"], **dummy_io)
     assert res is not None
+
 
 def test_main_with_subdir_repo_fnames(dummy_io, git_temp_dir, mocker):
     mocker.patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
@@ -136,6 +146,7 @@ def test_main_with_subdir_repo_fnames(dummy_io, git_temp_dir, mocker):
     )
     assert (subdir / "foo.txt").exists()
     assert (subdir / "bar.txt").exists()
+
 
 def test_main_copy_paste_model_overrides(dummy_io, git_temp_dir):
     overrides = json.dumps({"gpt-4o": {"fast": {"temperature": 0.42}}})
@@ -158,6 +169,7 @@ def test_main_copy_paste_model_overrides(dummy_io, git_temp_dir):
     assert coder.main_model.copy_paste_transport == "clipboard"
     assert coder.main_model.override_kwargs == {"temperature": 0.42}
 
+
 def test_main_copy_paste_flag_sets_mode(dummy_io, git_temp_dir, mocker):
     mock_watcher = mocker.patch("aider.main.ClipboardWatcher")
     mock_watcher.return_value = MagicMock()
@@ -174,6 +186,7 @@ def test_main_copy_paste_flag_sets_mode(dummy_io, git_temp_dir, mocker):
     assert coder.copy_paste_mode
     assert not coder.manual_copy_paste
 
+
 def test_main_with_git_config_yml(dummy_io, mock_coder, git_temp_dir):
     make_repo()
 
@@ -189,6 +202,7 @@ def test_main_with_git_config_yml(dummy_io, mock_coder, git_temp_dir):
     _, kwargs = mock_coder.call_args
     assert kwargs["auto_commits"] is True
 
+
 def test_main_with_empty_git_dir_new_subdir_file(dummy_io, git_temp_dir):
     make_repo()
     subdir = Path("subdir")
@@ -203,6 +217,7 @@ def test_main_with_empty_git_dir_new_subdir_file(dummy_io, git_temp_dir):
     # Because aider will try and `git add` a file that's already in the repo.
     main(["--yes-always", str(fname), "--exit"], **dummy_io)
 
+
 def test_setup_git(dummy_io):
     io = InputOutput(pretty=False, yes=True)
     git_root = asyncio.run(setup_git(None, io))
@@ -214,6 +229,7 @@ def test_setup_git(dummy_io):
     gitignore = Path.cwd() / ".gitignore"
     assert gitignore.exists()
     assert ".aider*" == gitignore.read_text().splitlines()[0]
+
 
 def test_check_gitignore(dummy_io, git_temp_dir, monkeypatch):
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", "globalgitconfig")
@@ -238,6 +254,7 @@ def test_check_gitignore(dummy_io, git_temp_dir, monkeypatch):
     env_file.touch()
     asyncio.run(check_gitignore(cwd, io))
     assert "one\ntwo\n.aider*\n.env\n" == gitignore.read_text()
+
 
 @pytest.mark.parametrize(
     "flag,should_include",
@@ -304,6 +321,7 @@ def _create_gitignore_test_files(git_temp_dir):
     ignored_file.write_text("This file should be ignored.")
     return ignored_file
 
+
 @pytest.mark.parametrize(
     "args,expected_kwargs",
     [
@@ -320,6 +338,7 @@ def test_main_args(args, expected_kwargs, dummy_io, mock_coder, git_temp_dir):
     _, kwargs = mock_coder.call_args
     for key, expected_value in expected_kwargs.items():
         assert kwargs[key] is expected_value
+
 
 def test_env_file_override(dummy_io, git_temp_dir, mocker, monkeypatch):
     git_env = git_temp_dir / ".env"
@@ -351,6 +370,7 @@ def test_env_file_override(dummy_io, git_temp_dir, mocker, monkeypatch):
     assert os.environ["D"] == "home"
     assert os.environ["E"] == "existing"
 
+
 def test_message_file_flag(dummy_io, git_temp_dir, mocker):
     message_file_content = "This is a test message from a file."
     message_file_path = tempfile.mktemp()
@@ -377,6 +397,7 @@ def test_message_file_flag(dummy_io, git_temp_dir, mocker):
 
     os.remove(message_file_path)
 
+
 def test_encodings_arg(dummy_io, git_temp_dir, mocker):
     fname = "foo.py"
 
@@ -395,6 +416,7 @@ def test_encodings_arg(dummy_io, git_temp_dir, mocker):
 
     main(["--yes-always", fname, "--encoding", "iso-8859-15"])
 
+
 def test_main_exit_calls_version_check(dummy_io, git_temp_dir, mocker):
     mock_check_version = mocker.patch("aider.main.check_version")
     mock_input_output = mocker.patch("aider.main.InputOutput")
@@ -403,8 +425,9 @@ def test_main_exit_calls_version_check(dummy_io, git_temp_dir, mocker):
     mock_check_version.assert_called_once()
     mock_input_output.assert_called_once()
 
+
 def test_main_message_adds_to_input_history(dummy_io, mocker):
-    mock_run = mocker.patch("aider.coders.base_coder.Coder.run")
+    mocker.patch("aider.coders.base_coder.Coder.run")
     MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
     test_message = "test message"
     mock_io_instance = MockInputOutput.return_value
@@ -414,8 +437,9 @@ def test_main_message_adds_to_input_history(dummy_io, mocker):
 
     mock_io_instance.add_to_input_history.assert_called_once_with(test_message)
 
+
 def test_yes(dummy_io, mocker):
-    mock_run = mocker.patch("aider.coders.base_coder.Coder.run")
+    mocker.patch("aider.coders.base_coder.Coder.run")
     MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
     test_message = "test message"
     MockInputOutput.return_value.pretty = True
@@ -424,8 +448,9 @@ def test_yes(dummy_io, mocker):
     args, kwargs = MockInputOutput.call_args
     assert args[1]
 
+
 def test_default_yes(dummy_io, mocker):
-    mock_run = mocker.patch("aider.coders.base_coder.Coder.run")
+    mocker.patch("aider.coders.base_coder.Coder.run")
     MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
     test_message = "test message"
     MockInputOutput.return_value.pretty = True
@@ -433,6 +458,7 @@ def test_default_yes(dummy_io, mocker):
     main(["--message", test_message])
     args, kwargs = MockInputOutput.call_args
     assert args[1] is None
+
 
 @pytest.mark.parametrize(
     "mode_flag,expected_theme",
@@ -452,6 +478,7 @@ def test_mode_sets_code_theme(mode_flag, expected_theme, dummy_io, git_temp_dir,
     # Check if the code_theme setting matches expected
     _, kwargs = MockInputOutput.call_args
     assert kwargs["code_theme"] == expected_theme
+
 
 @pytest.mark.parametrize(
     "env_file,env_content,check_attribute,expected_value,use_flag",
@@ -498,6 +525,7 @@ def test_env_file_variables(
 
     assert kwargs[check_attribute] == expected_value
 
+
 def test_lint_option(dummy_io, git_temp_dir, mocker):
     # Create a dirty file in the root
     dirty_file = Path("dirty_file.py")
@@ -530,6 +558,7 @@ def test_lint_option(dummy_io, git_temp_dir, mocker):
     assert called_arg.endswith("dirty_file.py")
     assert not called_arg.endswith(f"subdir{os.path.sep}dirty_file.py")
 
+
 def test_lint_option_with_explicit_files(dummy_io, git_temp_dir, mocker):
     # Create two files
     file1 = Path("file1.py")
@@ -554,6 +583,7 @@ def test_lint_option_with_explicit_files(dummy_io, git_temp_dir, mocker):
     called_files = [call[0][0] for call in MockLinter.call_args_list]
     assert any(f.endswith("file1.py") for f in called_files)
     assert any(f.endswith("file2.py") for f in called_files)
+
 
 def test_lint_option_with_glob_pattern(dummy_io, git_temp_dir, mocker):
     # Create multiple Python files
@@ -584,6 +614,7 @@ def test_lint_option_with_glob_pattern(dummy_io, git_temp_dir, mocker):
     # Check that non-Python file was not linted
     assert not any(f.endswith("readme.txt") for f in called_files)
 
+
 def test_verbose_mode_lists_env_vars(dummy_io, mocker):
     Path(".env").write_text("AIDER_DARK_MODE=on")
     mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
@@ -593,9 +624,7 @@ def test_verbose_mode_lists_env_vars(dummy_io, mocker):
     )
     output = mock_stdout.getvalue()
     relevant_output = "\n".join(
-        line
-        for line in output.splitlines()
-        if "AIDER_DARK_MODE" in line or "dark_mode" in line
+        line for line in output.splitlines() if "AIDER_DARK_MODE" in line or "dark_mode" in line
     )  # this bit just helps failing assertions to be easier to read
     assert "AIDER_DARK_MODE" in relevant_output
     assert "dark_mode" in relevant_output
@@ -603,6 +632,7 @@ def test_verbose_mode_lists_env_vars(dummy_io, mocker):
 
     assert re.search(r"AIDER_DARK_MODE:\s+on", relevant_output)
     assert re.search(r"dark_mode:\s+True", relevant_output)
+
 
 def test_yaml_config_loads_from_named_file(dummy_io, git_temp_dir, mocker, monkeypatch):
     # git_temp_dir fixture already changed into the temp directory
@@ -623,6 +653,7 @@ def test_yaml_config_loads_from_named_file(dummy_io, git_temp_dir, mocker, monke
     _, kwargs = MockCoder.call_args
     assert kwargs["main_model"].name == "gpt-4-1106-preview"
     assert kwargs["map_tokens"] == 8192
+
 
 def test_yaml_config_loads_from_cwd(dummy_io, git_temp_dir, mocker, monkeypatch):
     fake_home = git_temp_dir / "fake_home"
@@ -646,6 +677,7 @@ def test_yaml_config_loads_from_cwd(dummy_io, git_temp_dir, mocker, monkeypatch)
     _, kwargs = MockCoder.call_args
     assert kwargs["main_model"].name == "gpt-4-32k"
     assert kwargs["map_tokens"] == 4096
+
 
 def test_yaml_config_loads_from_git_root(dummy_io, git_temp_dir, mocker, monkeypatch):
     fake_home = git_temp_dir / "fake_home"
@@ -671,6 +703,7 @@ def test_yaml_config_loads_from_git_root(dummy_io, git_temp_dir, mocker, monkeyp
     assert kwargs["main_model"].name == "gpt-4"
     assert kwargs["map_tokens"] == 2048
 
+
 def test_yaml_config_loads_from_home(dummy_io, git_temp_dir, mocker, monkeypatch):
     fake_home = git_temp_dir / "fake_home"
     fake_home.mkdir()
@@ -695,6 +728,7 @@ def test_yaml_config_loads_from_home(dummy_io, git_temp_dir, mocker, monkeypatch
     assert kwargs["main_model"].name == "gpt-3.5-turbo"
     assert kwargs["map_tokens"] == 1024
 
+
 def test_map_tokens_option(dummy_io, git_temp_dir, mocker):
     MockRepoMap = mocker.patch("aider.coders.base_coder.RepoMap")
     MockRepoMap.return_value.max_map_tokens = 0
@@ -704,6 +738,7 @@ def test_map_tokens_option(dummy_io, git_temp_dir, mocker):
     )
     MockRepoMap.assert_not_called()
 
+
 def test_map_tokens_option_with_non_zero_value(dummy_io, git_temp_dir, mocker):
     MockRepoMap = mocker.patch("aider.coders.base_coder.RepoMap")
     MockRepoMap.return_value.max_map_tokens = 1000
@@ -712,6 +747,7 @@ def test_map_tokens_option_with_non_zero_value(dummy_io, git_temp_dir, mocker):
         **dummy_io,
     )
     MockRepoMap.assert_called_once()
+
 
 def test_read_option(dummy_io, git_temp_dir):
     test_file = "test_file.txt"
@@ -724,6 +760,7 @@ def test_read_option(dummy_io, git_temp_dir):
     )
 
     assert str(Path(test_file).resolve()) in coder.abs_read_only_fnames
+
 
 def test_read_option_with_external_file(dummy_io, git_temp_dir):
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as external_file:
@@ -741,6 +778,7 @@ def test_read_option_with_external_file(dummy_io, git_temp_dir):
         assert real_external_file_path in coder.abs_read_only_fnames
     finally:
         os.unlink(external_file_path)
+
 
 def test_model_metadata_file(dummy_io, git_temp_dir):
     # Re-init so we don't have old data lying around from earlier test cases
@@ -773,6 +811,7 @@ def test_model_metadata_file(dummy_io, git_temp_dir):
 
     assert coder.main_model.info["max_input_tokens"] == 1234
 
+
 def test_sonnet_and_cache_options(dummy_io, git_temp_dir, mocker):
     MockRepoMap = mocker.patch("aider.coders.base_coder.RepoMap")
     mock_repo_map = MagicMock()
@@ -788,6 +827,7 @@ def test_sonnet_and_cache_options(dummy_io, git_temp_dir, mocker):
     call_args, call_kwargs = MockRepoMap.call_args
     assert call_kwargs.get("refresh") == "files"  # Check the 'refresh' keyword argument
 
+
 def test_sonnet_and_cache_prompts_options(dummy_io, git_temp_dir):
     coder = main(
         ["--sonnet", "--cache-prompts", "--exit", "--yes-always"],
@@ -797,6 +837,7 @@ def test_sonnet_and_cache_prompts_options(dummy_io, git_temp_dir):
 
     assert coder.add_cache_headers
 
+
 def test_4o_and_cache_options(dummy_io, git_temp_dir):
     coder = main(
         ["--4o", "--cache-prompts", "--exit", "--yes-always"],
@@ -805,6 +846,7 @@ def test_4o_and_cache_options(dummy_io, git_temp_dir):
     )
 
     assert not coder.add_cache_headers
+
 
 def test_return_coder(dummy_io, git_temp_dir):
     result = main(
@@ -821,6 +863,7 @@ def test_return_coder(dummy_io, git_temp_dir):
     )
     assert result == 0
 
+
 def test_map_mul_option(dummy_io, git_temp_dir):
     coder = main(
         ["--map-mul", "5", "--exit", "--yes-always"],
@@ -829,6 +872,7 @@ def test_map_mul_option(dummy_io, git_temp_dir):
     )
     assert isinstance(coder, Coder)
     assert coder.repo_map.map_mul_no_files == 5
+
 
 @pytest.mark.parametrize(
     "flag_arg,attr_name,expected",
@@ -855,6 +899,7 @@ def test_boolean_flags(flag_arg, attr_name, expected, dummy_io, git_temp_dir):
         args.insert(0, flag_arg)
     coder = main(args, **dummy_io, return_coder=True)
     assert getattr(coder, attr_name) == expected
+
 
 @pytest.mark.parametrize(
     "model,setting_flag,setting_value,method_name,check_flag,should_warn,should_call",
@@ -896,7 +941,16 @@ def test_boolean_flags(flag_arg, attr_name, expected, dummy_io, git_temp_dir):
     ],
 )
 def test_accepts_settings_warnings(
-    dummy_io, git_temp_dir, mocker, model, setting_flag, setting_value, method_name, check_flag, should_warn, should_call
+    dummy_io,
+    git_temp_dir,
+    mocker,
+    model,
+    setting_flag,
+    setting_value,
+    method_name,
+    check_flag,
+    should_warn,
+    should_call,
 ):
     # Test that appropriate warnings are shown based on accepts_settings configuration
     mock_warning = mocker.patch("aider.io.InputOutput.tool_warning")
@@ -912,15 +966,16 @@ def test_accepts_settings_warnings(
     setting_name = setting_flag.lstrip("--").replace("-", "_")
     warnings = [call[0][0] for call in mock_warning.call_args_list]
     warning_shown = any(setting_name in w for w in warnings)
-    assert warning_shown == should_warn, (
-        f"Expected warning={should_warn} for {setting_name} but got {warning_shown}"
-    )
+    assert (
+        warning_shown == should_warn
+    ), f"Expected warning={should_warn} for {setting_name} but got {warning_shown}"
 
     # Check if method was called
     if should_call:
         mock_method.assert_called_once_with(setting_value)
     else:
         mock_method.assert_not_called()
+
 
 def test_no_verify_ssl_sets_model_info_manager(dummy_io, git_temp_dir, mocker):
     mock_set_verify_ssl = mocker.patch("aider.models.ModelInfoManager.set_verify_ssl")
@@ -942,9 +997,11 @@ def test_no_verify_ssl_sets_model_info_manager(dummy_io, git_temp_dir, mocker):
     )
     mock_set_verify_ssl.assert_called_once_with(False)
 
+
 def test_pytest_env_vars(dummy_io, git_temp_dir):
     # Verify that environment variables from pytest.ini are properly set
     assert os.environ.get("AIDER_ANALYTICS") == "false"
+
 
 @pytest.mark.parametrize(
     "set_env_args,expected_env,expected_result",
@@ -980,6 +1037,7 @@ def test_set_env(set_env_args, expected_env, expected_result, dummy_io, git_temp
     for env_var, expected_value in expected_env.items():
         assert os.environ.get(env_var) == expected_value
 
+
 @pytest.mark.parametrize(
     "api_key_args,expected_env,expected_result",
     [
@@ -1008,6 +1066,7 @@ def test_api_key(api_key_args, expected_env, expected_result, dummy_io, git_temp
         assert result == expected_result
     for env_var, expected_value in expected_env.items():
         assert os.environ.get(env_var) == expected_value
+
 
 def test_git_config_include(dummy_io, git_temp_dir):
     # Test that aider respects git config includes for user.name and user.email
@@ -1041,6 +1100,7 @@ def test_git_config_include(dummy_io, git_temp_dir):
     # Manually check the git config file again to ensure it wasn't modified
     git_config_content_after = git_config_path.read_text()
     assert git_config_content == git_config_content_after
+
 
 def test_git_config_include_directive(dummy_io, git_temp_dir):
     # Test that aider respects the include directive in git config
@@ -1080,6 +1140,7 @@ def test_git_config_include_directive(dummy_io, git_temp_dir):
     assert repo.git.config("user.name") == "Directive User"
     assert repo.git.config("user.email") == "directive@example.com"
 
+
 def test_resolve_aiderignore_path(dummy_io, git_temp_dir):
     # Import the function directly to test it
     from aider.args import resolve_aiderignore_path
@@ -1097,6 +1158,7 @@ def test_resolve_aiderignore_path(dummy_io, git_temp_dir):
     rel_path = ".aiderignore"
     assert resolve_aiderignore_path(rel_path) == rel_path
 
+
 def test_invalid_edit_format(dummy_io, git_temp_dir, mocker):
     # Suppress stderr for this test as argparse prints an error message
     mock_stderr = mocker.patch("sys.stderr", new_callable=StringIO)
@@ -1110,6 +1172,7 @@ def test_invalid_edit_format(dummy_io, git_temp_dir, mocker):
     stderr_output = mock_stderr.getvalue()
     assert "invalid choice" in stderr_output
     assert "not-a-real-format" in stderr_output
+
 
 @pytest.mark.parametrize(
     "api_key_env,expected_model_substr",
@@ -1152,6 +1215,7 @@ def test_default_model_selection(api_key_env, expected_model_substr, dummy_io, g
         for key, value in saved_keys.items():
             os.environ[key] = value
 
+
 def test_default_model_selection_oauth_fallback(dummy_io, git_temp_dir, mocker):
     # Test no API keys - should offer OpenRouter OAuth
     # Clear all API keys to simulate no configured keys
@@ -1179,6 +1243,7 @@ def test_default_model_selection_oauth_fallback(dummy_io, git_temp_dir, mocker):
         for key, value in saved_keys.items():
             os.environ[key] = value
 
+
 def test_model_precedence(dummy_io, git_temp_dir, monkeypatch):
     # Test that earlier API keys take precedence
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
@@ -1189,6 +1254,7 @@ def test_model_precedence(dummy_io, git_temp_dir, monkeypatch):
         return_coder=True,
     )
     assert "sonnet" in coder.main_model.name.lower()
+
 
 def test_model_overrides_suffix_applied(dummy_io, git_temp_dir, mocker):
     overrides_file = git_temp_dir / ".aider.model.overrides.yml"
@@ -1221,18 +1287,14 @@ def test_model_overrides_suffix_applied(dummy_io, git_temp_dir, mocker):
     matched_call_found = False
     for call_args in MockModel.call_args_list:
         args, kwargs = call_args
-        if (
-            args
-            and args[0] == "gpt-4o"
-            and kwargs.get("override_kwargs") == {"temperature": 0.1}
-        ):
+        if args and args[0] == "gpt-4o" and kwargs.get("override_kwargs") == {"temperature": 0.1}:
             matched_call_found = True
             break
 
-    assert matched_call_found, (
-        "Expected a Model call with base name 'gpt-4o' and override_kwargs"
-        " {'temperature': 0.1}"
-    )
+    assert (
+        matched_call_found
+    ), "Expected a Model call with base name 'gpt-4o' and override_kwargs {'temperature': 0.1}"
+
 
 def test_model_overrides_no_match_preserves_model_name(dummy_io, git_temp_dir, mocker):
     MockModel = mocker.patch("aider.models.Model")
@@ -1267,10 +1329,10 @@ def test_model_overrides_no_match_preserves_model_name(dummy_io, git_temp_dir, m
             matched_call_found = True
             break
 
-    assert matched_call_found, (
-        "Expected a Model call with the full model name preserved and empty"
-        " override_kwargs"
-    )
+    assert (
+        matched_call_found
+    ), "Expected a Model call with the full model name preserved and empty override_kwargs"
+
 
 def test_chat_language_spanish(dummy_io, git_temp_dir):
     coder = main(
@@ -1281,6 +1343,7 @@ def test_chat_language_spanish(dummy_io, git_temp_dir):
     system_info = coder.get_platform_info()
     assert "Spanish" in system_info
 
+
 def test_commit_language_japanese(dummy_io, git_temp_dir):
     coder = main(
         ["--commit-language", "japanese", "--exit", "--yes-always"],
@@ -1289,12 +1352,14 @@ def test_commit_language_japanese(dummy_io, git_temp_dir):
     )
     assert "japanese" in coder.commit_language
 
+
 def test_main_exit_with_git_command_not_found(dummy_io, git_temp_dir, mocker):
     mock_git_init = mocker.patch("git.Repo.init")
     mock_git_init.side_effect = git.exc.GitCommandNotFound("git", "Command 'git' not found")
 
     result = main(["--exit", "--yes-always"], **dummy_io)
     assert result == 0, "main() should return 0 (success) when called with --exit"
+
 
 def test_reasoning_effort_option(dummy_io, git_temp_dir):
     coder = main(
@@ -1310,6 +1375,7 @@ def test_reasoning_effort_option(dummy_io, git_temp_dir):
     )
     assert coder.main_model.extra_params.get("extra_body", {}).get("reasoning_effort") == "3"
 
+
 def test_thinking_tokens_option(dummy_io, git_temp_dir):
     coder = main(
         ["--model", "sonnet", "--thinking-tokens", "1000", "--yes-always", "--exit"],
@@ -1317,6 +1383,7 @@ def test_thinking_tokens_option(dummy_io, git_temp_dir):
         return_coder=True,
     )
     assert coder.main_model.extra_params.get("thinking", {}).get("budget_tokens") == 1000
+
 
 def test_list_models_includes_metadata_models(dummy_io, git_temp_dir, mocker):
     # Test that models from model-metadata.json appear in list-models output
@@ -1354,6 +1421,7 @@ def test_list_models_includes_metadata_models(dummy_io, git_temp_dir, mocker):
     # Check that the unique model name from our metadata file is listed
     assert "test-provider/unique-model-name" in output
 
+
 def test_list_models_includes_all_model_sources(dummy_io, git_temp_dir, mocker):
     # Test that models from both litellm.model_cost and model-metadata.json
     # appear in list-models
@@ -1388,6 +1456,7 @@ def test_list_models_includes_all_model_sources(dummy_io, git_temp_dir, mocker):
     # Check that both models appear in the output
     assert "test-provider/metadata-only-model" in output
 
+
 def test_check_model_accepts_settings_flag(dummy_io, git_temp_dir, mocker):
     # Test that --check-model-accepts-settings affects whether settings are applied
     # When flag is on, setting shouldn't be applied to non-supporting model
@@ -1406,6 +1475,7 @@ def test_check_model_accepts_settings_flag(dummy_io, git_temp_dir, mocker):
     )
     # Method should not be called because model doesn't support it and flag is on
     mock_set_thinking.assert_not_called()
+
 
 def test_list_models_with_direct_resource_patch(dummy_io, mocker):
     # Test that models from resources/model-metadata.json are included in list-models output
@@ -1440,6 +1510,7 @@ def test_list_models_with_direct_resource_patch(dummy_io, mocker):
     # Check that the resource model appears in the output
     assert "resource-provider/special-model" in output
 
+
 def test_reasoning_effort_applied_without_check_flag(dummy_io, mocker):
     # When --no-check-model-accepts-settings flag is used, settings should be applied
     # regardless of whether the model supports them
@@ -1458,6 +1529,7 @@ def test_reasoning_effort_applied_without_check_flag(dummy_io, mocker):
     )
     # Method should be called because check flag is off
     mock_set_reasoning.assert_called_once_with("3")
+
 
 def test_model_accepts_settings_attribute(dummy_io, git_temp_dir, mocker):
     # Test with a model where we override the accepts_settings attribute
@@ -1494,6 +1566,7 @@ def test_model_accepts_settings_attribute(dummy_io, git_temp_dir, mocker):
     mock_instance.set_reasoning_effort.assert_called_once_with("3")
     mock_instance.set_thinking_tokens.assert_not_called()
 
+
 @pytest.mark.parametrize(
     "flags,should_warn",
     [
@@ -1520,6 +1593,7 @@ def test_stream_cache_warning(dummy_io, git_temp_dir, mocker, flags, should_warn
         for call in mock_io_instance.tool_warning.call_args_list:
             assert "Cost estimates may be inaccurate" not in call[0][0]
 
+
 def test_argv_file_respects_git(dummy_io, git_temp_dir):
     fname = Path("not_in_git.txt")
     fname.touch()
@@ -1532,6 +1606,7 @@ def test_argv_file_respects_git(dummy_io, git_temp_dir):
     )
     assert "not_in_git.txt" not in str(coder.abs_fnames)
     assert not asyncio.run(coder.allowed_to_edit("not_in_git.txt"))
+
 
 def test_load_dotenv_files_override(dummy_io, git_temp_dir, mocker):
     # Create fake home and .aider directory
@@ -1586,6 +1661,7 @@ def test_load_dotenv_files_override(dummy_io, git_temp_dir, mocker):
 
     # Restore CWD
     os.chdir(original_cwd)
+
 
 def test_mcp_servers_parsing(dummy_io, git_temp_dir, mocker):
     # Setup mock coder
