@@ -116,16 +116,6 @@ def git_temp_dir():
         yield Path(temp_dir)
 
 
-@pytest.fixture
-def create_env_file():
-    """Factory fixture to create environment files in the current test directory."""
-    def _create_env_file(file_name, content):
-        env_file_path = Path.cwd() / file_name
-        env_file_path.write_text(content)
-        return env_file_path
-    return _create_env_file
-
-
 def assert_warning_contains(mock_warning, text, should_contain=True):
     """Helper to assert whether a warning message contains specific text.
 
@@ -502,10 +492,11 @@ def test_mode_sets_code_theme(mode_flag, expected_theme, dummy_io, git_temp_dir,
     ],
 )
 def test_env_file_variables(
-    dummy_io, create_env_file, mocker, mock_coder, env_file, env_content, check_attribute, expected_value, use_flag
+    dummy_io, mocker, mock_coder, env_file, env_content, check_attribute, expected_value, use_flag
 ):
     """Test environment file variable loading and parsing."""
-    env_file_path = create_env_file(env_file, env_content)
+    env_file_path = Path(env_file)
+    env_file_path.write_text(env_content)
 
     # Dark mode tests check InputOutput kwargs, other tests check Coder kwargs
     is_dark_mode_test = check_attribute == "code_theme"
@@ -616,8 +607,8 @@ def test_lint_option_with_glob_pattern(dummy_io, git_temp_dir, mocker):
     # Check that non-Python file was not linted
     assert not any(f.endswith("readme.txt") for f in called_files)
 
-def test_verbose_mode_lists_env_vars(dummy_io, create_env_file, mocker):
-    create_env_file(".env", "AIDER_DARK_MODE=on")
+def test_verbose_mode_lists_env_vars(dummy_io, mocker):
+    Path(".env").write_text("AIDER_DARK_MODE=on")
     mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
     main(
         ["--no-git", "--verbose", "--exit", "--yes-always"],
