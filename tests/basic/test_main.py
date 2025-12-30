@@ -30,9 +30,9 @@ def mock_autosave_future():
 
 
 @pytest.fixture(autouse=True)
-def test_env(request, mocker):
-    """Autouse fixture providing test environment (replaces setUp/tearDown)."""
-    # Setup (formerly setUp)
+def test_env(mocker):
+    """Autouse fixture providing test environment."""
+    # Setup
     original_env = os.environ.copy()
     os.environ["OPENAI_API_KEY"] = "deadbeef"
     os.environ["AIDER_CHECK_UPDATE"] = "false"
@@ -45,22 +45,12 @@ def test_env(request, mocker):
     homedir_obj = IgnorantTemporaryDirectory()
     os.environ["HOME"] = homedir_obj.name
 
-    mock_input = mocker.patch("builtins.input", return_value=None)
-    mock_webbrowser = mocker.patch("aider.io.webbrowser.open")
-
-    # Make values available to tests via request.instance
-    if request.instance:
-        request.instance.tempdir = tempdir
-        request.instance.tempdir_obj = tempdir_obj
-        request.instance.homedir_obj = homedir_obj
-        request.instance.original_env = original_env
-        request.instance.original_cwd = original_cwd
-        request.instance.mock_input = mock_input
-        request.instance.mock_webbrowser = mock_webbrowser
+    mocker.patch("builtins.input", return_value=None)
+    mocker.patch("aider.io.webbrowser.open")
 
     yield
 
-    # Teardown (formerly tearDown)
+    # Teardown
     os.chdir(original_cwd)
     tempdir_obj.cleanup()
     homedir_obj.cleanup()
@@ -213,9 +203,9 @@ class TestMain:
         io = InputOutput(pretty=False, yes=True)
         git_root = asyncio.run(setup_git(None, io))
         git_root = Path(git_root).resolve()
-        assert git_root == Path(self.tempdir).resolve()
+        assert git_root == Path(os.getcwd()).resolve()
 
-        assert git.Repo(self.tempdir)
+        assert git.Repo(os.getcwd())
 
         gitignore = Path.cwd() / ".gitignore"
         assert gitignore.exists()
@@ -1459,7 +1449,7 @@ class TestMain:
     def test_list_models_with_direct_resource_patch(self, dummy_io, mocker):
         # Test that models from resources/model-metadata.json are included in list-models output
         # Create a temporary file with test model metadata
-        test_file = Path(self.tempdir) / "test-model-metadata.json"
+        test_file = Path(os.getcwd()) / "test-model-metadata.json"
         test_resource_models = {
             "special-model": {
                 "max_input_tokens": 8192,
