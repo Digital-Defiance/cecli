@@ -114,14 +114,14 @@ class TestMain:
         main(["foo.txt", "--yes-always", "--no-git", "--exit"], **dummy_io)
         assert os.path.exists("foo.txt")
 
-    @patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
-    def test_main_with_empty_git_dir_new_file(self, _, dummy_io):
+    def test_main_with_empty_git_dir_new_file(self, dummy_io, mocker):
+        mocker.patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
         make_repo()
         main(["--yes-always", "foo.txt", "--exit"], **dummy_io)
         assert os.path.exists("foo.txt")
 
-    @patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
-    def test_main_with_empty_git_dir_new_files(self, _, dummy_io):
+    def test_main_with_empty_git_dir_new_files(self, dummy_io, mocker):
+        mocker.patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
         make_repo()
         main(
             ["--yes-always", "foo.txt", "bar.txt", "--exit"],
@@ -137,8 +137,8 @@ class TestMain:
         res = main(["subdir", "foo.txt"], **dummy_io)
         assert res is not None
 
-    @patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
-    def test_main_with_subdir_repo_fnames(self, _, dummy_io, git_temp_dir):
+    def test_main_with_subdir_repo_fnames(self, dummy_io, git_temp_dir, mocker):
+        mocker.patch("aider.repo.GitRepo.get_commit_message", return_value="mock commit message")
         subdir = Path("subdir")
         subdir.mkdir()
         make_repo(str(subdir))
@@ -170,8 +170,8 @@ class TestMain:
         assert coder.main_model.copy_paste_transport == "clipboard"
         assert coder.main_model.override_kwargs == {"temperature": 0.42}
 
-    @patch("aider.main.ClipboardWatcher")
-    def test_main_copy_paste_flag_sets_mode(self, mock_watcher, dummy_io, git_temp_dir):
+    def test_main_copy_paste_flag_sets_mode(self, dummy_io, git_temp_dir, mocker):
+        mock_watcher = mocker.patch("aider.main.ClipboardWatcher")
         mock_watcher.return_value = MagicMock()
 
         coder = main(
@@ -463,9 +463,9 @@ class TestMain:
             mock_check_version.assert_called_once()
             mock_input_output.assert_called_once()
 
-    @patch("aider.main.InputOutput", autospec=True)
-    @patch("aider.coders.base_coder.Coder.run")
-    def test_main_message_adds_to_input_history(self, mock_run, MockInputOutput, dummy_io):
+    def test_main_message_adds_to_input_history(self, dummy_io, mocker):
+        mock_run = mocker.patch("aider.coders.base_coder.Coder.run")
+        MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
         test_message = "test message"
         mock_io_instance = MockInputOutput.return_value
         mock_io_instance.pretty = True
@@ -474,9 +474,9 @@ class TestMain:
 
         mock_io_instance.add_to_input_history.assert_called_once_with(test_message)
 
-    @patch("aider.main.InputOutput", autospec=True)
-    @patch("aider.coders.base_coder.Coder.run")
-    def test_yes(self, mock_run, MockInputOutput, dummy_io):
+    def test_yes(self, dummy_io, mocker):
+        mock_run = mocker.patch("aider.coders.base_coder.Coder.run")
+        MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
         test_message = "test message"
         MockInputOutput.return_value.pretty = True
 
@@ -484,9 +484,9 @@ class TestMain:
         args, kwargs = MockInputOutput.call_args
         assert args[1]
 
-    @patch("aider.main.InputOutput", autospec=True)
-    @patch("aider.coders.base_coder.Coder.run")
-    def test_default_yes(self, mock_run, MockInputOutput, dummy_io):
+    def test_default_yes(self, dummy_io, mocker):
+        mock_run = mocker.patch("aider.coders.base_coder.Coder.run")
+        MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
         test_message = "test message"
         MockInputOutput.return_value.pretty = True
 
@@ -976,25 +976,25 @@ class TestMain:
             # Method should still be called by default
             mock_set_reasoning.assert_not_called()
 
-    @patch("aider.models.ModelInfoManager.set_verify_ssl")
-    def test_no_verify_ssl_sets_model_info_manager(self, mock_set_verify_ssl, dummy_io, git_temp_dir):
+    def test_no_verify_ssl_sets_model_info_manager(self, dummy_io, git_temp_dir, mocker):
+        mock_set_verify_ssl = mocker.patch("aider.models.ModelInfoManager.set_verify_ssl")
         # Mock Model class to avoid actual model initialization
-        with patch("aider.models.Model") as mock_model:
-            # Configure the mock to avoid the TypeError
-            mock_model.return_value.info = {}
-            mock_model.return_value.name = "gpt-4"  # Add a string name
-            mock_model.return_value.validate_environment.return_value = {
-                "missing_keys": [],
-                "keys_in_environment": [],
-            }
+        mock_model = mocker.patch("aider.models.Model")
+        # Configure the mock to avoid the TypeError
+        mock_model.return_value.info = {}
+        mock_model.return_value.name = "gpt-4"  # Add a string name
+        mock_model.return_value.validate_environment.return_value = {
+            "missing_keys": [],
+            "keys_in_environment": [],
+        }
 
-            # Mock fuzzy_match_models to avoid string operations on MagicMock
-            with patch("aider.models.fuzzy_match_models", return_value=[]):
-                main(
-                    ["--no-verify-ssl", "--exit", "--yes-always"],
-                    **dummy_io,
-                )
-            mock_set_verify_ssl.assert_called_once_with(False)
+        # Mock fuzzy_match_models to avoid string operations on MagicMock
+        mocker.patch("aider.models.fuzzy_match_models", return_value=[])
+        main(
+            ["--no-verify-ssl", "--exit", "--yes-always"],
+            **dummy_io,
+        )
+        mock_set_verify_ssl.assert_called_once_with(False)
 
     def test_pytest_env_vars(self, dummy_io, git_temp_dir):
         # Verify that environment variables from pytest.ini are properly set
@@ -1360,8 +1360,8 @@ class TestMain:
         )
         assert "japanese" in coder.commit_language
 
-    @patch("git.Repo.init")
-    def test_main_exit_with_git_command_not_found(self, mock_git_init, dummy_io, git_temp_dir):
+    def test_main_exit_with_git_command_not_found(self, dummy_io, git_temp_dir, mocker):
+        mock_git_init = mocker.patch("git.Repo.init")
         mock_git_init.side_effect = git.exc.GitCommandNotFound("git", "Command 'git' not found")
 
         result = main(["--exit", "--yes-always"], **dummy_io)
@@ -1563,8 +1563,8 @@ class TestMain:
             mock_instance.set_reasoning_effort.assert_called_once_with("3")
             mock_instance.set_thinking_tokens.assert_not_called()
 
-    @patch("aider.main.InputOutput", autospec=True)
-    def test_stream_and_cache_warning(self, MockInputOutput, dummy_io, git_temp_dir):
+    def test_stream_and_cache_warning(self, dummy_io, git_temp_dir, mocker):
+        MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
         mock_io_instance = MockInputOutput.return_value
         mock_io_instance.pretty = True
         main(
@@ -1575,8 +1575,8 @@ class TestMain:
             "Cost estimates may be inaccurate when using streaming and caching."
         )
 
-    @patch("aider.main.InputOutput", autospec=True)
-    def test_stream_without_cache_no_warning(self, MockInputOutput, dummy_io, git_temp_dir):
+    def test_stream_without_cache_no_warning(self, dummy_io, git_temp_dir, mocker):
+        MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
         mock_io_instance = MockInputOutput.return_value
         mock_io_instance.pretty = True
         main(
@@ -1656,8 +1656,8 @@ class TestMain:
             # Restore CWD
             os.chdir(original_cwd)
 
-    @patch("aider.main.InputOutput", autospec=True)
-    def test_cache_without_stream_no_warning(self, MockInputOutput, dummy_io, git_temp_dir):
+    def test_cache_without_stream_no_warning(self, dummy_io, git_temp_dir, mocker):
+        MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
         mock_io_instance = MockInputOutput.return_value
         mock_io_instance.pretty = True
         main(
@@ -1667,9 +1667,9 @@ class TestMain:
         for call in mock_io_instance.tool_warning.call_args_list:
             assert "Cost estimates may be inaccurate" not in call[0][0]
 
-    @patch("aider.coders.Coder.create")
-    def test_mcp_servers_parsing(self, mock_coder_create, dummy_io, git_temp_dir):
+    def test_mcp_servers_parsing(self, dummy_io, git_temp_dir, mocker):
         # Setup mock coder
+        mock_coder_create = mocker.patch("aider.coders.Coder.create")
         mock_coder_instance = MagicMock()
         mock_coder_instance._autosave_future = mock_autosave_future()
         mock_coder_create.return_value = mock_coder_instance
