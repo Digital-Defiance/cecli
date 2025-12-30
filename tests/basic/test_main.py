@@ -64,34 +64,31 @@ def test_env(mocker):
 
     All environment changes are automatically cleaned up after each test.
     """
-    # Using IgnorantTemporaryDirectory for Windows cleanup compatibility
     original_cwd = os.getcwd()
-    tempdir_obj = IgnorantTemporaryDirectory()
-    tempdir = tempdir_obj.name
-    os.chdir(tempdir)
 
-    homedir_obj = IgnorantTemporaryDirectory()
+    # Using IgnorantTemporaryDirectory for Windows cleanup compatibility
+    with IgnorantTemporaryDirectory() as tempdir, \
+         IgnorantTemporaryDirectory() as homedir:
+        os.chdir(tempdir)
 
-    clean_env = {
-        "OPENAI_API_KEY": "deadbeef",
-        "AIDER_CHECK_UPDATE": "false",
-        "AIDER_ANALYTICS": "false",
-    }
+        clean_env = {
+            "OPENAI_API_KEY": "deadbeef",
+            "AIDER_CHECK_UPDATE": "false",
+            "AIDER_ANALYTICS": "false",
+        }
 
-    if platform.system() == "Windows":
-        clean_env["USERPROFILE"] = homedir_obj.name
-    else:
-        clean_env["HOME"] = homedir_obj.name
+        if platform.system() == "Windows":
+            clean_env["USERPROFILE"] = homedir
+        else:
+            clean_env["HOME"] = homedir
 
-    mocker.patch.dict(os.environ, clean_env, clear=True)
-    mocker.patch("builtins.input", return_value=None)
-    mocker.patch("aider.io.webbrowser.open")
+        mocker.patch.dict(os.environ, clean_env, clear=True)
+        mocker.patch("builtins.input", return_value=None)
+        mocker.patch("aider.io.webbrowser.open")
 
-    yield
+        yield
 
-    os.chdir(original_cwd)
-    tempdir_obj.cleanup()
-    homedir_obj.cleanup()
+        os.chdir(original_cwd)
 
 
 @pytest.fixture
