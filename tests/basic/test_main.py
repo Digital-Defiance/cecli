@@ -64,38 +64,31 @@ def test_env(mocker):
 
     All environment changes are automatically cleaned up after each test.
     """
-    # Setup temporary directories (using IgnorantTemporaryDirectory for Windows compatibility)
+    # Using IgnorantTemporaryDirectory for Windows cleanup compatibility
     original_cwd = os.getcwd()
     tempdir_obj = IgnorantTemporaryDirectory()
     tempdir = tempdir_obj.name
     os.chdir(tempdir)
 
-    # Fake home directory prevents tests from using the real ~/.aider.conf.yml file
     homedir_obj = IgnorantTemporaryDirectory()
 
-    # Create completely isolated environment
     clean_env = {
         "OPENAI_API_KEY": "deadbeef",
         "AIDER_CHECK_UPDATE": "false",
         "AIDER_ANALYTICS": "false",
     }
 
-    # Windows uses USERPROFILE instead of HOME
     if platform.system() == "Windows":
         clean_env["USERPROFILE"] = homedir_obj.name
     else:
         clean_env["HOME"] = homedir_obj.name
 
-    # Completely replace os.environ with clean isolated environment
     mocker.patch.dict(os.environ, clean_env, clear=True)
-
-    # Mock user interaction
     mocker.patch("builtins.input", return_value=None)
     mocker.patch("aider.io.webbrowser.open")
 
     yield
 
-    # Teardown
     os.chdir(original_cwd)
     tempdir_obj.cleanup()
     homedir_obj.cleanup()
