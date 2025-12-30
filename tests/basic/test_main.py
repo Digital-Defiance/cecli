@@ -52,6 +52,13 @@ def mock_autosave_future():
 
 
 @pytest.fixture
+def temp_cwd():
+    """Provide a temporary current working directory with automatic chdir."""
+    with ChdirTemporaryDirectory() as tempdir:
+        yield tempdir
+
+
+@pytest.fixture
 def temp_home():
     """Provide a temporary home directory."""
     with IgnorantTemporaryDirectory() as homedir:
@@ -59,7 +66,7 @@ def temp_home():
 
 
 @pytest.fixture(autouse=True)
-def test_env(mocker, temp_home):
+def test_env(mocker, temp_cwd, temp_home):
     """Provide isolated test environment for all tests.
 
     Automatically sets up and tears down:
@@ -71,23 +78,22 @@ def test_env(mocker, temp_home):
 
     All environment changes are automatically cleaned up after each test.
     """
-    with ChdirTemporaryDirectory():
-        clean_env = {
-            "OPENAI_API_KEY": "deadbeef",
-            "AIDER_CHECK_UPDATE": "false",
-            "AIDER_ANALYTICS": "false",
-        }
+    clean_env = {
+        "OPENAI_API_KEY": "deadbeef",
+        "AIDER_CHECK_UPDATE": "false",
+        "AIDER_ANALYTICS": "false",
+    }
 
-        if platform.system() == "Windows":
-            clean_env["USERPROFILE"] = temp_home
-        else:
-            clean_env["HOME"] = temp_home
+    if platform.system() == "Windows":
+        clean_env["USERPROFILE"] = temp_home
+    else:
+        clean_env["HOME"] = temp_home
 
-        mocker.patch.dict(os.environ, clean_env, clear=True)
-        mocker.patch("builtins.input", return_value=None)
-        mocker.patch("aider.io.webbrowser.open")
+    mocker.patch.dict(os.environ, clean_env, clear=True)
+    mocker.patch("builtins.input", return_value=None)
+    mocker.patch("aider.io.webbrowser.open")
 
-        yield
+    yield
 
 
 @pytest.fixture
