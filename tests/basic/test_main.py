@@ -261,55 +261,69 @@ def test_check_gitignore(dummy_io, git_temp_dir, monkeypatch):
     assert "one\ntwo\n.aider*\n.env\n" == gitignore.read_text()
 
 @pytest.mark.parametrize(
-    "method,flag,should_include",
+    "flag,should_include",
     [
-        ("command_line", None, False),
-        ("command_line", "--add-gitignore-files", True),
-        ("command_line", "--no-add-gitignore-files", False),
-        ("add_command", None, False),
-        ("add_command", "--add-gitignore-files", True),
-        ("add_command", "--no-add-gitignore-files", False),
+        (None, False),
+        ("--add-gitignore-files", True),
+        ("--no-add-gitignore-files", False),
     ],
-    ids=[
-        "cli_default",
-        "cli_enabled",
-        "cli_disabled",
-        "cmd_default",
-        "cmd_enabled",
-        "cmd_disabled",
-    ],
+    ids=["default", "enabled", "disabled"],
 )
-def test_gitignore_files_flag(dummy_io, git_temp_dir, method, flag, should_include):
-    """Test --add-gitignore-files flag with command-line and /add command."""
-    # Create a .gitignore file and an ignored file
-    gitignore_file = git_temp_dir / ".gitignore"
-    gitignore_file.write_text("ignored.txt\n")
-    ignored_file = git_temp_dir / "ignored.txt"
-    ignored_file.write_text("This file should be ignored.")
+def test_gitignore_files_flag_command_line(dummy_io, git_temp_dir, flag, should_include):
+    """Test --add-gitignore-files flag with command-line arguments."""
+    ignored_file = _create_gitignore_test_files(git_temp_dir)
     abs_ignored_file = str(ignored_file.resolve())
 
-    # Build args list with optional flag
     args = ["--exit", "--yes-always"]
     if flag:
         args.insert(0, flag)
+    args.append(abs_ignored_file)
 
-    if method == "command_line":
-        # Add file via command line argument
-        args.append(abs_ignored_file)
-        coder = main(args, **dummy_io, return_coder=True, force_git_root=git_temp_dir)
-    else:
-        # Add file via /add command
-        coder = main(args, **dummy_io, return_coder=True, force_git_root=git_temp_dir)
-        try:
-            asyncio.run(coder.commands.do_run("add", "ignored.txt"))
-        except SwitchCoder:
-            pass
+    coder = main(args, **dummy_io, return_coder=True, force_git_root=git_temp_dir)
 
-    # Verify file is included or excluded as expected
     if should_include:
         assert abs_ignored_file in coder.abs_fnames
     else:
         assert abs_ignored_file not in coder.abs_fnames
+
+
+@pytest.mark.parametrize(
+    "flag,should_include",
+    [
+        (None, False),
+        ("--add-gitignore-files", True),
+        ("--no-add-gitignore-files", False),
+    ],
+    ids=["default", "enabled", "disabled"],
+)
+def test_gitignore_files_flag_add_command(dummy_io, git_temp_dir, flag, should_include):
+    """Test --add-gitignore-files flag with /add command."""
+    ignored_file = _create_gitignore_test_files(git_temp_dir)
+    abs_ignored_file = str(ignored_file.resolve())
+
+    args = ["--exit", "--yes-always"]
+    if flag:
+        args.insert(0, flag)
+
+    coder = main(args, **dummy_io, return_coder=True, force_git_root=git_temp_dir)
+    try:
+        asyncio.run(coder.commands.do_run("add", "ignored.txt"))
+    except SwitchCoder:
+        pass
+
+    if should_include:
+        assert abs_ignored_file in coder.abs_fnames
+    else:
+        assert abs_ignored_file not in coder.abs_fnames
+
+
+def _create_gitignore_test_files(git_temp_dir):
+    """Helper to create gitignore test files."""
+    gitignore_file = git_temp_dir / ".gitignore"
+    gitignore_file.write_text("ignored.txt\n")
+    ignored_file = git_temp_dir / "ignored.txt"
+    ignored_file.write_text("This file should be ignored.")
+    return ignored_file
 
 @pytest.mark.parametrize(
     "args,expected_kwargs",
