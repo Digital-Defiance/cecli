@@ -128,7 +128,7 @@ def test_main_with_empty_git_dir_new_files(dummy_io, mocker):
     assert os.path.exists("bar.txt")
 
 
-def test_main_with_dname_and_fname(dummy_io, git_temp_dir):
+def test_main_with_subdir_and_fname(dummy_io, git_temp_dir):
     subdir = Path("subdir")
     subdir.mkdir()
     make_repo(str(subdir))
@@ -439,7 +439,7 @@ def test_main_message_adds_to_input_history(dummy_io, mocker):
     mock_io_instance.add_to_input_history.assert_called_once_with(test_message)
 
 
-def test_yes(dummy_io, mocker):
+def test_yes_always(dummy_io, mocker):
     mocker.patch("aider.coders.base_coder.Coder.run")
     MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
     test_message = "test message"
@@ -450,7 +450,7 @@ def test_yes(dummy_io, mocker):
     assert args[1]
 
 
-def test_default_yes(dummy_io, mocker):
+def test_default_of_yes_all_is_none(dummy_io, mocker):
     mocker.patch("aider.coders.base_coder.Coder.run")
     MockInputOutput = mocker.patch("aider.main.InputOutput", autospec=True)
     test_message = "test message"
