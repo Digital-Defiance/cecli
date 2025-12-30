@@ -1157,19 +1157,19 @@ class TestMain:
         rel_path = ".aiderignore"
         assert resolve_aiderignore_path(rel_path) == rel_path
 
-    def test_invalid_edit_format(self, dummy_io, git_temp_dir):
+    def test_invalid_edit_format(self, dummy_io, git_temp_dir, mocker):
         # Suppress stderr for this test as argparse prints an error message
-        with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
-            with pytest.raises(SystemExit) as cm:
-                _ = main(
-                    ["--edit-format", "not-a-real-format", "--exit", "--yes-always"],
-                    **dummy_io,
-                )
-            # argparse.ArgumentParser.exit() is called with status 2 for invalid choice
-            assert cm.value.code == 2
-            stderr_output = mock_stderr.getvalue()
-            assert "invalid choice" in stderr_output
-            assert "not-a-real-format" in stderr_output
+        mock_stderr = mocker.patch("sys.stderr", new_callable=StringIO)
+        with pytest.raises(SystemExit) as cm:
+            _ = main(
+                ["--edit-format", "not-a-real-format", "--exit", "--yes-always"],
+                **dummy_io,
+            )
+        # argparse.ArgumentParser.exit() is called with status 2 for invalid choice
+        assert cm.value.code == 2
+        stderr_output = mock_stderr.getvalue()
+        assert "invalid choice" in stderr_output
+        assert "not-a-real-format" in stderr_output
 
     @pytest.mark.parametrize(
         "api_key_env,expected_model_substr",
@@ -1389,7 +1389,7 @@ class TestMain:
         )
         assert coder.main_model.extra_params.get("thinking", {}).get("budget_tokens") == 1000
 
-    def test_list_models_includes_metadata_models(self, dummy_io, git_temp_dir):
+    def test_list_models_includes_metadata_models(self, dummy_io, git_temp_dir, mocker):
         # Test that models from model-metadata.json appear in list-models output
         # Create a temporary model-metadata.json with test models
         metadata_file = Path(".aider.model.metadata.json")
@@ -1408,22 +1408,22 @@ class TestMain:
         metadata_file.write_text(json.dumps(test_models))
 
         # Capture stdout to check the output
-        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-            main(
-                [
-                    "--list-models",
-                    "unique-model",
-                    "--model-metadata-file",
-                    str(metadata_file),
-                    "--yes-always",
-                    "--no-gitignore",
-                ],
-                **dummy_io,
-            )
-            output = mock_stdout.getvalue()
+        mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
+        main(
+            [
+                "--list-models",
+                "unique-model",
+                "--model-metadata-file",
+                str(metadata_file),
+                "--yes-always",
+                "--no-gitignore",
+            ],
+            **dummy_io,
+        )
+        output = mock_stdout.getvalue()
 
-            # Check that the unique model name from our metadata file is listed
-            assert "test-provider/unique-model-name" in output
+        # Check that the unique model name from our metadata file is listed
+        assert "test-provider/unique-model-name" in output
 
     def test_list_models_includes_all_model_sources(self, dummy_io, git_temp_dir):
         # Test that models from both litellm.model_cost and model-metadata.json
