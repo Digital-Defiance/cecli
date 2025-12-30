@@ -5,7 +5,6 @@ import platform
 import subprocess
 import tempfile
 import types
-from io import StringIO
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -616,14 +615,14 @@ def test_lint_option_with_glob_pattern(dummy_io, git_temp_dir, mocker):
     assert not any(f.endswith("readme.txt") for f in called_files)
 
 
-def test_verbose_mode_lists_env_vars(dummy_io, mocker):
+def test_verbose_mode_lists_env_vars(dummy_io, mocker, capsys):
     Path(".env").write_text("AIDER_DARK_MODE=on")
-    mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
     main(
         ["--no-git", "--verbose", "--exit", "--yes-always"],
         **dummy_io,
     )
-    output = mock_stdout.getvalue()
+    captured = capsys.readouterr()
+    output = captured.out
     relevant_output = "\n".join(
         line for line in output.splitlines() if "AIDER_DARK_MODE" in line or "dark_mode" in line
     )  # this bit just helps failing assertions to be easier to read
@@ -1160,9 +1159,8 @@ def test_resolve_aiderignore_path(dummy_io, git_temp_dir):
     assert resolve_aiderignore_path(rel_path) == rel_path
 
 
-def test_invalid_edit_format(dummy_io, git_temp_dir, mocker):
+def test_invalid_edit_format(dummy_io, git_temp_dir, mocker, capsys):
     # Suppress stderr for this test as argparse prints an error message
-    mock_stderr = mocker.patch("sys.stderr", new_callable=StringIO)
     with pytest.raises(SystemExit) as cm:
         _ = main(
             ["--edit-format", "not-a-real-format", "--exit", "--yes-always"],
@@ -1170,7 +1168,8 @@ def test_invalid_edit_format(dummy_io, git_temp_dir, mocker):
         )
     # argparse.ArgumentParser.exit() is called with status 2 for invalid choice
     assert cm.value.code == 2
-    stderr_output = mock_stderr.getvalue()
+    captured = capsys.readouterr()
+    stderr_output = captured.err
     assert "invalid choice" in stderr_output
     assert "not-a-real-format" in stderr_output
 
@@ -1386,7 +1385,7 @@ def test_thinking_tokens_option(dummy_io, git_temp_dir):
     assert coder.main_model.extra_params.get("thinking", {}).get("budget_tokens") == 1000
 
 
-def test_list_models_includes_metadata_models(dummy_io, git_temp_dir, mocker):
+def test_list_models_includes_metadata_models(dummy_io, git_temp_dir, mocker, capsys):
     # Test that models from model-metadata.json appear in list-models output
     # Create a temporary model-metadata.json with test models
     metadata_file = Path(".aider.model.metadata.json")
@@ -1404,8 +1403,6 @@ def test_list_models_includes_metadata_models(dummy_io, git_temp_dir, mocker):
     }
     metadata_file.write_text(json.dumps(test_models))
 
-    # Capture stdout to check the output
-    mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
     main(
         [
             "--list-models",
@@ -1417,13 +1414,14 @@ def test_list_models_includes_metadata_models(dummy_io, git_temp_dir, mocker):
         ],
         **dummy_io,
     )
-    output = mock_stdout.getvalue()
+    captured = capsys.readouterr()
+    output = captured.out
 
     # Check that the unique model name from our metadata file is listed
     assert "test-provider/unique-model-name" in output
 
 
-def test_list_models_includes_all_model_sources(dummy_io, git_temp_dir, mocker):
+def test_list_models_includes_all_model_sources(dummy_io, git_temp_dir, mocker, capsys):
     # Test that models from both litellm.model_cost and model-metadata.json
     # appear in list-models
     # Create a temporary model-metadata.json with test models
@@ -1437,8 +1435,6 @@ def test_list_models_includes_all_model_sources(dummy_io, git_temp_dir, mocker):
     }
     metadata_file.write_text(json.dumps(test_models))
 
-    # Capture stdout to check the output
-    mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
     main(
         [
             "--list-models",
@@ -1450,7 +1446,8 @@ def test_list_models_includes_all_model_sources(dummy_io, git_temp_dir, mocker):
         ],
         **dummy_io,
     )
-    output = mock_stdout.getvalue()
+    captured = capsys.readouterr()
+    output = captured.out
 
     dump(output)
 
@@ -1458,7 +1455,7 @@ def test_list_models_includes_all_model_sources(dummy_io, git_temp_dir, mocker):
     assert "test-provider/metadata-only-model" in output
 
 
-def test_list_models_includes_openai_provider(dummy_io, git_temp_dir, mocker):
+def test_list_models_includes_openai_provider(dummy_io, git_temp_dir, mocker, capsys):
     import aider.models as models_module
 
     provider_name = "openai"
@@ -1497,13 +1494,13 @@ def test_list_models_includes_openai_provider(dummy_io, git_temp_dir, mocker):
 
     try:
         mocker.patch("requests.get", _fake_get)
-        mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
         main(
             ["--list-models", "openai/demo/foo", "--yes", "--no-gitignore"],
             **dummy_io,
         )
 
-        output = mock_stdout.getvalue()
+        captured = capsys.readouterr()
+        output = captured.out
         assert "openai/demo/foo" in output
     finally:
         if had_config:
@@ -1542,7 +1539,7 @@ def test_check_model_accepts_settings_flag(dummy_io, git_temp_dir, mocker):
     mock_set_thinking.assert_not_called()
 
 
-def test_list_models_with_direct_resource_patch(dummy_io, mocker):
+def test_list_models_with_direct_resource_patch(dummy_io, mocker, capsys):
     # Test that models from resources/model-metadata.json are included in list-models output
     # Create a temporary file with test model metadata
     test_file = Path(os.getcwd()) / "test-model-metadata.json"
@@ -1564,13 +1561,12 @@ def test_list_models_with_direct_resource_patch(dummy_io, mocker):
     mock_files.joinpath.return_value = mock_resource_path
 
     mocker.patch("aider.main.importlib_resources.files", return_value=mock_files)
-    # Capture stdout to check the output
-    mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
     main(
         ["--list-models", "special", "--yes-always", "--no-gitignore"],
         **dummy_io,
     )
-    output = mock_stdout.getvalue()
+    captured = capsys.readouterr()
+    output = captured.out
 
     # Check that the resource model appears in the output
     assert "resource-provider/special-model" in output
