@@ -63,18 +63,18 @@ def test_env(mocker, temp_cwd, temp_home):
 
     All resources are automatically cleaned up by dependency fixtures and mocker.
     """
-    clean_env = {
+    test_env_vars = {
         "OPENAI_API_KEY": "deadbeef",
         "AIDER_CHECK_UPDATE": "false",
         "AIDER_ANALYTICS": "false",
     }
 
     if platform.system() == "Windows":
-        clean_env["USERPROFILE"] = temp_home
+        test_env_vars["USERPROFILE"] = temp_home
     else:
-        clean_env["HOME"] = temp_home
+        test_env_vars["HOME"] = temp_home
 
-    mocker.patch.dict(os.environ, clean_env, clear=True)
+    mocker.patch.dict(os.environ, test_env_vars)
     mocker.patch("builtins.input", return_value=None)
     mocker.patch("aider.io.webbrowser.open")
 
