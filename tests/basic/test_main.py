@@ -640,25 +640,25 @@ class TestMain:
         # Check that non-Python file was not linted
         assert not any(f.endswith("readme.txt") for f in called_files)
 
-    def test_verbose_mode_lists_env_vars(self, dummy_io, create_env_file):
+    def test_verbose_mode_lists_env_vars(self, dummy_io, create_env_file, mocker):
         create_env_file(".env", "AIDER_DARK_MODE=on")
-        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-            main(
-                ["--no-git", "--verbose", "--exit", "--yes-always"],
-                **dummy_io,
-            )
-            output = mock_stdout.getvalue()
-            relevant_output = "\n".join(
-                line
-                for line in output.splitlines()
-                if "AIDER_DARK_MODE" in line or "dark_mode" in line
-            )  # this bit just helps failing assertions to be easier to read
-            assert "AIDER_DARK_MODE" in relevant_output
-            assert "dark_mode" in relevant_output
-            import re
+        mock_stdout = mocker.patch("sys.stdout", new_callable=StringIO)
+        main(
+            ["--no-git", "--verbose", "--exit", "--yes-always"],
+            **dummy_io,
+        )
+        output = mock_stdout.getvalue()
+        relevant_output = "\n".join(
+            line
+            for line in output.splitlines()
+            if "AIDER_DARK_MODE" in line or "dark_mode" in line
+        )  # this bit just helps failing assertions to be easier to read
+        assert "AIDER_DARK_MODE" in relevant_output
+        assert "dark_mode" in relevant_output
+        import re
 
-            assert re.search(r"AIDER_DARK_MODE:\s+on", relevant_output)
-            assert re.search(r"dark_mode:\s+True", relevant_output)
+        assert re.search(r"AIDER_DARK_MODE:\s+on", relevant_output)
+        assert re.search(r"dark_mode:\s+True", relevant_output)
 
     def test_yaml_config_file_loading(self, dummy_io, git_temp_dir):
         with GitTemporaryDirectory() as git_dir:
@@ -803,20 +803,20 @@ class TestMain:
 
         assert coder.main_model.info["max_input_tokens"] == 1234
 
-    def test_sonnet_and_cache_options(self, dummy_io, git_temp_dir):
-        with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
-            mock_repo_map = MagicMock()
-            mock_repo_map.max_map_tokens = 1000  # Set a specific value
-            MockRepoMap.return_value = mock_repo_map
+    def test_sonnet_and_cache_options(self, dummy_io, git_temp_dir, mocker):
+        MockRepoMap = mocker.patch("aider.coders.base_coder.RepoMap")
+        mock_repo_map = MagicMock()
+        mock_repo_map.max_map_tokens = 1000  # Set a specific value
+        MockRepoMap.return_value = mock_repo_map
 
-            main(
-                ["--sonnet", "--cache-prompts", "--exit", "--yes-always"],
-                **dummy_io,
-            )
+        main(
+            ["--sonnet", "--cache-prompts", "--exit", "--yes-always"],
+            **dummy_io,
+        )
 
-            MockRepoMap.assert_called_once()
-            call_args, call_kwargs = MockRepoMap.call_args
-            assert call_kwargs.get("refresh") == "files"  # Check the 'refresh' keyword argument
+        MockRepoMap.assert_called_once()
+        call_args, call_kwargs = MockRepoMap.call_args
+        assert call_kwargs.get("refresh") == "files"  # Check the 'refresh' keyword argument
 
     def test_sonnet_and_cache_prompts_options(self, dummy_io, git_temp_dir):
         coder = main(
