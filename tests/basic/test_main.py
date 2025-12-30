@@ -116,22 +116,6 @@ def git_temp_dir():
         yield Path(temp_dir)
 
 
-def assert_warning_contains(mock_warning, text, should_contain=True):
-    """Helper to assert whether a warning message contains specific text.
-
-    Args:
-        mock_warning: Mocked InputOutput.tool_warning function
-        text: Text to search for in warning messages
-        should_contain: If True, asserts text is found; if False, asserts it's not found
-    """
-    warnings = [call[0][0] for call in mock_warning.call_args_list]
-    contains = any(text in w for w in warnings)
-    if should_contain:
-        assert contains, f"Expected warning containing '{text}' but got: {warnings}"
-    else:
-        assert not contains, f"Unexpected warning containing '{text}' in: {warnings}"
-
-
 def test_main_with_empty_dir_no_files_on_command(dummy_io):
     main(["--no-git", "--exit", "--yes-always"], **dummy_io)
 
