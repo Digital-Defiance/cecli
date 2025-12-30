@@ -409,7 +409,7 @@ class TestMain:
             assert os.environ["D"] == "home"
             assert os.environ["E"] == "existing"
 
-    def test_message_file_flag(self, dummy_io, git_temp_dir):
+    def test_message_file_flag(self, dummy_io, git_temp_dir, mocker):
         message_file_content = "This is a test message from a file."
         message_file_path = tempfile.mktemp()
         with open(message_file_path, "w", encoding="utf-8") as message_file:
@@ -419,39 +419,39 @@ class TestMain:
         async def mock_run(*args, **kwargs):
             pass
 
-        with patch("aider.coders.Coder.create") as MockCoder:
-            # Create a mock coder instance with an async run method
-            mock_coder_instance = MagicMock()
-            mock_coder_instance.run = AsyncMock()
-            mock_coder_instance._autosave_future = mock_autosave_future()
-            MockCoder.return_value = mock_coder_instance
+        MockCoder = mocker.patch("aider.coders.Coder.create")
+        # Create a mock coder instance with an async run method
+        mock_coder_instance = MagicMock()
+        mock_coder_instance.run = AsyncMock()
+        mock_coder_instance._autosave_future = mock_autosave_future()
+        MockCoder.return_value = mock_coder_instance
 
-            main(
-                ["--yes-always", "--message-file", message_file_path],
-                **dummy_io,
-            )
-            # Check that run was called with the correct message
-            mock_coder_instance.run.assert_called_once_with(with_message=message_file_content)
+        main(
+            ["--yes-always", "--message-file", message_file_path],
+            **dummy_io,
+        )
+        # Check that run was called with the correct message
+        mock_coder_instance.run.assert_called_once_with(with_message=message_file_content)
 
         os.remove(message_file_path)
 
-    def test_encodings_arg(self, dummy_io, git_temp_dir):
+    def test_encodings_arg(self, dummy_io, git_temp_dir, mocker):
         fname = "foo.py"
 
-        with patch("aider.coders.Coder.create") as MockCoder:
-            mock_coder_instance = MockCoder.return_value
-            mock_coder_instance._autosave_future = mock_autosave_future()
-            with patch("aider.main.InputOutput") as MockSend:
+        MockCoder = mocker.patch("aider.coders.Coder.create")
+        mock_coder_instance = MockCoder.return_value
+        mock_coder_instance._autosave_future = mock_autosave_future()
+        MockSend = mocker.patch("aider.main.InputOutput")
 
-                    def side_effect(*args, **kwargs):
-                        assert kwargs["encoding"] == "iso-8859-15"
-                        mock_io = MagicMock()
-                        mock_io.confirm_ask = AsyncMock(return_value=True)
-                        return mock_io
+        def side_effect(*args, **kwargs):
+            assert kwargs["encoding"] == "iso-8859-15"
+            mock_io = MagicMock()
+            mock_io.confirm_ask = AsyncMock(return_value=True)
+            return mock_io
 
-                    MockSend.side_effect = side_effect
+        MockSend.side_effect = side_effect
 
-                    main(["--yes-always", fname, "--encoding", "iso-8859-15"])
+        main(["--yes-always", fname, "--encoding", "iso-8859-15"])
 
     def test_main_exit_calls_version_check(self, dummy_io, git_temp_dir):
         with (
@@ -502,42 +502,42 @@ class TestMain:
         ],
         ids=["dark_mode", "light_mode"],
     )
-    def test_mode_sets_code_theme(self, mode_flag, expected_theme, dummy_io, git_temp_dir):
+    def test_mode_sets_code_theme(self, mode_flag, expected_theme, dummy_io, git_temp_dir, mocker):
         # Mock InputOutput to capture the configuration
-        with patch("aider.main.InputOutput") as MockInputOutput:
-            MockInputOutput.return_value.get_input.return_value = None
-            main([mode_flag, "--no-git", "--exit"], **dummy_io)
-            # Ensure InputOutput was called
-            MockInputOutput.assert_called_once()
-            # Check if the code_theme setting matches expected
-            _, kwargs = MockInputOutput.call_args
-            assert kwargs["code_theme"] == expected_theme
+        MockInputOutput = mocker.patch("aider.main.InputOutput")
+        MockInputOutput.return_value.get_input.return_value = None
+        main([mode_flag, "--no-git", "--exit"], **dummy_io)
+        # Ensure InputOutput was called
+        MockInputOutput.assert_called_once()
+        # Check if the code_theme setting matches expected
+        _, kwargs = MockInputOutput.call_args
+        assert kwargs["code_theme"] == expected_theme
 
-    def test_env_file_flag_sets_automatic_variable(self, dummy_io, create_env_file):
+    def test_env_file_flag_sets_automatic_variable(self, dummy_io, create_env_file, mocker):
         env_file_path = create_env_file(".env.test", "AIDER_DARK_MODE=True")
-        with patch("aider.main.InputOutput") as MockInputOutput:
-            MockInputOutput.return_value.get_input.return_value = None
-            MockInputOutput.return_value.get_input.confirm_ask = True
-            main(
-                ["--env-file", str(env_file_path), "--no-git", "--exit"],
-                **dummy_io,
-            )
-            MockInputOutput.assert_called_once()
-            # Check if the color settings are for dark mode
-            _, kwargs = MockInputOutput.call_args
-            assert kwargs["code_theme"] == "monokai"
+        MockInputOutput = mocker.patch("aider.main.InputOutput")
+        MockInputOutput.return_value.get_input.return_value = None
+        MockInputOutput.return_value.get_input.confirm_ask = True
+        main(
+            ["--env-file", str(env_file_path), "--no-git", "--exit"],
+            **dummy_io,
+        )
+        MockInputOutput.assert_called_once()
+        # Check if the color settings are for dark mode
+        _, kwargs = MockInputOutput.call_args
+        assert kwargs["code_theme"] == "monokai"
 
-    def test_default_env_file_sets_automatic_variable(self, dummy_io, create_env_file):
+    def test_default_env_file_sets_automatic_variable(self, dummy_io, create_env_file, mocker):
         create_env_file(".env", "AIDER_DARK_MODE=True")
-        with patch("aider.main.InputOutput") as MockInputOutput:
-            MockInputOutput.return_value.get_input.return_value = None
-            MockInputOutput.return_value.get_input.confirm_ask = True
-            main(["--no-git", "--exit"], **dummy_io)
-            # Ensure InputOutput was called
-            MockInputOutput.assert_called_once()
-            # Check if the color settings are for dark mode
-            _, kwargs = MockInputOutput.call_args
-            assert kwargs["code_theme"] == "monokai"
+        MockInputOutput = mocker.patch("aider.main.InputOutput")
+        MockInputOutput.return_value.get_input.return_value = None
+        MockInputOutput.return_value.get_input.confirm_ask = True
+        main(["--no-git", "--exit"], **dummy_io)
+        # Ensure InputOutput was called
+        MockInputOutput.assert_called_once()
+        # Check if the color settings are for dark mode
+        _, kwargs = MockInputOutput.call_args
+        assert kwargs["code_theme"] == "monokai"
 
     def test_false_vals_in_env_file(self, dummy_io, mock_coder, create_env_file):
         create_env_file(".env", "AIDER_SHOW_DIFFS=off")
