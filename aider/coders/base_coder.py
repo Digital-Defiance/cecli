@@ -240,9 +240,10 @@ class Coder:
         ):
             res = coders.CopyPasteCoder(main_model, io, args=args, **kwargs)
 
-        for coder in coders.__all__:
-            if hasattr(coder, "edit_format") and coder.edit_format == edit_format:
-                res = coder(main_model, io, args=args, **kwargs)
+        if not res:
+            for coder in coders.__all__:
+                if hasattr(coder, "edit_format") and coder.edit_format == edit_format:
+                    res = coder(main_model, io, args=args, **kwargs)
 
         if res is not None:
             if from_coder:
