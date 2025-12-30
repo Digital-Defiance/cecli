@@ -3,7 +3,6 @@ import json
 import os
 import platform
 import subprocess
-import tempfile
 import types
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -371,11 +370,10 @@ def test_env_file_override(dummy_io, git_temp_dir, mocker, monkeypatch):
     assert os.environ["E"] == "existing"
 
 
-def test_message_file_flag(dummy_io, git_temp_dir, mocker):
+def test_message_file_flag(dummy_io, git_temp_dir, mocker, tmp_path):
     message_file_content = "This is a test message from a file."
-    message_file_path = tempfile.mktemp()
-    with open(message_file_path, "w", encoding="utf-8") as message_file:
-        message_file.write(message_file_content)
+    message_file = tmp_path / "message.txt"
+    message_file.write_text(message_file_content, encoding="utf-8")
 
     # Create a mock async function for the run method
     async def mock_run(*args, **kwargs):
@@ -389,13 +387,11 @@ def test_message_file_flag(dummy_io, git_temp_dir, mocker):
     MockCoder.return_value = mock_coder_instance
 
     main(
-        ["--yes-always", "--message-file", message_file_path],
+        ["--yes-always", "--message-file", str(message_file)],
         **dummy_io,
     )
     # Check that run was called with the correct message
     mock_coder_instance.run.assert_called_once_with(with_message=message_file_content)
-
-    os.remove(message_file_path)
 
 
 def test_encodings_arg(dummy_io, git_temp_dir, mocker):
@@ -762,22 +758,18 @@ def test_read_option(dummy_io, git_temp_dir):
     assert str(Path(test_file).resolve()) in coder.abs_read_only_fnames
 
 
-def test_read_option_with_external_file(dummy_io, git_temp_dir):
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as external_file:
-        external_file.write("External file content")
-        external_file_path = external_file.name
+def test_read_option_with_external_file(dummy_io, git_temp_dir, tmp_path):
+    external_file = tmp_path / "external_file.txt"
+    external_file.write_text("External file content")
 
-    try:
-        coder = main(
-            ["--read", external_file_path, "--exit", "--yes-always"],
-            **dummy_io,
-            return_coder=True,
-        )
+    coder = main(
+        ["--read", str(external_file), "--exit", "--yes-always"],
+        **dummy_io,
+        return_coder=True,
+    )
 
-        real_external_file_path = os.path.realpath(external_file_path)
-        assert real_external_file_path in coder.abs_read_only_fnames
-    finally:
-        os.unlink(external_file_path)
+    real_external_file_path = os.path.realpath(str(external_file))
+    assert real_external_file_path in coder.abs_read_only_fnames
 
 
 def test_model_metadata_file(dummy_io, git_temp_dir):
