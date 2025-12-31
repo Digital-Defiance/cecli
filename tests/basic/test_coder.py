@@ -1496,7 +1496,7 @@ This command will print 'Hello, World!' to the console."""
                 assert coder.mcp_tools[0][0] == "test_server"
 
     @patch("aider.coders.base_coder.experimental_mcp_client")
-    async def test_coder_creation_with_partial_failed_mcp_server(self, mock_mcp_client, GPT35):
+    async def test_coder_creation_with_partial_failed_mcp_server(self, mock_mcp_client):
         """Test that a coder can still be created even if an MCP server fails to initialize."""
         with GitTemporaryDirectory():
             io = InputOutput(yes=True)
@@ -1524,7 +1524,7 @@ This command will print 'Hello, World!' to the console."""
 
             # Create coder with both servers
             coder = await Coder.create(
-                GPT35,
+                self.GPT35,
                 "diff",
                 io=io,
                 mcp_servers=[working_server, failing_server],
@@ -1546,7 +1546,7 @@ This command will print 'Hello, World!' to the console."""
 
             # Verify that the warning was logged for the failing server
             io.tool_warning.assert_called_with(
-                "Error initializing MCP server failing_server:\nFailed to load tools"
+                "Error initializing MCP server failing_server: Failed to load tools"
             )
 
     @patch("aider.coders.base_coder.experimental_mcp_client")
@@ -1589,7 +1589,7 @@ This command will print 'Hello, World!' to the console."""
 
             # Verify that the warning was logged for the failing server
             io.tool_warning.assert_called_with(
-                "Error initializing MCP server failing_server:\nFailed to load tools"
+                "Error initializing MCP server failing_server: Failed to load tools"
             )
 
     async def test_process_tool_calls_none_response(self):
