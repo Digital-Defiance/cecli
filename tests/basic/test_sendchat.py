@@ -1,4 +1,4 @@
-import unittest
+import pytest
 from unittest.mock import MagicMock, patch
 
 from aider.exceptions import LiteLLMExceptions
@@ -10,8 +10,9 @@ class PrintCalled(Exception):
     pass
 
 
-class TestSendChat(unittest.TestCase):
-    def setUp(self):
+class TestSendChat:
+    @pytest.fixture(autouse=True)
+    def setup(self):
         self.mock_messages = [{"role": "user", "content": "Hello"}]
         self.mock_model = "gpt-4"
 

@@ -1,4 +1,4 @@
-import unittest
+import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -7,15 +7,16 @@ from aider.models import Model
 from aider.utils import GitTemporaryDirectory
 
 
-class TestScriptingAPI(unittest.TestCase):
-    @patch("aider.coders.base_coder.Coder.send", new_callable=AsyncMock)
+class TestScriptingAPI:
+    @patch("aider.coders.base_coder.Coder.send")
     async def test_basic_scripting(self, mock_send):
         with GitTemporaryDirectory():
-            # Setup
-            def mock_send_side_effect(messages, functions=None):
+            # Setup - create an async generator mock
+            async def mock_send_side_effect(messages, functions=None, tools=None):
+                # Simulate the async generator behavior
                 coder.partial_response_content = "Changes applied successfully."
                 coder.partial_response_function_call = None
-                return "Changes applied successfully."
+                yield "Changes applied successfully."
 
             mock_send.side_effect = mock_send_side_effect
 
@@ -30,9 +31,9 @@ class TestScriptingAPI(unittest.TestCase):
             result2 = await coder.run("make it say goodbye")
 
             # Assertions
-            self.assertEqual(mock_send.call_count, 2)
-            self.assertEqual(result1, "Changes applied successfully.")
-            self.assertEqual(result2, "Changes applied successfully.")
+            assert mock_send.call_count == 2
+            assert result1 == "Changes applied successfully."
+            assert result2 == "Changes applied successfully."
 
 
 if __name__ == "__main__":

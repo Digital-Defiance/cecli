@@ -1,7 +1,7 @@
 import os
 import shutil
 import tempfile
-import unittest
+import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -12,15 +12,18 @@ from aider.io import InputOutput
 from aider.models import Model
 
 
-class TestWholeFileCoder(unittest.TestCase):
-    def setUp(self):
+class TestWholeFileCoder:
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        # Setup
         self.original_cwd = os.getcwd()
         self.tempdir = tempfile.mkdtemp()
         os.chdir(self.tempdir)
-
         self.GPT35 = Model("gpt-3.5-turbo")
-
-    def tearDown(self):
+        
+        yield
+        
+        # Teardown
         os.chdir(self.original_cwd)
         shutil.rmtree(self.tempdir, ignore_errors=True)
 
@@ -28,7 +31,7 @@ class TestWholeFileCoder(unittest.TestCase):
         # Initialize WholeFileCoder with the temporary directory
         io = InputOutput(yes=True)
 
-        coder = await WholeFileCoder(main_model=self.GPT35, io=io, fnames=[])
+        coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[])
         coder.partial_response_content = (
             'To print "Hello, World!" in most programming languages, you can use the following'
             ' code:\n\n```python\nprint("Hello, World!")\n```\n\nThis code will output "Hello,'
@@ -40,14 +43,14 @@ class TestWholeFileCoder(unittest.TestCase):
 
     async def test_no_files_new_file_should_ask(self):
         io = InputOutput(yes=False)  # <- yes=FALSE
-        coder = await WholeFileCoder(main_model=self.GPT35, io=io, fnames=[])
+        coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[])
         coder.partial_response_content = (
             'To print "Hello, World!" in most programming languages, you can use the following'
             ' code:\n\nfoo.js\n```python\nprint("Hello, World!")\n```\n\nThis code will output'
             ' "Hello, World!" to the console.'
         )
         await coder.apply_updates()
-        self.assertFalse(Path("foo.js").exists())
+        assert not Path("foo.js").exists()
 
     async def test_update_files(self):
         # Create a sample file in the temporary directory
@@ -57,7 +60,7 @@ class TestWholeFileCoder(unittest.TestCase):
 
         # Initialize WholeFileCoder with the temporary directory
         io = InputOutput(yes=True)
-        coder = await WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
+        coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
 
         # Set the partial response content with the updated content
         coder.partial_response_content = f"{sample_file}\n```\nUpdated content\n```"
@@ -66,12 +69,12 @@ class TestWholeFileCoder(unittest.TestCase):
         edited_files = await coder.apply_updates()
 
         # Check if the sample file was updated
-        self.assertIn("sample.txt", edited_files)
+        assert "sample.txt" in edited_files
 
         # Check if the content of the sample file was updated
         with open(sample_file, "r") as f:
             updated_content = f.read()
-        self.assertEqual(updated_content, "Updated content\n")
+        assert updated_content == "Updated content\n"
 
     async def test_update_files_live_diff(self):
         # Create a sample file in the temporary directory
@@ -81,7 +84,7 @@ class TestWholeFileCoder(unittest.TestCase):
 
         # Initialize WholeFileCoder with the temporary directory
         io = InputOutput(yes=True)
-        coder = await WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
+        coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
 
         # Set the partial response content with the updated content
         coder.partial_response_content = f"{sample_file}\n```\n0\n\1\n2\n"
@@ -89,7 +92,7 @@ class TestWholeFileCoder(unittest.TestCase):
         lines = coder.get_edits(mode="diff").splitlines()
 
         # the live diff should be concise, since we haven't changed anything yet
-        self.assertLess(len(lines), 20)
+        assert len(lines) < 20
 
     async def test_update_files_with_existing_fence(self):
         # Create a sample file in the temporary directory
@@ -105,11 +108,11 @@ Quote!
 
         # Initialize WholeFileCoder with the temporary directory
         io = InputOutput(yes=True)
-        coder = await WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
+        coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
 
         coder.choose_fence()
 
-        self.assertNotEqual(coder.fence[0], "```")
+        assert coder.fence[0] != "```"
 
         # Set the partial response content with the updated content
         coder.partial_response_content = (
@@ -120,12 +123,12 @@ Quote!
         edited_files = await coder.apply_updates()
 
         # Check if the sample file was updated
-        self.assertIn("sample.txt", edited_files)
+        assert "sample.txt" in edited_files
 
         # Check if the content of the sample file was updated
         with open(sample_file, "r") as f:
             updated_content = f.read()
-        self.assertEqual(updated_content, "Updated content\n")
+        assert updated_content == "Updated content\n"
 
     async def test_update_files_bogus_path_prefix(self):
         # Create a sample file in the temporary directory
@@ -135,7 +138,7 @@ Quote!
 
         # Initialize WholeFileCoder with the temporary directory
         io = InputOutput(yes=True)
-        coder = await WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
+        coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
 
         # Set the partial response content with the updated content
         # With path/to/ prepended onto the filename
@@ -145,12 +148,12 @@ Quote!
         edited_files = await coder.apply_updates()
 
         # Check if the sample file was updated
-        self.assertIn("sample.txt", edited_files)
+        assert "sample.txt" in edited_files
 
         # Check if the content of the sample file was updated
         with open(sample_file, "r") as f:
             updated_content = f.read()
-        self.assertEqual(updated_content, "Updated content\n")
+        assert updated_content == "Updated content\n"
 
     async def test_update_files_not_in_chat(self):
         # Create a sample file in the temporary directory
@@ -160,7 +163,7 @@ Quote!
 
         # Initialize WholeFileCoder with the temporary directory
         io = InputOutput(yes=True)
-        coder = await WholeFileCoder(main_model=self.GPT35, io=io)
+        coder = WholeFileCoder(main_model=self.GPT35, io=io)
 
         # Set the partial response content with the updated content
         coder.partial_response_content = f"{sample_file}\n```\nUpdated content\n```"
@@ -169,12 +172,12 @@ Quote!
         edited_files = await coder.apply_updates()
 
         # Check if the sample file was updated
-        self.assertIn("sample.txt", edited_files)
+        assert "sample.txt" in edited_files
 
         # Check if the content of the sample file was updated
         with open(sample_file, "r") as f:
             updated_content = f.read()
-        self.assertEqual(updated_content, "Updated content\n")
+        assert updated_content == "Updated content\n"
 
     async def test_update_files_no_filename_single_file_in_chat(self):
         sample_file = "accumulate.py"
@@ -188,7 +191,7 @@ Quote!
 
         # Initialize WholeFileCoder with the temporary directory
         io = InputOutput(yes=True)
-        coder = await WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
+        coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
 
         # Set the partial response content with the updated content
         coder.partial_response_content = (
@@ -202,12 +205,12 @@ Quote!
         edited_files = await coder.apply_updates()
 
         # Check if the sample file was updated
-        self.assertIn(sample_file, edited_files)
+        assert sample_file in edited_files
 
         # Check if the content of the sample file was updated
         with open(sample_file, "r") as f:
             updated_content = f.read()
-        self.assertEqual(updated_content, content)
+        assert updated_content == content
 
     async def test_update_files_earlier_filename(self):
         fname_a = Path("a.txt")
@@ -231,7 +234,7 @@ after b
 """
         # Initialize WholeFileCoder with the temporary directory
         io = InputOutput(yes=True)
-        coder = await WholeFileCoder(main_model=self.GPT35, io=io, fnames=[fname_a, fname_b])
+        coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[fname_a, fname_b])
 
         # Set the partial response content with the updated content
         coder.partial_response_content = response
@@ -240,11 +243,11 @@ after b
         edited_files = await coder.apply_updates()
 
         # Check if the sample file was updated
-        self.assertIn(str(fname_a), edited_files)
-        self.assertIn(str(fname_b), edited_files)
+        assert str(fname_a) in edited_files
+        assert str(fname_b) in edited_files
 
-        self.assertEqual(fname_a.read_text(), "after a\n")
-        self.assertEqual(fname_b.read_text(), "after b\n")
+        assert fname_a.read_text() == "after a\n"
+        assert fname_b.read_text() == "after b\n"
 
     async def test_update_hash_filename(self):
         fname_a = Path("a.txt")
@@ -267,7 +270,7 @@ after b
 """
         # Initialize WholeFileCoder with the temporary directory
         io = InputOutput(yes=True)
-        coder = await WholeFileCoder(main_model=self.GPT35, io=io, fnames=[fname_a, fname_b])
+        coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[fname_a, fname_b])
 
         # Set the partial response content with the updated content
         coder.partial_response_content = response
@@ -278,11 +281,11 @@ after b
         dump(edited_files)
 
         # Check if the sample file was updated
-        self.assertIn(str(fname_a), edited_files)
-        self.assertIn(str(fname_b), edited_files)
+        assert str(fname_a) in edited_files
+        assert str(fname_b) in edited_files
 
-        self.assertEqual(fname_a.read_text(), "after a\n")
-        self.assertEqual(fname_b.read_text(), "after b\n")
+        assert fname_a.read_text() == "after a\n"
+        assert fname_b.read_text() == "after b\n"
 
     async def test_update_named_file_but_extra_unnamed_code_block(self):
         sample_file = "hello.py"
@@ -293,7 +296,7 @@ after b
 
         # Initialize WholeFileCoder with the temporary directory
         io = InputOutput(yes=True)
-        coder = await WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
+        coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[sample_file])
 
         # Set the partial response content with the updated content
         coder.partial_response_content = (
@@ -309,12 +312,12 @@ after b
         edited_files = await coder.apply_updates()
 
         # Check if the sample file was updated
-        self.assertIn(sample_file, edited_files)
+        assert sample_file in edited_files
 
         # Check if the content of the sample file was updated
         with open(sample_file, "r") as f:
             updated_content = f.read()
-        self.assertEqual(updated_content, new_content)
+        assert updated_content == new_content
 
     async def test_full_edit(self):
         # Create a few temporary files
@@ -344,9 +347,11 @@ Do this:
 
 """
             coder.partial_response_function_call = dict()
-            return []
+            # Make it an async generator that yields proper chunks
+            coder.partial_response_chunks = [coder.partial_response_content]
+            yield coder.partial_response_content
 
-        coder.send = MagicMock(side_effect=mock_send)
+        coder.send = mock_send
 
         # Call the run method with a message
         await coder.run(with_message="hi")
@@ -354,7 +359,7 @@ Do this:
         content = Path(file1).read_text(encoding="utf-8")
 
         # check for one trailing newline
-        self.assertEqual(content, new_content + "\n")
+        assert content == new_content + "\n"
 
 
 if __name__ == "__main__":
