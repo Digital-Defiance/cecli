@@ -1652,7 +1652,7 @@ class Coder:
                     "Add URL to the chat?", subject=url, group=group, allow_never=True
                 ):
                     inp += "\n\n"
-                    inp += await self.commands.cmd_web(url, return_content=True)
+                    inp += await self.commands.do_run("web", url, return_content=True)
                 else:
                     self.rejected_urls.add(url)
 
