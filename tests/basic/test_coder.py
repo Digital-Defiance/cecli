@@ -1150,7 +1150,7 @@ This command will print 'Hello, World!' to the console."""
             coder.io.tool_error = MagicMock()
 
             # Call the method
-            coder.show_exhausted_error()
+            await coder.show_exhausted_error()
 
             # Check if tool_error was called with the expected message
             coder.io.tool_error.assert_called()
