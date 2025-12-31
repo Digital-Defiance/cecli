@@ -1062,10 +1062,10 @@ This command will print 'Hello, World!' to the console."""
         with pytest.raises(UnknownEditFormat) as cm:
             await Coder.create(self.GPT35, invalid_format, io=io)
 
-        exc = cm.exception
+        exc = cm.value
         assert exc.edit_format == invalid_format
         assert isinstance(exc.valid_formats, list)
-        assert len(exc.valid_formats > 0)
+        assert len(exc.valid_formats) > 0
 
     async def test_system_prompt_prefix(self):
         # Test that system_prompt_prefix is properly set and used
