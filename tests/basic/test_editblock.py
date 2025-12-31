@@ -350,7 +350,8 @@ creating a new file
 
 """
                 coder.partial_response_function_call = dict()
-                return []
+                return
+                yield  # Makes it an async generator
 
             coder.send = mock_send
 
@@ -387,7 +388,9 @@ new
 
 """
             coder.partial_response_function_call = dict()
-            return []
+            # Make this an async generator by using return (stops iteration immediately)
+            return
+            yield  # This line makes it an async generator, but is never reached
 
         coder.send = mock_send
 
@@ -430,7 +433,9 @@ new
 
 """
             coder.partial_response_function_call = dict()
-            return []
+            # Make this an async generator by using return (stops iteration immediately)
+            return
+            yield  # This line makes it an async generator, but is never reached
 
         coder.send = mock_send
 
