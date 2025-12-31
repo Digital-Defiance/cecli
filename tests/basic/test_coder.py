@@ -451,10 +451,12 @@ Once I have these, I can show you precisely how to do the thing.
 
         coder = await Coder.create(self.GPT35, None, io=InputOutput(), fnames=files)
 
-        def mock_send(*args, **kwargs):
+        async def mock_send(*args, **kwargs):
             coder.partial_response_content = "ok"
             coder.partial_response_function_call = dict()
-            return []
+            coder.partial_response_chunks = []
+            return
+            yield
 
         coder.send = mock_send
 
@@ -475,12 +477,14 @@ Once I have these, I can show you precisely how to do the thing.
 
         files = [file1, file2]
 
-        coder = Coder.create(self.GPT35, None, io=InputOutput(), fnames=files)
+        coder = await Coder.create(self.GPT35, None, io=InputOutput(), fnames=files)
 
-        def mock_send(*args, **kwargs):
+        async def mock_send(*args, **kwargs):
             coder.partial_response_content = "ok"
             coder.partial_response_function_call = dict()
-            return []
+            coder.partial_response_chunks = []
+            return
+            yield
 
         coder.send = mock_send
 
@@ -507,10 +511,12 @@ Once I have these, I can show you precisely how to do the thing.
 
         coder = await Coder.create(self.GPT35, None, io=InputOutput(), fnames=files)
 
-        def mock_send(*args, **kwargs):
+        async def mock_send(*args, **kwargs):
             coder.partial_response_content = "ok"
             coder.partial_response_function_call = dict()
-            return []
+            coder.partial_response_chunks = []
+            return
+            yield
 
         coder.send = mock_send
 
@@ -534,10 +540,12 @@ Once I have these, I can show you precisely how to do the thing.
             fnames=files,
         )
 
-        def mock_send(*args, **kwargs):
+        async def mock_send(*args, **kwargs):
             coder.partial_response_content = "ok"
             coder.partial_response_function_call = dict()
-            return []
+            coder.partial_response_chunks = []
+            return
+            yield
 
         coder.send = mock_send
 
