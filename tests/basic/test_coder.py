@@ -1623,7 +1623,7 @@ This command will print 'Hello, World!' to the console."""
         """Test that process_tool_calls processes tool calls correctly."""
         with GitTemporaryDirectory():
             io = InputOutput(yes=True)
-            io.confirm_ask = MagicMock(return_value=True)
+            io.confirm_ask = AsyncMock(return_value=True)
 
             # Create mock MCP server
             mock_server = MagicMock()
