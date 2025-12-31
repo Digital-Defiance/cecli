@@ -1637,7 +1637,7 @@ class Coder:
 
     async def check_for_urls(self, inp: str) -> List[str]:
         """Check input for URLs and offer to add them to the chat."""
-        if not self.detect_urls:
+        if not self.detect_urls or self.args.disable_scraping:
             return inp
 
         # Exclude double quotes from the matched URL characters
@@ -1649,7 +1649,11 @@ class Coder:
             if url not in self.rejected_urls:
                 url = url.rstrip(".',\"")
                 if await self.io.confirm_ask(
-                    "Add URL to the chat?", subject=url, group=group, allow_never=True
+                    "Add URL to the chat?",
+                    subject=url,
+                    group=group,
+                    allow_never=True,
+                    explicit_yes_required=self.args.yes_always_commands,
                 ):
                     inp += "\n\n"
                     inp += await self.commands.do_run("web", url, return_content=True)

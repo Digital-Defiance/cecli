@@ -857,6 +857,12 @@ def get_parser(default_config_files, git_root):
         default=False,
     )
     group.add_argument(
+        "--disable-scraping",
+        action="store_true",
+        help="Disable automatic url scraping entirely web scraping (default: False).",
+        default=False,
+    )
+    group.add_argument(
         "--file",
         action="append",
         metavar="FILE",
