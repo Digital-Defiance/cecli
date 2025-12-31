@@ -523,6 +523,10 @@ file_excludelist = {
     "auto_save_session": True,
     "input_task": True,
     "output_task": True,
+    "check_output_queue": True,
+    "_animate_spinner": True,
+    "handle_output_message": True,
+    "update_spinner": True,
 }
 
 
