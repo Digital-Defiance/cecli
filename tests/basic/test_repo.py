@@ -216,8 +216,8 @@ class TestRepo:
 
             # check the committer name (defaults interpreted as True)
             commit = raw_repo.head.commit
-            assert commit.author.name == "Test User (aider)"
-            assert commit.committer.name == "Test User (aider)"
+            assert commit.author.name == "Test User (aider-ce)"
+            assert commit.committer.name == "Test User (aider-ce)"
 
             # commit a change without aider_edits (using default attributes)
             fname.write_text("new content again!")
@@ -227,7 +227,7 @@ class TestRepo:
             # check the committer name (author not modified, committer still modified by default)
             commit = raw_repo.head.commit
             assert commit.author.name == "Test User"
-            assert commit.committer.name == "Test User (aider)"
+            assert commit.committer.name == "Test User (aider-ce)"
 
             # Now test with explicit False
             git_repo_explicit_false = GitRepo(
@@ -295,7 +295,7 @@ class TestRepo:
 
             # check the commit message and author/committer
             commit = raw_repo.head.commit
-            assert "Co-authored-by: aider (gpt-test) <aider@aider.chat>" in commit.message
+            assert "Co-authored-by: aider-ce (gpt-test)" in commit.message
             assert commit.message.splitlines()[0] == "Aider edit"
             # With default (None), co-authored-by takes precedence
             assert commit.author.name == "Test User", "Author name should not be modified when co-authored-by takes precedence"
@@ -340,12 +340,12 @@ class TestRepo:
 
             # check the commit message and author/committer
             commit = raw_repo.head.commit
-            assert "Co-authored-by: aider (gpt-test-combo) <aider@aider.chat>" in commit.message
+            assert "Co-authored-by: aider-ce (gpt-test-combo)" in commit.message
             assert commit.message.splitlines()[0] == "Aider combo edit"
             # When co-authored-by is true BUT author/committer are explicit True,
             # modification SHOULD happen
-            assert commit.author.name == "Test User (aider)", "Author name should be modified when explicitly True, even with co-author"
-            assert commit.committer.name == "Test User (aider)", "Committer name should be modified when explicitly True, even with co-author"
+            assert commit.author.name == "Test User (aider-ce)", "Author name should be modified when explicitly True, even with co-author"
+            assert commit.committer.name == "Test User (aider-ce)", "Committer name should be modified when explicitly True, even with co-author"
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Git env var behavior differs on Windows")
     async def test_commit_ai_edits_no_coauthor_explicit_false(self):
@@ -385,7 +385,7 @@ class TestRepo:
             commit = raw_repo.head.commit
             assert "Co-authored-by:" not in commit.message
             assert commit.author.name == "Test User"  # Explicit False
-            assert commit.committer.name == "Test User (aider)"  # Default True
+            assert commit.committer.name == "Test User (aider-ce)"  # Default True
 
             # Case 2: attribute_author = None (default True), attribute_committer = False
             mock_coder_no_committer = MagicMock()
@@ -408,7 +408,7 @@ class TestRepo:
             assert commit_result is not None
             commit = raw_repo.head.commit
             assert "Co-authored-by:" not in commit.message
-            assert commit.author.name == "Test User (aider)", "Author name should be modified (default True) when co-author=False"
+            assert commit.author.name == "Test User (aider-ce)", "Author name should be modified (default True) when co-author=False"
             assert commit.committer.name == "Test User", "Committer name should not be modified (explicit False when co-author=False"
 
     def test_get_tracked_files(self):
