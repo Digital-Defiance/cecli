@@ -2,7 +2,7 @@ import argparse
 import base64
 import hashlib
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import requests
@@ -172,16 +172,16 @@ class TestOnboarding:
     def test_find_available_port_none_available(self, mock_tcp_server):
         """Test returning None if no ports are available in the range."""
         port = find_available_port(start_port=8484, end_port=8485)
-        assert port is not None
+        assert port is None
         assert mock_tcp_server.call_count == 2  # Tried 8484 and 8485
 
     def test_generate_pkce_codes(self):
         """Test PKCE code generation."""
         verifier, challenge = generate_pkce_codes()
-        self.assertIsInstance(verifier, str)
-        self.assertIsInstance(challenge, str)
-        self.assertGreater(len(verifier), 40)  # Check reasonable length
-        self.assertGreater(len(challenge), 40)
+        assert isinstance(verifier, str)
+        assert isinstance(challenge, str)
+        assert len(verifier) > 40  # Check reasonable length
+        assert len(challenge) > 40
         # Verify the challenge is the SHA256 hash of the verifier, base64 encoded
         hasher = hashlib.sha256()
         hasher.update(verifier.encode("utf-8"))
@@ -318,11 +318,11 @@ class TestOnboarding:
         args = argparse.Namespace(model=None)
         io_mock = DummyIO()
         io_mock.tool_warning = MagicMock()
-        io_mock.offer_url = MagicMock()
+        io_mock.offer_url = AsyncMock()
 
         selected_model = await select_default_model(args, io_mock)
 
-        assert selected_model is not None
+        assert selected_model is None
         assert mock_try_select.call_count == 2  # Called before and after oauth attempt
         mock_offer_oauth.assert_called_once_with(io_mock)
         io_mock.tool_warning.assert_called_once_with(
@@ -366,7 +366,7 @@ class TestOnboarding:
     async def test_offer_openrouter_oauth_confirm_yes_success(self, mock_start_oauth):
         """Test offer_openrouter_oauth when user confirms and OAuth succeeds."""
         io_mock = DummyIO()
-        io_mock.confirm_ask = MagicMock(return_value=True)  # User says yes
+        io_mock.confirm_ask = AsyncMock(return_value=True)  # User says yes
 
         result = await offer_openrouter_oauth(io_mock)
 
@@ -382,7 +382,7 @@ class TestOnboarding:
     async def test_offer_openrouter_oauth_confirm_yes_fail(self, mock_start_oauth):
         """Test offer_openrouter_oauth when user confirms but OAuth fails."""
         io_mock = DummyIO()
-        io_mock.confirm_ask = MagicMock(return_value=True)  # User says yes
+        io_mock.confirm_ask = AsyncMock(return_value=True)  # User says yes
         io_mock.tool_error = MagicMock()
 
         result = await offer_openrouter_oauth(io_mock)
@@ -390,7 +390,7 @@ class TestOnboarding:
         assert not result
         io_mock.confirm_ask.assert_called_once()
         mock_start_oauth.assert_called_once_with(io_mock)
-        self.assertNotIn("OPENROUTER_API_KEY", os.environ)
+        assert "OPENROUTER_API_KEY" not in os.environ
         io_mock.tool_error.assert_called_once_with(
             "OpenRouter authentication did not complete successfully."
         )
@@ -399,7 +399,7 @@ class TestOnboarding:
     async def test_offer_openrouter_oauth_confirm_no(self, mock_start_oauth):
         """Test offer_openrouter_oauth when user declines."""
         io_mock = DummyIO()
-        io_mock.confirm_ask = MagicMock(return_value=False)  # User says no
+        io_mock.confirm_ask = AsyncMock(return_value=False)  # User says no
 
         result = await offer_openrouter_oauth(io_mock)
 
@@ -409,7 +409,3 @@ class TestOnboarding:
 
     # --- More complex test for start_openrouter_oauth_flow (simplified) ---
     # This test focuses on the successful path, mocking heavily
-
-
-if __name__ == "__main__":
-    unittest.main()
