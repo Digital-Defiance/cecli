@@ -337,7 +337,7 @@ after b
         new_content = "new\ntwo\nthree"
 
         async def mock_send(*args, **kwargs):
-            coder.partial_response_content = f"""
+            content = f"""
 Do this:
 
 {Path(file1).name}
@@ -346,10 +346,17 @@ Do this:
 ```
 
 """
+            coder.partial_response_content = content
             coder.partial_response_function_call = dict()
-            # Make it an async generator that yields proper chunks
-            coder.partial_response_chunks = [coder.partial_response_content]
-            yield coder.partial_response_content
+
+            # Create a mock response object that looks like a LiteLLM response
+            mock_response = MagicMock()
+            mock_response.__getitem__ = lambda self, key: [{"message": {"content": content, "role": "assistant"}}] if key == "choices" else {}
+
+            coder.partial_response_chunks = [mock_response]
+            # Make it an async generator
+            return
+            yield
 
         coder.send = mock_send
 
@@ -360,7 +367,3 @@ Do this:
 
         # check for one trailing newline
         assert content == new_content + "\n"
-
-
-if __name__ == "__main__":
-    unittest.main()
