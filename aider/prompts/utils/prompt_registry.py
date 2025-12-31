@@ -2,13 +2,16 @@
 Central registry for managing all prompts in YAML format.
 
 This module implements a YAML-based prompt inheritance system where:
-1. base.yml contains default prompts
-2. Specific YAML files can override/extend base.yml
-3. No Python prompt classes needed
+1. base.yml contains default prompts with `_inherits: []`
+2. Specific YAML files can override/extend using `_inherits` key
+3. Inheritance chains are resolved recursively (e.g., editor_diff_fenced → editblock_fenced → editblock → base)
+4. Prompts are merged in inheritance order (base → intermediate → specific)
+5. The `_inherits` key is removed from final merged results
+6. Circular dependencies are detected and prevented
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import yaml
 
@@ -59,6 +62,54 @@ class PromptRegistry:
 
         return result
 
+    def _resolve_inheritance_chain(
+        self, prompt_name: str, visited: Optional[set] = None
+    ) -> List[str]:
+        """
+        Resolve the full inheritance chain for a prompt type.
+
+        Args:
+            prompt_name: Name of the prompt type
+            visited: Set of already visited prompts to detect circular dependencies
+
+        Returns:
+            List of prompt names in inheritance order (from base to most specific)
+        """
+        if visited is None:
+            visited = set()
+
+        if prompt_name in visited:
+            raise ValueError(f"Circular dependency detected in prompt inheritance: {prompt_name}")
+
+        visited.add(prompt_name)
+
+        # Special case for base.yml
+        if prompt_name == "base":
+            return ["base"]
+
+        # Load the prompt file to get its inheritance chain
+        prompt_path = self._prompts_dir / f"{prompt_name}.yml"
+        if not prompt_path.exists():
+            raise FileNotFoundError(f"Prompt file not found: {prompt_path}")
+
+        prompt_data = self._load_yaml_file(prompt_path)
+        inherits = prompt_data.get("_inherits", [])
+
+        # Resolve inheritance chain recursively
+        inheritance_chain = []
+        for parent in inherits:
+            parent_chain = self._resolve_inheritance_chain(parent, visited.copy())
+            # Add parent chain, avoiding duplicates while preserving order
+            for item in parent_chain:
+                if item not in inheritance_chain:
+                    inheritance_chain.append(item)
+
+        # Add current prompt to the end of the chain
+        if prompt_name not in inheritance_chain:
+            inheritance_chain.append(prompt_name)
+
+        return inheritance_chain
+
     def get_prompt(self, prompt_name: str) -> Dict[str, Any]:
         """
         Get prompts for a specific prompt type.
@@ -73,15 +124,25 @@ class PromptRegistry:
         if prompt_name in self._prompts_cache:
             return self._prompts_cache[prompt_name]
 
-        # Load base prompts
-        base_prompts = self._get_base_prompts()
+        # Resolve inheritance chain
+        inheritance_chain = self._resolve_inheritance_chain(prompt_name)
 
-        # Load specific prompt file if it exists
-        prompt_path = self._prompts_dir / f"{prompt_name}.yml"
-        specific_prompts = self._load_yaml_file(prompt_path)
+        # Start with empty dict and merge in inheritance order
+        merged_prompts: Dict[str, Any] = {}
 
-        # Merge base with specific overrides
-        merged_prompts = self._merge_prompts(base_prompts, specific_prompts)
+        for current_name in inheritance_chain:
+            # Load prompts for this level
+            if current_name == "base":
+                current_prompts = self._get_base_prompts()
+            else:
+                prompt_path = self._prompts_dir / f"{current_name}.yml"
+                current_prompts = self._load_yaml_file(prompt_path)
+
+            # Merge current prompts into accumulated result
+            merged_prompts = self._merge_prompts(merged_prompts, current_prompts)
+
+        # Remove _inherits key from final result (it's metadata, not a prompt)
+        merged_prompts.pop("_inherits", None)
 
         # Cache the result
         self._prompts_cache[prompt_name] = merged_prompts

@@ -1,5 +1,6 @@
 # Wholefile_Func prompts - inherits from base.yaml
 # Overrides specific prompts
+_inherits: [base]
 
 files_content_prefix: |
   Here is the current content of the files:
