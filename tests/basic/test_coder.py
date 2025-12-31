@@ -1167,6 +1167,8 @@ This command will print 'Hello, World!' to the console."""
             async def mock_send(*args, **kwargs):
                 coder.partial_response_content = "Partial response"
                 coder.partial_response_function_call = dict()
+                coder.partial_response_chunks = []
+                yield  # Make it an async generator
                 raise KeyboardInterrupt()
 
             coder.send = mock_send
@@ -1175,7 +1177,8 @@ This command will print 'Hello, World!' to the console."""
             sanity_check_messages(coder.cur_messages)
 
             # Process message that will trigger interrupt
-            list(await coder.send_message("Test message"))
+            async for _ in coder.send_message("Test message"):
+                pass
 
             # Verify messages are still in valid state
             sanity_check_messages(coder.cur_messages)
@@ -1190,6 +1193,8 @@ This command will print 'Hello, World!' to the console."""
             async def mock_send(*args, **kwargs):
                 coder.partial_response_content = "Partial response"
                 coder.partial_response_function_call = dict()
+                coder.partial_response_chunks = []
+                yield  # Make it an async generator
                 raise FinishReasonLength()
 
             coder.send = mock_send
@@ -1198,7 +1203,8 @@ This command will print 'Hello, World!' to the console."""
             sanity_check_messages(coder.cur_messages)
 
             # Process message that hits token limit
-            list(await coder.send_message("Long message"))
+            async for _ in coder.send_message("Long message"):
+                pass
 
             # Verify messages are still in valid state
             sanity_check_messages(coder.cur_messages)
@@ -1213,11 +1219,14 @@ This command will print 'Hello, World!' to the console."""
             async def mock_send(*args, **kwargs):
                 coder.partial_response_content = "Partial response"
                 coder.partial_response_function_call = dict()
+                coder.partial_response_chunks = []
+                yield  # Make it an async generator
                 raise KeyboardInterrupt()
 
             coder.send = mock_send
 
-            list(await coder.send_message("Test"))
+            async for _ in coder.send_message("Test"):
+                pass
 
             # Verify message structure remains valid
             sanity_check_messages(coder.cur_messages)
