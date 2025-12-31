@@ -591,12 +591,12 @@ new
 
 """
                 coder.partial_response_function_call = dict()
+                coder.partial_response_chunks = []
                 return
                 yield
 
             coder.send = mock_send
-            coder.repo.get_commit_message = MagicMock()
-            coder.repo.get_commit_message.return_value = "commit message"
+            coder.repo.get_commit_message = AsyncMock(return_value="commit message")
 
             await coder.run(with_message="hi")
 
@@ -685,7 +685,7 @@ TWO
             io = InputOutput(yes=True)
             coder = await Coder.create(self.GPT35, "diff", io=io, fnames=[str(fname)])
 
-            def mock_send(*args, **kwargs):
+            async def mock_send(*args, **kwargs):
                 coder.partial_response_content = f"""
 Do this:
 
@@ -698,15 +698,17 @@ three
 
 """
                 coder.partial_response_function_call = dict()
-                return []
+                coder.partial_response_chunks = []
+                return
+                yield
 
             saved_diffs = []
 
-            def mock_get_commit_message(diffs, context, user_language=None):
+            async def mock_get_commit_message(diffs, context, user_language=None):
                 saved_diffs.append(diffs)
                 return "commit message"
 
-            coder.repo.get_commit_message = MagicMock(side_effect=mock_get_commit_message)
+            coder.repo.get_commit_message = mock_get_commit_message
             coder.send = mock_send
 
             await coder.run(with_message="hi")
