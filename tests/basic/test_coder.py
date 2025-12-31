@@ -581,7 +581,8 @@ new
 
 """
                 coder.partial_response_function_call = dict()
-                return []
+                return
+                yield
 
             coder.send = mock_send
             coder.repo.get_commit_message = MagicMock()
@@ -633,7 +634,8 @@ TWO
 
 """
                 coder.partial_response_function_call = dict()
-                return []
+                return
+                yield
 
             def mock_get_commit_message(diffs, context, user_language=None):
                 assert "one" not in diffs
@@ -979,7 +981,8 @@ echo "Hello, World!"
 
 This command will print 'Hello, World!' to the console."""
                 coder.partial_response_function_call = dict()
-                return []
+                return
+                yield
 
             coder.send = mock_send
 
