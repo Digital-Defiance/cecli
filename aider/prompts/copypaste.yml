@@ -2,3 +2,4 @@
 # Overrides specific prompts for copypaste format
 # Copypaste mode doesn't have its own prompts - it mirrors prompts from other coders
 # This file exists for completeness in the prompt registry
+_inherits: [base]

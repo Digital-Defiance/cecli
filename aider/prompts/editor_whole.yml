@@ -1,5 +1,6 @@
 # Editor_Whole prompts - inherits from base.yaml
 # Overrides specific prompts
+_inherits: [wholefile, base]
 
 main_system: |
   Act as an expert software developer tasked with editing source code based on instructions from an architect.
