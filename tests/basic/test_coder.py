@@ -995,13 +995,14 @@ echo "Hello, World!"
 
 This command will print 'Hello, World!' to the console."""
                 coder.partial_response_function_call = dict()
+                coder.partial_response_chunks = []
                 return
                 yield
 
             coder.send = mock_send
 
             # Mock the handle_shell_commands method to check if it's called
-            coder.handle_shell_commands = MagicMock()
+            coder.handle_shell_commands = AsyncMock()
 
             # Run the coder with a message
             await coder.run(with_message="Suggest a shell command")
