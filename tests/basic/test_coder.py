@@ -1214,7 +1214,7 @@ This command will print 'Hello, World!' to the console."""
         coder = await Coder.create(self.GPT35, None, io=InputOutput())
 
         # Test None and empty
-        assert coder.normalize_language(None is None)
+        assert coder.normalize_language(None) is None
         assert coder.normalize_language("") is None
 
         # Test "C" and "POSIX"
