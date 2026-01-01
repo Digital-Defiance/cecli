@@ -328,12 +328,6 @@ class MyClass:
             del repo_map
 
 
-class TestRepoMapTypescript:
-    @pytest.fixture(autouse=True)
-    def setup(self, gpt35_model):
-        self.GPT35 = gpt35_model
-
-
 class TestRepoMapAllLanguages:
     @pytest.fixture(autouse=True)
     def setup(self, gpt35_model):
