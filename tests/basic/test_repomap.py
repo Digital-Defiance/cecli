@@ -16,8 +16,8 @@ from aider.utils import GitTemporaryDirectory, IgnorantTemporaryDirectory
 
 class TestRepoMap:
     @pytest.fixture(autouse=True)
-    def setup(self):
-        self.GPT35 = Model("gpt-3.5-turbo")
+    def setup(self, gpt35_model):
+        self.GPT35 = gpt35_model
 
     def test_get_repo_map(self):
         # Create a temporary directory with sample files for testing
@@ -330,14 +330,14 @@ class MyClass:
 
 class TestRepoMapTypescript:
     @pytest.fixture(autouse=True)
-    def setup(self):
-        self.GPT35 = Model("gpt-3.5-turbo")
+    def setup(self, gpt35_model):
+        self.GPT35 = gpt35_model
 
 
 class TestRepoMapAllLanguages:
     @pytest.fixture(autouse=True)
-    def setup(self):
-        self.GPT35 = Model("gpt-3.5-turbo")
+    def setup(self, gpt35_model):
+        self.GPT35 = gpt35_model
         self.fixtures_dir = Path(__file__).parent.parent / "fixtures" / "languages"
 
     def test_language_c(self):

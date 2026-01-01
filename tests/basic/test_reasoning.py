@@ -157,7 +157,7 @@ class TestReasoning:
         coder.remove_reasoning_content()
         assert coder.partial_response_content.strip() == "Final synthetic summary of the repository."
 
-    async def test_send_with_reasoning_content_stream(self):
+    async def test_send_with_reasoning_content_stream(self, mock_delta_class, mock_streaming_chunk_class):
         """Test that streaming reasoning content is properly formatted and output."""
         # Setup IO with pretty output for streaming
         io = InputOutput(pretty=True)
@@ -176,24 +176,9 @@ class TestReasoning:
         # Ensure the coder shows pretty output
         coder.show_pretty = MagicMock(return_value=True)
 
-        # Mock streaming response chunks
-        class MockDelta:
-            def __init__(self, content=None, reasoning_content=None, reasoning=None):
-                if content is not None:
-                    self.content = content
-                if reasoning_content is not None:
-                    self.reasoning_content = reasoning_content
-                if reasoning is not None:
-                    self.reasoning = reasoning
-
-        class MockStreamingChunk:
-            def __init__(
-                self, content=None, reasoning_content=None, reasoning=None, finish_reason=None
-            ):
-                self.choices = [MagicMock()]
-                self.choices[0].delta = MockDelta(content, reasoning_content, reasoning)
-                self.choices[0].finish_reason = finish_reason
-                self._hidden_params = {}
+        # Use shared mock fixtures from conftest.py
+        MockDelta = mock_delta_class
+        MockStreamingChunk = mock_streaming_chunk_class
 
         # Create chunks to simulate streaming
         chunks = [
@@ -329,7 +314,7 @@ class TestReasoning:
             coder.remove_reasoning_content()
             assert coder.partial_response_content.strip() == main_content.strip()
 
-    async def test_send_with_think_tags_stream(self):
+    async def test_send_with_think_tags_stream(self, mock_delta_class, mock_streaming_chunk_class):
         """Test that streaming with <think> tags is properly processed and formatted."""
         # Setup IO with pretty output for streaming
         io = InputOutput(pretty=True)
@@ -339,34 +324,19 @@ class TestReasoning:
         # Setup model and coder
         model = Model("gpt-3.5-turbo")
         model.reasoning_tag = "think"  # Set to remove <think> tags
-        
+
         # Create mock args with debug=False to avoid AttributeError
         mock_args = MagicMock()
         mock_args.debug = False
-        
+
         coder = await Coder.create(model, None, io=io, stream=True, args=mock_args)
 
         # Ensure the coder shows pretty output
         coder.show_pretty = MagicMock(return_value=True)
 
-        # Mock streaming response chunks
-        class MockDelta:
-            def __init__(self, content=None, reasoning_content=None, reasoning=None):
-                if content is not None:
-                    self.content = content
-                if reasoning_content is not None:
-                    self.reasoning_content = reasoning_content
-                if reasoning is not None:
-                    self.reasoning = reasoning
-
-        class MockStreamingChunk:
-            def __init__(
-                self, content=None, reasoning_content=None, reasoning=None, finish_reason=None
-            ):
-                self.choices = [MagicMock()]
-                self.choices[0].delta = MockDelta(content, reasoning_content, reasoning)
-                self.choices[0].finish_reason = finish_reason
-                self._hidden_params = {}
+        # Use shared mock fixtures from conftest.py
+        MockDelta = mock_delta_class
+        MockStreamingChunk = mock_streaming_chunk_class
 
         # Create chunks to simulate streaming with think tags
         chunks = [
@@ -532,7 +502,7 @@ End"""
             main_pos = output.find(main_content)
             assert reasoning_pos < main_pos, "Reasoning content should appear before main content"
 
-    async def test_send_with_reasoning_stream(self):
+    async def test_send_with_reasoning_stream(self, mock_delta_class, mock_streaming_chunk_class):
         """Test that streaming reasoning content from the 'reasoning' attribute is properly
         formatted and output."""
         # Setup IO with pretty output for streaming
@@ -542,34 +512,19 @@ End"""
 
         # Setup model and coder
         model = Model("gpt-3.5-turbo")
-        
+
         # Create mock args with debug=False to avoid AttributeError
         mock_args = MagicMock()
         mock_args.debug = False
-        
+
         coder = await Coder.create(model, None, io=io, stream=True, args=mock_args)
 
         # Ensure the coder shows pretty output
         coder.show_pretty = MagicMock(return_value=True)
 
-        # Mock streaming response chunks
-        class MockDelta:
-            def __init__(self, content=None, reasoning_content=None, reasoning=None):
-                if content is not None:
-                    self.content = content
-                if reasoning_content is not None:
-                    self.reasoning_content = reasoning_content
-                if reasoning is not None:
-                    self.reasoning = reasoning
-
-        class MockStreamingChunk:
-            def __init__(
-                self, content=None, reasoning_content=None, reasoning=None, finish_reason=None
-            ):
-                self.choices = [MagicMock()]
-                self.choices[0].delta = MockDelta(content, reasoning_content, reasoning)
-                self.choices[0].finish_reason = finish_reason
-                self._hidden_params = {}
+        # Use shared mock fixtures from conftest.py
+        MockDelta = mock_delta_class
+        MockStreamingChunk = mock_streaming_chunk_class
 
         # Create chunks to simulate streaming - using reasoning attribute instead of
         # reasoning_content

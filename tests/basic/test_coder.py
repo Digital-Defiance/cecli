@@ -20,8 +20,8 @@ from aider.utils import GitTemporaryDirectory
 
 class TestCoder:
     @pytest.fixture(autouse=True)
-    def setup(self):
-        self.GPT35 = Model("gpt-3.5-turbo")
+    def setup(self, gpt35_model):
+        self.GPT35 = gpt35_model
         self.webbrowser_patcher = patch("aider.io.webbrowser.open")
         self.mock_webbrowser = self.webbrowser_patcher.start()
 
