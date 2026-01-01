@@ -134,7 +134,9 @@ class TokenProfiler:
 
         return time.time() - self._start_time
 
-    def add_to_usage_report(self, usage_report: Optional[str], input_tokens: int = 0, output_tokens: int = 0) -> str:
+    def add_to_usage_report(
+        self, usage_report: Optional[str], input_tokens: int = 0, output_tokens: int = 0
+    ) -> str:
         """
         Add speed report to usage_report and return the combined string.
 
@@ -158,5 +160,3 @@ class TokenProfiler:
             return usage_report + speed_report
 
         return usage_report
-
-
