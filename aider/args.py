@@ -487,6 +487,12 @@ def get_parser(default_config_files, git_root):
         help="Set the color for assistant output (default: #0088ff)",
     )
     group.add_argument(
+        "--show-speed",
+        action="store_true",
+        help="Show token processing and generation speed in usage report (default: False)",
+        default=False,
+    )
+    group.add_argument(
         "--completion-menu-color",
         metavar="COLOR",
         default=None,
