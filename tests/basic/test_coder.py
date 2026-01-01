@@ -1396,6 +1396,7 @@ This command will print 'Hello, World!' to the console."""
                 coder = ArchitectCoder()
                 coder.io = io
                 coder.main_model = self.GPT35
+                coder.args = MagicMock(tweak_responses=False)
                 coder.auto_accept_architect = True
                 coder.verbose = False
                 coder.total_cost = 0
@@ -1435,6 +1436,7 @@ This command will print 'Hello, World!' to the console."""
                 coder = ArchitectCoder()
                 coder.io = io
                 coder.main_model = self.GPT35
+                coder.args = MagicMock(tweak_responses=False)
                 coder.auto_accept_architect = False
                 coder.verbose = False
                 coder.total_cost = 0
@@ -1474,6 +1476,7 @@ This command will print 'Hello, World!' to the console."""
                 coder = ArchitectCoder()
                 coder.io = io
                 coder.main_model = self.GPT35
+                coder.args = MagicMock(tweak_responses=False)
                 coder.auto_accept_architect = False
                 coder.verbose = False
                 coder.total_cost = 0
