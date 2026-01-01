@@ -14,11 +14,11 @@ from aider.models import Model
 
 class TestWholeFileCoder:
     @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
+    def setup_and_teardown(self, gpt35_model):
         self.original_cwd = os.getcwd()
         self.tempdir = tempfile.mkdtemp()
         os.chdir(self.tempdir)
-        self.GPT35 = Model("gpt-3.5-turbo")
+        self.GPT35 = gpt35_model
 
         yield
 
