@@ -142,7 +142,3 @@ class TestScrape:
 
         # Assert that html_to_markdown was called with the HTML content
         scraper.html_to_markdown.assert_called_once_with(html_content)
-
-
-if __name__ == "__main__":
-    unittest.main()
