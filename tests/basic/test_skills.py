@@ -21,7 +21,9 @@ class TestSkills:
         import shutil
 
         self.temp_dir = tempfile.mkdtemp()
+
         yield
+
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 
