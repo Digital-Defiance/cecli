@@ -2002,6 +2002,3 @@ This command will print 'Hello, World!' to the console."""
                 " (application/octet-stream)]"
             )
             assert result[0]["content"] == expected_content
-
-
-# Remove the unittest.main() since we're using pytest
