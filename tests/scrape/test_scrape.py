@@ -1,9 +1,69 @@
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from aider.commands import Commands
+from aider.io import InputOutput
 from aider.scrape import Scraper
 
 
 class TestScrape:
+    @pytest.fixture
+    def commands(self):
+        io = InputOutput(yes=True)
+
+        class DummyCoder:
+            def __init__(self):
+                self.cur_messages = []
+                self.main_model = type("M", (), {"edit_format": "code", "name": "dummy", "info": {}})()
+                self.tui = None
+                self.args = type("Args", (), {"disable_playwright": False})()
+
+            def get_rel_fname(self, fname):
+                return fname
+
+            def get_inchat_relative_files(self):
+                return []
+
+            def abs_root_path(self, fname):
+                return fname
+
+            def get_all_abs_files(self):
+                return []
+
+            def get_announcements(self):
+                return []
+
+        return Commands(io, DummyCoder())
+
+    @patch("aider.commands.web.install_playwright")
+    @patch("aider.commands.web.Scraper")
+    async def test_cmd_web_imports_playwright(self, mock_scraper_class, mock_install_playwright, commands):
+        async def mock_install(*args, **kwargs):
+            sys.modules["playwright"] = MagicMock()
+            return True
+
+        mock_install_playwright.side_effect = mock_install
+        mock_scraper_instance = mock_scraper_class.return_value
+        mock_scraper_instance.scrape = AsyncMock(return_value="Scraped content")
+
+        commands.io.tool_error = MagicMock()
+
+        try:
+            result = await commands.do_run("web", "https://example.com", return_content=True)
+
+            assert result is not None
+            assert "Scraped content" in result
+
+            playwright_imported = "playwright" in sys.modules
+            assert playwright_imported, "Playwright should be importable after running cmd_web"
+
+            commands.io.tool_error.assert_not_called()
+        finally:
+            if "playwright" in sys.modules:
+                del sys.modules["playwright"]
+
     @patch("aider.scrape.Scraper.scrape_with_httpx")
     @patch("aider.scrape.Scraper.scrape_with_playwright")
     async def test_scrape_self_signed_ssl(self, mock_scrape_playwright, mock_scrape_httpx):
