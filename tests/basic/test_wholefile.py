@@ -352,9 +352,9 @@ Do this:
             mock_response.__getitem__ = lambda self, key: [{"message": {"content": content, "role": "assistant"}}] if key == "choices" else {}
 
             coder.partial_response_chunks = [mock_response]
-            # Make it an async generator
+            # Make this an async generator by using return (stops iteration immediately)
             return
-            yield
+            yield  # This line makes it an async generator, but is never reached
 
         coder.send = mock_send
 
