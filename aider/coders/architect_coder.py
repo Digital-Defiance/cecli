@@ -16,7 +16,8 @@ class ArchitectCoder(AskCoder):
         if not content or not content.strip():
             return
 
-        tweak_responses = getattr(self.args, "tweak_responses", False)
+        args = getattr(self, "args", None)
+        tweak_responses = getattr(args, "tweak_responses", False) if args else False
         confirmation = await self.io.confirm_ask("Edit the files?", allow_tweak=tweak_responses)
 
         if not self.auto_accept_architect and not confirmation:
@@ -34,7 +35,7 @@ class ArchitectCoder(AskCoder):
 
         kwargs["main_model"] = editor_model
         kwargs["edit_format"] = self.main_model.editor_edit_format
-        kwargs["args"] = self.args
+        kwargs["args"] = args
         kwargs["suggest_shell_commands"] = False
         kwargs["map_tokens"] = 0
         kwargs["total_cost"] = self.total_cost
