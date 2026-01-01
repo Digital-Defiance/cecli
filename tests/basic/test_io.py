@@ -175,74 +175,88 @@ class TestInputOutput:
             mock_input.assert_called_once()
 
     @patch("builtins.input")
-    def test_confirm_ask_explicit_yes_required(self, mock_input):
+    def test_confirm_ask_explicit_yes_required_with_yes_true(self, mock_input):
+        """Test explicit_yes_required=True overrides self.yes=True and prompts user"""
+        io = InputOutput(pretty=False, fancy_input=False, yes=True)
+        mock_input.return_value = "n"
+        result = asyncio.run(io.confirm_ask("Are you sure?", explicit_yes_required=True))
+        assert not result
+        mock_input.assert_called()
+
+    @patch("builtins.input")
+    def test_confirm_ask_explicit_yes_required_with_yes_false(self, mock_input):
+        """Test explicit_yes_required=True with self.yes=False prompts user"""
+        io = InputOutput(pretty=False, fancy_input=False, yes=False)
+        mock_input.return_value = "n"
+        result = asyncio.run(io.confirm_ask("Are you sure?", explicit_yes_required=True))
+        assert not result
+        mock_input.assert_called()
+
+    @patch("builtins.input")
+    def test_confirm_ask_explicit_yes_required_user_input(self, mock_input):
+        """Test explicit_yes_required=True requires user input when yes=None"""
         io = InputOutput(pretty=False, fancy_input=False)
-
-        # Test case 1: explicit_yes_required=True, self.yes=True
-        io.yes = True
-        mock_input.return_value = "n"
-        result = asyncio.run(io.confirm_ask("Are you sure?", explicit_yes_required=True))
-        assert not result
-        mock_input.assert_called()
-        mock_input.reset_mock()
-
-        # Test case 2: explicit_yes_required=True, self.yes=False
-        io.yes = False
-        mock_input.return_value = "n"
-        result = asyncio.run(io.confirm_ask("Are you sure?", explicit_yes_required=True))
-        assert not result
-        mock_input.assert_called()
-        mock_input.reset_mock()
-
-        # Test case 3: explicit_yes_required=True, user input required
-        io.yes = None
         mock_input.return_value = "y"
         result = asyncio.run(io.confirm_ask("Are you sure?", explicit_yes_required=True))
         assert result is not None
         mock_input.assert_called()
-        mock_input.reset_mock()
 
-        # Test case 4: explicit_yes_required=False, self.yes=True
-        io.yes = True
+    @patch("builtins.input")
+    def test_confirm_ask_without_explicit_yes_uses_yes_flag(self, mock_input):
+        """Test explicit_yes_required=False allows self.yes=True to skip prompting"""
+        io = InputOutput(pretty=False, fancy_input=False, yes=True)
         mock_input.return_value = "y"
         result = asyncio.run(io.confirm_ask("Are you sure?", explicit_yes_required=False))
         assert result is not None
         mock_input.assert_not_called()
 
     @patch("builtins.input")
-    def test_confirm_ask_with_group(self, mock_input):
+    def test_confirm_ask_group_user_selects_all(self, mock_input):
+        """Test group with no preference when user selects 'All'"""
         io = InputOutput(pretty=False, fancy_input=False)
         group = ConfirmGroup()
-
-        # Test case 1: No group preference, user selects 'All'
         mock_input.return_value = "a"
         result = asyncio.run(io.confirm_ask("Are you sure?", group=group))
         assert result is not None
         assert group.preference == "all"
         mock_input.assert_called_once()
-        mock_input.reset_mock()
 
-        # Test case 2: Group preference is 'All', should not prompt
+    @patch("builtins.input")
+    def test_confirm_ask_group_preference_all_skips_prompt(self, mock_input):
+        """Test group with 'all' preference does not prompt user"""
+        io = InputOutput(pretty=False, fancy_input=False)
+        group = ConfirmGroup()
+        group.preference = "all"
         result = asyncio.run(io.confirm_ask("Are you sure?", group=group))
         assert result is not None
         mock_input.assert_not_called()
 
-        # Test case 3: No group preference, user selects 'Skip all'
-        group.preference = None
+    @patch("builtins.input")
+    def test_confirm_ask_group_user_selects_skip_all(self, mock_input):
+        """Test group with no preference when user selects 'Skip all'"""
+        io = InputOutput(pretty=False, fancy_input=False)
+        group = ConfirmGroup()
         mock_input.return_value = "s"
         result = asyncio.run(io.confirm_ask("Are you sure?", group=group))
         assert not result
         assert group.preference == "skip"
         mock_input.assert_called_once()
-        mock_input.reset_mock()
 
-        # Test case 4: Group preference is 'Skip all', should not prompt
+    @patch("builtins.input")
+    def test_confirm_ask_group_preference_skip_skips_prompt(self, mock_input):
+        """Test group with 'skip' preference does not prompt user"""
+        io = InputOutput(pretty=False, fancy_input=False)
+        group = ConfirmGroup()
+        group.preference = "skip"
         result = asyncio.run(io.confirm_ask("Are you sure?", group=group))
         assert not result
         mock_input.assert_not_called()
 
-        # Test case 5: explicit_yes_required=True, should not offer 'All' option
-        group.preference = None
+    @patch("builtins.input")
+    def test_confirm_ask_group_with_explicit_yes_no_all_option(self, mock_input):
+        """Test group with explicit_yes_required does not offer 'All' option"""
+        io = InputOutput(pretty=False, fancy_input=False)
+        group = ConfirmGroup()
         mock_input.return_value = "y"
         result = asyncio.run(
             io.confirm_ask("Are you sure?", group=group, explicit_yes_required=True)
@@ -251,83 +265,53 @@ class TestInputOutput:
         assert group.preference is None
         mock_input.assert_called_once()
         assert "(A)ll" not in mock_input.call_args[0][0]
-        mock_input.reset_mock()
 
+    @pytest.mark.parametrize(
+        "input_value,expected_result,description",
+        [
+            ("y", True, "User selects 'Yes'"),
+            ("n", False, "User selects 'No'"),
+            ("", True, "Empty input defaults to Yes"),
+            ("s", False, "'skip' functions as 'no' without group"),
+            ("a", True, "'all' functions as 'yes' without group"),
+            ("skip", False, "Full word 'skip' functions as 'no' without group"),
+            ("all", True, "Full word 'all' functions as 'yes' without group"),
+        ],
+    )
     @patch("builtins.input")
-    def test_confirm_ask_yes_no(self, mock_input):
+    def test_confirm_ask_yes_no_responses(self, mock_input, input_value, expected_result, description):
+        """Test various user responses to confirm_ask without group"""
         io = InputOutput(pretty=False, fancy_input=False)
-
-        # Test case 1: User selects 'Yes'
-        mock_input.return_value = "y"
+        mock_input.return_value = input_value
         result = asyncio.run(io.confirm_ask("Are you sure?"))
-        assert result is not None
+        if expected_result:
+            assert result is not None, f"Failed: {description}"
+        else:
+            assert not result, f"Failed: {description}"
         mock_input.assert_called_once()
-        mock_input.reset_mock()
-
-        # Test case 2: User selects 'No'
-        mock_input.return_value = "n"
-        result = asyncio.run(io.confirm_ask("Are you sure?"))
-        assert not result
-        mock_input.assert_called_once()
-        mock_input.reset_mock()
-
-        # Test case 3: Empty input (default to Yes)
-        mock_input.return_value = ""
-        result = asyncio.run(io.confirm_ask("Are you sure?"))
-        assert result is not None
-        mock_input.assert_called_once()
-        mock_input.reset_mock()
-
-        # Test case 4: 'skip' functions as 'no' without group
-        mock_input.return_value = "s"
-        result = asyncio.run(io.confirm_ask("Are you sure?"))
-        assert not result
-        mock_input.assert_called_once()
-        mock_input.reset_mock()
-
-        # Test case 5: 'all' functions as 'yes' without group
-        mock_input.return_value = "a"
-        result = asyncio.run(io.confirm_ask("Are you sure?"))
-        assert result is not None
-        mock_input.assert_called_once()
-        mock_input.reset_mock()
-
-        # Test case 6: Full word 'skip' functions as 'no' without group
-        mock_input.return_value = "skip"
-        result = asyncio.run(io.confirm_ask("Are you sure?"))
-        assert not result
-        mock_input.assert_called_once()
-        mock_input.reset_mock()
-
-        # Test case 7: Full word 'all' functions as 'yes' without group
-        mock_input.return_value = "all"
-        result = asyncio.run(io.confirm_ask("Are you sure?"))
-        assert result is not None
-        mock_input.assert_called_once()
-        mock_input.reset_mock()
 
     @patch("builtins.input", side_effect=["d"])
-    def test_confirm_ask_allow_never(self, mock_input):
-        """Test the 'don't ask again' functionality in confirm_ask"""
+    def test_confirm_ask_allow_never_first_call(self, mock_input):
+        """Test 'don't ask again' functionality adds to never_prompts"""
         io = InputOutput(pretty=False, fancy_input=False)
-
-        # First call: user selects "Don't ask again"
         result = asyncio.run(io.confirm_ask("Are you sure?", allow_never=True))
         assert not result
         mock_input.assert_called_once()
         assert ("Are you sure?", None) in io.never_prompts
 
-        # Reset the mock to check for further calls
-        mock_input.reset_mock()
-
-        # Second call: should not prompt, immediately return False
+    @patch("builtins.input")
+    def test_confirm_ask_allow_never_subsequent_call(self, mock_input):
+        """Test subsequent call to never-prompted question skips prompting"""
+        io = InputOutput(pretty=False, fancy_input=False)
+        io.never_prompts.add(("Are you sure?", None))
         result = asyncio.run(io.confirm_ask("Are you sure?", allow_never=True))
         assert not result
         mock_input.assert_not_called()
 
-        # Test with subject parameter
-        mock_input.reset_mock()
-        mock_input.side_effect = ["d"]
+    @patch("builtins.input", side_effect=["d"])
+    def test_confirm_ask_allow_never_with_subject(self, mock_input):
+        """Test 'don't ask again' with subject parameter"""
+        io = InputOutput(pretty=False, fancy_input=False)
         result = asyncio.run(
             io.confirm_ask("Confirm action?", subject="Subject Text", allow_never=True)
         )
@@ -335,17 +319,21 @@ class TestInputOutput:
         mock_input.assert_called_once()
         assert ("Confirm action?", "Subject Text") in io.never_prompts
 
-        # Subsequent call with the same question and subject
-        mock_input.reset_mock()
+    @patch("builtins.input")
+    def test_confirm_ask_allow_never_subject_subsequent_call(self, mock_input):
+        """Test subsequent call with same question and subject skips prompting"""
+        io = InputOutput(pretty=False, fancy_input=False)
+        io.never_prompts.add(("Confirm action?", "Subject Text"))
         result = asyncio.run(
             io.confirm_ask("Confirm action?", subject="Subject Text", allow_never=True)
         )
         assert not result
         mock_input.assert_not_called()
 
-        # Test that allow_never=False does not add to never_prompts
-        mock_input.reset_mock()
-        mock_input.side_effect = ["d", "n"]
+    @patch("builtins.input", side_effect=["d", "n"])
+    def test_confirm_ask_allow_never_false_not_stored(self, mock_input):
+        """Test allow_never=False does not add to never_prompts"""
+        io = InputOutput(pretty=False, fancy_input=False)
         result = asyncio.run(io.confirm_ask("Do you want to proceed?", allow_never=False))
         assert not result
         assert mock_input.call_count == 2
