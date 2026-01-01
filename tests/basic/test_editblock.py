@@ -16,8 +16,8 @@ from aider.utils import ChdirTemporaryDirectory
 
 class TestUtils:
     @pytest.fixture(autouse=True)
-    def setup(self):
-        self.GPT35 = Model("gpt-3.5-turbo")
+    def setup(self, gpt35_model):
+        self.GPT35 = gpt35_model
 
     def test_find_filename(self):
         fence = ("```", "```")
