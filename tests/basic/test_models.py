@@ -437,9 +437,19 @@ class TestModels:
         assert call_kwargs['model'] == 'gpt-4'
         assert not call_kwargs['stream']
 
-    def test_parse_model_with_suffix(self):
-        """Test the parse_model_with_suffix function from main.py."""
-
+    @pytest.mark.parametrize(
+        "model_input,expected_base,expected_kwargs,description",
+        [
+            ("gpt-4o:high", "gpt-4o", {"reasoning_effort": "high", "temperature": 0.7}, "valid suffix 'high'"),
+            ("gpt-4o:low", "gpt-4o", {"reasoning_effort": "low", "temperature": 0.2}, "valid suffix 'low'"),
+            ("gpt-4o", "gpt-4o", {}, "no suffix"),
+            ("gpt-4o:unknown", "gpt-4o", {}, "unknown suffix"),
+            ("unknown-model:high", "unknown-model", {}, "unknown model with suffix"),
+            ("", "", {}, "empty model name"),
+        ],
+    )
+    def test_parse_model_with_suffix(self, model_input, expected_base, expected_kwargs, description):
+        """Test parse_model_with_suffix function handles model names with optional :suffix."""
         def parse_model_with_suffix(model_name, overrides):
             """Parse model name with optional :suffix and apply overrides."""
             if not model_name:
@@ -452,22 +462,18 @@ class TestModels:
             if suffix and base_model in overrides and (suffix in overrides[base_model]):
                 override_kwargs = overrides[base_model][suffix].copy()
             return (base_model, override_kwargs)
-        overrides = {'gpt-4o': {'high': {'reasoning_effort': 'high', 'temperature': 0.7}, 'low': {'reasoning_effort': 'low', 'temperature': 0.2}}, 'claude-3-5-sonnet': {'fast': {'temperature': 0.3}, 'creative': {'temperature': 0.9}}}
-        base_model, kwargs = parse_model_with_suffix('gpt-4o:high', overrides)
-        assert base_model == 'gpt-4o'
-        assert kwargs == {'reasoning_effort': 'high', 'temperature': 0.7}
-        base_model, kwargs = parse_model_with_suffix('gpt-4o:low', overrides)
-        assert base_model == 'gpt-4o'
-        assert kwargs == {'reasoning_effort': 'low', 'temperature': 0.2}
-        base_model, kwargs = parse_model_with_suffix('gpt-4o', overrides)
-        assert base_model == 'gpt-4o'
-        assert kwargs == {}
-        base_model, kwargs = parse_model_with_suffix('gpt-4o:unknown', overrides)
-        assert base_model == 'gpt-4o'
-        assert kwargs == {}
-        base_model, kwargs = parse_model_with_suffix('unknown-model:high', overrides)
-        assert base_model == 'unknown-model'
-        assert kwargs == {}
-        base_model, kwargs = parse_model_with_suffix('', overrides)
-        assert base_model == ''
-        assert kwargs == {}
+
+        overrides = {
+            'gpt-4o': {
+                'high': {'reasoning_effort': 'high', 'temperature': 0.7},
+                'low': {'reasoning_effort': 'low', 'temperature': 0.2}
+            },
+            'claude-3-5-sonnet': {
+                'fast': {'temperature': 0.3},
+                'creative': {'temperature': 0.9}
+            }
+        }
+
+        base_model, kwargs = parse_model_with_suffix(model_input, overrides)
+        assert base_model == expected_base, f"Failed ({description}): base model mismatch"
+        assert kwargs == expected_kwargs, f"Failed ({description}): kwargs mismatch"
