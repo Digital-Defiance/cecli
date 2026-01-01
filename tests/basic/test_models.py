@@ -422,11 +422,15 @@ class TestModels:
             with open(tmp, 'w') as f:
                 yaml.dump(test_settings, f)
             register_models([tmp])
+
+            # Test that override kwargs take precedence
             model = Model('gpt-4', override_kwargs={'temperature': 0.8, 'top_p': 0.9})
-            assert model.extra_params['temperature'] == 0.8
-            assert model.extra_params['top_p'] == 0.9
+            assert model.extra_params['temperature'] == 0.8  # Override wins
+            assert model.extra_params['top_p'] == 0.9  # New param added
             assert 'extra_headers' in model.extra_params
-            assert model.extra_params['extra_headers']['Existing'] == 'header'
+            assert model.extra_params['extra_headers']['Existing'] == 'header'  # Existing preserved
+
+            # Test nested dict merging
             model = Model('gpt-4', override_kwargs={'extra_headers': {'New': 'value'}})
             assert 'Existing' in model.extra_params['extra_headers']
             assert 'New' in model.extra_params['extra_headers']
@@ -442,15 +446,20 @@ class TestModels:
     @patch('aider.models.litellm.acompletion')
     async def test_send_completion_with_override_kwargs(self, mock_completion):
         """Test that override kwargs are passed to acompletion."""
+        # Create model with override kwargs
         model = Model('gpt-4', override_kwargs={'temperature': 0.8, 'top_p': 0.9})
         messages = [{'role': 'user', 'content': 'Hello'}]
         await model.send_completion(messages, functions=None, stream=False)
+
+        # Check that override kwargs are in the call
         mock_completion.assert_called_once()
         call_kwargs = mock_completion.call_args.kwargs
         assert 'temperature' in call_kwargs
         assert call_kwargs['temperature'] == 0.8
         assert 'top_p' in call_kwargs
         assert call_kwargs['top_p'] == 0.9
+
+        # Check that model name and other defaults are still there
         assert call_kwargs['model'] == 'gpt-4'
         assert not call_kwargs['stream']
 
