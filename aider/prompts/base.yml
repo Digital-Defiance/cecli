@@ -1,5 +1,6 @@
 # Base prompts for all coder types
 # This file contains default prompts that can be overridden by specific YAML files
+_inherits: []
 
 system_reminder: ""
 
@@ -47,6 +48,8 @@ files_no_full_files_with_repo_map: |
 files_no_full_files_with_repo_map_reply: |
   Ok, based on your requests I will suggest which files need to be edited and then
   stop and wait for your approval.
+
+main_system: ""
 
 repo_content_prefix: |
   Here are summaries of some files present in my git repository.

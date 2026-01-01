@@ -1,9 +1,5 @@
-import sys
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from aider.commands import Commands
-from aider.io import InputOutput
 from aider.scrape import Scraper
 
 
@@ -33,12 +29,6 @@ class TestScrape:
         assert result_no_verify is not None
         assert "self-signed" in result_no_verify
         scraper_no_verify.print_error.assert_not_called()
-
-    def setUp(self):
-        self.io = InputOutput(yes=True)
-        self.commands = Commands(self.io, None)
-
-
 
     @patch("aider.scrape.Scraper.scrape_with_playwright")
     async def test_scrape_actual_url_with_playwright(self, mock_scrape_playwright):

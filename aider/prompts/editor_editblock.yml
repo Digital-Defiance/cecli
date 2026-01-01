@@ -1,5 +1,6 @@
 # Editor_Editblock prompts - inherits from base.yaml
 # Overrides specific prompts
+_inherits: [editblock, base]
 
 go_ahead_tip: ''
 

@@ -1,5 +1,6 @@
 # Architect prompts - inherits from base.yaml
 # Overrides specific prompts
+_inherits: [base]
 
 files_content_assistant_reply: |
   Ok, I will use that as the true, current contents of the files.

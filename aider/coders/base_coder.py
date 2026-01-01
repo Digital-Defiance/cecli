@@ -39,6 +39,7 @@ from aider import __version__, models, urls, utils
 from aider.commands import Commands, SwitchCoder
 from aider.exceptions import LiteLLMExceptions
 from aider.helpers import coroutines
+from aider.helpers.profiler import TokenProfiler
 from aider.history import ChatSummary
 from aider.io import ConfirmGroup, InputOutput
 from aider.linter import Linter
@@ -375,6 +376,9 @@ class Coder:
         self.message_tokens_sent = 0
         self.message_tokens_received = 0
 
+        self.token_profiler = TokenProfiler(
+            enable_printing=getattr(args, "show_speed", False) if args else False
+        )
         self.verbose = verbose
         self.abs_fnames = set()
         self.abs_read_only_fnames = set()
@@ -1637,7 +1641,7 @@ class Coder:
 
     async def check_for_urls(self, inp: str) -> List[str]:
         """Check input for URLs and offer to add them to the chat."""
-        if not self.detect_urls:
+        if not self.detect_urls or self.args.disable_scraping:
             return inp
 
         # Exclude double quotes from the matched URL characters
@@ -1649,10 +1653,14 @@ class Coder:
             if url not in self.rejected_urls:
                 url = url.rstrip(".',\"")
                 if await self.io.confirm_ask(
-                    "Add URL to the chat?", subject=url, group=group, allow_never=True
+                    "Add URL to the chat?",
+                    subject=url,
+                    group=group,
+                    allow_never=True,
+                    explicit_yes_required=self.args.yes_always_commands,
                 ):
                     inp += "\n\n"
-                    inp += await self.commands.cmd_web(url, return_content=True)
+                    inp += await self.commands.do_run("web", url, return_content=True)
                 else:
                     self.rejected_urls.add(url)
 
@@ -2985,6 +2993,7 @@ class Coder:
         self.partial_response_function_call = dict()
 
         completion = None
+        self.token_profiler.start()
 
         try:
             hash_object, completion = await model.send_completion(
@@ -3010,6 +3019,7 @@ class Coder:
             ex_info = LiteLLMExceptions().get_ex_info(err)
             if ex_info.name == "ContextWindowExceededError":
                 # Still calculate costs for context window errors
+                self.token_profiler.on_error()
                 self.calculate_and_show_tokens_and_cost(messages, completion)
             raise
         except KeyboardInterrupt as kbi:
@@ -3100,6 +3110,7 @@ class Coder:
                 try:
                     if chunk.choices[0].delta.tool_calls:
                         received_content = True
+                        self.token_profiler.on_token()
                         for tool_call_chunk in chunk.choices[0].delta.tool_calls:
                             self.tool_reflection = True
 
@@ -3127,6 +3138,7 @@ class Coder:
                         self.io.update_spinner_suffix(v)
 
                     received_content = True
+                    self.token_profiler.on_token()
                 except AttributeError:
                     pass
 
@@ -3146,6 +3158,7 @@ class Coder:
                     text += reasoning_content
                     self.got_reasoning_content = True
                     received_content = True
+                    self.token_profiler.on_token()
                     self.io.update_spinner_suffix(reasoning_content)
                     self.partial_response_reasoning_content += reasoning_content
 
@@ -3158,6 +3171,7 @@ class Coder:
 
                         text += content
                         received_content = True
+                        self.token_profiler.on_token()
                         self.io.update_spinner_suffix(content)
                 except AttributeError:
                     pass
@@ -3397,6 +3411,9 @@ class Coder:
         if cache_hit_tokens:
             tokens_report += f", {format_tokens(cache_hit_tokens)} cache hit"
         tokens_report += f", {format_tokens(self.message_tokens_received)} received."
+        tokens_report = self.token_profiler.add_to_usage_report(
+            tokens_report, self.message_tokens_sent, self.message_tokens_received
+        )
 
         if not self.main_model.info.get("input_cost_per_token"):
             self.usage_report = tokens_report
