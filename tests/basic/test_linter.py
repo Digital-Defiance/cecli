@@ -1,4 +1,5 @@
 import os
+import platform
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -41,15 +42,14 @@ class TestLinter:
         result = self.linter.run_cmd("test_cmd", "test_file.py", "code")
         assert result is None
 
+    @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-specific test for dir command")
     def test_run_cmd_win(self):
-        if os.name != "nt":
-            pytest.skip("This test only runs on Windows")
         from pathlib import Path
 
         root = Path(__file__).parent.parent.parent.absolute().as_posix()
         linter = Linter(encoding="utf-8", root=root)
         result = linter.run_cmd("dir", "tests\\basic", "code")
-        self.assertIsNone(result)
+        assert result is None
 
     @patch("subprocess.Popen")
     def test_run_cmd_with_errors(self, mock_popen):
