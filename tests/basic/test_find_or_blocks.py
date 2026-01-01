@@ -4,7 +4,8 @@ import difflib
 import io
 import re
 import sys
-import unittest
+
+import pytest
 
 from aider.coders.base_coder import all_fences
 from aider.coders.editblock_coder import find_original_update_blocks
@@ -70,7 +71,7 @@ def process_markdown(filename, fh):
                 print("@@@ REPLACE", "@" * 20, file=fh, flush=True)
 
 
-class TestFindOrBlocks(unittest.TestCase):
+class TestFindOrBlocks:
     def test_process_markdown(self):
         # Path to the input markdown file
         input_file = "tests/fixtures/chat-history.md"
@@ -105,11 +106,9 @@ class TestFindOrBlocks(unittest.TestCase):
             diff_text = "".join(diff)
 
             # Fail the test and show the diff
-            self.fail(f"Output doesn't match expected output. Diff:\n{diff_text}")
+            pytest.fail(f"Output doesn't match expected output. Diff:\n{diff_text}")
 
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         process_markdown(sys.argv[1], sys.stdout)
-    else:
-        unittest.main()

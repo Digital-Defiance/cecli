@@ -1641,7 +1641,7 @@ class Coder:
 
     async def check_for_urls(self, inp: str) -> List[str]:
         """Check input for URLs and offer to add them to the chat."""
-        if not self.detect_urls or self.args.disable_scraping:
+        if not self.detect_urls or (self.args and self.args.disable_scraping):
             return inp
 
         # Exclude double quotes from the matched URL characters
