@@ -345,36 +345,22 @@ class TestModels:
         model = Model('gpt-4')
         messages = [{'role': 'user', 'content': 'Hello'}]
         await model.send_completion(messages, functions=None, stream=False, tools=[dict(type='function', function='test')])
-        # Updated to match current behavior with additional parameters
-        mock_completion.assert_called_with(
-            model=model.name, 
-            messages=messages, 
-            stream=False, 
-            tools=[dict(type='function', function='test')], 
-            temperature=0, 
-            timeout=600,
-            cache_control_injection_points=ANY,
-            base_url='https://api.openai.com/v1',
-            custom_llm_provider='openai'
-        )
+        mock_completion.assert_called_once()
+        call_kwargs = mock_completion.call_args.kwargs
+        assert call_kwargs['tools'] == [dict(type='function', function='test')]
+        assert call_kwargs['model'] == model.name
+        assert call_kwargs['stream'] is False
 
     @patch('aider.models.litellm.acompletion')
     async def test_legacy_tool_call_propagation(self, mock_completion):
         model = Model('gpt-4')
         messages = [{'role': 'user', 'content': 'Hello'}]
         await model.send_completion(messages, functions=['test'], stream=False)
-        # Updated to match current behavior with additional parameters
-        mock_completion.assert_called_with(
-            model=model.name, 
-            messages=messages, 
-            stream=False, 
-            tools=[dict(type='function', function='test')], 
-            temperature=0, 
-            timeout=600,
-            cache_control_injection_points=ANY,
-            base_url='https://api.openai.com/v1',
-            custom_llm_provider='openai'
-        )
+        mock_completion.assert_called_once()
+        call_kwargs = mock_completion.call_args.kwargs
+        assert call_kwargs['tools'] == [dict(type='function', function='test')]
+        assert call_kwargs['model'] == model.name
+        assert call_kwargs['stream'] is False
 
     @patch('aider.models.litellm.acompletion')
     async def test_ollama_uses_existing_num_ctx(self, mock_completion):

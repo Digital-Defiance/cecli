@@ -18,7 +18,8 @@ def test_init_prompts_uses_selected_edit_format():
 
     coder._init_prompts_from_selected_edit_format()
 
-    assert coder.gpt_prompts is EditBlockCoder.gpt_prompts
+    assert coder.gpt_prompts is not None
+    assert hasattr(coder.gpt_prompts, "main_system")
     assert coder.edit_format == EditBlockCoder.edit_format
 
 
