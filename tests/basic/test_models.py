@@ -336,11 +336,16 @@ class TestModels:
         assert 'num_ctx' not in mock_completion.call_args.kwargs
 
     def test_use_temperature_settings(self):
+        # Test use_temperature=True (default) uses temperature=0
         model = Model('gpt-4')
         assert model.use_temperature
         assert model.use_temperature == True
+
+        # Test use_temperature=False doesn't pass temperature
         model = Model('github/o1-mini')
         assert not model.use_temperature
+
+        # Test use_temperature as float value
         model = Model('gpt-4')
         model.use_temperature = 0.7
         assert model.use_temperature == 0.7
@@ -355,6 +360,7 @@ class TestModels:
 
     @patch('aider.models.litellm.acompletion')
     async def test_request_timeout_from_extra_params(self, mock_completion):
+        # Test timeout from extra_params overrides default
         model = Model('gpt-4')
         model.extra_params = {'timeout': 300}
         messages = [{'role': 'user', 'content': 'Hello'}]
