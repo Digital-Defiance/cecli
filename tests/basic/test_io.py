@@ -354,8 +354,8 @@ class TestInputOutput:
 
 class TestInputOutputMultilineMode:
     @pytest.fixture(autouse=True)
-    def setup(self):
-        self.GPT35 = Model("gpt-3.5-turbo")
+    def setup(self, gpt35_model):
+        self.GPT35 = gpt35_model
         self.io = InputOutput(fancy_input=True)
         self.io.prompt_session = MagicMock()
 
