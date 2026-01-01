@@ -51,26 +51,6 @@ class TestUtils:
         lines = [r"\windows__init__.py", "```"]
         assert eb.find_filename(lines, fence, valid_fnames) == r"\windows\__init__.py"
 
-    # fuzzy logic disabled v0.11.2-dev
-    def __test_replace_most_similar_chunk(self):
-        whole = "This is a sample text.\nAnother line of text.\nYet another line.\n"
-        part = "This is a sample text\n"
-        replace = "This is a replaced text.\n"
-        expected_output = "This is a replaced text.\nAnother line of text.\nYet another line.\n"
-
-        result = eb.replace_most_similar_chunk(whole, part, replace)
-        assert result == expected_output
-
-    # fuzzy logic disabled v0.11.2-dev
-    def __test_replace_most_similar_chunk_not_perfect_match(self):
-        whole = "This is a sample text.\nAnother line of text.\nYet another line.\n"
-        part = "This was a sample text.\nAnother line of txt\n"
-        replace = "This is a replaced text.\nModified line of text.\n"
-        expected_output = "This is a replaced text.\nModified line of text.\nYet another line.\n"
-
-        result = eb.replace_most_similar_chunk(whole, part, replace)
-        assert result == expected_output
-
     def test_strip_quoted_wrapping(self):
         input_text = (
             "filename.ext\n```\nWe just want this content\nNot the filename and triple quotes\n```"
