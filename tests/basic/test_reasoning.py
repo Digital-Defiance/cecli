@@ -1,6 +1,5 @@
 import json
 import textwrap
-import pytest
 from unittest.mock import MagicMock, patch
 
 import litellm
@@ -19,6 +18,7 @@ from aider.reasoning_tags import (
 # Mock classes for streaming response testing
 class MockDelta:
     """Mock delta object for streaming responses."""
+
     def __init__(self, content=None, reasoning_content=None, reasoning=None):
         if content is not None:
             self.content = content
@@ -30,6 +30,7 @@ class MockDelta:
 
 class MockStreamingChunk:
     """Mock streaming chunk object for testing stream responses."""
+
     def __init__(self, content=None, reasoning_content=None, reasoning=None, finish_reason=None):
         self.choices = [MagicMock()]
         self.choices[0].delta = MockDelta(content, reasoning_content, reasoning)
@@ -83,11 +84,11 @@ class TestReasoning:
 
         # Setup model and coder
         model = Model("gpt-3.5-turbo")
-        
+
         # Create mock args with debug=False to avoid AttributeError
         mock_args = MagicMock()
         mock_args.debug = False
-        
+
         coder = await Coder.create(model, None, io=io, stream=False, args=mock_args)
 
         # Test data
@@ -100,20 +101,18 @@ class TestReasoning:
             "created": 0,
             "model": "gpt-3.5-turbo",
             "object": "chat.completion",
-            "choices": [{
-                "finish_reason": "stop",
-                "index": 0,
-                "message": {
-                    "content": main_content,
-                    "role": "assistant",
-                    "reasoning_content": reasoning_content
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "index": 0,
+                    "message": {
+                        "content": main_content,
+                        "role": "assistant",
+                        "reasoning_content": reasoning_content,
+                    },
                 }
-            }],
-            "usage": {
-                "completion_tokens": 10,
-                "prompt_tokens": 5,
-                "total_tokens": 15
-            }
+            ],
+            "usage": {"completion_tokens": 10, "prompt_tokens": 5, "total_tokens": 15},
         }
         completion = litellm.ModelResponse(**completion_dict)
 
@@ -155,11 +154,11 @@ class TestReasoning:
         io = InputOutput(pretty=False)
         io.assistant_output = MagicMock()
         model = Model("gpt-4o")
-        
+
         # Create mock args with debug=False to avoid AttributeError
         mock_args = MagicMock()
         mock_args.debug = False
-        
+
         coder = await Coder.create(model, None, io=io, stream=False, args=mock_args)
 
         completion = litellm.ModelResponse(**json.loads(self.SYNTHETIC_COMPLETION))
@@ -176,7 +175,9 @@ class TestReasoning:
         assert REASONING_END in output
 
         coder.remove_reasoning_content()
-        assert coder.partial_response_content.strip() == "Final synthetic summary of the repository."
+        assert (
+            coder.partial_response_content.strip() == "Final synthetic summary of the repository."
+        )
 
     async def test_send_with_reasoning_content_stream(self):
         """Test that streaming reasoning content is properly formatted and output."""
@@ -282,19 +283,14 @@ class TestReasoning:
             "created": 0,
             "model": "gpt-3.5-turbo",
             "object": "chat.completion",
-            "choices": [{
-                "finish_reason": "stop",
-                "index": 0,
-                "message": {
-                    "content": combined_content,
-                    "role": "assistant"
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "index": 0,
+                    "message": {"content": combined_content, "role": "assistant"},
                 }
-            }],
-            "usage": {
-                "completion_tokens": 10,
-                "prompt_tokens": 5,
-                "total_tokens": 15
-            }
+            ],
+            "usage": {"completion_tokens": 10, "prompt_tokens": 5, "total_tokens": 15},
         }
         completion = litellm.ModelResponse(**completion_dict)
 
@@ -448,11 +444,11 @@ End"""
 
         # Setup model and coder
         model = Model("gpt-3.5-turbo")
-        
+
         # Create mock args with debug=False to avoid AttributeError
         mock_args = MagicMock()
         mock_args.debug = False
-        
+
         coder = await Coder.create(model, None, io=io, stream=False, args=mock_args)
 
         # Test data
@@ -465,20 +461,20 @@ End"""
             "created": 0,
             "model": "gpt-3.5-turbo",
             "object": "chat.completion",
-            "choices": [{
-                "finish_reason": "stop",
-                "index": 0,
-                "message": {
-                    "content": main_content,
-                    "role": "assistant",
-                    "reasoning": reasoning_content  # Using reasoning instead of reasoning_content
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "index": 0,
+                    "message": {
+                        "content": main_content,
+                        "role": "assistant",
+                        "reasoning": (
+                            reasoning_content  # Using reasoning instead of reasoning_content
+                        ),
+                    },
                 }
-            }],
-            "usage": {
-                "completion_tokens": 10,
-                "prompt_tokens": 5,
-                "total_tokens": 15
-            }
+            ],
+            "usage": {"completion_tokens": 10, "prompt_tokens": 5, "total_tokens": 15},
         }
         completion = litellm.ModelResponse(**completion_dict)
 

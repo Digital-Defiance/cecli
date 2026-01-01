@@ -1,6 +1,5 @@
-import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from aider.coders import Coder
 from aider.models import Model

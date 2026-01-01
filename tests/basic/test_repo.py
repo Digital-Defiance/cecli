@@ -5,9 +5,8 @@ import time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 import git
+import pytest
 
 from aider.dump import dump  # noqa: F401
 from aider.io import InputOutput
@@ -189,7 +188,9 @@ class TestRepo:
         args = mock_send.call_args[0]  # Get positional args
         assert args[0][0]["content"] == custom_prompt  # Check first message content
 
-    @pytest.mark.skipif(platform.system() == "Windows", reason="Git env var behavior differs on Windows")
+    @pytest.mark.skipif(
+        platform.system() == "Windows", reason="Git env var behavior differs on Windows"
+    )
     @patch("aider.repo.GitRepo.get_commit_message")
     async def test_commit_with_custom_committer_name(self, mock_send):
         mock_send.return_value = '"a good commit message"'
@@ -256,9 +257,16 @@ class TestRepo:
             )
             assert commit_result is not None
             commit = raw_repo.head.commit
-            assert commit.author.name == "Test User", "Author name should not be modified for user commits"
-            assert commit.committer.name == "Test User", "Committer name should not be modified when attribute_committer=False"
-    @pytest.mark.skipif(platform.system() == "Windows", reason="Git env var behavior differs on Windows")
+            assert (
+                commit.author.name == "Test User"
+            ), "Author name should not be modified for user commits"
+            assert (
+                commit.committer.name == "Test User"
+            ), "Committer name should not be modified when attribute_committer=False"
+
+    @pytest.mark.skipif(
+        platform.system() == "Windows", reason="Git env var behavior differs on Windows"
+    )
     async def test_commit_with_co_authored_by(self):
         with GitTemporaryDirectory():
             # new repo
@@ -298,9 +306,16 @@ class TestRepo:
             assert "Co-authored-by: aider-ce (gpt-test)" in commit.message
             assert commit.message.splitlines()[0] == "Aider edit"
             # With default (None), co-authored-by takes precedence
-            assert commit.author.name == "Test User", "Author name should not be modified when co-authored-by takes precedence"
-            assert commit.committer.name == "Test User", "Committer name should not be modified when co-authored-by takes precedence"
-    @pytest.mark.skipif(platform.system() == "Windows", reason="Git env var behavior differs on Windows")
+            assert (
+                commit.author.name == "Test User"
+            ), "Author name should not be modified when co-authored-by takes precedence"
+            assert (
+                commit.committer.name == "Test User"
+            ), "Committer name should not be modified when co-authored-by takes precedence"
+
+    @pytest.mark.skipif(
+        platform.system() == "Windows", reason="Git env var behavior differs on Windows"
+    )
     async def test_commit_co_authored_by_with_explicit_name_modification(self):
         # Test scenario where Co-authored-by is true AND
         # author/committer modification are explicitly True
@@ -344,10 +359,16 @@ class TestRepo:
             assert commit.message.splitlines()[0] == "Aider combo edit"
             # When co-authored-by is true BUT author/committer are explicit True,
             # modification SHOULD happen
-            assert commit.author.name == "Test User (aider-ce)", "Author name should be modified when explicitly True, even with co-author"
-            assert commit.committer.name == "Test User (aider-ce)", "Committer name should be modified when explicitly True, even with co-author"
+            assert (
+                commit.author.name == "Test User (aider-ce)"
+            ), "Author name should be modified when explicitly True, even with co-author"
+            assert (
+                commit.committer.name == "Test User (aider-ce)"
+            ), "Committer name should be modified when explicitly True, even with co-author"
 
-    @pytest.mark.skipif(platform.system() == "Windows", reason="Git env var behavior differs on Windows")
+    @pytest.mark.skipif(
+        platform.system() == "Windows", reason="Git env var behavior differs on Windows"
+    )
     async def test_commit_ai_edits_no_coauthor_explicit_false(self):
         # Test AI edits (aider_edits=True) when co-authored-by is False,
         # but author or committer attribution is explicitly disabled.
@@ -408,8 +429,12 @@ class TestRepo:
             assert commit_result is not None
             commit = raw_repo.head.commit
             assert "Co-authored-by:" not in commit.message
-            assert commit.author.name == "Test User (aider-ce)", "Author name should be modified (default True) when co-author=False"
-            assert commit.committer.name == "Test User", "Committer name should not be modified (explicit False when co-author=False"
+            assert (
+                commit.author.name == "Test User (aider-ce)"
+            ), "Author name should be modified (default True) when co-author=False"
+            assert (
+                commit.committer.name == "Test User"
+            ), "Committer name should not be modified (explicit False when co-author=False"
 
     def test_get_tracked_files(self):
         # Create a temporary directory
@@ -607,7 +632,9 @@ class TestRepo:
             commit_result = await git_repo.commit(fnames=[str(fname)])
             assert commit_result is None
 
-    @pytest.mark.skipif(platform.system() == "Windows", reason="Git hook execution differs on Windows")
+    @pytest.mark.skipif(
+        platform.system() == "Windows", reason="Git hook execution differs on Windows"
+    )
     async def test_git_commit_verify(self):
         """Test that git_commit_verify controls whether --no-verify is passed to git commit"""
         with GitTemporaryDirectory():
@@ -680,4 +707,6 @@ class TestRepo:
             system_msg_content = messages[0]["content"]
 
             # Verify the prefix is at the start of the system message
-            assert system_msg_content.startswith(prefix), "system_prompt_prefix should be prepended to the system prompt"
+            assert system_msg_content.startswith(
+                prefix
+            ), "system_prompt_prefix should be prepended to the system prompt"

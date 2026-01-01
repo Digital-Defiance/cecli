@@ -4,9 +4,8 @@ import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 import git
+import pytest
 
 from aider.coders import Coder
 from aider.coders.base_coder import FinishReasonLength, UnknownEditFormat
@@ -54,7 +53,9 @@ class TestCoder:
 
             assert not coder.need_commit_before_edits
 
-    @pytest.mark.xfail(reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned")
+    @pytest.mark.xfail(
+        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
+    )
     async def test_allowed_to_edit_no(self):
         with GitTemporaryDirectory():
             repo = git.Repo()
@@ -125,7 +126,9 @@ class TestCoder:
         assert "file1.txt" in all_file_names
         assert "file2.txt" in all_file_names
 
-    @pytest.mark.xfail(reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned")
+    @pytest.mark.xfail(
+        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
+    )
     async def test_check_for_filename_mentions(self):
         with GitTemporaryDirectory():
             repo = git.Repo()
@@ -158,7 +161,9 @@ class TestCoder:
 
             assert coder.abs_fnames == expected_files
 
-    @pytest.mark.xfail(reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned")
+    @pytest.mark.xfail(
+        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
+    )
     async def test_check_for_ambiguous_filename_mentions_of_longer_paths(self):
         with GitTemporaryDirectory():
             io = InputOutput(pretty=False, yes=True)
@@ -211,7 +216,9 @@ class TestCoder:
             mentioned = coder.get_file_mentions(f"Check {fname1} and {fname3}")
             assert mentioned == {str(fname3)}
 
-    @pytest.mark.xfail(reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned")
+    @pytest.mark.xfail(
+        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
+    )
     async def test_check_for_file_mentions_read_only(self):
         with GitTemporaryDirectory():
             io = InputOutput(
@@ -239,7 +246,9 @@ class TestCoder:
             # Assert that abs_fnames is still empty (file not added)
             assert coder.abs_fnames == set()
 
-    @pytest.mark.xfail(reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned")
+    @pytest.mark.xfail(
+        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
+    )
     async def test_check_for_file_mentions_with_mocked_confirm(self):
         with GitTemporaryDirectory():
             io = InputOutput(pretty=False)
@@ -277,7 +286,9 @@ class TestCoder:
             # Assert that file1.txt is in ignore_mentions
             assert "file1.txt" in coder.ignore_mentions
 
-    @pytest.mark.xfail(reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned")
+    @pytest.mark.xfail(
+        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
+    )
     async def test_check_for_subdir_mention(self):
         with GitTemporaryDirectory():
             io = InputOutput(pretty=False, yes=True)
@@ -373,7 +384,9 @@ class TestCoder:
 
             for content, expected_mentions in test_cases:
                 mentioned_files = coder.get_file_mentions(content)
-                assert mentioned_files == expected_mentions, f"Failed to extract mentions from: {content}"
+                assert (
+                    mentioned_files == expected_mentions
+                ), f"Failed to extract mentions from: {content}"
 
     async def test_get_file_mentions_multiline_backticks(self):
         with GitTemporaryDirectory():
@@ -408,7 +421,10 @@ Once I have these, I can show you precisely how to do the thing.
             }
 
             mentioned_files = coder.get_file_mentions(content)
-            assert mentioned_files == expected_mentions, f"Failed to extract mentions from multiline backticked content: {content}"
+            assert (
+                mentioned_files == expected_mentions
+            ), f"Failed to extract mentions from multiline backticked content: {content}"
+
     async def test_get_file_mentions_path_formats(self):
         with GitTemporaryDirectory():
             io = InputOutput(pretty=False, yes=True)
@@ -440,10 +456,15 @@ Once I have these, I can show you precisely how to do the thing.
                 coder.get_addable_relative_files = MagicMock(return_value=set(addable_files))
                 mentioned_files = coder.get_file_mentions(content)
                 expected_files = set(addable_files)
-                assert mentioned_files == expected_files, f"Failed for content: {content}, addable_files: {addable_files}"
+                assert (
+                    mentioned_files == expected_files
+                ), f"Failed for content: {content}, addable_files: {addable_files}"
 
     @pytest.mark.xfail(
-        reason="Behavior change: deleted files are filtered out during processing but not removed from abs_fnames"
+        reason=(
+            "Behavior change: deleted files are filtered out during processing but not removed from"
+            " abs_fnames"
+        )
     )
     async def test_run_with_file_deletion(self):
         # Create a few temporary files
@@ -1270,10 +1291,10 @@ This command will print 'Hello, World!' to the console."""
             assert coder.normalize_language("es") == "Spanish"
             assert coder.normalize_language("de_DE.UTF-8") == "German"
             assert coder.normalize_language("zh-CN") == "Chinese"
-              # Test hyphen in fallback
+            # Test hyphen in fallback
             assert coder.normalize_language("ja") == "Japanese"
             assert coder.normalize_language("unknown_code") == "unknown_code"
-              # Fallback to original
+            # Fallback to original
 
         # Test with babel.Locale mocked (available)
         mock_babel_locale = MagicMock()
@@ -1364,7 +1385,9 @@ This command will print 'Hello, World!' to the console."""
             with patch("os.environ.get", return_value=None) as mock_env_get:
                 assert coder.get_user_language() is None
 
-    @pytest.mark.xfail(reason="ArchitectCoder missing args attribute at line 19 in architect_coder.py")
+    @pytest.mark.xfail(
+        reason="ArchitectCoder missing args attribute at line 19 in architect_coder.py"
+    )
     async def test_architect_coder_auto_accept_true(self):
         with GitTemporaryDirectory():
             io = InputOutput(yes=True)
@@ -1403,7 +1426,9 @@ This command will print 'Hello, World!' to the console."""
                     # Verify that editor coder was created and run
                     mock_editor.run.assert_called_once()
 
-    @pytest.mark.xfail(reason="ArchitectCoder missing args attribute at line 19 in architect_coder.py")
+    @pytest.mark.xfail(
+        reason="ArchitectCoder missing args attribute at line 19 in architect_coder.py"
+    )
     async def test_architect_coder_auto_accept_false_confirmed(self):
         with GitTemporaryDirectory():
             io = InputOutput(yes=False)
@@ -1446,7 +1471,9 @@ This command will print 'Hello, World!' to the console."""
                     # Verify that editor coder was created and run
                     mock_editor.run.assert_called_once()
 
-    @pytest.mark.xfail(reason="ArchitectCoder missing args attribute at line 19 in architect_coder.py")
+    @pytest.mark.xfail(
+        reason="ArchitectCoder missing args attribute at line 19 in architect_coder.py"
+    )
     async def test_architect_coder_auto_accept_false_rejected(self):
         with GitTemporaryDirectory():
             io = InputOutput(yes=False)
@@ -1766,7 +1793,9 @@ This command will print 'Hello, World!' to the console."""
             # Verify that no messages were added
             assert len(coder.cur_messages) == 0
 
-    @patch("aider.coders.base_coder.experimental_mcp_client.call_openai_tool", new_callable=AsyncMock)
+    @patch(
+        "aider.coders.base_coder.experimental_mcp_client.call_openai_tool", new_callable=AsyncMock
+    )
     async def test_execute_tool_calls(self, mock_call_tool):
         """Test that _execute_tool_calls executes tool calls correctly."""
         with GitTemporaryDirectory():

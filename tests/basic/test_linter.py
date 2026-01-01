@@ -1,7 +1,7 @@
-import os
 import platform
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from aider.dump import dump  # noqa
 from aider.linter import Linter
@@ -42,7 +42,9 @@ class TestLinter:
         result = self.linter.run_cmd("test_cmd", "test_file.py", "code")
         assert result is None
 
-    @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-specific test for dir command")
+    @pytest.mark.skipif(
+        platform.system() != "Windows", reason="Windows-specific test for dir command"
+    )
     def test_run_cmd_win(self):
         from pathlib import Path
 

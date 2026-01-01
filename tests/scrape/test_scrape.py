@@ -16,7 +16,9 @@ class TestScrape:
         class DummyCoder:
             def __init__(self):
                 self.cur_messages = []
-                self.main_model = type("M", (), {"edit_format": "code", "name": "dummy", "info": {}})()
+                self.main_model = type(
+                    "M", (), {"edit_format": "code", "name": "dummy", "info": {}}
+                )()
                 self.tui = None
                 self.args = type("Args", (), {"disable_playwright": False})()
 
@@ -39,7 +41,9 @@ class TestScrape:
 
     @patch("aider.commands.web.install_playwright")
     @patch("aider.commands.web.Scraper")
-    async def test_cmd_web_imports_playwright(self, mock_scraper_class, mock_install_playwright, commands):
+    async def test_cmd_web_imports_playwright(
+        self, mock_scraper_class, mock_install_playwright, commands
+    ):
         async def mock_install(*args, **kwargs):
             sys.modules["playwright"] = MagicMock()
             return True

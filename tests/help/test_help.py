@@ -1,6 +1,5 @@
 import asyncio
 import time
-import pytest
 from unittest.mock import AsyncMock
 
 from requests.exceptions import ConnectionError, ReadTimeout
@@ -116,36 +115,31 @@ class TestHelp:
     def test_fname_to_url_unix(self):
         # Test relative Unix-style paths
         assert fname_to_url("website/docs/index.md") == "https://aider.chat/docs"
-        assert (
-            fname_to_url("website/docs/usage.md") == "https://aider.chat/docs/usage.html"
-        )
+        assert fname_to_url("website/docs/usage.md") == "https://aider.chat/docs/usage.html"
         assert fname_to_url("website/_includes/header.md") == ""
 
         # Test absolute Unix-style paths
-        assert (
-            fname_to_url("/home/user/project/website/docs/index.md") == "https://aider.chat/docs"
-        )
+        assert fname_to_url("/home/user/project/website/docs/index.md") == "https://aider.chat/docs"
         assert (
             fname_to_url("/home/user/project/website/docs/usage.md")
-            == "https://aider.chat/docs/usage.html",
+            == "https://aider.chat/docs/usage.html"
         )
         assert fname_to_url("/home/user/project/website/_includes/header.md") == ""
 
     def test_fname_to_url_windows(self):
         # Test relative Windows-style paths
         assert fname_to_url(r"website\docs\index.md") == "https://aider.chat/docs"
-        assert (
-            fname_to_url(r"website\docs\usage.md") == "https://aider.chat/docs/usage.html"
-        )
+        assert fname_to_url(r"website\docs\usage.md") == "https://aider.chat/docs/usage.html"
         assert fname_to_url(r"website\_includes\header.md") == ""
 
         # Test absolute Windows-style paths
         assert (
-            fname_to_url(r"C:\Users\user\project\website\docs\index.md") == "https://aider.chat/docs"
+            fname_to_url(r"C:\Users\user\project\website\docs\index.md")
+            == "https://aider.chat/docs"
         )
         assert (
             fname_to_url(r"C:\Users\user\project\website\docs\usage.md")
-            == "https://aider.chat/docs/usage.html",
+            == "https://aider.chat/docs/usage.html"
         )
         assert fname_to_url(r"C:\Users\user\project\website\_includes\header.md") == ""
 

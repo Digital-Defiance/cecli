@@ -1,26 +1,28 @@
 import asyncio
 import os
-import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
 
 from aider.coders import Coder
 from aider.dump import dump  # noqa: F401
 from aider.io import AutoCompleter, ConfirmGroup, InputOutput
-from aider.models import Model
 from aider.utils import ChdirTemporaryDirectory
 
 
 class TestInputOutput:
-    @pytest.mark.parametrize("ending,expected_newline", [
-        ("platform", None),
-        ("lf", "\n"),
-        ("crlf", "\r\n"),
-        ("preserve", None),
-    ])
+    @pytest.mark.parametrize(
+        "ending,expected_newline",
+        [
+            ("platform", None),
+            ("lf", "\n"),
+            ("crlf", "\r\n"),
+            ("preserve", None),
+        ],
+    )
     def test_valid_line_endings(self, ending, expected_newline):
         """Test that valid line ending options are correctly processed."""
         io = InputOutput(line_endings=ending)
@@ -29,7 +31,7 @@ class TestInputOutput:
     def test_invalid_line_endings(self):
         """Test that invalid line ending values raise appropriate error."""
         with pytest.raises(ValueError) as cm:
-            io = InputOutput(line_endings="invalid")
+            InputOutput(line_endings="invalid")
         assert "Invalid line_endings value: invalid" in str(cm.value)
         # Check each valid option is in the error message
         assert "platform" in str(cm.value)
@@ -285,7 +287,9 @@ class TestInputOutput:
         ],
     )
     @patch("builtins.input")
-    def test_confirm_ask_yes_no_responses(self, mock_input, input_value, expected_result, description):
+    def test_confirm_ask_yes_no_responses(
+        self, mock_input, input_value, expected_result, description
+    ):
         """Test various user responses to confirm_ask without group"""
         io = InputOutput(pretty=False, fancy_input=False)
         mock_input.return_value = input_value
@@ -391,7 +395,9 @@ class TestInputOutputMultilineMode:
 
     # TODO: Fix underlying bug in io.py:970 (UnboundLocalError)
     # This test will pass once the bug is fixed in the production code
-    @pytest.mark.xfail(reason="Bug: confirm_ask doesn't propagate KeyboardInterrupt - revealed by pytest migration")
+    @pytest.mark.xfail(
+        reason="Bug: confirm_ask doesn't propagate KeyboardInterrupt - revealed by pytest migration"
+    )
     async def test_multiline_mode_restored_after_interrupt(self):
         """Test that multiline mode is restored after KeyboardInterrupt"""
         io = InputOutput(fancy_input=True)
@@ -455,7 +461,7 @@ class TestInputOutputMultilineMode:
 
         # Test invalid inputs (should return unchanged)
         assert ensure_hash_prefix("") == ""
-        assert ensure_hash_prefix(None) == None
+        assert ensure_hash_prefix(None) is None
         assert ensure_hash_prefix("red") == "red"  # Named color
         assert ensure_hash_prefix("12345") == "12345"  # Wrong length
         assert ensure_hash_prefix("1234567") == "1234567"  # Wrong length

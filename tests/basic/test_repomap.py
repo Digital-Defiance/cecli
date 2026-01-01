@@ -9,7 +9,6 @@ import pytest
 
 from aider.dump import dump  # noqa: F401
 from aider.io import InputOutput
-from aider.models import Model
 from aider.repomap import RepoMap
 from aider.utils import GitTemporaryDirectory, IgnorantTemporaryDirectory
 
@@ -478,7 +477,9 @@ class TestRepoMapAllLanguages:
 
             # Check if the result contains all the expected files and symbols
             assert filename in result, f"File for language {lang} not found in repo map: {result}"
-            assert symbol in result, f"Key symbol '{symbol}' for language {lang} not found in repo map: {result}"
+            assert (
+                symbol in result
+            ), f"Key symbol '{symbol}' for language {lang} not found in repo map: {result}"
 
             # close the open cache files, so Windows won't error
             del repo_map

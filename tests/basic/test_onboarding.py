@@ -4,7 +4,6 @@ import hashlib
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 import requests
 
 # Import the functions to be tested

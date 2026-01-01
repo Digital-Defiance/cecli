@@ -1,15 +1,15 @@
 import os
 import shutil
 import tempfile
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
 
 from aider.coders import Coder
 from aider.coders.wholefile_coder import WholeFileCoder
 from aider.dump import dump  # noqa: F401
 from aider.io import InputOutput
-from aider.models import Model
 
 
 class TestWholeFileCoder:
@@ -349,7 +349,9 @@ Do this:
 
             # Create a mock response object that looks like a LiteLLM response
             mock_response = MagicMock()
-            mock_response.__getitem__ = lambda self, key: [{"message": {"content": content, "role": "assistant"}}] if key == "choices" else {}
+            mock_response.__getitem__ = lambda self, key: (
+                [{"message": {"content": content, "role": "assistant"}}] if key == "choices" else {}
+            )
 
             coder.partial_response_chunks = [mock_response]
             # Make this an async generator by using return (stops iteration immediately)
