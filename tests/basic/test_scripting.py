@@ -34,7 +34,3 @@ class TestScriptingAPI:
             assert mock_send.call_count == 2
             assert result1 == "Changes applied successfully."
             assert result2 == "Changes applied successfully."
-
-
-if __name__ == "__main__":
-    unittest.main()

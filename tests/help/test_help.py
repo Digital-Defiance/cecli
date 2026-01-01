@@ -159,7 +159,3 @@ class TestHelp:
 
         # Test path with 'website' in the wrong place
         assert fname_to_url("/home/user/website_project/docs/index.md") == ""
-
-
-if __name__ == "__main__":
-    unittest.main()

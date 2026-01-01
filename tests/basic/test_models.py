@@ -471,5 +471,3 @@ class TestModels:
         base_model, kwargs = parse_model_with_suffix('', overrides)
         assert base_model == ''
         assert kwargs == {}
-if __name__ == '__main__':
-    unittest.main()

@@ -646,7 +646,3 @@ class TestInputOutputFormatFiles:
         args_ed, _ = mock_columns.call_args_list[2]
         renderables_ed = args_ed[0]
         assert renderables_ed == ["Editable:", "edit1.txt", "edit[markup].txt"]
-
-
-if __name__ == "__main__":
-    unittest.main()

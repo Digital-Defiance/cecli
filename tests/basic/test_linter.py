@@ -88,7 +88,3 @@ class TestLinter:
             # The result should contain the error message
             assert result is not None
             assert "Error message" in result.text
-
-
-if __name__ == "__main__":
-    unittest.main()
