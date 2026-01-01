@@ -15,13 +15,19 @@ from aider.utils import ChdirTemporaryDirectory
 
 
 class TestInputOutput:
-    def test_line_endings_validation(self):
-        # Test valid line endings
-        for ending in ["platform", "lf", "crlf", "preserve"]:
-            io = InputOutput(line_endings=ending)
-            assert io.newline == (None if ending in ("platform", "preserve") else "\n" if ending == "lf" else "\r\n")
+    @pytest.mark.parametrize("ending,expected_newline", [
+        ("platform", None),
+        ("lf", "\n"),
+        ("crlf", "\r\n"),
+        ("preserve", None),
+    ])
+    def test_valid_line_endings(self, ending, expected_newline):
+        """Test that valid line ending options are correctly processed."""
+        io = InputOutput(line_endings=ending)
+        assert io.newline == expected_newline
 
-        # Test invalid line endings
+    def test_invalid_line_endings(self):
+        """Test that invalid line ending values raise appropriate error."""
         with pytest.raises(ValueError) as cm:
             io = InputOutput(line_endings="invalid")
         assert "Invalid line_endings value: invalid" in str(cm.value)
