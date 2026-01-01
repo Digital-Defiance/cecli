@@ -87,6 +87,7 @@ class TestModels:
         mock_check_deps.assert_called_once_with(mock_io, 'test-model')
 
     def test_model_aliases(self):
+        # Test common aliases
         model = Model('4')
         assert model.name == 'gpt-4-0613'
         model = Model('4o')
@@ -103,6 +104,8 @@ class TestModels:
         assert model.name == 'claude-3-5-haiku-20241022'
         model = Model('opus')
         assert model.name == 'claude-opus-4-20250514'
+
+        # Test non-alias passes through unchanged
         model = Model('gpt-4')
         assert model.name == 'gpt-4'
 
@@ -116,26 +119,44 @@ class TestModels:
 
     def test_parse_token_value(self):
         model = Model('gpt-4')
+
+        # Test integer inputs
         assert model.parse_token_value(8096) == 8096
         assert model.parse_token_value(1000) == 1000
+
+        # Test string inputs
         assert model.parse_token_value('8096') == 8096
+
+        # Test k/K suffix (kilobytes)
         assert model.parse_token_value('8k') == 8 * 1024
         assert model.parse_token_value('8K') == 8 * 1024
         assert model.parse_token_value('10.5k') == 10.5 * 1024
         assert model.parse_token_value('0.5K') == 0.5 * 1024
+
+        # Test m/M suffix (megabytes)
         assert model.parse_token_value('1m') == 1 * 1024 * 1024
         assert model.parse_token_value('1M') == 1 * 1024 * 1024
         assert model.parse_token_value('0.5M') == 0.5 * 1024 * 1024
+
+        # Test with spaces
         assert model.parse_token_value(' 8k ') == 8 * 1024
+
+        # Test conversion from other types
         assert model.parse_token_value(8.0) == 8
 
     def test_set_thinking_tokens(self):
         model = Model('gpt-4')
+
+        # Test with integer
         model.set_thinking_tokens(8096)
         assert model.extra_params['thinking']['budget_tokens'] == 8096
         assert not model.use_temperature
+
+        # Test with string
         model.set_thinking_tokens('10k')
         assert model.extra_params['thinking']['budget_tokens'] == 10 * 1024
+
+        # Test with decimal value
         model.set_thinking_tokens('0.5M')
         assert model.extra_params['thinking']['budget_tokens'] == 0.5 * 1024 * 1024
 
@@ -167,80 +188,117 @@ class TestModels:
         mock_check_pip.assert_not_called()
 
     def test_get_repo_map_tokens(self):
+        # Test default case (no max_input_tokens in info)
         model = Model('gpt-4')
         model.info = {}
         assert model.get_repo_map_tokens() == 1024
+
+        # Test minimum boundary (max_input_tokens < 8192)
         model.info = {'max_input_tokens': 4096}
         assert model.get_repo_map_tokens() == 1024
+
+        # Test middle range (max_input_tokens = 16384)
         model.info = {'max_input_tokens': 16384}
         assert model.get_repo_map_tokens() == 2048
+
+        # Test maximum boundary (max_input_tokens > 32768)
         model.info = {'max_input_tokens': 65536}
         assert model.get_repo_map_tokens() == 4096
+
+        # Test exact boundary values
         model.info = {'max_input_tokens': 8192}
         assert model.get_repo_map_tokens() == 1024
+
         model.info = {'max_input_tokens': 32768}
         assert model.get_repo_map_tokens() == 4096
 
     def test_configure_model_settings(self):
+        # Test o3-mini case
         model = Model('something/o3-mini')
         assert model.edit_format == 'diff'
         assert model.use_repo_map
         assert not model.use_temperature
+
+        # Test o1-mini case
         model = Model('something/o1-mini')
         assert model.use_repo_map
         assert not model.use_temperature
         assert not model.use_system_prompt
+
+        # Test o1-preview case
         model = Model('something/o1-preview')
         assert model.edit_format == 'diff'
         assert model.use_repo_map
         assert not model.use_temperature
         assert not model.use_system_prompt
+
+        # Test o1 case
         model = Model('something/o1')
         assert model.edit_format == 'diff'
         assert model.use_repo_map
         assert not model.use_temperature
         assert not model.streaming
+
+        # Test deepseek v3 case
         model = Model('deepseek-v3')
         assert model.edit_format == 'diff'
         assert model.use_repo_map
         assert model.reminder == 'sys'
         assert model.examples_as_sys_msg
+
+        # Test deepseek reasoner case
         model = Model('deepseek-r1')
         assert model.edit_format == 'diff'
         assert model.use_repo_map
         assert model.examples_as_sys_msg
         assert not model.use_temperature
         assert model.reasoning_tag == 'think'
+
+        # Test provider/deepseek-r1 case
         model = Model('someprovider/deepseek-r1')
         assert model.edit_format == 'diff'
         assert model.use_repo_map
         assert model.examples_as_sys_msg
         assert not model.use_temperature
         assert model.reasoning_tag == 'think'
+
+        # Test provider/deepseek-v3 case
         model = Model('anotherprovider/deepseek-v3')
         assert model.edit_format == 'diff'
         assert model.use_repo_map
         assert model.reminder == 'sys'
         assert model.examples_as_sys_msg
+
+        # Test llama3 70b case
         model = Model('llama3-70b')
         assert model.edit_format == 'diff'
         assert model.use_repo_map
         assert model.send_undo_reply
         assert model.examples_as_sys_msg
+
+        # Test gpt-4 case
         model = Model('gpt-4')
         assert model.edit_format == 'diff'
         assert model.use_repo_map
         assert model.send_undo_reply
+
+        # Test gpt-3.5 case
         model = Model('gpt-3.5')
         assert model.reminder == 'sys'
+
+        # Test 3.5-sonnet case
         model = Model('claude-3.5-sonnet')
         assert model.edit_format == 'diff'
         assert model.use_repo_map
         assert model.examples_as_sys_msg
         assert model.reminder == 'user'
+
+        # Test o1- prefix case
         model = Model('o1-something')
         assert not model.use_system_prompt
         assert not model.use_temperature
+
+        # Test qwen case
         model = Model('qwen-coder-2.5-32b')
         assert model.edit_format == 'diff'
         assert model.editor_edit_format == 'editor-diff'
