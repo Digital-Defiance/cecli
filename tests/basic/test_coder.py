@@ -121,7 +121,6 @@ class TestCoder:
         coder = await Coder.create(self.GPT35, None, io=InputOutput(), fnames=files)
 
         content = coder.get_files_content()
-        # get_files_content now returns a dict with chat_files, edit_files, and file name sets
         all_file_names = content["chat_file_names"] | content["edit_file_names"]
         assert "file1.txt" in all_file_names
         assert "file2.txt" in all_file_names
