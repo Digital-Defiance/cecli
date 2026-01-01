@@ -369,15 +369,20 @@ class TestModels:
 
     @patch('aider.models.litellm.acompletion')
     async def test_use_temperature_in_send_completion(self, mock_completion):
+        # Test use_temperature=True sends temperature=0
         model = Model('gpt-4')
         model.extra_params = {}
         messages = [{'role': 'user', 'content': 'Hello'}]
         await model.send_completion(messages, functions=None, stream=False)
         mock_completion.assert_called_with(model=model.name, messages=ANY, stream=False, temperature=0, timeout=600, cache_control_injection_points=ANY)
+
+        # Test use_temperature=False doesn't send temperature
         model = Model('github/o1-mini')
         messages = [{'role': 'user', 'content': 'Hello'}]
         await model.send_completion(messages, functions=None, stream=False)
         assert 'temperature' not in mock_completion.call_args.kwargs
+
+        # Test use_temperature as float sends that value
         model = Model('gpt-4')
         model.extra_params = {}
         model.use_temperature = 0.7
@@ -387,15 +392,20 @@ class TestModels:
 
     def test_model_override_kwargs(self):
         """Test that override kwargs are applied to model extra_params."""
+        # Test with override kwargs
         model = Model('gpt-4', override_kwargs={'temperature': 0.8, 'top_p': 0.9})
         assert 'temperature' in model.extra_params
         assert model.extra_params['temperature'] == 0.8
         assert 'top_p' in model.extra_params
         assert model.extra_params['top_p'] == 0.9
+
+        # Test that override kwargs merge with existing extra_params
         model = Model('gpt-4', override_kwargs={'extra_headers': {'X-Custom': 'value'}})
         assert 'extra_headers' in model.extra_params
         assert 'X-Custom' in model.extra_params['extra_headers']
         assert model.extra_params['extra_headers']['X-Custom'] == 'value'
+
+        # Test nested dict merging
         model = Model('gpt-4', override_kwargs={'extra_body': {'reasoning_effort': 'high'}})
         assert 'extra_body' in model.extra_params
         assert 'reasoning_effort' in model.extra_params['extra_body']
@@ -403,6 +413,7 @@ class TestModels:
 
     def test_model_override_kwargs_with_existing_extra_params(self):
         """Test that override kwargs merge correctly with existing extra_params."""
+        # Create a model with existing extra_params via model settings
         import tempfile
         import yaml
         test_settings = [{'name': 'gpt-4', 'extra_params': {'temperature': 0.5, 'extra_headers': {'Existing': 'header'}}}]
