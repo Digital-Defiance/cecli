@@ -113,7 +113,3 @@ These changes will add the `--check-update` option to the command-line interface
         dump(edits)
         assert len(edits) == 2
         assert len(edits[0][1]) == 3
-
-
-if __name__ == "__main__":
-    unittest.main()

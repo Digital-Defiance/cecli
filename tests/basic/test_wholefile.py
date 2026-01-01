@@ -15,15 +15,13 @@ from aider.models import Model
 class TestWholeFileCoder:
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
-        # Setup
         self.original_cwd = os.getcwd()
         self.tempdir = tempfile.mkdtemp()
         os.chdir(self.tempdir)
         self.GPT35 = Model("gpt-3.5-turbo")
-        
+
         yield
-        
-        # Teardown
+
         os.chdir(self.original_cwd)
         shutil.rmtree(self.tempdir, ignore_errors=True)
 

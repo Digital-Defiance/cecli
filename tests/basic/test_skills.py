@@ -22,7 +22,6 @@ class TestSkills:
 
         self.temp_dir = tempfile.mkdtemp()
         yield
-        # Teardown
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 

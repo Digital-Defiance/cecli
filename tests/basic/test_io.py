@@ -395,6 +395,8 @@ class TestInputOutputMultilineMode:
             # The invalid Unicode should be replaced with '?'
             assert converted_message == "Hello ?World"
 
+    # TODO: Fix underlying bug in io.py:970 (UnboundLocalError) - see MR7 comment #683
+    # This test will pass once the bug is fixed in the production code
     @pytest.mark.xfail(reason="Bug: confirm_ask doesn't propagate KeyboardInterrupt - revealed by pytest migration")
     async def test_multiline_mode_restored_after_interrupt(self):
         """Test that multiline mode is restored after KeyboardInterrupt"""
