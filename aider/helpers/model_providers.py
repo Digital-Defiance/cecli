@@ -449,14 +449,24 @@ class ModelProviderManager:
         if max_output_tokens is None:
             max_output_tokens = context_len
 
+        # Normalize pricing: detect if values are in $/M format vs $/token format
+        # If cost >= 0.001, it's likely in $/M format (e.g., "1.0" = $1/M tokens)
+        # If cost < 0.001, it's likely already in $/token format (e.g., "0.00000055")
+        def _normalize_cost(cost: Optional[float]) -> float:
+            if cost is None or cost == 0:
+                return 0.0
+            if cost >= 0.001:
+                # Likely in $/M format, convert to $/token
+                return cost / self.DEFAULT_TOKEN_PRICE_RATIO
+            # Already in $/token format
+            return cost
+
         info = {
             "max_input_tokens": context_len,
             "max_tokens": max_tokens,
             "max_output_tokens": max_output_tokens,
-            "input_cost_per_token": (
-                input_cost or 0
-            ) / self.DEFAULT_TOKEN_PRICE_RATIO,  # Might Only Apply to Chutes and Be a thing we configure per-provider
-            "output_cost_per_token": (output_cost or 0) / self.DEFAULT_TOKEN_PRICE_RATIO,
+            "input_cost_per_token": _normalize_cost(input_cost),
+            "output_cost_per_token": _normalize_cost(output_cost),
             "litellm_provider": provider,
             "mode": record.get("mode", "chat"),
         }
