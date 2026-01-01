@@ -2,7 +2,7 @@ import os
 import time
 
 from aider.tools.utils.base_tool import BaseTool
-from aider.tools.utils.helpers import ToolError
+from aider.tools.utils.helpers import ToolError, parse_arg_as_list
 
 
 class Tool(BaseTool):
@@ -67,10 +67,10 @@ class Tool(BaseTool):
         create: list[str] | None
             Files to create and make editable.
         """
-        remove_files = remove or []
-        editable_files = editable or []
-        view_files = view or []
-        create_files = create or []
+        remove_files = parse_arg_as_list(remove)
+        editable_files = parse_arg_as_list(editable)
+        view_files = parse_arg_as_list(view)
+        create_files = parse_arg_as_list(create)
 
         if not remove_files and not editable_files and not view_files and not create_files:
             raise ToolError("You must specify at least one of: remove, editable, view, or create")

@@ -245,6 +245,32 @@ def generate_unified_diff_snippet(original_content, new_content, file_path, cont
     return diff_snippet
 
 
+def parse_arg_as_list(arg):
+    if arg is None:
+        return []
+    if isinstance(arg, list):
+        return arg
+    if isinstance(arg, str):
+        # Handle empty or whitespace-only string as empty list
+        if not arg or arg.isspace():
+            return []
+        # Try to parse as JSON array
+        import json
+
+        try:
+            parsed = json.loads(arg)
+            if isinstance(parsed, list):
+                return parsed
+            else:
+                # If it's not a list, wrap it in a list
+                return [parsed]
+        except json.JSONDecodeError:
+            # If not valid JSON, treat as a single file path
+            return [arg]
+    # For any other type, wrap in list
+    return [arg]
+
+
 def apply_change(
     coder, abs_path, rel_path, original_content, new_content, change_type, metadata, change_id=None
 ):
