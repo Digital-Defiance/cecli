@@ -50,7 +50,7 @@ class TestInputOutput:
         # Check that # was added to hex colors
         assert io.user_input_color == "#00cc00"
         assert io.tool_error_color == "#FF2222"
-        assert io.tool_warning_color == "#FFA500"  # Already had #
+        assert io.tool_warning_color == "#FFA500"
         assert io.assistant_output_color == "#0088ff"
 
         # Test with named colors (should be unchanged)
