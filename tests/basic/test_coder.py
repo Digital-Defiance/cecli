@@ -9,6 +9,7 @@ import pytest
 
 from aider.coders import Coder
 from aider.coders.base_coder import FinishReasonLength, UnknownEditFormat
+from aider.commands import SwitchCoder
 from aider.dump import dump  # noqa: F401
 from aider.io import InputOutput
 from aider.models import Model
@@ -1384,129 +1385,75 @@ This command will print 'Hello, World!' to the console."""
             with patch("os.environ.get", return_value=None) as mock_env_get:
                 assert coder.get_user_language() is None
 
-    @pytest.mark.xfail(
-        reason="ArchitectCoder missing args attribute at line 19 in architect_coder.py"
-    )
     async def test_architect_coder_auto_accept_true(self):
         with GitTemporaryDirectory():
             io = InputOutput(yes=True)
-            io.confirm_ask = AsyncMock(return_value=True)
+            io.confirm_ask = AsyncMock(return_value=False)
 
-            # Create an ArchitectCoder with auto_accept_architect=True
-            with patch("aider.coders.architect_coder.AskCoder.__init__", return_value=None):
-                from aider.coders.architect_coder import ArchitectCoder
+            coder = await Coder.create(self.GPT35, edit_format="architect", io=io)
+            coder.auto_accept_architect = True
+            coder.partial_response_content = "Make these changes to the code"
 
-                coder = ArchitectCoder()
-                coder.io = io
-                coder.main_model = self.GPT35
-                coder.auto_accept_architect = True
-                coder.verbose = False
-                coder.total_cost = 0
-                coder.cur_messages = []
-                coder.done_messages = []
-                coder.summarizer = MagicMock()
-                coder.summarizer.too_big.return_value = False
+            mock_editor = MagicMock()
+            mock_editor.generate = AsyncMock()
+            mock_editor.total_cost = 0
+            mock_editor.aider_commit_hashes = []
 
-                # Mock editor_coder creation and execution
-                mock_editor = MagicMock()
-                with patch(
-                    "aider.coders.architect_coder.Coder.create",
-                    return_value=mock_editor,
-                ):
-                    # Set partial response content
-                    coder.partial_response_content = "Make these changes to the code"
-
-                    # Call reply_completed
+            with patch(
+                "aider.coders.architect_coder.Coder.create",
+                new_callable=AsyncMock,
+                return_value=mock_editor,
+            ):
+                with pytest.raises(SwitchCoder):
                     await coder.reply_completed()
 
-                    # Verify that confirm_ask was not called (auto-accepted)
-                    io.confirm_ask.assert_not_called()
+                io.confirm_ask.assert_called_once_with("Edit the files?", allow_tweak=False)
+                mock_editor.generate.assert_called_once()
 
-                    # Verify that editor coder was created and run
-                    mock_editor.run.assert_called_once()
-
-    @pytest.mark.xfail(
-        reason="ArchitectCoder missing args attribute at line 19 in architect_coder.py"
-    )
     async def test_architect_coder_auto_accept_false_confirmed(self):
         with GitTemporaryDirectory():
             io = InputOutput(yes=False)
             io.confirm_ask = AsyncMock(return_value=True)
 
-            # Create an ArchitectCoder with auto_accept_architect=False
-            with patch("aider.coders.architect_coder.AskCoder.__init__", return_value=None):
-                from aider.coders.architect_coder import ArchitectCoder
+            coder = await Coder.create(self.GPT35, edit_format="architect", io=io)
+            coder.auto_accept_architect = False
+            coder.partial_response_content = "Make these changes to the code"
 
-                coder = ArchitectCoder()
-                coder.io = io
-                coder.main_model = self.GPT35
-                coder.auto_accept_architect = False
-                coder.verbose = False
-                coder.total_cost = 0
-                coder.cur_messages = []
-                coder.done_messages = []
-                coder.summarizer = MagicMock()
-                coder.summarizer.too_big.return_value = False
-                coder.cur_messages = []
-                coder.done_messages = []
-                coder.summarizer = MagicMock()
-                coder.summarizer.too_big.return_value = False
+            mock_editor = MagicMock()
+            mock_editor.generate = AsyncMock()
+            mock_editor.total_cost = 0
+            mock_editor.aider_commit_hashes = []
 
-                # Mock editor_coder creation and execution
-                mock_editor = MagicMock()
-                with patch(
-                    "aider.coders.architect_coder.Coder.create",
-                    return_value=mock_editor,
-                ):
-                    # Set partial response content
-                    coder.partial_response_content = "Make these changes to the code"
-
-                    # Call reply_completed
+            with patch(
+                "aider.coders.architect_coder.Coder.create",
+                new_callable=AsyncMock,
+                return_value=mock_editor,
+            ):
+                with pytest.raises(SwitchCoder):
                     await coder.reply_completed()
 
-                    # Verify that confirm_ask was called
-                    io.confirm_ask.assert_called_once_with("Edit the files?")
+                io.confirm_ask.assert_called_once_with("Edit the files?", allow_tweak=False)
+                mock_editor.generate.assert_called_once()
 
-                    # Verify that editor coder was created and run
-                    mock_editor.run.assert_called_once()
-
-    @pytest.mark.xfail(
-        reason="ArchitectCoder missing args attribute at line 19 in architect_coder.py"
-    )
     async def test_architect_coder_auto_accept_false_rejected(self):
         with GitTemporaryDirectory():
             io = InputOutput(yes=False)
             io.confirm_ask = AsyncMock(return_value=False)
 
-            # Create an ArchitectCoder with auto_accept_architect=False
-            with patch("aider.coders.architect_coder.AskCoder.__init__", return_value=None):
-                from aider.coders.architect_coder import ArchitectCoder
+            coder = await Coder.create(self.GPT35, edit_format="architect", io=io)
+            coder.auto_accept_architect = False
+            coder.partial_response_content = "Make these changes to the code"
 
-                coder = ArchitectCoder()
-                coder.io = io
-                coder.main_model = self.GPT35
-                coder.auto_accept_architect = False
-                coder.verbose = False
-                coder.total_cost = 0
+            mock_create = AsyncMock()
+            with patch(
+                "aider.coders.architect_coder.Coder.create",
+                mock_create,
+            ):
+                result = await coder.reply_completed()
 
-                # Mock editor_coder creation and execution
-                mock_editor = MagicMock()
-                with patch(
-                    "aider.coders.architect_coder.Coder.create",
-                    return_value=mock_editor,
-                ):
-                    # Set partial response content
-                    coder.partial_response_content = "Make these changes to the code"
-
-                    # Call reply_completed
-                    await coder.reply_completed()
-
-                    # Verify that confirm_ask was called
-                    io.confirm_ask.assert_called_once_with("Edit the files?")
-
-                    # Verify that editor coder was NOT created or run
-                    # (because user rejected the changes)
-                    mock_editor.run.assert_not_called()
+                assert result is None
+                io.confirm_ask.assert_called_once_with("Edit the files?", allow_tweak=False)
+                mock_create.assert_not_called()
 
     @patch("aider.coders.base_coder.experimental_mcp_client")
     async def test_mcp_server_connection(self, mock_mcp_client):
