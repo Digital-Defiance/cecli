@@ -226,11 +226,7 @@ class FileBasedTokenStorage(TokenStorage):
             all_tokens[self.server_name] = {}
 
         tokens_dict = tokens.model_dump()
-        all_tokens[self.server_name]["tokens"] = {
-            **tokens_dict,
-            "stored_at": time.time(),
-        }
-
+        all_tokens[self.server_name]["tokens"] = tokens_dict
         save_mcp_oauth_tokens(all_tokens)
 
     async def get_client_info(self) -> Optional[OAuthClientInformationFull]:
