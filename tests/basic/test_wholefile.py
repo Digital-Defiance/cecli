@@ -2,7 +2,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -40,7 +40,8 @@ class TestWholeFileCoder:
         coder.render_incremental_response(True)
 
     async def test_no_files_new_file_should_ask(self):
-        io = InputOutput(yes=False)  # <- yes=FALSE
+        io = InputOutput(yes=False)
+        io.confirm_ask = AsyncMock(return_value=False)
         coder = WholeFileCoder(main_model=self.GPT35, io=io, fnames=[])
         coder.partial_response_content = (
             'To print "Hello, World!" in most programming languages, you can use the following'

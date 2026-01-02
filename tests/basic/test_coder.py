@@ -54,9 +54,6 @@ class TestCoder:
 
             assert not coder.need_commit_before_edits
 
-    @pytest.mark.xfail(
-        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
-    )
     async def test_allowed_to_edit_no(self):
         with GitTemporaryDirectory():
             repo = git.Repo()
@@ -71,8 +68,8 @@ class TestCoder:
 
             repo.git.commit("-m", "init")
 
-            # say NO
             io = InputOutput(yes=False)
+            io.confirm_ask = AsyncMock(return_value=False)
 
             coder = await Coder.create(self.GPT35, None, io, fnames=["added.txt"])
 
@@ -126,14 +123,12 @@ class TestCoder:
         assert "file1.txt" in all_file_names
         assert "file2.txt" in all_file_names
 
-    @pytest.mark.xfail(
-        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
-    )
     async def test_check_for_filename_mentions(self):
         with GitTemporaryDirectory():
             repo = git.Repo()
 
             mock_io = MagicMock()
+            mock_io.confirm_ask = AsyncMock(return_value=True)
 
             fname1 = Path("file1.txt")
             fname2 = Path("file2.py")
@@ -145,13 +140,11 @@ class TestCoder:
             repo.git.add(str(fname2))
             repo.git.commit("-m", "new")
 
-            # Initialize the Coder object with the mocked IO and mocked repo
-            coder = await Coder.create(self.GPT35, None, mock_io)
+            mock_args = MagicMock(tui=False)
+            coder = await Coder.create(self.GPT35, None, mock_io, args=mock_args)
 
-            # Call the check_for_file_mentions method
-            coder.check_for_file_mentions("Please check file1.txt and file2.py")
+            await coder.check_for_file_mentions("Please check file1.txt and file2.py")
 
-            # Check if coder.abs_fnames contains both files
             expected_files = set(
                 [
                     str(Path(coder.root) / fname1),
@@ -161,13 +154,11 @@ class TestCoder:
 
             assert coder.abs_fnames == expected_files
 
-    @pytest.mark.xfail(
-        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
-    )
     async def test_check_for_ambiguous_filename_mentions_of_longer_paths(self):
         with GitTemporaryDirectory():
             io = InputOutput(pretty=False, yes=True)
-            coder = await Coder.create(self.GPT35, None, io)
+            mock_args = MagicMock(tui=False)
+            coder = await Coder.create(self.GPT35, None, io, args=mock_args)
 
             fname = Path("file1.txt")
             fname.touch()
@@ -180,8 +171,7 @@ class TestCoder:
             mock.return_value = set([str(fname), str(other_fname)])
             coder.repo.get_tracked_files = mock
 
-            # Call the check_for_file_mentions method
-            coder.check_for_file_mentions(f"Please check {fname}!")
+            await coder.check_for_file_mentions(f"Please check {fname}!")
 
             assert coder.abs_fnames == {str(fname.resolve())}
 
@@ -216,15 +206,9 @@ class TestCoder:
             mentioned = coder.get_file_mentions(f"Check {fname1} and {fname3}")
             assert mentioned == {str(fname3)}
 
-    @pytest.mark.xfail(
-        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
-    )
     async def test_check_for_file_mentions_read_only(self):
         with GitTemporaryDirectory():
-            io = InputOutput(
-                pretty=False,
-                yes=True,
-            )
+            io = InputOutput(pretty=False, yes=True)
             coder = await Coder.create(self.GPT35, None, io)
 
             fname = Path("readonly_file.txt")
@@ -232,67 +216,44 @@ class TestCoder:
 
             coder.abs_read_only_fnames.add(str(fname.resolve()))
 
-            # Mock the get_tracked_files method
             mock = MagicMock()
             mock.return_value = set([str(fname)])
             coder.repo.get_tracked_files = mock
 
-            # Call the check_for_file_mentions method
-            result = coder.check_for_file_mentions(f"Please check {fname}!")
+            result = await coder.check_for_file_mentions(f"Please check {fname}!")
 
-            # Assert that the method returns None (user not asked to add the file)
             assert result is None
-
-            # Assert that abs_fnames is still empty (file not added)
             assert coder.abs_fnames == set()
 
-    @pytest.mark.xfail(
-        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
-    )
     async def test_check_for_file_mentions_with_mocked_confirm(self):
         with GitTemporaryDirectory():
             io = InputOutput(pretty=False)
-            coder = await Coder.create(self.GPT35, None, io)
+            io.confirm_ask = AsyncMock(side_effect=[False, True, True])
+            mock_args = MagicMock(tui=False)
+            coder = await Coder.create(self.GPT35, None, io, args=mock_args)
 
-            # Mock get_file_mentions to return two file names
             coder.get_file_mentions = MagicMock(return_value=set(["file1.txt", "file2.txt"]))
 
-            # Mock confirm_ask to return False for the first call and True for the second
-            io.confirm_ask = AsyncMock(side_effect=[False, True, True])
-
-            # First call to check_for_file_mentions
             await coder.check_for_file_mentions("Please check file1.txt for the info")
 
-            # Assert that confirm_ask was called twice
             assert io.confirm_ask.call_count == 2
-
-            # Assert that only file2.txt was added to abs_fnames
             assert len(coder.abs_fnames) == 1
             assert "file2.txt" in str(coder.abs_fnames)
 
-            # Reset the mock
             io.confirm_ask.reset_mock()
 
-            # Second call to check_for_file_mentions
             await coder.check_for_file_mentions("Please check file1.txt and file2.txt again")
 
-            # Assert that confirm_ask was called only once (for file1.txt)
             assert io.confirm_ask.call_count == 1
-
-            # Assert that abs_fnames still contains only file2.txt
             assert len(coder.abs_fnames) == 1
             assert "file2.txt" in str(coder.abs_fnames)
-
-            # Assert that file1.txt is in ignore_mentions
             assert "file1.txt" in coder.ignore_mentions
 
-    @pytest.mark.xfail(
-        reason="Bug in io.py:970 - UnboundLocalError when exceptions occur before line assigned"
-    )
     async def test_check_for_subdir_mention(self):
         with GitTemporaryDirectory():
             io = InputOutput(pretty=False, yes=True)
-            coder = await Coder.create(self.GPT35, None, io)
+            mock_args = MagicMock(tui=False)
+            coder = await Coder.create(self.GPT35, None, io, args=mock_args)
 
             fname = Path("other") / "file1.txt"
             fname.parent.mkdir(parents=True, exist_ok=True)
@@ -302,8 +263,7 @@ class TestCoder:
             mock.return_value = set([str(fname)])
             coder.repo.get_tracked_files = mock
 
-            # Call the check_for_file_mentions method
-            coder.check_for_file_mentions(f"Please check `{fname}`")
+            await coder.check_for_file_mentions(f"Please check `{fname}`")
 
             assert coder.abs_fnames == {str(fname.resolve())}
 

@@ -941,6 +941,7 @@ class InputOutput:
 
                 if coder:
                     await coder.commands.do_run("exit", "")
+                    return ""
                 else:
                     raise SystemExit
 
