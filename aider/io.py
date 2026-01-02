@@ -1158,7 +1158,7 @@ class InputOutput:
         self.confirmation_in_progress_event.clear()  # Confirmation is in progress
 
         try:
-            return await asyncio.create_task(self._confirm_ask(*args, **kwargs))
+            return await self._confirm_ask(*args, **kwargs)
         except KeyboardInterrupt:
             # Re-raise KeyboardInterrupt to allow it to propagate
             raise
@@ -1237,16 +1237,9 @@ class InputOutput:
                 while True:
                     try:
                         if self.prompt_session:
-                            await self.recreate_input()
-
-                            if coroutines.is_active(self.input_task):
-                                self.prompt_session.message = question
-                                self.prompt_session.app.invalidate()
-                            else:
-                                await asyncio.sleep(0)
-
-                            res = await self.input_task
-                            await asyncio.sleep(0)
+                            # Call prompt_async directly instead of using input_task
+                            # This allows KeyboardInterrupt to propagate properly
+                            res = await self.prompt_session.prompt_async(question)
                         else:
                             res = await asyncio.get_event_loop().run_in_executor(
                                 None, input, question
