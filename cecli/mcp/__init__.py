@@ -149,6 +149,6 @@ def load_mcp_servers(mcp_servers, mcp_servers_file, io, verbose=False, mcp_trans
         # and maybe it is actually prompt_toolkit's fault
         # but this hack works swimmingly because ???
         # so sure! why not
-        servers = [McpServer(json.loads('{"cecli_default": {}}', io=io, verbose=verbose))]
+        servers = [McpServer(json.loads('{"cecli_default": {}}'), io=io, verbose=verbose)]
 
     return servers
