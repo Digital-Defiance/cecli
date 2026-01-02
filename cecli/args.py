@@ -562,7 +562,7 @@ def get_parser(default_config_files, git_root):
         help="Enable/disable the addition of files listed in .gitignore to cecli's editing scope.",
     )
     default_cecli_ignore_file = (
-        os.path.join(git_root, "cecli.ignore") if git_root else "cecli.ignore"
+        os.path.join(git_root, ".cecli.ignore") if git_root else ".cecli.ignore"
     )
 
     group.add_argument(
@@ -570,7 +570,7 @@ def get_parser(default_config_files, git_root):
         metavar="CECLIIGNORE",
         type=lambda path_str: resolve_cecli_ignore_path(path_str, git_root),
         default=default_cecli_ignore_file,
-        help="Specify the cecli ignore file (default: .cecli_ignore in git root)",
+        help="Specify the cecli ignore file (default: .cecli.ignore in git root)",
     ).complete = shtab.FILE
     group.add_argument(
         "--subtree-only",
