@@ -7,22 +7,22 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import git
 import pytest
 
-from aider.coders import Coder
-from aider.coders.base_coder import FinishReasonLength, UnknownEditFormat
-from aider.commands import SwitchCoder
-from aider.dump import dump  # noqa: F401
-from aider.io import InputOutput
-from aider.models import Model
-from aider.repo import GitRepo
-from aider.sendchat import sanity_check_messages
-from aider.utils import GitTemporaryDirectory
+from cecli.coders import Coder
+from cecli.coders.base_coder import FinishReasonLength, UnknownEditFormat
+from cecli.commands import SwitchCoder
+from cecli.dump import dump  # noqa: F401
+from cecli.io import InputOutput
+from cecli.models import Model
+from cecli.repo import GitRepo
+from cecli.sendchat import sanity_check_messages
+from cecli.utils import GitTemporaryDirectory
 
 
 class TestCoder:
     @pytest.fixture(autouse=True)
     def setup(self, gpt35_model):
         self.GPT35 = gpt35_model
-        self.webbrowser_patcher = patch("aider.io.webbrowser.open")
+        self.webbrowser_patcher = patch("cecli.io.webbrowser.open")
         self.mock_webbrowser = self.webbrowser_patcher.start()
 
     async def test_allowed_to_edit(self):
@@ -829,7 +829,7 @@ two
             diff = saved_diffs[0]
             assert "file.txt" in diff
 
-    async def test_skip_aiderignored_files(self):
+    async def test_skip_cecli_ignored_files(self):
         with GitTemporaryDirectory():
             repo = git.Repo()
 
@@ -845,13 +845,13 @@ two
 
             fnames = [fname1, fname2, fname3]
 
-            aignore = Path(".aiderignore")
+            aignore = Path("cecli.ignore")
             aignore.write_text(f"{fname1}\n{fname2}\ndir\n")
             repo = GitRepo(
                 io,
                 fnames,
                 None,
-                aider_ignore_file=str(aignore),
+                cecli_ignore_file=str(aignore),
             )
 
             coder = await Coder.create(
@@ -1285,7 +1285,7 @@ This command will print 'Hello, World!' to the console."""
         assert coder.normalize_language("French") == "French"
 
         # Test common locale codes (fallback map, assuming babel is not installed or fails)
-        with patch("aider.coders.base_coder.Locale", None):
+        with patch("cecli.coders.base_coder.Locale", None):
             assert coder.normalize_language("en_US") == "English"
             assert coder.normalize_language("fr_FR") == "French"
             assert coder.normalize_language("es") == "Spanish"
@@ -1301,7 +1301,7 @@ This command will print 'Hello, World!' to the console."""
         mock_locale_instance = MagicMock()
         mock_babel_locale.parse.return_value = mock_locale_instance
 
-        with patch("aider.coders.base_coder.Locale", mock_babel_locale):
+        with patch("cecli.coders.base_coder.Locale", mock_babel_locale):
             mock_locale_instance.get_display_name.return_value = "english"  # For en_US
             assert coder.normalize_language("en_US") == "English"
             mock_babel_locale.parse.assert_called_with("en_US")
@@ -1315,7 +1315,7 @@ This command will print 'Hello, World!' to the console."""
         # Test with babel.Locale raising an exception (simulating parse failure)
         mock_babel_locale_error = MagicMock()
         mock_babel_locale_error.parse.side_effect = Exception("Babel parse error")
-        with patch("aider.coders.base_coder.Locale", mock_babel_locale_error):
+        with patch("cecli.coders.base_coder.Locale", mock_babel_locale_error):
             assert coder.normalize_language("en_US") == "English"  # Falls back to map
 
     async def test_get_user_language(self):
@@ -1397,10 +1397,10 @@ This command will print 'Hello, World!' to the console."""
             mock_editor = MagicMock()
             mock_editor.generate = AsyncMock()
             mock_editor.total_cost = 0
-            mock_editor.aider_commit_hashes = []
+            mock_editor.coder_commit_hashes = []
 
             with patch(
-                "aider.coders.architect_coder.Coder.create",
+                "cecli.coders.architect_coder.Coder.create",
                 new_callable=AsyncMock,
                 return_value=mock_editor,
             ):
@@ -1422,10 +1422,10 @@ This command will print 'Hello, World!' to the console."""
             mock_editor = MagicMock()
             mock_editor.generate = AsyncMock()
             mock_editor.total_cost = 0
-            mock_editor.aider_commit_hashes = []
+            mock_editor.coder_commit_hashes = []
 
             with patch(
-                "aider.coders.architect_coder.Coder.create",
+                "cecli.coders.architect_coder.Coder.create",
                 new_callable=AsyncMock,
                 return_value=mock_editor,
             ):
@@ -1446,7 +1446,7 @@ This command will print 'Hello, World!' to the console."""
 
             mock_create = AsyncMock()
             with patch(
-                "aider.coders.architect_coder.Coder.create",
+                "cecli.coders.architect_coder.Coder.create",
                 mock_create,
             ):
                 result = await coder.reply_completed()
@@ -1455,7 +1455,7 @@ This command will print 'Hello, World!' to the console."""
                 io.confirm_ask.assert_called_once_with("Edit the files?", allow_tweak=False)
                 mock_create.assert_not_called()
 
-    @patch("aider.coders.base_coder.experimental_mcp_client")
+    @patch("cecli.coders.base_coder.experimental_mcp_client")
     async def test_mcp_server_connection(self, mock_mcp_client):
         """Test that the coder connects to MCP servers for tools."""
         with GitTemporaryDirectory():
@@ -1482,7 +1482,7 @@ This command will print 'Hello, World!' to the console."""
                 assert len(coder.mcp_tools) == 1
                 assert coder.mcp_tools[0][0] == "test_server"
 
-    @patch("aider.coders.base_coder.experimental_mcp_client")
+    @patch("cecli.coders.base_coder.experimental_mcp_client")
     async def test_coder_creation_with_partial_failed_mcp_server(self, mock_mcp_client):
         """Test that a coder can still be created even if an MCP server fails to initialize."""
         with GitTemporaryDirectory():
@@ -1536,7 +1536,7 @@ This command will print 'Hello, World!' to the console."""
                 "Error initializing MCP server failing_server: Failed to load tools"
             )
 
-    @patch("aider.coders.base_coder.experimental_mcp_client")
+    @patch("cecli.coders.base_coder.experimental_mcp_client")
     async def test_coder_creation_with_all_failed_mcp_server(self, mock_mcp_client):
         """Test that a coder can still be created even if an MCP server fails to initialize."""
         with GitTemporaryDirectory():
@@ -1740,7 +1740,7 @@ This command will print 'Hello, World!' to the console."""
             assert len(coder.cur_messages) == 0
 
     @patch(
-        "aider.coders.base_coder.experimental_mcp_client.call_openai_tool", new_callable=AsyncMock
+        "cecli.coders.base_coder.experimental_mcp_client.call_openai_tool", new_callable=AsyncMock
     )
     async def test_execute_tool_calls(self, mock_call_tool):
         """Test that _execute_tool_calls executes tool calls correctly."""
@@ -1829,7 +1829,7 @@ This command will print 'Hello, World!' to the console."""
             coder.repo.get_commit_message.assert_called_once()
 
     @patch(
-        "aider.coders.base_coder.experimental_mcp_client.call_openai_tool",
+        "cecli.coders.base_coder.experimental_mcp_client.call_openai_tool",
         new_callable=AsyncMock,
     )
     async def test_execute_tool_calls_multiple_content(self, mock_call_openai_tool):
@@ -1878,7 +1878,7 @@ This command will print 'Hello, World!' to the console."""
             assert result[0]["content"] == "First part. Second part."
 
     @patch(
-        "aider.coders.base_coder.experimental_mcp_client.call_openai_tool",
+        "cecli.coders.base_coder.experimental_mcp_client.call_openai_tool",
         new_callable=AsyncMock,
     )
     async def test_execute_tool_calls_blob_content(self, mock_call_openai_tool):

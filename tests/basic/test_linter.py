@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from aider.dump import dump  # noqa
-from aider.linter import Linter
+from cecli.dump import dump  # noqa
+from cecli.linter import Linter
 
 
 class TestLinter:

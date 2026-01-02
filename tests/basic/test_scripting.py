@@ -1,13 +1,13 @@
 from pathlib import Path
 from unittest.mock import patch
 
-from aider.coders import Coder
-from aider.models import Model
-from aider.utils import GitTemporaryDirectory
+from cecli.coders import Coder
+from cecli.models import Model
+from cecli.utils import GitTemporaryDirectory
 
 
 class TestScriptingAPI:
-    @patch("aider.coders.base_coder.Coder.send")
+    @patch("cecli.coders.base_coder.Coder.send")
     async def test_basic_scripting(self, mock_send):
         with GitTemporaryDirectory():
             # Setup - create an async generator mock

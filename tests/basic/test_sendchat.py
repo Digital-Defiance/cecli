@@ -2,9 +2,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from aider.exceptions import LiteLLMExceptions
-from aider.llm import litellm
-from aider.models import Model
+from cecli.exceptions import LiteLLMExceptions
+from cecli.llm import litellm
+from cecli.models import Model
 
 
 class PrintCalled(Exception):
@@ -102,21 +102,21 @@ class TestSendChat:
         assert mock_print.call_count > 0
 
     def test_ensure_alternating_roles_empty(self):
-        from aider.sendchat import ensure_alternating_roles
+        from cecli.sendchat import ensure_alternating_roles
 
         messages = []
         result = ensure_alternating_roles(messages)
         assert result == []
 
     def test_ensure_alternating_roles_single_message(self):
-        from aider.sendchat import ensure_alternating_roles
+        from cecli.sendchat import ensure_alternating_roles
 
         messages = [{"role": "user", "content": "Hello"}]
         result = ensure_alternating_roles(messages)
         assert result == messages
 
     def test_ensure_alternating_roles_already_alternating(self):
-        from aider.sendchat import ensure_alternating_roles
+        from cecli.sendchat import ensure_alternating_roles
 
         messages = [
             {"role": "user", "content": "Hello"},
@@ -127,7 +127,7 @@ class TestSendChat:
         assert result == messages
 
     def test_ensure_alternating_roles_consecutive_user(self):
-        from aider.sendchat import ensure_alternating_roles
+        from cecli.sendchat import ensure_alternating_roles
 
         messages = [
             {"role": "user", "content": "Hello"},
@@ -142,7 +142,7 @@ class TestSendChat:
         assert result == expected
 
     def test_ensure_alternating_roles_consecutive_assistant(self):
-        from aider.sendchat import ensure_alternating_roles
+        from cecli.sendchat import ensure_alternating_roles
 
         messages = [
             {"role": "assistant", "content": "Hi there"},
@@ -157,7 +157,7 @@ class TestSendChat:
         assert result == expected
 
     def test_ensure_alternating_roles_mixed_sequence(self):
-        from aider.sendchat import ensure_alternating_roles
+        from cecli.sendchat import ensure_alternating_roles
 
         messages = [
             {"role": "user", "content": "Hello"},

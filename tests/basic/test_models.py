@@ -2,7 +2,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
-from aider.models import (
+from cecli.models import (
     ANTHROPIC_BETA_HEADER,
     Model,
     ModelInfoManager,
@@ -16,7 +16,7 @@ class TestModels:
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
         """Reset MODEL_SETTINGS before each test and restore after"""
-        from aider.models import MODEL_SETTINGS
+        from cecli.models import MODEL_SETTINGS
 
         self._original_settings = MODEL_SETTINGS.copy()
         yield
@@ -86,7 +86,7 @@ class TestModels:
         assert mock_io.tool_warning.call_count >= 1
         assert any(("bogus-model" in msg for msg in warning_messages))
 
-    @patch("aider.models.check_for_dependencies")
+    @patch("cecli.models.check_for_dependencies")
     async def test_sanity_check_model_calls_check_dependencies(self, mock_check_deps):
         """Test that sanity_check_model calls check_for_dependencies"""
         mock_io = MagicMock()
@@ -172,26 +172,26 @@ class TestModels:
         model.set_thinking_tokens("0.5M")
         assert model.extra_params["thinking"]["budget_tokens"] == 0.5 * 1024 * 1024
 
-    @patch("aider.models.check_pip_install_extra")
+    @patch("cecli.models.check_pip_install_extra")
     async def test_check_for_dependencies_bedrock(self, mock_check_pip):
         """Test that check_for_dependencies calls check_pip_install_extra for Bedrock models"""
-        from aider.io import InputOutput
+        from cecli.io import InputOutput
 
         io = InputOutput()
-        from aider.models import check_for_dependencies
+        from cecli.models import check_for_dependencies
 
         await check_for_dependencies(io, "bedrock/anthropic.claude-3-sonnet-20240229-v1:0")
         mock_check_pip.assert_called_once_with(
             io, "boto3", "AWS Bedrock models require the boto3 package.", ["boto3"]
         )
 
-    @patch("aider.models.check_pip_install_extra")
+    @patch("cecli.models.check_pip_install_extra")
     async def test_check_for_dependencies_vertex_ai(self, mock_check_pip):
         """Test that check_for_dependencies calls check_pip_install_extra for Vertex AI models"""
-        from aider.io import InputOutput
+        from cecli.io import InputOutput
 
         io = InputOutput()
-        from aider.models import check_for_dependencies
+        from cecli.models import check_for_dependencies
 
         await check_for_dependencies(io, "vertex_ai/gemini-1.5-pro")
         mock_check_pip.assert_called_once_with(
@@ -201,13 +201,13 @@ class TestModels:
             ["google-cloud-aiplatform"],
         )
 
-    @patch("aider.models.check_pip_install_extra")
+    @patch("cecli.models.check_pip_install_extra")
     async def test_check_for_dependencies_other_model(self, mock_check_pip):
         """Test that check_for_dependencies doesn't call check_pip_install_extra for other models"""
-        from aider.io import InputOutput
+        from cecli.io import InputOutput
 
         io = InputOutput()
-        from aider.models import check_for_dependencies
+        from cecli.models import check_for_dependencies
 
         await check_for_dependencies(io, "gpt-4")
         mock_check_pip.assert_not_called()
@@ -329,14 +329,14 @@ class TestModels:
         assert model.editor_edit_format == "editor-diff"
         assert model.use_repo_map
 
-    def test_aider_extra_model_settings(self):
+    def test_cecli_extra_model_settings(self):
         import tempfile
 
         import yaml
 
         test_settings = [
             {
-                "name": "aider/extra_params",
+                "name": "cecli/extra_params",
                 "extra_params": {"extra_headers": {"Foo": "bar"}, "some_param": "some value"},
             }
         ]
@@ -362,7 +362,7 @@ class TestModels:
             except OSError:
                 pass
 
-    @patch("aider.models.litellm.acompletion")
+    @patch("cecli.models.litellm.acompletion")
     @patch.object(Model, "token_count")
     async def test_ollama_num_ctx_set_when_missing(self, mock_token_count, mock_completion):
         mock_token_count.return_value = 1000
@@ -381,7 +381,7 @@ class TestModels:
             cache_control_injection_points=ANY,
         )
 
-    @patch("aider.models.litellm.acompletion")
+    @patch("cecli.models.litellm.acompletion")
     async def test_modern_tool_call_propagation(self, mock_completion):
         model = Model("gpt-4")
         messages = [{"role": "user", "content": "Hello"}]
@@ -394,7 +394,7 @@ class TestModels:
         assert call_kwargs["model"] == model.name
         assert call_kwargs["stream"] is False
 
-    @patch("aider.models.litellm.acompletion")
+    @patch("cecli.models.litellm.acompletion")
     async def test_legacy_tool_call_propagation(self, mock_completion):
         model = Model("gpt-4")
         messages = [{"role": "user", "content": "Hello"}]
@@ -405,7 +405,7 @@ class TestModels:
         assert call_kwargs["model"] == model.name
         assert call_kwargs["stream"] is False
 
-    @patch("aider.models.litellm.acompletion")
+    @patch("cecli.models.litellm.acompletion")
     async def test_ollama_uses_existing_num_ctx(self, mock_completion):
         model = Model("ollama/llama3")
         model.extra_params = {"num_ctx": 4096}
@@ -421,7 +421,7 @@ class TestModels:
             cache_control_injection_points=ANY,
         )
 
-    @patch("aider.models.litellm.acompletion")
+    @patch("cecli.models.litellm.acompletion")
     async def test_non_ollama_no_num_ctx(self, mock_completion):
         model = Model("gpt-4")
         model.extra_params = {}
@@ -452,7 +452,7 @@ class TestModels:
         model.use_temperature = 0.7
         assert model.use_temperature == 0.7
 
-    @patch("aider.models.litellm.acompletion")
+    @patch("cecli.models.litellm.acompletion")
     async def test_request_timeout_default(self, mock_completion):
         model = Model("gpt-4")
         model.extra_params = {}
@@ -467,7 +467,7 @@ class TestModels:
             cache_control_injection_points=ANY,
         )
 
-    @patch("aider.models.litellm.acompletion")
+    @patch("cecli.models.litellm.acompletion")
     async def test_request_timeout_from_extra_params(self, mock_completion):
         # Test timeout from extra_params overrides default
         model = Model("gpt-4")
@@ -483,7 +483,7 @@ class TestModels:
             cache_control_injection_points=ANY,
         )
 
-    @patch("aider.models.litellm.acompletion")
+    @patch("cecli.models.litellm.acompletion")
     async def test_use_temperature_in_send_completion(self, mock_completion):
         # Test use_temperature=True sends temperature=0
         model = Model("gpt-4")
@@ -581,7 +581,7 @@ class TestModels:
             except OSError:
                 pass
 
-    @patch("aider.models.litellm.acompletion")
+    @patch("cecli.models.litellm.acompletion")
     async def test_send_completion_with_override_kwargs(self, mock_completion):
         """Test that override kwargs are passed to acompletion."""
         # Create model with override kwargs

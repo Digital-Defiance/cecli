@@ -1,5 +1,5 @@
 """
-Tests for aider/helpers/skills.py
+Tests for cecli/helpers/skills.py
 """
 
 import os
@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aider.helpers.skills import SkillsManager
+from cecli.helpers.skills import SkillsManager
 
 
 class TestSkills:

@@ -4,12 +4,12 @@ from unittest.mock import AsyncMock
 
 from requests.exceptions import ConnectionError, ReadTimeout
 
-import aider
-from aider.coders import Coder
-from aider.commands import Commands
-from aider.help import Help, fname_to_url
-from aider.io import InputOutput
-from aider.models import Model
+import cecli
+from cecli.coders import Coder
+from cecli.commands import Commands
+from cecli.help import Help, fname_to_url
+from cecli.io import InputOutput
+from cecli.models import Model
 
 
 class TestHelp:
@@ -63,7 +63,7 @@ class TestHelp:
 
         help_mock = AsyncMock()
         help_mock.run.return_value = ""
-        aider.coders.HelpCoder.run = help_mock.run
+        cecli.coders.HelpCoder.run = help_mock.run
 
         # Simple retry logic without the complex lambda
         start_time = time.time()
@@ -78,7 +78,7 @@ class TestHelp:
                 # If we get here, help initialization failed and command returned
                 # Don't assert SwitchCoder was raised
                 break
-            except aider.commands.SwitchCoder:
+            except cecli.commands.SwitchCoder:
                 # SwitchCoder was raised, help initialized successfully
                 break
             except (ReadTimeout, ConnectionError):
@@ -96,7 +96,7 @@ class TestHelp:
 
     def test_ask_without_mock(self):
         help_instance = Help()
-        question = "What is aider?"
+        question = "What is cecli?"
         result = help_instance.ask(question)
 
         assert f"# Question: {question}" in result
@@ -105,7 +105,7 @@ class TestHelp:
         assert len(result) > 100  # Ensure we got a substantial response
 
         # Check for some expected content (adjust based on your actual help content)
-        assert "aider" in result.lower()
+        assert "cecli" in result.lower()
         assert "ai" in result.lower()
         assert "chat" in result.lower()
 
@@ -114,32 +114,31 @@ class TestHelp:
 
     def test_fname_to_url_unix(self):
         # Test relative Unix-style paths
-        assert fname_to_url("website/docs/index.md") == "https://aider.chat/docs"
-        assert fname_to_url("website/docs/usage.md") == "https://aider.chat/docs/usage.html"
+        assert fname_to_url("website/docs/index.md") == "https://cecli.dev/docs"
+        assert fname_to_url("website/docs/usage.md") == "https://cecli.dev/docs/usage.html"
         assert fname_to_url("website/_includes/header.md") == ""
 
         # Test absolute Unix-style paths
-        assert fname_to_url("/home/user/project/website/docs/index.md") == "https://aider.chat/docs"
+        assert fname_to_url("/home/user/project/website/docs/index.md") == "https://cecli.dev/docs"
         assert (
             fname_to_url("/home/user/project/website/docs/usage.md")
-            == "https://aider.chat/docs/usage.html"
+            == "https://cecli.dev/docs/usage.html"
         )
         assert fname_to_url("/home/user/project/website/_includes/header.md") == ""
 
     def test_fname_to_url_windows(self):
         # Test relative Windows-style paths
-        assert fname_to_url(r"website\docs\index.md") == "https://aider.chat/docs"
-        assert fname_to_url(r"website\docs\usage.md") == "https://aider.chat/docs/usage.html"
+        assert fname_to_url(r"website\docs\index.md") == "https://cecli.dev/docs"
+        assert fname_to_url(r"website\docs\usage.md") == "https://cecli.dev/docs/usage.html"
         assert fname_to_url(r"website\_includes\header.md") == ""
 
         # Test absolute Windows-style paths
         assert (
-            fname_to_url(r"C:\Users\user\project\website\docs\index.md")
-            == "https://aider.chat/docs"
+            fname_to_url(r"C:\Users\user\project\website\docs\index.md") == "https://cecli.dev/docs"
         )
         assert (
             fname_to_url(r"C:\Users\user\project\website\docs\usage.md")
-            == "https://aider.chat/docs/usage.html"
+            == "https://cecli.dev/docs/usage.html"
         )
         assert fname_to_url(r"C:\Users\user\project\website\_includes\header.md") == ""
 

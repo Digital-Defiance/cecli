@@ -7,10 +7,10 @@ from pathlib import Path
 import git
 import pytest
 
-from aider.dump import dump  # noqa: F401
-from aider.io import InputOutput
-from aider.repomap import RepoMap
-from aider.utils import GitTemporaryDirectory, IgnorantTemporaryDirectory
+from cecli.dump import dump  # noqa: F401
+from cecli.io import InputOutput
+from cecli.repomap import RepoMap
+from cecli.utils import GitTemporaryDirectory, IgnorantTemporaryDirectory
 
 
 class TestRepoMap:
