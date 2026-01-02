@@ -3,10 +3,9 @@ import re
 import sys
 from pathlib import Path
 
+from cecli.commands.utils.registry import CommandRegistry
 from cecli.helpers.file_searcher import handle_core_files
 from cecli.repo import ANY_GIT_ERROR
-
-from .commands.utils.registry import CommandRegistry
 
 
 class SwitchCoder(Exception):
