@@ -420,12 +420,6 @@ Once I have these, I can show you precisely how to do the thing.
                     mentioned_files == expected_files
                 ), f"Failed for content: {content}, addable_files: {addable_files}"
 
-    @pytest.mark.xfail(
-        reason=(
-            "Behavior change: deleted files are filtered out during processing but not removed from"
-            " abs_fnames"
-        )
-    )
     async def test_run_with_file_deletion(self):
         # Create a few temporary files
 
