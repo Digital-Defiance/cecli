@@ -753,9 +753,16 @@ class Coder:
         return True
 
     def get_abs_fnames_content(self):
+        # Remove deleted files from abs_fnames
+        deleted_fnames = [f for f in self.abs_fnames if not os.path.exists(f)]
+        for fname in deleted_fnames:
+            relative_fname = self.get_rel_fname(fname)
+            self.io.tool_warning(f"Dropping {relative_fname} from the chat (file was deleted).")
+            self.abs_fnames.remove(fname)
+
         # Sort files by last modified time (earliest first, latest last)
         sorted_fnames = sorted(
-            list(filter(lambda f: os.path.exists(f), self.abs_fnames)),
+            list(self.abs_fnames),
             key=lambda fname: os.path.getmtime(fname),
         )
 
