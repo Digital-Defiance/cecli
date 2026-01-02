@@ -856,12 +856,20 @@ two
                 f"Skipping {ignored_file.name} that matches gitignore spec."
             )
 
-    @pytest.mark.xfail(reason="Commands.cmd_web method not implemented")
     async def test_check_for_urls(self):
         io = InputOutput(yes=True)
-        coder = await Coder.create(self.GPT35, None, io=io)
-        coder.commands.scraper = MagicMock()
-        coder.commands.scraper.scrape = MagicMock(return_value="some content")
+        mock_args = MagicMock()
+        mock_args.yes_always_commands = False
+        mock_args.disable_scraping = False
+        coder = await Coder.create(self.GPT35, None, io=io, args=mock_args)
+
+        # Mock the do_run command to return scraped content
+        async def mock_do_run(cmd_name, url, **kwargs):
+            if cmd_name == "web" and kwargs.get("return_content"):
+                return f"Scraped content from {url}"
+            return None
+
+        coder.commands.do_run = mock_do_run
 
         # Test various URL formats
         test_cases = [
@@ -1011,18 +1019,34 @@ This command will print 'Hello, World!' to the console."""
             coder = await Coder.create(self.GPT35, "diff", io=io, suggest_shell_commands=False)
             assert not coder.suggest_shell_commands
 
-    @pytest.mark.xfail(reason="Commands.cmd_web method not implemented")
     async def test_detect_urls_enabled(self):
         with GitTemporaryDirectory():
             io = InputOutput(yes=True)
-            coder = await Coder.create(self.GPT35, "diff", io=io, detect_urls=True)
-            coder.commands.scraper = MagicMock()
-            coder.commands.scraper.scrape = MagicMock(return_value="some content")
+            mock_args = MagicMock()
+            mock_args.yes_always_commands = False
+            mock_args.disable_scraping = False
+            coder = await Coder.create(self.GPT35, "diff", io=io, detect_urls=True, args=mock_args)
+
+            # Track calls to do_run
+            do_run_calls = []
+
+            async def mock_do_run(cmd_name, url, **kwargs):
+                do_run_calls.append((cmd_name, url, kwargs))
+                if cmd_name == "web" and kwargs.get("return_content"):
+                    return f"Scraped content from {url}"
+                return None
+
+            coder.commands.do_run = mock_do_run
 
             # Test with a message containing a URL
             message = "Check out https://example.com"
             await coder.check_for_urls(message)
-            coder.commands.scraper.scrape.assert_called_once_with("https://example.com")
+
+            # Verify do_run was called with the web command and correct URL
+            assert len(do_run_calls) == 1
+            assert do_run_calls[0][0] == "web"
+            assert do_run_calls[0][1] == "https://example.com"
+            assert do_run_calls[0][2].get("return_content") is True
 
     async def test_detect_urls_disabled(self):
         with GitTemporaryDirectory():
