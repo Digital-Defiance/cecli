@@ -7,10 +7,10 @@ import pytest
 from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
 
-from aider.coders import Coder
-from aider.dump import dump  # noqa: F401
-from aider.io import AutoCompleter, ConfirmGroup, InputOutput
-from aider.utils import ChdirTemporaryDirectory
+from cecli.coders import Coder
+from cecli.dump import dump  # noqa: F401
+from cecli.io import AutoCompleter, ConfirmGroup, InputOutput
+from cecli.utils import ChdirTemporaryDirectory
 
 
 class TestInputOutput:
@@ -177,7 +177,7 @@ class TestInputOutput:
         commands = MagicMock()
 
         # Simulate IsADirectoryError
-        with patch("aider.io.open", side_effect=IsADirectoryError):
+        with patch("cecli.io.open", side_effect=IsADirectoryError):
             result = asyncio.run(io.get_input(root, rel_fnames, addable_rel_fnames, commands))
             assert result == "test input"
             mock_input.assert_called_once()
@@ -445,7 +445,7 @@ class TestInputOutputMultilineMode:
 
     def test_ensure_hash_prefix(self):
         """Test that ensure_hash_prefix correctly adds # to valid hex colors"""
-        from aider.io import ensure_hash_prefix
+        from cecli.io import ensure_hash_prefix
 
         # Test valid hex colors without #
         assert ensure_hash_prefix("000") == "#000"
@@ -495,7 +495,7 @@ class TestInputOutputMultilineMode:
             mock_print.assert_called_once()
 
 
-@patch("aider.io.is_dumb_terminal", return_value=False)
+@patch("cecli.io.is_dumb_terminal", return_value=False)
 @patch.dict(os.environ, {"NO_COLOR": ""})
 class TestInputOutputFormatFiles:
     def test_format_files_for_input_pretty_false(self, mock_is_dumb_terminal):
@@ -535,7 +535,7 @@ class TestInputOutputFormatFiles:
 
         assert normalized_actual_output == expected_output
 
-    @patch("aider.io.Columns")
+    @patch("cecli.io.Columns")
     @patch("os.path.abspath")
     @patch("os.path.join")
     def test_format_files_for_input_pretty_true_no_files(
@@ -545,7 +545,7 @@ class TestInputOutputFormatFiles:
         io.format_files_for_input([], [], [])
         mock_columns.assert_not_called()
 
-    @patch("aider.io.Columns")
+    @patch("cecli.io.Columns")
     @patch("os.path.abspath")
     @patch("os.path.join")
     def test_format_files_for_input_pretty_true_editable_only(
@@ -564,7 +564,7 @@ class TestInputOutputFormatFiles:
         assert renderables[0] == "edit1.txt"
         assert renderables[1] == "edit[markup].txt"
 
-    @patch("aider.io.Columns")
+    @patch("cecli.io.Columns")
     @patch("os.path.abspath")
     @patch("os.path.join")
     def test_format_files_for_input_pretty_true_readonly_only(
@@ -592,7 +592,7 @@ class TestInputOutputFormatFiles:
         assert renderables[1] == "ro1.txt"
         assert renderables[2] == "ro[markup].txt"
 
-    @patch("aider.io.Columns")
+    @patch("cecli.io.Columns")
     @patch("os.path.abspath")
     @patch("os.path.join")
     def test_format_files_for_input_pretty_true_readonly_stub_only(
@@ -620,7 +620,7 @@ class TestInputOutputFormatFiles:
         assert renderables[1] == "ro1.txt (stub)"
         assert renderables[2] == "ro[markup].txt (stub)"
 
-    @patch("aider.io.Columns")
+    @patch("cecli.io.Columns")
     @patch("os.path.abspath")
     @patch("os.path.join")
     def test_format_files_for_input_pretty_true_mixed_files(

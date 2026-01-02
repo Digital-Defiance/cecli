@@ -1,6 +1,6 @@
 import pytest
 
-from aider.models import Model
+from cecli.models import Model
 
 
 # Model Fixtures

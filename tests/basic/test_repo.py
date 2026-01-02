@@ -8,11 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import git
 import pytest
 
-from aider.dump import dump  # noqa: F401
-from aider.io import InputOutput
-from aider.models import Model
-from aider.repo import GitRepo
-from aider.utils import GitTemporaryDirectory
+from cecli.dump import dump  # noqa: F401
+from cecli.io import InputOutput
+from cecli.models import Model
+from cecli.repo import GitRepo
+from cecli.utils import GitTemporaryDirectory
 
 
 class TestRepo:
@@ -129,7 +129,7 @@ class TestRepo:
             diffs = git_repo.diff_commits(False, "HEAD~1", "HEAD")
             assert "two" in diffs
 
-    @patch("aider.models.Model.simple_send_with_retries", new_callable=AsyncMock)
+    @patch("cecli.models.Model.simple_send_with_retries", new_callable=AsyncMock)
     async def test_get_commit_message(self, mock_send):
         mock_send.side_effect = ["", "a good commit message"]
 
@@ -153,7 +153,7 @@ class TestRepo:
         second_call_messages = mock_send.call_args_list[1][0][0]  # Get messages from second call
         assert first_call_messages == second_call_messages
 
-    @patch("aider.models.Model.simple_send_with_retries", new_callable=AsyncMock)
+    @patch("cecli.models.Model.simple_send_with_retries", new_callable=AsyncMock)
     async def test_get_commit_message_strip_quotes(self, mock_send):
         mock_send.return_value = '"a good commit message"'
 
@@ -164,7 +164,7 @@ class TestRepo:
         # Assert that the returned message is the expected one
         assert result == "a good commit message"
 
-    @patch("aider.models.Model.simple_send_with_retries", new_callable=AsyncMock)
+    @patch("cecli.models.Model.simple_send_with_retries", new_callable=AsyncMock)
     async def test_get_commit_message_no_strip_unmatched_quotes(self, mock_send):
         mock_send.return_value = 'a good "commit message"'
 
@@ -175,7 +175,7 @@ class TestRepo:
         # Assert that the returned message is the expected one
         assert result == 'a good "commit message"'
 
-    @patch("aider.models.Model.simple_send_with_retries", new_callable=AsyncMock)
+    @patch("cecli.models.Model.simple_send_with_retries", new_callable=AsyncMock)
     async def test_get_commit_message_with_custom_prompt(self, mock_send):
         mock_send.return_value = "Custom commit message"
         custom_prompt = "Generate a commit message in the style of Shakespeare"
@@ -191,7 +191,7 @@ class TestRepo:
     @pytest.mark.skipif(
         platform.system() == "Windows", reason="Git env var behavior differs on Windows"
     )
-    @patch("aider.repo.GitRepo.get_commit_message")
+    @patch("cecli.repo.GitRepo.get_commit_message")
     async def test_commit_with_custom_committer_name(self, mock_send):
         mock_send.return_value = '"a good commit message"'
 
@@ -210,25 +210,25 @@ class TestRepo:
             # Initialize GitRepo with default None values for attributes
             git_repo = GitRepo(io, None, None, attribute_author=None, attribute_committer=None)
 
-            # commit a change with aider_edits=True (using default attributes)
+            # commit a change with coder_edits=True (using default attributes)
             fname.write_text("new content")
-            commit_result = await git_repo.commit(fnames=[str(fname)], aider_edits=True)
+            commit_result = await git_repo.commit(fnames=[str(fname)], coder_edits=True)
             assert commit_result is not None
 
             # check the committer name (defaults interpreted as True)
             commit = raw_repo.head.commit
-            assert commit.author.name == "Test User (aider-ce)"
-            assert commit.committer.name == "Test User (aider-ce)"
+            assert commit.author.name == "Test User (cecli)"
+            assert commit.committer.name == "Test User (cecli)"
 
-            # commit a change without aider_edits (using default attributes)
+            # commit a change without coder_edits (using default attributes)
             fname.write_text("new content again!")
-            commit_result = await git_repo.commit(fnames=[str(fname)], aider_edits=False)
+            commit_result = await git_repo.commit(fnames=[str(fname)], coder_edits=False)
             assert commit_result is not None
 
             # check the committer name (author not modified, committer still modified by default)
             commit = raw_repo.head.commit
             assert commit.author.name == "Test User"
-            assert commit.committer.name == "Test User (aider-ce)"
+            assert commit.committer.name == "Test User (cecli)"
 
             # Now test with explicit False
             git_repo_explicit_false = GitRepo(
@@ -236,7 +236,7 @@ class TestRepo:
             )
             fname.write_text("explicit false content")
             commit_result = await git_repo_explicit_false.commit(
-                fnames=[str(fname)], aider_edits=True
+                fnames=[str(fname)], coder_edits=True
             )
             assert commit_result is not None
             commit = raw_repo.head.commit
@@ -253,7 +253,7 @@ class TestRepo:
             git_repo_user_no_committer = GitRepo(io, None, None, attribute_committer=False)
             fname.write_text("user no committer content")
             commit_result = await git_repo_user_no_committer.commit(
-                fnames=[str(fname)], aider_edits=False
+                fnames=[str(fname)], coder_edits=False
             )
             assert commit_result is not None
             commit = raw_repo.head.commit
@@ -294,17 +294,17 @@ class TestRepo:
             io = InputOutput()
             git_repo = GitRepo(io, None, None)
 
-            # commit a change with aider_edits=True and co-authored-by flag
+            # commit a change with coder_edits=True and co-authored-by flag
             fname.write_text("new content")
             commit_result = await git_repo.commit(
-                fnames=[str(fname)], aider_edits=True, coder=mock_coder, message="Aider edit"
+                fnames=[str(fname)], coder_edits=True, coder=mock_coder, message="cecli edit"
             )
             assert commit_result is not None
 
             # check the commit message and author/committer
             commit = raw_repo.head.commit
-            assert "Co-authored-by: aider-ce (gpt-test)" in commit.message
-            assert commit.message.splitlines()[0] == "Aider edit"
+            assert "Co-authored-by: cecli (gpt-test)" in commit.message
+            assert commit.message.splitlines()[0] == "cecli edit"
             # With default (None), co-authored-by takes precedence
             assert (
                 commit.author.name == "Test User"
@@ -346,31 +346,31 @@ class TestRepo:
             io = InputOutput()
             git_repo = GitRepo(io, None, None)
 
-            # commit a change with aider_edits=True and combo flags
+            # commit a change with coder_edits=True and combo flags
             fname.write_text("new content combo")
             commit_result = await git_repo.commit(
-                fnames=[str(fname)], aider_edits=True, coder=mock_coder, message="Aider combo edit"
+                fnames=[str(fname)], coder_edits=True, coder=mock_coder, message="cecli combo edit"
             )
             assert commit_result is not None
 
             # check the commit message and author/committer
             commit = raw_repo.head.commit
-            assert "Co-authored-by: aider-ce (gpt-test-combo)" in commit.message
-            assert commit.message.splitlines()[0] == "Aider combo edit"
+            assert "Co-authored-by: cecli (gpt-test-combo)" in commit.message
+            assert commit.message.splitlines()[0] == "cecli combo edit"
             # When co-authored-by is true BUT author/committer are explicit True,
             # modification SHOULD happen
             assert (
-                commit.author.name == "Test User (aider-ce)"
+                commit.author.name == "Test User (cecli)"
             ), "Author name should be modified when explicitly True, even with co-author"
             assert (
-                commit.committer.name == "Test User (aider-ce)"
+                commit.committer.name == "Test User (cecli)"
             ), "Committer name should be modified when explicitly True, even with co-author"
 
     @pytest.mark.skipif(
         platform.system() == "Windows", reason="Git env var behavior differs on Windows"
     )
     async def test_commit_ai_edits_no_coauthor_explicit_false(self):
-        # Test AI edits (aider_edits=True) when co-authored-by is False,
+        # Test AI edits (coder_edits=True) when co-authored-by is False,
         # but author or committer attribution is explicitly disabled.
         with GitTemporaryDirectory():
             # Setup repo
@@ -398,15 +398,15 @@ class TestRepo:
             fname.write_text("no author content")
             commit_result = await git_repo_no_author.commit(
                 fnames=[str(fname)],
-                aider_edits=True,
+                coder_edits=True,
                 coder=mock_coder_no_author,
-                message="Aider no author",
+                message="cecli no author",
             )
             assert commit_result is not None
             commit = raw_repo.head.commit
             assert "Co-authored-by:" not in commit.message
             assert commit.author.name == "Test User"  # Explicit False
-            assert commit.committer.name == "Test User (aider-ce)"  # Default True
+            assert commit.committer.name == "Test User (cecli)"  # Default True
 
             # Case 2: attribute_author = None (default True), attribute_committer = False
             mock_coder_no_committer = MagicMock()
@@ -422,15 +422,15 @@ class TestRepo:
             fname.write_text("no committer content")
             commit_result = await git_repo_no_committer.commit(
                 fnames=[str(fname)],
-                aider_edits=True,
+                coder_edits=True,
                 coder=mock_coder_no_committer,
-                message="Aider no committer",
+                message="cecli no committer",
             )
             assert commit_result is not None
             commit = raw_repo.head.commit
             assert "Co-authored-by:" not in commit.message
             assert (
-                commit.author.name == "Test User (aider-ce)"
+                commit.author.name == "Test User (cecli)"
             ), "Author name should be modified (default True) when co-author=False"
             assert (
                 commit.committer.name == "Test User"
@@ -503,7 +503,7 @@ class TestRepo:
             assert str(fname) in fnames
             assert str(fname2) in fnames
 
-    def test_get_tracked_files_with_aiderignore(self):
+    def test_get_tracked_files_with_cecli_ignore(self):
         with GitTemporaryDirectory():
             # new repo
             raw_repo = git.Repo()
@@ -513,8 +513,8 @@ class TestRepo:
             fname.touch()
             raw_repo.git.add(str(fname))
 
-            aiderignore = Path(".aiderignore")
-            git_repo = GitRepo(InputOutput(), None, None, str(aiderignore))
+            cecli_ignore = Path("cecli.ignore")
+            git_repo = GitRepo(InputOutput(), None, None, str(cecli_ignore))
 
             # better be there
             fnames = git_repo.get_tracked_files()
@@ -535,7 +535,7 @@ class TestRepo:
             assert str(fname) in fnames
             assert str(fname2) in fnames
 
-            aiderignore.write_text("new.txt\n")
+            cecli_ignore.write_text("new.txt\n")
             time.sleep(2)
 
             # new.txt should be gone!
@@ -547,7 +547,7 @@ class TestRepo:
             # The mtime doesn't change, even if I time.sleep(1)
             # Before doing this write_text()!?
             #
-            # aiderignore.write_text("new2.txt\n")
+            # cecli.ignore.write_text("new2.txt\n")
             # new2.txt should be gone!
             # fnames = git_repo.get_tracked_files()
             # assert str(fname) in fnames
@@ -613,7 +613,7 @@ class TestRepo:
             assert str(root_file) not in tracked_files
             assert str(another_subdir_file) not in tracked_files
 
-    @patch("aider.models.Model.simple_send_with_retries")
+    @patch("cecli.models.Model.simple_send_with_retries")
     async def test_noop_commit(self, mock_send):
         mock_send.return_value = '"a good commit message"'
 
@@ -681,7 +681,7 @@ class TestRepo:
             latest_commit_msg = raw_repo.head.commit.message
             assert latest_commit_msg.strip() == "Should succeed"
 
-    @patch("aider.models.Model.simple_send_with_retries", new_callable=AsyncMock)
+    @patch("cecli.models.Model.simple_send_with_retries", new_callable=AsyncMock)
     async def test_get_commit_message_uses_system_prompt_prefix(self, mock_send):
         """
         Verify that GitRepo.get_commit_message() prepends the model.system_prompt_prefix

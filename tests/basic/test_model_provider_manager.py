@@ -119,8 +119,8 @@ def _install_stubs():
 
 _install_stubs()
 
-from aider.helpers.model_providers import ModelProviderManager  # noqa: E402
-from aider.models import MODEL_SETTINGS, Model, ModelInfoManager  # noqa: E402
+from cecli.helpers.model_providers import ModelProviderManager  # noqa: E402
+from cecli.models import MODEL_SETTINGS, Model, ModelInfoManager  # noqa: E402
 
 
 class DummyResponse:
@@ -352,7 +352,7 @@ def test_pricing_normalization_detects_million_format(tmp_path):
 
 def test_model_info_manager_delegates_to_provider(monkeypatch, tmp_path):
     monkeypatch.setattr(
-        "aider.models.litellm",
+        "cecli.models.litellm",
         types.SimpleNamespace(
             _lazy_module=None,
             get_model_info=lambda *a, **k: {},
@@ -372,11 +372,11 @@ def test_model_info_manager_delegates_to_provider(monkeypatch, tmp_path):
     }
 
     monkeypatch.setattr(
-        "aider.helpers.model_providers.ModelProviderManager.supports_provider",
+        "cecli.helpers.model_providers.ModelProviderManager.supports_provider",
         lambda self, provider: provider == "openrouter",
     )
     monkeypatch.setattr(
-        "aider.helpers.model_providers.ModelProviderManager.get_model_info",
+        "cecli.helpers.model_providers.ModelProviderManager.get_model_info",
         lambda self, model: stub_info,
     )
 
@@ -403,15 +403,15 @@ def test_model_dynamic_settings_added(monkeypatch, tmp_path):
         }
 
     monkeypatch.setattr(
-        "aider.helpers.model_providers.ModelProviderManager.supports_provider",
+        "cecli.helpers.model_providers.ModelProviderManager.supports_provider",
         _fake_supports,
     )
     monkeypatch.setattr(
-        "aider.helpers.model_providers.ModelProviderManager.get_model_info",
+        "cecli.helpers.model_providers.ModelProviderManager.get_model_info",
         _fake_get,
     )
     monkeypatch.setattr(
-        "aider.models.litellm",
+        "cecli.models.litellm",
         types.SimpleNamespace(
             _lazy_module=None,
             get_model_info=lambda *a, **k: {},

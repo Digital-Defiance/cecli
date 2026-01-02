@@ -6,12 +6,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from aider.coders import Coder
-from aider.coders import editblock_coder as eb
-from aider.dump import dump  # noqa: F401
-from aider.io import InputOutput
-from aider.models import Model
-from aider.utils import ChdirTemporaryDirectory
+from cecli.coders import Coder
+from cecli.coders import editblock_coder as eb
+from cecli.dump import dump  # noqa: F401
+from cecli.io import InputOutput
+from cecli.models import Model
+from cecli.utils import ChdirTemporaryDirectory
 
 
 class TestUtils:
@@ -149,14 +149,14 @@ oops!
 
     def test_find_original_update_blocks_no_final_newline(self):
         edit = """
-aider/coder.py
+cecli/coder.py
 <<<<<<< SEARCH
             self.console.print("[red]^C again to quit")
 =======
             self.io.tool_error("^C again to quit")
 >>>>>>> REPLACE
 
-aider/coder.py
+cecli/coder.py
 <<<<<<< SEARCH
             self.io.tool_error("Malformed ORIGINAL/UPDATE blocks, retrying...")
             self.io.tool_error(err)
@@ -165,14 +165,14 @@ aider/coder.py
             self.io.tool_error(str(err))
 >>>>>>> REPLACE
 
-aider/coder.py
+cecli/coder.py
 <<<<<<< SEARCH
             self.console.print("[red]Unable to get commit message from gpt-3.5-turbo. Use /commit to try again.\n")
 =======
             self.io.tool_error("Unable to get commit message from gpt-3.5-turbo. Use /commit to try again.")
 >>>>>>> REPLACE
 
-aider/coder.py
+cecli/coder.py
 <<<<<<< SEARCH
             self.console.print("[red]Skipped commit.")
 =======
@@ -204,7 +204,7 @@ tests/test_repomap.py
             mock_run.return_value = CompletedProcess(args=["ctags", "--version"], returncode=0, stdout='''{
   "_type": "tag",
   "name": "status",
-  "path": "aider/main.py",
+  "path": "cecli/main.py",
   "pattern": "/^    status = main()$/",
   "kind": "variable"
 }''')
@@ -214,7 +214,7 @@ tests/test_repomap.py
             mock_check_output.return_value = '''{
   "_type": "tag",
   "name": "status",
-  "path": "aider/main.py",
+  "path": "cecli/main.py",
   "pattern": "/^    status = main()$/",
   "kind": "variable"
 }'''
@@ -303,7 +303,7 @@ These changes replace the `subprocess.run` patches with `subprocess.check_output
         assert result == expected_output
 
     async def test_create_new_file_with_other_file_in_chat(self):
-        # https://github.com/Aider-AI/aider/issues/2258
+        # https://github.com/Aider-AI/cecli/issues/2258
         with ChdirTemporaryDirectory():
             # Create a few temporary files
             file1 = "file.txt"
@@ -512,7 +512,7 @@ Hope you like it!
         ]
 
     def test_find_original_update_blocks_quad_backticks_with_triples_in_LLM_reply(self):
-        # https://github.com/Aider-AI/aider/issues/2879
+        # https://github.com/Aider-AI/cecli/issues/2879
         edit = """
 Here's the change:
 
@@ -534,7 +534,7 @@ Hope you like it!
 
     # Test for shell script blocks with sh language identifier (issue #3785)
     def test_find_original_update_blocks_with_sh_language_identifier(self):
-        # https://github.com/Aider-AI/aider/issues/3785
+        # https://github.com/Aider-AI/cecli/issues/3785
         edit = """
 Here's a shell script:
 

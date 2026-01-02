@@ -3,9 +3,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from aider.commands import Commands
-from aider.io import InputOutput
-from aider.scrape import Scraper
+from cecli.commands import Commands
+from cecli.io import InputOutput
+from cecli.scrape import Scraper
 
 
 class TestScrape:
@@ -39,8 +39,8 @@ class TestScrape:
 
         return Commands(io, DummyCoder())
 
-    @patch("aider.commands.web.install_playwright")
-    @patch("aider.commands.web.Scraper")
+    @patch("cecli.commands.web.install_playwright")
+    @patch("cecli.commands.web.Scraper")
     async def test_cmd_web_imports_playwright(
         self, mock_scraper_class, mock_install_playwright, commands
     ):
@@ -68,8 +68,8 @@ class TestScrape:
             if "playwright" in sys.modules:
                 del sys.modules["playwright"]
 
-    @patch("aider.scrape.Scraper.scrape_with_httpx")
-    @patch("aider.scrape.Scraper.scrape_with_playwright")
+    @patch("cecli.scrape.Scraper.scrape_with_httpx")
+    @patch("cecli.scrape.Scraper.scrape_with_playwright")
     async def test_scrape_self_signed_ssl(self, mock_scrape_playwright, mock_scrape_httpx):
         # Test with SSL verification - playwright fails
         mock_scrape_playwright.return_value = (None, None)
@@ -94,7 +94,7 @@ class TestScrape:
         assert "self-signed" in result_no_verify
         scraper_no_verify.print_error.assert_not_called()
 
-    @patch("aider.scrape.Scraper.scrape_with_playwright")
+    @patch("cecli.scrape.Scraper.scrape_with_playwright")
     async def test_scrape_actual_url_with_playwright(self, mock_scrape_playwright):
         # Create a Scraper instance with a mock print_error function
         mock_print_error = MagicMock()

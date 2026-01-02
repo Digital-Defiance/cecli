@@ -6,10 +6,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aider.coders import Coder
-from aider.coders.wholefile_coder import WholeFileCoder
-from aider.dump import dump  # noqa: F401
-from aider.io import InputOutput
+from cecli.coders import Coder
+from cecli.coders.wholefile_coder import WholeFileCoder
+from cecli.dump import dump  # noqa: F401
+from cecli.io import InputOutput
 
 
 class TestWholeFileCoder:

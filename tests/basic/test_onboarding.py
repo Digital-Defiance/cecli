@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import requests
 
 # Import the functions to be tested
-from aider.onboarding import (
+from cecli.onboarding import (
     check_openrouter_tier,
     exchange_code_for_key,
     find_available_port,
@@ -74,63 +74,63 @@ class TestOnboarding:
         mock_get.return_value = mock_response
         assert check_openrouter_tier("fake_key")
 
-    @patch("aider.onboarding.check_openrouter_tier")
+    @patch("cecli.onboarding.check_openrouter_tier")
     @patch.dict(os.environ, {}, clear=True)
     def test_try_select_default_model_no_keys(self, mock_check_tier):
         """Test no model is selected when no keys are present."""
         assert try_to_select_default_model() is None
         mock_check_tier.assert_not_called()
 
-    @patch("aider.onboarding.check_openrouter_tier", return_value=True)  # Assume free tier
+    @patch("cecli.onboarding.check_openrouter_tier", return_value=True)  # Assume free tier
     @patch.dict(os.environ, {"OPENROUTER_API_KEY": "or_key"}, clear=True)
     def test_try_select_default_model_openrouter_free(self, mock_check_tier):
         """Test OpenRouter free model selection."""
         assert try_to_select_default_model() == "openrouter/deepseek/deepseek-r1:free"
         mock_check_tier.assert_called_once_with("or_key")
 
-    @patch("aider.onboarding.check_openrouter_tier", return_value=False)  # Assume paid tier
+    @patch("cecli.onboarding.check_openrouter_tier", return_value=False)  # Assume paid tier
     @patch.dict(os.environ, {"OPENROUTER_API_KEY": "or_key"}, clear=True)
     def test_try_select_default_model_openrouter_paid(self, mock_check_tier):
         """Test OpenRouter paid model selection."""
         assert try_to_select_default_model() == "openrouter/anthropic/claude-sonnet-4"
         mock_check_tier.assert_called_once_with("or_key")
 
-    @patch("aider.onboarding.check_openrouter_tier")
+    @patch("cecli.onboarding.check_openrouter_tier")
     @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "an_key"}, clear=True)
     def test_try_select_default_model_anthropic(self, mock_check_tier):
         """Test Anthropic model selection."""
         assert try_to_select_default_model() == "sonnet"
         mock_check_tier.assert_not_called()
 
-    @patch("aider.onboarding.check_openrouter_tier")
+    @patch("cecli.onboarding.check_openrouter_tier")
     @patch.dict(os.environ, {"DEEPSEEK_API_KEY": "ds_key"}, clear=True)
     def test_try_select_default_model_deepseek(self, mock_check_tier):
         """Test Deepseek model selection."""
         assert try_to_select_default_model() == "deepseek"
         mock_check_tier.assert_not_called()
 
-    @patch("aider.onboarding.check_openrouter_tier")
+    @patch("cecli.onboarding.check_openrouter_tier")
     @patch.dict(os.environ, {"OPENAI_API_KEY": "oa_key"}, clear=True)
     def test_try_select_default_model_openai(self, mock_check_tier):
         """Test OpenAI model selection."""
         assert try_to_select_default_model() == "gpt-4o"
         mock_check_tier.assert_not_called()
 
-    @patch("aider.onboarding.check_openrouter_tier")
+    @patch("cecli.onboarding.check_openrouter_tier")
     @patch.dict(os.environ, {"GEMINI_API_KEY": "gm_key"}, clear=True)
     def test_try_select_default_model_gemini(self, mock_check_tier):
         """Test Gemini model selection."""
         assert try_to_select_default_model() == "gemini/gemini-2.5-pro-exp-03-25"
         mock_check_tier.assert_not_called()
 
-    @patch("aider.onboarding.check_openrouter_tier")
+    @patch("cecli.onboarding.check_openrouter_tier")
     @patch.dict(os.environ, {"VERTEXAI_PROJECT": "vx_proj"}, clear=True)
     def test_try_select_default_model_vertex(self, mock_check_tier):
         """Test Vertex AI model selection."""
         assert try_to_select_default_model() == "vertex_ai/gemini-2.5-pro-exp-03-25"
         mock_check_tier.assert_not_called()
 
-    @patch("aider.onboarding.check_openrouter_tier", return_value=False)  # Paid
+    @patch("cecli.onboarding.check_openrouter_tier", return_value=False)  # Paid
     @patch.dict(
         os.environ, {"OPENROUTER_API_KEY": "or_key", "OPENAI_API_KEY": "oa_key"}, clear=True
     )
@@ -139,7 +139,7 @@ class TestOnboarding:
         assert try_to_select_default_model() == "openrouter/anthropic/claude-sonnet-4"
         mock_check_tier.assert_called_once_with("or_key")
 
-    @patch("aider.onboarding.check_openrouter_tier")
+    @patch("cecli.onboarding.check_openrouter_tier")
     @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "an_key", "OPENAI_API_KEY": "oa_key"}, clear=True)
     def test_try_select_default_model_priority_anthropic(self, mock_check_tier):
         """Test Anthropic key takes priority over OpenAI."""
@@ -278,8 +278,8 @@ class TestOnboarding:
 
     # --- Tests for select_default_model ---
 
-    @patch("aider.onboarding.try_to_select_default_model", return_value="gpt-4o")
-    @patch("aider.onboarding.offer_openrouter_oauth")
+    @patch("cecli.onboarding.try_to_select_default_model", return_value="gpt-4o")
+    @patch("cecli.onboarding.offer_openrouter_oauth")
     async def test_select_default_model_already_specified(self, mock_offer_oauth, mock_try_select):
         """Test select_default_model returns args.model if provided."""
         args = argparse.Namespace(model="specific-model")
@@ -289,8 +289,8 @@ class TestOnboarding:
         mock_try_select.assert_not_called()
         mock_offer_oauth.assert_not_called()
 
-    @patch("aider.onboarding.try_to_select_default_model", return_value="gpt-4o")
-    @patch("aider.onboarding.offer_openrouter_oauth")
+    @patch("cecli.onboarding.try_to_select_default_model", return_value="gpt-4o")
+    @patch("cecli.onboarding.offer_openrouter_oauth")
     async def test_select_default_model_found_via_env(self, mock_offer_oauth, mock_try_select):
         """Test select_default_model returns model found by try_to_select."""
         args = argparse.Namespace(model=None)  # No model specified
@@ -307,10 +307,10 @@ class TestOnboarding:
         mock_offer_oauth.assert_not_called()
 
     @patch(
-        "aider.onboarding.try_to_select_default_model", side_effect=[None, None]
+        "cecli.onboarding.try_to_select_default_model", side_effect=[None, None]
     )  # Fails first, fails after oauth attempt
     @patch(
-        "aider.onboarding.offer_openrouter_oauth", return_value=False
+        "cecli.onboarding.offer_openrouter_oauth", return_value=False
     )  # OAuth offered but fails/declined
     async def test_select_default_model_no_keys_oauth_fail(self, mock_offer_oauth, mock_try_select):
         """Test select_default_model offers OAuth when no keys, but OAuth fails."""
@@ -330,11 +330,11 @@ class TestOnboarding:
         io_mock.offer_url.assert_called_once()  # Should offer docs URL
 
     @patch(
-        "aider.onboarding.try_to_select_default_model",
+        "cecli.onboarding.try_to_select_default_model",
         side_effect=[None, "openrouter/deepseek/deepseek-r1:free"],
     )  # Fails first, succeeds after oauth
     @patch(
-        "aider.onboarding.offer_openrouter_oauth", return_value=True
+        "cecli.onboarding.offer_openrouter_oauth", return_value=True
     )  # OAuth offered and succeeds
     async def test_select_default_model_no_keys_oauth_success(
         self, mock_offer_oauth, mock_try_select
@@ -360,7 +360,7 @@ class TestOnboarding:
         # We verify the final state and model returned.
 
     # --- Tests for offer_openrouter_oauth ---
-    @patch("aider.onboarding.start_openrouter_oauth_flow", return_value="new_or_key")
+    @patch("cecli.onboarding.start_openrouter_oauth_flow", return_value="new_or_key")
     @patch.dict(os.environ, {}, clear=True)  # Ensure no key exists initially
     async def test_offer_openrouter_oauth_confirm_yes_success(self, mock_start_oauth):
         """Test offer_openrouter_oauth when user confirms and OAuth succeeds."""
@@ -376,7 +376,7 @@ class TestOnboarding:
         # Clean up env var
         del os.environ["OPENROUTER_API_KEY"]
 
-    @patch("aider.onboarding.start_openrouter_oauth_flow", return_value=None)  # OAuth fails
+    @patch("cecli.onboarding.start_openrouter_oauth_flow", return_value=None)  # OAuth fails
     @patch.dict(os.environ, {}, clear=True)
     async def test_offer_openrouter_oauth_confirm_yes_fail(self, mock_start_oauth):
         """Test offer_openrouter_oauth when user confirms but OAuth fails."""
@@ -394,7 +394,7 @@ class TestOnboarding:
             "OpenRouter authentication did not complete successfully."
         )
 
-    @patch("aider.onboarding.start_openrouter_oauth_flow")
+    @patch("cecli.onboarding.start_openrouter_oauth_flow")
     async def test_offer_openrouter_oauth_confirm_no(self, mock_start_oauth):
         """Test offer_openrouter_oauth when user declines."""
         io_mock = DummyIO()

@@ -4,11 +4,11 @@ from unittest.mock import MagicMock, patch
 
 import litellm
 
-from aider.coders.base_coder import Coder
-from aider.dump import dump  # noqa
-from aider.io import InputOutput
-from aider.models import Model
-from aider.reasoning_tags import (
+from cecli.coders.base_coder import Coder
+from cecli.dump import dump  # noqa
+from cecli.io import InputOutput
+from cecli.models import Model
+from cecli.reasoning_tags import (
     REASONING_END,
     REASONING_START,
     remove_reasoning_content,
