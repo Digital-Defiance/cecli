@@ -9,7 +9,7 @@ import pytest
 
 from cecli.coders import Coder
 from cecli.coders.base_coder import FinishReasonLength, UnknownEditFormat
-from cecli.commands import SwitchCoder
+from cecli.commands import SwitchCoderSignal
 from cecli.dump import dump  # noqa: F401
 from cecli.io import InputOutput
 from cecli.models import Model
@@ -1382,7 +1382,7 @@ This command will print 'Hello, World!' to the console."""
                 new_callable=AsyncMock,
                 return_value=mock_editor,
             ):
-                with pytest.raises(SwitchCoder):
+                with pytest.raises(SwitchCoderSignal):
                     await coder.reply_completed()
 
                 io.confirm_ask.assert_called_once_with("Edit the files?", allow_tweak=False)
@@ -1407,7 +1407,7 @@ This command will print 'Hello, World!' to the console."""
                 new_callable=AsyncMock,
                 return_value=mock_editor,
             ):
-                with pytest.raises(SwitchCoder):
+                with pytest.raises(SwitchCoderSignal):
                     await coder.reply_completed()
 
                 io.confirm_ask.assert_called_once_with("Edit the files?", allow_tweak=False)

@@ -18,7 +18,7 @@ from .context_blocks import ContextBlocksCommand
 from .context_management import ContextManagementCommand
 from .copy import CopyCommand
 from .copy_context import CopyContextCommand
-from .core import Commands, SwitchCoder
+from .core import Commands, SwitchCoderSignal
 from .diff import DiffCommand
 
 # Import and register commands
@@ -187,6 +187,6 @@ __all__ = [
     "CommandPrefixCommand",
     "LoadSkillCommand",
     "RemoveSkillCommand",
-    "SwitchCoder",
+    "SwitchCoderSignal",
     "Commands",
 ]

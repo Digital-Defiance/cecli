@@ -13,7 +13,7 @@ from prompt_toolkit.input import DummyInput
 from prompt_toolkit.output import DummyOutput
 
 from cecli.coders import Coder, CopyPasteCoder
-from cecli.commands import SwitchCoder
+from cecli.commands import SwitchCoderSignal
 from cecli.dump import dump
 from cecli.helpers.file_searcher import handle_core_files
 from cecli.io import InputOutput
@@ -263,7 +263,7 @@ def test_gitignore_files_flag_add_command(dummy_io, git_temp_dir, flag, should_i
     coder = main(args, **dummy_io, return_coder=True, force_git_root=git_temp_dir)
     try:
         asyncio.run(coder.commands.do_run("add", "ignored.txt"))
-    except SwitchCoder:
+    except SwitchCoderSignal:
         pass
     if should_include:
         assert abs_ignored_file in coder.abs_fnames
