@@ -6,19 +6,20 @@ from contextlib import AsyncExitStack
 from urllib.parse import urlparse
 
 import httpx
-from aider.mcp.oauth import (
-    FileBasedTokenStorage,
-    create_oauth_callback_server,
-    find_available_port,
-    get_mcp_oauth_token,
-    save_mcp_oauth_token,
-)
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.auth import OAuthClientProvider
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamable_http_client
 from mcp.shared.auth import OAuthClientMetadata
+
+from cecli.mcp.oauth import (
+    FileBasedTokenStorage,
+    create_oauth_callback_server,
+    find_available_port,
+    get_mcp_oauth_token,
+    save_mcp_oauth_token,
+)
 
 
 class McpServer:
@@ -158,7 +159,7 @@ class HttpBasedMcpServer(McpServer):
                 pass
 
         client_metadata = OAuthClientMetadata(
-            client_name="Aider-CE",
+            client_name="Cecli",
             redirect_uris=[redirect_uri],
             grant_types=["authorization_code", "refresh_token"],
         )

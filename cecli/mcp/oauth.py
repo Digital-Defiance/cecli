@@ -150,7 +150,7 @@ def generate_pkce_codes():
 
 def get_token_file_path():
     """Get the path to the MCP OAuth tokens file."""
-    config_dir = Path.home() / ".aider"
+    config_dir = Path.home() / ".cecli"
     config_dir.mkdir(parents=True, exist_ok=True)
     return config_dir / "mcp-oauth-tokens.json"
 
