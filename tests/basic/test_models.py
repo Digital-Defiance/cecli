@@ -654,8 +654,8 @@ class TestModels:
 
     def test_print_matching_models_with_pricing(self):
         """Test that print_matching_models displays pricing information correctly."""
-        from cecli.models import print_matching_models
         from cecli.io import InputOutput
+        from cecli.models import print_matching_models
 
         # Mock model_info_manager to return pricing data
         with patch("cecli.models.model_info_manager") as mock_manager:
@@ -680,8 +680,8 @@ class TestModels:
 
     def test_print_matching_models_with_cache_pricing(self):
         """Test that print_matching_models displays cache pricing when available."""
-        from cecli.models import print_matching_models
         from cecli.io import InputOutput
+        from cecli.models import print_matching_models
 
         # Mock model_info_manager to return pricing data with cache
         with patch("cecli.models.model_info_manager") as mock_manager:
@@ -706,8 +706,8 @@ class TestModels:
 
     def test_print_matching_models_without_pricing(self):
         """Test that print_matching_models works when no pricing info is available."""
-        from cecli.models import print_matching_models
         from cecli.io import InputOutput
+        from cecli.models import print_matching_models
 
         # Mock model_info_manager to return no pricing data
         with patch("cecli.models.model_info_manager") as mock_manager:
@@ -727,8 +727,8 @@ class TestModels:
 
     def test_print_matching_models_partial_pricing(self):
         """Test that print_matching_models displays only available pricing info."""
-        from cecli.models import print_matching_models
         from cecli.io import InputOutput
+        from cecli.models import print_matching_models
 
         # Mock model_info_manager to return only input pricing
         with patch("cecli.models.model_info_manager") as mock_manager:
@@ -750,8 +750,8 @@ class TestModels:
 
     def test_print_matching_models_no_matches(self):
         """Test that print_matching_models handles no matches correctly."""
-        from cecli.models import print_matching_models
         from cecli.io import InputOutput
+        from cecli.models import print_matching_models
 
         # Mock fuzzy_match_models to return no matches
         with patch("cecli.models.fuzzy_match_models") as mock_fuzzy:
@@ -766,8 +766,8 @@ class TestModels:
 
     def test_print_matching_models_price_formatting(self):
         """Test that pricing is formatted correctly with 2 decimal places."""
-        from cecli.models import print_matching_models
         from cecli.io import InputOutput
+        from cecli.models import print_matching_models
 
         # Mock fuzzy_match_models to return a test model
         with patch("cecli.models.fuzzy_match_models") as mock_fuzzy:

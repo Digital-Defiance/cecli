@@ -1171,31 +1171,31 @@ def print_matching_models(io, search):
         for model in matches:
             # Get model info to check for prices
             info = model_info_manager.get_model_info(model)
-            
+
             # Build price string
             price_parts = []
-            
+
             # Check for input cost
             input_cost = info.get("input_cost_per_token")
             if input_cost is not None:
                 # Convert from per-token to per-1M tokens
                 input_cost_per_1m = input_cost * 1000000
                 price_parts.append(f"${input_cost_per_1m:.2f}/1m/input")
-            
+
             # Check for output cost
             output_cost = info.get("output_cost_per_token")
             if output_cost is not None:
                 # Convert from per-token to per-1M tokens
                 output_cost_per_1m = output_cost * 1000000
                 price_parts.append(f"${output_cost_per_1m:.2f}/1m/output")
-            
+
             # Check for cache cost (if available)
             cache_cost = info.get("cache_cost_per_token")
             if cache_cost is not None:
                 # Convert from per-token to per-1M tokens
                 cache_cost_per_1m = cache_cost * 1000000
                 price_parts.append(f"${cache_cost_per_1m:.2f}/1m/cache")
-            
+
             # Format the output
             if price_parts:
                 price_str = " (" + ", ".join(price_parts) + ")"
