@@ -65,7 +65,6 @@ class ToolRegistry:
                         # Check if module has a Tool class
                         if hasattr(module, "Tool"):
                             cls.register(module.Tool)
-                            print(module)
                     except Exception as e:
                         # Log error but continue with other files
                         print(f"Error loading tool from {py_file}: {e}")
