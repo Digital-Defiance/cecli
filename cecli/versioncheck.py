@@ -34,7 +34,7 @@ async def install_upgrade(io, latest_version=None):
         new_ver_text = f"Newer cecli version v{latest_version} is available."
     else:
         new_ver_text = "Install latest version of cecli?"
-    docker_image = os.environ.get("CECLIDOCKER_IMAGE")
+    docker_image = os.environ.get("CECLI_DOCKER_IMAGE")
     if docker_image:
         text = f"\n{new_ver_text} To upgrade, run:\n\n    docker pull {docker_image}\n"
         io.tool_warning(text)

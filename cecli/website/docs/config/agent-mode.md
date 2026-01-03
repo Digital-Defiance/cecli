@@ -41,9 +41,9 @@ This loop continues automatically until the `Finished` tool is called, or the ma
 
 Agent Mode uses a centralized local tool registry that manages all available tools:
 
-- **File Discovery Tools**: `View`, `ViewFilesMatching`, `ViewFilesWithSymbol`, `Ls`, `Grep`
+- **File Discovery Tools**: `ViewFilesMatching`, `ViewFilesWithSymbol`, `Ls`, `Grep`
 - **Editing Tools**: `ReplaceText`, `InsertBlock`, `DeleteBlock`, `ReplaceLines`, `DeleteLines`
-- **Context Management Tools**: `MakeEditable`, `MakeReadonly`, `Remove`
+- **Context Management Tools**: `ContextManager`
 - **Git Tools**: `GitDiff`, `GitLog`, `GitShow`, `GitStatus`
 - **Utility Tools**: `UpdateTodoList`, `ListChanges`, `UndoChange`, `Finished`
 - **Skill Management**: `LoadSkill`, `RemoveSkill`
@@ -154,7 +154,7 @@ Agent Mode can also be configured directly in the relevant config.yml file:
 agent: true
 agent-config:
   # Tool configuration
-  tools_includelist: ["view", "makeeditable", "replacetext", "finished"]  # Optional: Whitelist of tools
+  tools_includelist: [contextmanager", "replacetext", "finished"]  # Optional: Whitelist of tools
   tools_excludelist: ["command", "commandinteractive"]  # Optional: Blacklist of tools
   
   # Context blocks configuration
@@ -184,9 +184,8 @@ agent-config:
 
 Certain tools are always available regardless of includelist/excludelist settings:
 
-- `makeeditable` - Make files editable
+- `ContextManager` - Add, drop, and make files editable in the context
 - `replacetext` - Basic text replacement
-- `view` - View files
 - `finished` - Complete the task
 
 #### Context Blocks
@@ -202,7 +201,7 @@ The following context blocks are available by default and can be customized usin
 
 When `include_context_blocks` is specified, only the listed blocks will be included. When `exclude_context_blocks` is specified, the listed blocks will be removed from the default set.
 
-#### Other CECLI CLI/Config Options for Agent Mode
+#### Other Cecli Config Options for Agent Mode
 
 - `use-enhanced-map` - Use enhanced repo map that takes into account import relationships between files
 
@@ -221,7 +220,7 @@ agent: true
 # Agent Mode configuration
 agent-config:
   # Tool configuration
-  tools_includelist: ["view", "makeeditable", "replacetext", "finished"]  # Optional: Whitelist of tools
+  tools_includelist: ["contextmanager", "replacetext", "finished"]  # Optional: Whitelist of tools
   tools_excludelist: ["command", "commandinteractive"]  # Optional: Blacklist of tools
   
   # Context blocks configuration

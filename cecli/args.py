@@ -567,7 +567,7 @@ def get_parser(default_config_files, git_root):
 
     group.add_argument(
         "--cecli-ignore",
-        metavar="CECLIIGNORE",
+        metavar="CECLI_IGNORE",
         type=lambda path_str: resolve_cecli_ignore_path(path_str, git_root),
         default=default_cecli_ignore_file,
         help="Specify the cecli ignore file (default: .cecli.ignore in git root)",

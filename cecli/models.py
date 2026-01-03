@@ -892,7 +892,7 @@ class Model(ModelSettings):
     async def send_completion(
         self, messages, functions, stream, temperature=None, tools=None, max_tokens=None
     ):
-        if os.environ.get("CECLISANITY_CHECK_TURNS"):
+        if os.environ.get("CECLI_SANITY_CHECK_TURNS"):
             sanity_check_messages(messages)
         messages = model_request_parser(self, messages)
         if self.verbose:

@@ -3,7 +3,7 @@ import os
 from cecli.helpers.file_searcher import handle_core_files
 
 try:
-    if not os.getenv("CECLIDEFAULT_TLS"):
+    if not os.getenv("CECLI_DEFAULT_TLS"):
         import truststore
 
         truststore.inject_into_ssl()

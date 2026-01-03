@@ -2138,7 +2138,7 @@ class Coder:
             return
 
         delay = 5 * 60 - 5
-        delay = float(os.environ.get("CECLICACHE_KEEPALIVE_DELAY", delay))
+        delay = float(os.environ.get("CECLI_CACHE_KEEPALIVE_DELAY", delay))
         self.next_cache_warm = time.time() + delay
         self.warming_pings_left = self.num_cache_warming_pings
         self.cache_warming_chunks = chunks
