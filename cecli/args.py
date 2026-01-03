@@ -38,7 +38,7 @@ def get_parser(default_config_files, git_root):
         add_config_file_help=True,
         default_config_files=default_config_files,
         config_file_parser_class=configargparse.YAMLConfigFileParser,
-        auto_env_var_prefix="CECLI",
+        auto_env_var_prefix="CECLI_",
     )
     # List of valid edit formats for argparse validation & shtab completion.
     # Dynamically gather them from the registered coder classes so the list
@@ -567,7 +567,7 @@ def get_parser(default_config_files, git_root):
 
     group.add_argument(
         "--cecli-ignore",
-        metavar="CECLIIGNORE",
+        metavar="CECLI_IGNORE",
         type=lambda path_str: resolve_cecli_ignore_path(path_str, git_root),
         default=default_cecli_ignore_file,
         help="Specify the cecli ignore file (default: .cecli.ignore in git root)",

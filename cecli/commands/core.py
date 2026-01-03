@@ -3,16 +3,32 @@ import re
 import sys
 from pathlib import Path
 
+from cecli.commands.utils.registry import CommandRegistry
 from cecli.helpers.file_searcher import handle_core_files
 from cecli.repo import ANY_GIT_ERROR
 
-from .commands.utils.registry import CommandRegistry
 
+class SwitchCoderSignal(BaseException):
+    """
+     Signal to switch the current Coder instance to a new configuration.
 
-class SwitchCoder(Exception):
+     This is NOT an error - it's a control flow signal used to propagate
+     coder switching requests up through the async call stack. It carries
+     the kwargs needed to create a new Coder instance.
+
+     Note: Inherits from BaseException (like KeyboardInterrupt and SystemExit)
+    to avoid being caught by generic `except Exception` handlers, making the
+     non-error nature of this signal explicit.
+
+     Attributes:
+         kwargs: Configuration dict passed to Coder.create() for the new instance
+         placeholder: Optional placeholder text for the input prompt
+    """
+
     def __init__(self, placeholder=None, **kwargs):
         self.kwargs = kwargs
         self.placeholder = placeholder
+        super().__init__()
 
 
 class Commands:
@@ -119,7 +135,7 @@ class Commands:
         except ANY_GIT_ERROR as err:
             self.io.tool_error(f"Unable to complete {cmd_name}: {err}")
             return
-        except SwitchCoder as e:
+        except SwitchCoderSignal as e:
             raise e
         except Exception as e:
             self.io.tool_error(f"Error executing command {cmd_name}: {str(e)}")

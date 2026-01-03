@@ -36,7 +36,7 @@ from rich.console import Console
 
 import cecli.prompts.utils.system as prompts
 from cecli import __version__, models, urls, utils
-from cecli.commands import Commands, SwitchCoder
+from cecli.commands import Commands, SwitchCoderSignal
 from cecli.exceptions import LiteLLMExceptions
 from cecli.helpers import coroutines
 from cecli.helpers.profiler import TokenProfiler
@@ -1370,7 +1370,7 @@ class Coder:
                     if task.exception():
                         raise task.exception()
 
-            except (SwitchCoder, SystemExit):
+            except (SwitchCoderSignal, SystemExit):
                 # Re-raise SwitchCoder to be handled by outer try block
                 raise
             except KeyboardInterrupt:
@@ -1461,7 +1461,7 @@ class Coder:
                 self.io.set_placeholder("")
                 self.keyboard_interrupt()
                 await self.io.stop_task_streams()
-            except (SwitchCoder, SystemExit):
+            except (SwitchCoderSignal, SystemExit):
                 raise
             except Exception as e:
                 if self.verbose or self.args.debug:
@@ -1496,7 +1496,7 @@ class Coder:
                     if self.io.output_task.done():
                         exception = self.io.output_task.exception()
                         if exception:
-                            if isinstance(exception, SwitchCoder):
+                            if isinstance(exception, SwitchCoderSignal):
                                 await self.io.output_task
                                 raise exception
 
@@ -1519,7 +1519,7 @@ class Coder:
                 self.io.stop_spinner()
                 self.keyboard_interrupt()
                 await self.io.stop_task_streams()
-            except (SwitchCoder, SystemExit):
+            except (SwitchCoderSignal, SystemExit):
                 raise
             except Exception as e:
                 if self.verbose or self.args.debug:
@@ -2138,7 +2138,7 @@ class Coder:
             return
 
         delay = 5 * 60 - 5
-        delay = float(os.environ.get("CECLICACHE_KEEPALIVE_DELAY", delay))
+        delay = float(os.environ.get("CECLI_CACHE_KEEPALIVE_DELAY", delay))
         self.next_cache_warm = time.time() + delay
         self.warming_pings_left = self.num_cache_warming_pings
         self.cache_warming_chunks = chunks
@@ -2741,7 +2741,7 @@ class Coder:
                 )
                 return (server.name, server_tools)
             except Exception as e:
-                if server.name != "unnamed-server" and server.name != "local_tools":
+                if server.name != "unnamed-server" and server.name != "Local":
                     self.io.tool_warning(f"Error initializing MCP server {server.name}: {e}")
                 return None
 
