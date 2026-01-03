@@ -24,7 +24,7 @@ from cecli.helpers.similarity import (
 from cecli.helpers.skills import SkillsManager
 from cecli.mcp.server import LocalServer
 from cecli.repo import ANY_GIT_ERROR
-from cecli.tools import TOOL_MODULES
+from cecli.tools.utils.registry import ToolRegistry
 
 from .base_coder import ChatChunks, Coder
 from .editblock_coder import do_replace, find_original_update_blocks, find_similar_lines
@@ -69,7 +69,6 @@ class AgentCoder(Coder):
         self.skills_manager = None
         self.change_tracker = ChangeTracker()
         self.args = kwargs.get("args")
-        self.tool_registry = self._build_tool_registry()
         self.files_added_in_exploration = set()
         self.tool_call_count = 0
         self.max_reflections = 15
@@ -82,44 +81,9 @@ class AgentCoder(Coder):
         self.tokens_calculated = False
         self.skip_cli_confirmations = False
         self.agent_finished = False
-        self._get_agent_config()
+        self.agent_config = self._get_agent_config()
+        ToolRegistry.build_registry(agent_config=self.agent_config)
         super().__init__(*args, **kwargs)
-
-    def _build_tool_registry(self):
-        """
-        Build a registry of available tools with their normalized names and process_response functions.
-        Handles agent configuration with includelist/excludelist functionality.
-
-        Returns:
-            dict: Mapping of normalized tool names to tool modules
-        """
-        registry = {}
-        tool_modules = TOOL_MODULES
-        agent_config = self._get_agent_config()
-        tools_includelist = agent_config.get(
-            "tools_includelist", agent_config.get("tools_whitelist", [])
-        )
-        tools_excludelist = agent_config.get(
-            "tools_excludelist", agent_config.get("tools_blacklist", [])
-        )
-        if "skills" not in self.allowed_context_blocks or not agent_config.get("skills_paths"):
-            tools_excludelist.append("loadskill")
-            tools_excludelist.append("removeskill")
-        essential_tools = {"contextmanager", "replacetext", "finished"}
-        for module in tool_modules:
-            if hasattr(module, "Tool"):
-                tool_class = module.Tool
-                tool_name = tool_class.NORM_NAME
-                should_include = True
-                if tools_includelist:
-                    should_include = tool_name in tools_includelist
-                if tool_name in essential_tools:
-                    should_include = True
-                if tool_name in tools_excludelist and tool_name not in essential_tools:
-                    should_include = False
-                if should_include:
-                    registry[tool_name] = tool_class
-        return registry
 
     def _get_agent_config(self):
         """
@@ -175,6 +139,11 @@ class AgentCoder(Coder):
                 config["skills_includelist"] = []
             if "skills_excludelist" not in config:
                 config["skills_excludelist"] = []
+
+        if "skills" not in self.allowed_context_blocks or not config.get("skills_paths", []):
+            config["tools_excludelist"].append("loadskill")
+            config["tools_excludelist"].append("removeskill")
+
         self._initialize_skills_manager(config)
         return config
 
@@ -207,7 +176,8 @@ class AgentCoder(Coder):
     def get_local_tool_schemas(self):
         """Returns the JSON schemas for all local tools using the tool registry."""
         schemas = []
-        for tool_module in self.tool_registry.values():
+        for tool_name in ToolRegistry.get_registered_tools():
+            tool_module = ToolRegistry.get_tool(tool_name)
             if hasattr(tool_module, "SCHEMA"):
                 schemas.append(tool_module.SCHEMA)
         return schemas
@@ -253,8 +223,8 @@ class AgentCoder(Coder):
                 all_results_content = []
                 norm_tool_name = tool_name.lower()
                 tasks = []
-                if norm_tool_name in self.tool_registry:
-                    tool_module = self.tool_registry[norm_tool_name]
+                if norm_tool_name in ToolRegistry.get_registered_tools():
+                    tool_module = ToolRegistry.get_tool(norm_tool_name)
                     for params in parsed_args_list:
                         result = tool_module.process_response(self, params)
                         if asyncio.iscoroutine(result):
@@ -951,8 +921,8 @@ I will proceed based on the current context.""")
         Returns:
             str: Result message
         """
-        if norm_tool_name in self.tool_registry:
-            tool_module = self.tool_registry[norm_tool_name]
+        if norm_tool_name in ToolRegistry.get_registered_tools():
+            tool_module = ToolRegistry.get_tool(norm_tool_name)
             try:
                 result = tool_module.process_response(self, params)
                 if asyncio.iscoroutine(result):
