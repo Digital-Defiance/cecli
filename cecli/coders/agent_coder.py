@@ -104,12 +104,17 @@ class AgentCoder(Coder):
             except (json.JSONDecodeError, TypeError) as e:
                 self.io.tool_warning(f"Failed to parse agent-config JSON: {e}")
                 return {}
+
         if "large_file_token_threshold" not in config:
             config["large_file_token_threshold"] = 25000
+
+        if "tools_paths" not in config:
+            config["tools_paths"] = []
         if "tools_includelist" not in config:
             config["tools_includelist"] = []
         if "tools_excludelist" not in config:
             config["tools_excludelist"] = []
+
         if "include_context_blocks" in config:
             self.allowed_context_blocks = set(config["include_context_blocks"])
         else:
@@ -122,16 +127,19 @@ class AgentCoder(Coder):
                 "todo_list",
                 "skills",
             }
+
         if "exclude_context_blocks" in config:
             for context_block in config["exclude_context_blocks"]:
                 try:
                     self.allowed_context_blocks.remove(context_block)
                 except KeyError:
                     pass
+
         self.large_file_token_threshold = config["large_file_token_threshold"]
         self.skip_cli_confirmations = config.get(
             "skip_cli_confirmations", config.get("yolo", False)
         )
+
         if "skills" in self.allowed_context_blocks:
             if "skills_paths" not in config:
                 config["skills_paths"] = []

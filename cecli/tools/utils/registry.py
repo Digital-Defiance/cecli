@@ -6,8 +6,10 @@ this provides centralized tool registration, discovery, and filtering
 based on agent configuration.
 """
 
+from pathlib import Path
 from typing import Dict, List, Optional, Set, Type
 
+from cecli.helpers import plugin_manager
 from cecli.tools import TOOL_MODULES
 
 
@@ -27,7 +29,7 @@ class ToolRegistry:
     @classmethod
     def get_tool(cls, name: str) -> Optional[Type]:
         """Get tool class by normalized name."""
-        return cls._tools.get(name)
+        return cls._tools.get(name, None)
 
     @classmethod
     def list_tools(cls) -> List[str]:
@@ -48,6 +50,34 @@ class ToolRegistry:
         """
         if agent_config is None:
             agent_config = {}
+
+        # Load tools from tool_paths if specified
+        tool_paths = agent_config.get("tool_paths", [])
+
+        for tool_path in tool_paths:
+            path = Path(tool_path)
+            if path.is_dir():
+                # Find all Python files in the directory
+                for py_file in path.glob("*.py"):
+                    try:
+                        # Load the module using plugin_manager
+                        module = plugin_manager.load_module(str(py_file))
+                        # Check if module has a Tool class
+                        if hasattr(module, "Tool"):
+                            cls.register(module.Tool)
+                            print(module)
+                    except Exception as e:
+                        # Log error but continue with other files
+                        print(f"Error loading tool from {py_file}: {e}")
+            else:
+                # If it's a file, try to load it directly
+                if path.exists() and path.suffix == ".py":
+                    try:
+                        module = plugin_manager.load_module(str(path))
+                        if hasattr(module, "Tool"):
+                            cls.register(module.Tool)
+                    except Exception as e:
+                        print(f"Error loading tool from {path}: {e}")
 
         # Get include/exclude lists from config
         tools_includelist = agent_config.get(
