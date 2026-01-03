@@ -2741,7 +2741,7 @@ class Coder:
                 )
                 return (server.name, server_tools)
             except Exception as e:
-                if server.name != "unnamed-server" and server.name != "local_tools":
+                if server.name != "unnamed-server" and server.name != "Local":
                     self.io.tool_warning(f"Error initializing MCP server {server.name}: {e}")
                 return None
 
