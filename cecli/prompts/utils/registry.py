@@ -19,20 +19,12 @@ import yaml
 class PromptRegistry:
     """Central registry for loading and managing prompts from YAML files."""
 
-    _instance = None
+    # Class-level state for singleton pattern
     _prompts_cache: Dict[str, Dict[str, Any]] = {}
     _base_prompts: Optional[Dict[str, Any]] = None
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(PromptRegistry, cls).__new__(cls)
-        return cls._instance
-
-    def __init__(self):
-        if not hasattr(self, "_initialized"):
-            self._initialized = True
-
-    def _load_yaml_file(self, file_name: str) -> Dict[str, Any]:
+    @staticmethod
+    def _load_yaml_file(file_name: str) -> Dict[str, Any]:
         """Load a YAML file and return its contents."""
         try:
             # Use importlib_resources to access package files
@@ -43,30 +35,46 @@ class PromptRegistry:
             )
             return yaml.safe_load(file_content) or {}
         except FileNotFoundError:
-            return {}
+            # If not found via importlib_resources, try local file system
+            # Treat file_name as absolute path relative to current working directory
+            try:
+                import os
+
+                file_path = os.path.abspath(file_name)
+                if os.path.exists(file_path):
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        file_content = f.read()
+                    return yaml.safe_load(file_content) or {}
+                else:
+                    raise ValueError(f"Prompt YAML file not found {file_name}")
+            except (FileNotFoundError, OSError) as e:
+                raise ValueError(f"Error parsing YAML file {file_name}: {e}")
         except yaml.YAMLError as e:
             raise ValueError(f"Error parsing YAML file {file_name}: {e}")
 
-    def _get_base_prompts(self) -> Dict[str, Any]:
+    @classmethod
+    def _get_base_prompts(cls) -> Dict[str, Any]:
         """Load and cache base.yml prompts."""
-        if self._base_prompts is None:
-            self._base_prompts = self._load_yaml_file("base.yml")
-        return self._base_prompts
+        if cls._base_prompts is None:
+            cls._base_prompts = cls._load_yaml_file("base.yml")
+        return cls._base_prompts
 
-    def _merge_prompts(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    @staticmethod
+    def _merge_prompts(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
         """Recursively merge override dict into base dict."""
         result = base.copy()
 
         for key, value in override.items():
             if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = self._merge_prompts(result[key], value)
+                result[key] = PromptRegistry._merge_prompts(result[key], value)
             else:
                 result[key] = value
 
         return result
 
+    @classmethod
     def _resolve_inheritance_chain(
-        self, prompt_name: str, visited: Optional[set] = None
+        cls, prompt_name: str, visited: Optional[set] = None
     ) -> List[str]:
         """
         Resolve the full inheritance chain for a prompt type.
@@ -100,13 +108,13 @@ class PromptRegistry:
         except FileNotFoundError:
             raise FileNotFoundError(f"Prompt file not found: {prompt_file_name}")
 
-        prompt_data = self._load_yaml_file(prompt_file_name)
+        prompt_data = cls._load_yaml_file(prompt_file_name)
         inherits = prompt_data.get("_inherits", [])
 
         # Resolve inheritance chain recursively
         inheritance_chain = []
         for parent in inherits:
-            parent_chain = self._resolve_inheritance_chain(parent, visited.copy())
+            parent_chain = cls._resolve_inheritance_chain(parent, visited.copy())
             # Add parent chain, avoiding duplicates while preserving order
             for item in parent_chain:
                 if item not in inheritance_chain:
@@ -118,7 +126,8 @@ class PromptRegistry:
 
         return inheritance_chain
 
-    def get_prompt(self, prompt_name: str) -> Dict[str, Any]:
+    @classmethod
+    def get_prompt(cls, prompt_name: str) -> Dict[str, Any]:
         """
         Get prompts for a specific prompt type.
 
@@ -128,12 +137,13 @@ class PromptRegistry:
         Returns:
             Dictionary containing all prompt attributes for the specified type
         """
+        prompt_name = prompt_name.replace(".yml", "")
         # Check cache first
-        if prompt_name in self._prompts_cache:
-            return self._prompts_cache[prompt_name]
+        if prompt_name in cls._prompts_cache:
+            return cls._prompts_cache[prompt_name]
 
         # Resolve inheritance chain
-        inheritance_chain = self._resolve_inheritance_chain(prompt_name)
+        inheritance_chain = cls._resolve_inheritance_chain(prompt_name)
 
         # Start with empty dict and merge in inheritance order
         merged_prompts: Dict[str, Any] = {}
@@ -141,27 +151,29 @@ class PromptRegistry:
         for current_name in inheritance_chain:
             # Load prompts for this level
             if current_name == "base":
-                current_prompts = self._get_base_prompts()
+                current_prompts = cls._get_base_prompts()
             else:
-                current_prompts = self._load_yaml_file(f"{current_name}.yml")
+                current_prompts = cls._load_yaml_file(f"{current_name}.yml")
 
             # Merge current prompts into accumulated result
-            merged_prompts = self._merge_prompts(merged_prompts, current_prompts)
+            merged_prompts = cls._merge_prompts(merged_prompts, current_prompts)
 
         # Remove _inherits key from final result (it's metadata, not a prompt)
         merged_prompts.pop("_inherits", None)
 
         # Cache the result
-        self._prompts_cache[prompt_name] = merged_prompts
+        cls._prompts_cache[prompt_name] = merged_prompts
 
         return merged_prompts
 
-    def reload_prompts(self):
+    @classmethod
+    def reload_prompts(cls):
         """Clear cache and reload all prompts from disk."""
-        self._prompts_cache.clear()
-        self._base_prompts = None
+        cls._prompts_cache.clear()
+        cls._base_prompts = None
 
-    def list_available_prompts(self) -> list[str]:
+    @staticmethod
+    def list_available_prompts() -> list[str]:
         """List all available prompt types."""
         prompts = []
         for path in importlib_resources.files("cecli.prompts").iterdir():
@@ -170,5 +182,5 @@ class PromptRegistry:
         return sorted(prompts)
 
 
-# Global instance for easy access
-registry = PromptRegistry()
+# All methods are static/class methods, so no instance is needed
+# Use PromptRegistry.get_prompt() directly

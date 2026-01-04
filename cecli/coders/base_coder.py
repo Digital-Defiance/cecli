@@ -61,7 +61,7 @@ from cecli.tools.utils.registry import ToolRegistry
 from cecli.utils import format_tokens, is_image_file
 
 from ..dump import dump  # noqa: F401
-from ..prompts.utils.registry import registry
+from ..prompts.utils.registry import PromptRegistry
 from .chat_chunks import ChatChunks
 
 
@@ -600,7 +600,7 @@ class Coder:
             return Coder._prompt_cache[prompt_name]
 
         # Get prompts from registry
-        prompts = registry.get_prompt(prompt_name)
+        prompts = PromptRegistry.get_prompt(prompt_name)
 
         # Create a simple object that allows attribute access
         class PromptObject:
