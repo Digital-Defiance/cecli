@@ -327,7 +327,7 @@ def get_parser(default_config_files, git_root):
     group.add_argument(
         "--enable-context-compaction",
         action=argparse.BooleanOptionalAction,
-        default=False,
+        default=True,
         help="Enable automatic compaction of chat history to conserve tokens (default: False)",
     )
     group.add_argument(
