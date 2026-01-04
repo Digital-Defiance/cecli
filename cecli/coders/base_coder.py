@@ -429,7 +429,7 @@ class Coder:
 
         self.show_diffs = show_diffs
 
-        self.commands = commands or Commands(self.io, self)
+        self.commands = commands or Commands(self.io, self, args=args)
         self.commands.coder = self
 
         self.data_cache = {

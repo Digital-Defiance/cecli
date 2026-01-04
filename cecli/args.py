@@ -976,6 +976,12 @@ def get_parser(default_config_files, git_root):
         ),
     )
     group.add_argument(
+        "--command-paths",
+        help="JSON array of paths to custom commands files",
+        action="append",
+        default=None,
+    )
+    group.add_argument(
         "--command-prefix",
         default=None,
         help="Specify a command prefix for all commands (useful for sandboxing)",

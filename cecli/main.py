@@ -554,6 +554,8 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         args.tui_config = convert_yaml_to_json_string(args.tui_config)
     if hasattr(args, "mcp_servers") and args.mcp_servers is not None:
         args.mcp_servers = convert_yaml_to_json_string(args.mcp_servers)
+    if hasattr(args, "command_paths") and args.command_paths is not None:
+        args.command_paths = convert_yaml_to_json_string(args.command_paths)
     if args.debug:
         global log_file
         os.makedirs(".cecli/logs/", exist_ok=True)
