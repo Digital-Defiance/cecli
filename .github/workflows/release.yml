@@ -20,7 +20,7 @@ jobs:
       with:
         python-version: 3.x
 
-    - name: Verify pyproject.toml is cecli package
+    - name: Verify pyproject.toml is cecli-dev package
       run: |
         # Check that pyproject.toml has name = "cecli-dev"
         if ! grep -q 'name = "cecli-dev"' pyproject.toml; then

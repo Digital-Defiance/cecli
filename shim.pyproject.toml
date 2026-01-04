@@ -1,7 +1,7 @@
 
 [project]
 name = "aider-ce"
-description = "⚠️ DEPRECATED: This package has been renamed to 'cecli'. Please install 'cecli' instead. ⚠️ aider-ce - now available as 'cecli' package."
+description = "⚠️ DEPRECATED: This package has been renamed to 'cecli-dev'. Please install 'cecli-dev' instead. ⚠️ aider-ce - now available as 'cecli-dev' package."
 readme = "README.md"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -17,7 +17,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = ["cecli-dev"]
-dynamic = ["optional-dependencies", "version"]
+dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/dwash96/cecli"
@@ -28,7 +28,7 @@ aider-ce = "cecli.main:main"
 "ce.cli" = "cecli.main:main"
 
 [tool.setuptools.dynamic]
-optional-dependencies = { file = "requirements/requirements-dev.in" }
+# No optional dependencies needed for shim package
 
 [tool.setuptools]
 include-package-data = true
