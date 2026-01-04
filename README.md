@@ -37,20 +37,20 @@ This project can be installed using several methods:
 
 ### Package Installation
 ```bash
-pip install cecli.dev
+pip install cecli-dev
 ```
 
 or
 
 ```bash
-uv pip install --native-tls cecli.dev
+uv pip install --native-tls cecli-dev
 ```
 
 The package exports a `cecli` command that accepts all of Aider's configuration options
 
 ### Tool Installation
 ```bash
-uv tool install --native-tls --python python3.12 cecli.dev
+uv tool install --native-tls --python python3.12 cecli-dev
 ```
 
 Use the tool installation so aider doesn't interfere with your development environment
