@@ -1,6 +1,7 @@
+
 [project]
-name = "cecli"
-description = "we also can't pronounce cecli"
+name = "aider-ce"
+description = "⚠️ DEPRECATED: This package has been renamed to 'cecli'. Please install 'cecli' instead. ⚠️ aider-ce - now available as 'cecli' package."
 readme = "README.md"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -15,12 +16,11 @@ classifiers = [
     "Topic :: Software Development",
 ]
 requires-python = ">=3.10"
-dynamic = ["dependencies", "optional-dependencies", "version"]
+dependencies = ["cecli"]
+dynamic = ["optional-dependencies", "version"]
 
 [project.urls]
-Homepage = "https://github.com/dwash96/cecli"
-Documentation = "https://github.com/dwash96/cecli"
-Repository = "https://github.com/dwash96/cecli"
+Homepage = "https://github.com/dwash96/aider-ce"
 
 [project.scripts]
 aider-ce = "cecli.main:main"
@@ -28,13 +28,7 @@ aider-ce = "cecli.main:main"
 "ce.cli" = "cecli.main:main"
 
 [tool.setuptools.dynamic]
-dependencies = { file = "requirements/requirements.in" }
-
-[tool.setuptools.dynamic.optional-dependencies]
-dev = { file = "requirements/requirements-dev.in" }
-help = { file = "requirements/requirements-help.in" }
-playwright = { file = "requirements/requirements-playwright.in" }
-tui = { file = "requirements/requirements-tui.in" }
+optional-dependencies = { file = "requirements/requirements-dev.in" }
 
 [tool.setuptools]
 include-package-data = true
