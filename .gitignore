@@ -25,7 +25,7 @@
 !/HISTORY.md
 !/LICENSE.txt
 !/MANIFEST.in
-!/cecli.pyproject.toml
+!/shim.pyproject.toml
 !/pyproject.toml
 !/pytest.ini
 !/README.md
