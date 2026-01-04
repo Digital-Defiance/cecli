@@ -84,6 +84,10 @@ jobs:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
+        # Extract version from tag (remove 'v' prefix)
+        export SETUPTOOLS_SCM_PRETEND_VERSION="${GITHUB_REF#refs/tags/v}"
+        echo "Forcing version: $SETUPTOOLS_SCM_PRETEND_VERSION"
+        
         python -m build
         twine upload dist/*
 
