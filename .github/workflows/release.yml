@@ -48,7 +48,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: publish_cecli
     steps:
-    - name: Checkout code
+    - name: Clean workspace
+      run: |
+        # Clean any previous workspace state
+        rm -rf ./*
+        rm -rf .[!.]* || true
+    
+    - name: Checkout code with explicit tag
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
