@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from cecli.prompts.utils.prompt_registry import PromptRegistry
+from cecli.prompts.utils.registry import PromptRegistry
 
 
 class TestPromptRegistry:

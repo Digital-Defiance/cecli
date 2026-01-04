@@ -61,7 +61,7 @@ from cecli.tools.utils.registry import ToolRegistry
 from cecli.utils import format_tokens, is_image_file
 
 from ..dump import dump  # noqa: F401
-from ..prompts.utils.prompt_registry import registry
+from ..prompts.utils.registry import registry
 from .chat_chunks import ChatChunks
 
 

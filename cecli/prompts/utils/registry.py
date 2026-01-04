@@ -10,9 +10,9 @@ This module implements a YAML-based prompt inheritance system where:
 6. Circular dependencies are detected and prevented
 """
 
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import importlib_resources
 import yaml
 
 
@@ -30,24 +30,27 @@ class PromptRegistry:
 
     def __init__(self):
         if not hasattr(self, "_initialized"):
-            self._prompts_dir = Path(__file__).parent / "../../prompts"
             self._initialized = True
 
-    def _load_yaml_file(self, file_path: Path) -> Dict[str, Any]:
+    def _load_yaml_file(self, file_name: str) -> Dict[str, Any]:
         """Load a YAML file and return its contents."""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return yaml.safe_load(f) or {}
+            # Use importlib_resources to access package files
+            file_content = (
+                importlib_resources.files("cecli.prompts")
+                .joinpath(file_name)
+                .read_text(encoding="utf-8")
+            )
+            return yaml.safe_load(file_content) or {}
         except FileNotFoundError:
             return {}
         except yaml.YAMLError as e:
-            raise ValueError(f"Error parsing YAML file {file_path}: {e}")
+            raise ValueError(f"Error parsing YAML file {file_name}: {e}")
 
     def _get_base_prompts(self) -> Dict[str, Any]:
         """Load and cache base.yml prompts."""
         if self._base_prompts is None:
-            base_path = self._prompts_dir / "base.yml"
-            self._base_prompts = self._load_yaml_file(base_path)
+            self._base_prompts = self._load_yaml_file("base.yml")
         return self._base_prompts
 
     def _merge_prompts(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
@@ -88,11 +91,16 @@ class PromptRegistry:
             return ["base"]
 
         # Load the prompt file to get its inheritance chain
-        prompt_path = self._prompts_dir / f"{prompt_name}.yml"
-        if not prompt_path.exists():
-            raise FileNotFoundError(f"Prompt file not found: {prompt_path}")
+        prompt_file_name = f"{prompt_name}.yml"
+        try:
+            # Check if file exists by trying to access it
+            importlib_resources.files("cecli.prompts").joinpath(prompt_file_name).read_text(
+                encoding="utf-8"
+            )
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Prompt file not found: {prompt_file_name}")
 
-        prompt_data = self._load_yaml_file(prompt_path)
+        prompt_data = self._load_yaml_file(prompt_file_name)
         inherits = prompt_data.get("_inherits", [])
 
         # Resolve inheritance chain recursively
@@ -135,8 +143,7 @@ class PromptRegistry:
             if current_name == "base":
                 current_prompts = self._get_base_prompts()
             else:
-                prompt_path = self._prompts_dir / f"{current_name}.yml"
-                current_prompts = self._load_yaml_file(prompt_path)
+                current_prompts = self._load_yaml_file(f"{current_name}.yml")
 
             # Merge current prompts into accumulated result
             merged_prompts = self._merge_prompts(merged_prompts, current_prompts)
@@ -157,9 +164,9 @@ class PromptRegistry:
     def list_available_prompts(self) -> list[str]:
         """List all available prompt types."""
         prompts = []
-        for file_path in self._prompts_dir.glob("*.yml"):
-            if file_path.name != "base.yml":
-                prompts.append(file_path.stem)
+        for path in importlib_resources.files("cecli.prompts").iterdir():
+            if path.is_file() and path.name.endswith(".yml") and path.name != "base.yml":
+                prompts.append(path.stem)
         return sorted(prompts)
 
 
