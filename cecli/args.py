@@ -803,8 +803,8 @@ def get_parser(default_config_files, git_root):
     group.add_argument(
         "--linear-output",
         action=argparse.BooleanOptionalAction,
-        help="Run input and output sequentially instead of us simultaneous streams (default: True)",
-        default=True,
+        help="Run input and output sequentially instead of us simultaneous streams (default: None)",
+        default=None,
     )
     group.add_argument(
         "--debug",

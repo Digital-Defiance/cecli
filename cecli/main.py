@@ -628,7 +628,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     output_queue = None
     input_queue = None
     pre_init_io = get_io(args.pretty)
-    if args.tui or args.tui is None and not args.linear_output:
+    if args.tui or args.linear_output is None:
         try:
             from cecli.tui import create_tui_io
 
@@ -643,6 +643,9 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             sys.exit(1)
     else:
         io = pre_init_io
+        if args.linear_output is None:
+            args.linear_output = True
+
     if not args.tui:
         try:
             io.rule()
