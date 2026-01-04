@@ -16,11 +16,11 @@ classifiers = [
     "Topic :: Software Development",
 ]
 requires-python = ">=3.10"
-dependencies = ["cecli.dev"]
+dependencies = ["cecli-dev"]
 dynamic = ["optional-dependencies", "version"]
 
 [project.urls]
-Homepage = "https://github.com/dwash96/aider-ce"
+Homepage = "https://github.com/dwash96/cecli"
 
 [project.scripts]
 aider-ce = "cecli.main:main"

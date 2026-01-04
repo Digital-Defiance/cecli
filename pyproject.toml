@@ -1,5 +1,5 @@
 [project]
-name = "cecli.dev"
+name = "cecli-dev"
 description = "we also can't pronounce cecli"
 readme = "README.md"
 classifiers = [

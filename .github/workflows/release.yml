@@ -22,9 +22,9 @@ jobs:
 
     - name: Verify pyproject.toml is cecli package
       run: |
-        # Check that pyproject.toml has name = "cecli"
-        if ! grep -q 'name = "cecli"' pyproject.toml; then
-          echo "ERROR: pyproject.toml does not have name = 'cecli'"
+        # Check that pyproject.toml has name = "cecli-dev"
+        if ! grep -q 'name = "cecli-dev"' pyproject.toml; then
+          echo "ERROR: pyproject.toml does not have name = 'cecli-dev'"
           exit 1
         fi
 
