@@ -16,6 +16,12 @@ import importlib_resources
 import yaml
 
 
+class PromptObject:
+    def __init__(self, prompts_dict):
+        for key, value in prompts_dict.items():
+            setattr(self, key, value)
+
+
 class PromptRegistry:
     """Central registry for loading and managing prompts from YAML files."""
 
@@ -106,7 +112,18 @@ class PromptRegistry:
                 encoding="utf-8"
             )
         except FileNotFoundError:
-            raise FileNotFoundError(f"Prompt file not found: {prompt_file_name}")
+            # If not found via importlib_resources, try local file system
+            # Treat file_name as absolute path relative to current working directory
+            try:
+                import os
+
+                prompt_file_name = os.path.abspath(prompt_file_name)
+                if os.path.exists(prompt_file_name):
+                    pass
+                else:
+                    raise ValueError(f"Prompt YAML file not found {prompt_file_name}")
+            except (FileNotFoundError, OSError) as e:
+                raise ValueError(f"Error parsing YAML file {prompt_file_name}: {e}")
 
         prompt_data = cls._load_yaml_file(prompt_file_name)
         inherits = prompt_data.get("_inherits", [])

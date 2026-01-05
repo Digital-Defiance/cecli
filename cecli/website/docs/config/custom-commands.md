@@ -18,7 +18,7 @@ Custom commands can be configured using the `command-paths` configuration option
 
 ```yaml
 custom:
-    command-paths: [".cecli/commands/", "~/my-commands/", "./special_command.py"]
+    command-paths: [".cecli/custom/commands", "~/my-commands/", "./special_command.py"]
 ```
 
 The `command-paths` configuration option allows you to specify directories or files containing custom commands to load.
@@ -148,7 +148,7 @@ weak-model: gemini/gemini-3-flash-preview
 
 # Custom commands configuration
 custom:
-    command-paths: [".cecli/commands/"]
+    command-paths: [".cecli/custom/commands"]
 
 # Other cecli options
 ...
