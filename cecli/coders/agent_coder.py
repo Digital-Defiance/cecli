@@ -114,8 +114,12 @@ class AgentCoder(Coder):
         )
 
         config["tools_paths"] = nested.getter(config, "tools_paths", [])
-        config["tools_includelist"] = nested.getter(config, "tools_includelist", [])
-        config["tools_excludelist"] = nested.getter(config, "tools_excludelist", [])
+        config["tools_includelist"] = nested.getter(
+            config, ["tools_includelist", "tools_whitelist"], []
+        )
+        config["tools_excludelist"] = nested.getter(
+            config, ["tools_excludelist", "tools_blacklist"], []
+        )
 
         config["include_context_blocks"] = set(
             nested.getter(
@@ -147,8 +151,12 @@ class AgentCoder(Coder):
 
         if "skills" in self.allowed_context_blocks:
             config["skills_paths"] = nested.getter(config, "skills_paths", [])
-            config["skills_includelist"] = nested.getter(config, "skills_includelist", [])
-            config["skills_excludelist"] = nested.getter(config, "skills_excludelist", [])
+            config["skills_includelist"] = nested.getter(
+                config, ["skills_includelist", "skills_whitelist"], []
+            )
+            config["skills_excludelist"] = nested.getter(
+                config, ["skills_excludelist", "skills_blacklist"], []
+            )
 
         if "skills" not in self.allowed_context_blocks or not nested.getter(
             config, "skills_paths", []

@@ -79,12 +79,8 @@ class ToolRegistry:
                         print(f"Error loading tool from {path}: {e}")
 
         # Get include/exclude lists from config
-        tools_includelist = agent_config.get(
-            "tools_includelist", agent_config.get("tools_whitelist", [])
-        )
-        tools_excludelist = agent_config.get(
-            "tools_excludelist", agent_config.get("tools_blacklist", [])
-        )
+        tools_includelist = agent_config.get("tools_includelist", [])
+        tools_excludelist = agent_config.get("tools_excludelist", [])
 
         registry = {}
 

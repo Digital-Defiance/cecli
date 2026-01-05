@@ -51,16 +51,33 @@ def arg_resolver(obj: Union[List[Any], Dict[str, Any], Any], key: str, default: 
     return default
 
 
-def getter(data: Union[List[Any], Dict[str, Any], Any], path: str, default: Any = None) -> Any:
+def getter(
+    data: Union[List[Any], Dict[str, Any], Any], path: Union[str, List[str]], default: Any = None
+) -> Any:
     """Safely access nested dicts and lists using normalized dot-notation."""
 
     if data is None:
         return default
 
-    parts = path.split(".")
-    for part in parts:
-        data = arg_resolver(data, part, default=default)
-        if data is default:
-            break
+    # Handle single path string
+    if isinstance(path, str):
+        paths = [path]
+    else:
+        paths = path
 
-    return data
+    # Try each path, return first valid result
+    for path_str in paths:
+        current = data
+        parts = path_str.split(".")
+        found = True
+
+        for part in parts:
+            current = arg_resolver(current, part, default=default)
+            if current is default:
+                found = False
+                break
+
+        if found:
+            return current
+
+    return default
