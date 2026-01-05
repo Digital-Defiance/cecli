@@ -396,9 +396,9 @@ class InputOutput:
 
         self.fzf_available = shutil.which("fzf")
         if not self.fzf_available and self.verbose:
-            self.tool_warning(
-                "fzf not found, fuzzy finder features will be disabled. Install it for enhanced"
-                " file/history search."
+            print(
+                "Warning: fzf not found, fuzzy finder features will be disabled. Install it for"
+                " enhanced file/history search."
             )
 
         self.code_theme = code_theme
@@ -421,7 +421,7 @@ class InputOutput:
             try:
                 Path(self.input_history_file).parent.mkdir(parents=True, exist_ok=True)
             except (PermissionError, OSError) as e:
-                self.tool_warning(f"Could not create directory for input history: {e}")
+                print(f"Warning: Could not create directory for input history: {e}")
                 self.input_history_file = None
 
         if chat_history_file is not None:
@@ -490,11 +490,11 @@ class InputOutput:
                 self.console = Console()  # pretty console
             except Exception as err:
                 self.console = Console(force_terminal=False, no_color=True)
-                self.tool_error(f"Can't initialize prompt toolkit: {err}")  # non-pretty
+                print(f"Error: Can't initialize prompt toolkit: {err}")  # non-pretty
         else:
             self.console = Console(force_terminal=False, no_color=True)  # non-pretty
             if self.is_dumb_terminal:
-                self.tool_output("Detected dumb terminal, disabling fancy input and pretty output.")
+                print("Detected dumb terminal, disabling fancy input and pretty output.")
 
         self.file_watcher = file_watcher
         self.root = root
