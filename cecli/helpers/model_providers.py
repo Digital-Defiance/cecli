@@ -439,6 +439,40 @@ class ModelProviderManager:
         fname = f"{provider}_models.json"
         return self.cache_dir / fname
 
+    def _normalize_models_payload(self, provider: str, payload: Dict) -> Dict:
+        """Normalize provider payloads into an OpenAI-style `{data: [{id: ...}]}`."""
+        if not isinstance(payload, dict):
+            return {}
+        if "data" in payload and isinstance(payload.get("data"), list):
+            return payload
+        # Fireworks returns `{models: [...], nextPageToken: ..., totalSize: ...}`
+        models = payload.get("models")
+        if isinstance(models, list):
+            normalized = []
+            for item in models:
+                if not isinstance(item, dict):
+                    continue
+                model_id = item.get("name") or item.get("id")
+                if not model_id:
+                    continue
+                record = {"id": model_id}
+                for key in (
+                    "max_input_tokens",
+                    "max_output_tokens",
+                    "max_tokens",
+                    "context_length",
+                    "context_window",
+                    "mode",
+                    "pricing",
+                    "input_cost_per_token",
+                    "output_cost_per_token",
+                ):
+                    if key in item and item[key] is not None:
+                        record[key] = item[key]
+                normalized.append(record)
+            return {"data": normalized}
+        return {}
+
     def _load_cache(self, provider: str) -> None:
         if self._cache_loaded.get(provider):
             return
@@ -460,9 +494,10 @@ class ModelProviderManager:
         payload = self._fetch_provider_models(provider)
         cache_file = self._get_cache_file(provider)
         if payload:
-            self._provider_cache[provider] = payload
+            normalized = self._normalize_models_payload(provider, payload)
+            self._provider_cache[provider] = normalized
             try:
-                cache_file.write_text(json.dumps(payload, indent=2))
+                cache_file.write_text(json.dumps(normalized, indent=2))
             except OSError:
                 pass
             return
