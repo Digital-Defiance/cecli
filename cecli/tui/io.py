@@ -22,12 +22,12 @@ class TextualInputOutput(InputOutput):
         # Lazy-initialized console for TUI rendering
         self._tui_console = None
 
-        # Initialize parent (fancy_input should already be False from caller)
-        super().__init__(**kwargs)
-
         # Store queues
         self.output_queue = output_queue
         self.input_queue = input_queue
+
+        # Initialize parent (fancy_input should already be False from caller)
+        super().__init__(**kwargs)
 
         # Current task tracking
         self.current_task_id = None

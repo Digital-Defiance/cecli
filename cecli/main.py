@@ -765,7 +765,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
                 return await graceful_exit(None, 1)
             alias, model = parts
             models.MODEL_ALIASES[alias.strip()] = model.strip()
-    selected_model_name = await select_default_model(args, io)
+    selected_model_name = await select_default_model(args, pre_init_io)
     if not selected_model_name:
         return await graceful_exit(None, 1)
     args.model = selected_model_name
