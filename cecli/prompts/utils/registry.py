@@ -121,9 +121,9 @@ class PromptRegistry:
                 if os.path.exists(prompt_file_name):
                     pass
                 else:
-                    raise ValueError(f"Prompt YAML file not found {prompt_file_name}")
+                    raise FileNotFoundError(f"Prompt file not found: {prompt_file_name}")
             except (FileNotFoundError, OSError) as e:
-                raise ValueError(f"Error parsing YAML file {prompt_file_name}: {e}")
+                raise FileNotFoundError(f"Prompt file not found: {prompt_file_name}: {e}")
 
         prompt_data = cls._load_yaml_file(prompt_file_name)
         inherits = prompt_data.get("_inherits", [])
