@@ -479,6 +479,13 @@ class ModelProviderManager:
                 models_url = api_base.rstrip("/") + "/models"
         if not models_url:
             return None
+        # Substitute {account_id} placeholder if present
+        if "{account_id}" in models_url:
+            account_id = self._get_account_id(provider)
+            if not account_id:
+                print(f"Failed to fetch {provider} model list: account_id_env not set")
+                return None
+            models_url = models_url.replace("{account_id}", account_id)
         headers = {}
         default_headers = config.get("default_headers") or {}
         headers.update(default_headers)
@@ -507,6 +514,13 @@ class ModelProviderManager:
             value = os.environ.get(env_var)
             if value:
                 return value
+        return None
+
+    def _get_account_id(self, provider: str) -> Optional[str]:
+        config = self.provider_configs[provider]
+        account_id_env = config.get("account_id_env")
+        if account_id_env:
+            return os.environ.get(account_id_env)
         return None
 
 
