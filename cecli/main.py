@@ -628,7 +628,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     output_queue = None
     input_queue = None
     pre_init_io = get_io(args.pretty)
-    if args.tui or args.linear_output is None:
+    if args.tui is not False and args.linear_output is None:
         try:
             from cecli.tui import create_tui_io
 
