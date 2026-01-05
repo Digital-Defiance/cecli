@@ -265,7 +265,6 @@ def get_parser(default_config_files, git_root):
         tui_default = None
         linear_output_default = None
 
-    print(env_val, tui_default)
     group.add_argument(
         "--tui",
         action=argparse.BooleanOptionalAction,

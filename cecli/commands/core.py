@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from cecli.commands.utils.registry import CommandRegistry
-from cecli.helpers import plugin_manager
+from cecli.helpers import nested, plugin_manager
 from cecli.helpers.file_searcher import handle_core_files
 from cecli.repo import ANY_GIT_ERROR
 
@@ -80,20 +80,16 @@ class Commands:
         self.editor = editor
         self.original_read_only_fnames = set(original_read_only_fnames or [])
 
-        command_paths_raw = getattr(self.args, "command_paths", None)
-        if isinstance(command_paths_raw, (list, tuple)):
-            # When the parser already produced a list/tuple, accept it directly
-            self.custom_commands = list(command_paths_raw)
-        else:
-            if command_paths_raw is None:
-                command_paths_raw = "[]"
-            try:
-                self.custom_commands = json.loads(command_paths_raw)
-            except (json.JSONDecodeError, TypeError) as e:
-                self.io.tool_warning(f"Failed to parse command paths JSON: {e}")
-                self.custom_commands = []
+        customizations = dict()
+        try:
+            if self.args:
+                customizations = nested.getter(self.args, "custom", "{}")
+                customizations = json.loads(customizations)
+        except (json.JSONDecodeError, TypeError):
+            customizations = dict()
+            pass
 
-        # Load custom commands from plugin paths
+        self.custom_commands = nested.getter(customizations, "command-paths", [])
         self._load_custom_commands(self.custom_commands)
 
         self.cmd_running_event = asyncio.Event()
