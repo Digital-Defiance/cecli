@@ -956,22 +956,60 @@ class Model(ModelSettings):
             try:
                 retries_config = json.loads(self.retries)
                 if "timeout" in retries_config:
-                    kwargs["timeout"] = retries_config["timeout"]
+                    self.request_timeout = retries_config["timeout"]
                 if "backoff-factor" in retries_config:
-                    kwargs["num_retries"] = 5
-                if "retry-on-unavailable" in retries_config and retries_config["retry-on-unavailable"]:
-                    kwargs["num_retries"] = kwargs.get("num_retries", 5)
-            except (json.JSONDecodeError, TypeError):
+                    self.retry_backoff_factor = float(retries_config["backoff-factor"])
+                if "retry-on-unavailable" in retries_config:
+                    self.retry_on_unavailable = bool(retries_config["retry-on-unavailable"])
+                if "retry-timeout" in retries_config:
+                    self.retry_timeout = float(retries_config["retry-timeout"])
+            except (json.JSONDecodeError, TypeError, ValueError):
                 pass
-        try:
-            res = await litellm.acompletion(**kwargs)
-        except Exception as err:
-            print(f"LiteLLM API Error: {str(err)}")
-            res = self.model_error_response()
-            if self.verbose:
-                print(f"LiteLLM API Error: {str(err)}")
-                raise
-        return hash_object, res
+
+        kwargs["timeout"] = self.request_timeout
+
+        litellm_ex = LiteLLMExceptions()
+        retry_delay = 0.125
+
+        while True:
+            try:
+                if self.verbose:
+                    dump(kwargs)
+                res = await litellm.acompletion(**kwargs)
+                return hash_object, res
+            except litellm.ContextWindowExceededError as err:
+                raise err
+            except litellm_ex.exceptions_tuple() as err:
+                ex_info = litellm_ex.get_ex_info(err)
+                should_retry = ex_info.retry
+                if ex_info.name == "ServiceUnavailableError":
+                    should_retry = should_retry or self.retry_on_unavailable
+
+                if should_retry:
+                    retry_delay *= self.retry_backoff_factor
+                    if retry_delay > self.retry_timeout:
+                        should_retry = False
+
+                # Check for non-retryable RateLimitError within ServiceUnavailableError
+                if (
+                    isinstance(err, litellm.ServiceUnavailableError)
+                    and "RateLimitError" in str(err)
+                    and 'status_code: 429, message: "Resource has been exhausted' in str(err)
+                ):
+                    should_retry = False
+
+                if not should_retry:
+                    print(f"LiteLLM API Error: {str(err)}")
+                    if ex_info.description:
+                        print(ex_info.description)
+                    if stream:
+                        return hash_object, self.model_error_response_stream()
+                    else:
+                        return hash_object, self.model_error_response()
+
+                print(f"Retrying in {retry_delay:.1f} seconds...")
+                await asyncio.sleep(retry_delay)
+                continue
 
     async def simple_send_with_retries(self, messages, max_tokens=None):
         from cecli.exceptions import LiteLLMExceptions
@@ -1010,21 +1048,22 @@ class Model(ModelSettings):
             except AttributeError:
                 return None
 
-    async def model_error_response(self):
-        for i in range(1):
-            await asyncio.sleep(0.1)
-            yield litellm.ModelResponse(
-                choices=[
-                    litellm.Choices(
-                        finish_reason="stop",
-                        index=0,
-                        message=litellm.Message(
-                            content="Model API Response Error. Please retry the previous request"
-                        ),
-                    )
-                ],
-                model=self.name,
-            )
+    def model_error_response(self):
+        return litellm.ModelResponse(
+            choices=[
+                litellm.Choices(
+                    finish_reason="stop",
+                    index=0,
+                    message=litellm.Message(
+                        content="Model API Response Error. Please retry the previous request"
+                    ),
+                )
+            ],
+            model=self.name,
+        )
+
+    async def model_error_response_stream(self):
+        yield self.model_error_response()
 
 
 def register_models(model_settings_fnames):
