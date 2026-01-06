@@ -456,6 +456,17 @@ def get_parser(default_config_files, git_root):
         default=False,
         help="Restore the previous chat history messages (default: False)",
     )
+    #########
+    group = parser.add_argument_group("Input settings")
+    group.add_argument(
+        "--terminal-setup",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Auto-configure terminal emulator for shift+enter support for new lines (default:"
+            " False)"
+        ),
+    )
     ##########
     group = parser.add_argument_group("Output settings")
     group.add_argument(

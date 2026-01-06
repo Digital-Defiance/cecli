@@ -1087,6 +1087,11 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             io.tool_output("Dry run enabled, skipping commit.")
         else:
             await coder.commands.do_run("commit", "")
+    if args.terminal_setup:
+        if args.dry_run:
+            await coder.commands.do_run("terminal-setup", "dry_run")
+        else:
+            await coder.commands.do_run("terminal-setup", "")
     if args.lint or args.test or args.commit:
         return await graceful_exit(coder)
     if args.show_repo_map:

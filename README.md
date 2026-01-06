@@ -101,7 +101,15 @@ DEEPSEEK_API_KEY="..."
 
 ### Run Program
 
-If you are in the directory with your .aider.conf.yml file, then simply running `cecli` or `aider-ce` will start the agent with your configuration. If you want additional sandboxing, we publish a docker container that can be ran as follows:
+If you are in the directory with your .aider.conf.yml file, then simply running `cecli` or `aider-ce` will start the agent with your configuration. For best results, since terminal emulators can be finicky, we highly suggest running:
+
+```bash
+cecli --terminal-setup
+```
+
+On first run to configure keybindings for the program (notably `shift+enter`). Support for terminals is ongoing so feel free to make a github issue or chat in the discord for us to figure out what's needed to support automatically setting up a given terminal.
+
+If you want additional sandboxing, we publish a docker container that can be ran as follows:
 
 ```bash
 docker pull dustinwashington/aider-ce
