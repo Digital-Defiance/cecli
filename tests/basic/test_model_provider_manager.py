@@ -505,7 +505,7 @@ def test_models_url_account_id_substitution(monkeypatch, tmp_path):
     assert captured["url"] == "https://api.fireworks.ai/v1/accounts/my-account-id/models"
 
 
-def test_models_url_account_id_missing_skips_fetch(monkeypatch, tmp_path, capsys):
+def test_models_url_account_id_missing_removes_account_path(monkeypatch, tmp_path):
     config = {
         "fireworks_ai": {
             "api_base": "https://api.fireworks.ai/inference/v1",
@@ -519,10 +519,23 @@ def test_models_url_account_id_missing_skips_fetch(monkeypatch, tmp_path, capsys
     manager = _make_manager(tmp_path, config)
     monkeypatch.delenv("FIREWORKS_AI_ACCOUNT_ID", raising=False)
 
-    assert manager._fetch_provider_models("fireworks_ai") is None
+    captured = {}
 
-    captured = capsys.readouterr()
-    assert "account_id_env not set" in captured.out
+    def _fake_get(url, *, headers=None, timeout=None, verify=None):
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        captured["verify"] = verify
+        return DummyResponse({"data": []})
+
+    monkeypatch.setattr("requests.get", _fake_get)
+
+    result = manager._fetch_provider_models("fireworks_ai")
+
+    # Should return the payload, not None
+    assert result == {"data": []}
+    # URL should have /accounts/{account_id} removed
+    assert captured["url"] == "https://api.fireworks.ai/v1/models"
 
 
 def test_models_url_without_placeholder_unchanged(monkeypatch, tmp_path):
