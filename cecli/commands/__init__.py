@@ -51,6 +51,7 @@ from .run import RunCommand
 from .save import SaveCommand
 from .save_session import SaveSessionCommand
 from .settings import SettingsCommand
+from .terminal_setup import TerminalSetupCommand
 from .test import TestCommand
 from .think_tokens import ThinkTokensCommand
 from .tokens import TokensCommand
@@ -123,6 +124,7 @@ CommandRegistry.register(CopyContextCommand)
 CommandRegistry.register(CommandPrefixCommand)
 CommandRegistry.register(LoadSkillCommand)
 CommandRegistry.register(RemoveSkillCommand)
+CommandRegistry.register(TerminalSetupCommand)
 
 
 __all__ = [
@@ -187,6 +189,7 @@ __all__ = [
     "CommandPrefixCommand",
     "LoadSkillCommand",
     "RemoveSkillCommand",
+    "TerminalSetupCommand",
     "SwitchCoderSignal",
     "Commands",
 ]

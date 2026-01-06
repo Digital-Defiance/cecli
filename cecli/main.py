@@ -628,7 +628,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     output_queue = None
     input_queue = None
     pre_init_io = get_io(args.pretty)
-    if args.tui or args.linear_output is None:
+    if args.tui or (args.tui is None and not args.linear_output):
         try:
             from cecli.tui import create_tui_io
 
@@ -765,7 +765,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
                 return await graceful_exit(None, 1)
             alias, model = parts
             models.MODEL_ALIASES[alias.strip()] = model.strip()
-    selected_model_name = await select_default_model(args, io)
+    selected_model_name = await select_default_model(args, pre_init_io)
     if not selected_model_name:
         return await graceful_exit(None, 1)
     args.model = selected_model_name
@@ -1087,6 +1087,11 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             io.tool_output("Dry run enabled, skipping commit.")
         else:
             await coder.commands.do_run("commit", "")
+    if args.terminal_setup:
+        if args.dry_run:
+            await coder.commands.do_run("terminal-setup", "dry_run")
+        else:
+            await coder.commands.do_run("terminal-setup", "")
     if args.lint or args.test or args.commit:
         return await graceful_exit(coder)
     if args.show_repo_map:

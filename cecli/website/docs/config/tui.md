@@ -46,8 +46,8 @@ tui-config:
     dark: true
     input-cursor-text-style: "underline"
   key_bindings:
-    newline: "enter"
-    submit: "shift+enter"
+    newline: "shift+enter"
+    submit: "enter"
     completion: "tab"
     stop: "escape"
     cycle_forward: "tab"
@@ -65,8 +65,8 @@ The TUI provides customizable key bindings for all major actions. The default ke
 
 | Action | Default Key | Description |
 |--------|-------------|-------------|
-| New Line | `enter` (multiline mode) / `shift+enter` (single-line mode) | Insert a new line in the input area |
-| Submit | `shift+enter` (multiline mode) / `enter` (single-line mode) | Submit the current input |
+| New Line | `shift+enter` | Insert a new line in the input area (internally maps to `ctrl+j` if your editor hates `shift+enter`) |
+| Submit | `enter` | Submit the current input |
 | Cancel | `ctrl+c` | Stop and stash current input prompt |
 | Stop | `escape` | Interrupt the current LLM response or task |
 | Cycle Forward | `tab` | Cycle forward through completion suggestions |
@@ -87,7 +87,7 @@ tui-config:
 
 All key bindings use Textual's key syntax:
 - Single keys: `enter`, `escape`, `tab`
-- Modifier combinations: `ctrl+c`, `shift+enter`, etc.
+- Modifier combinations: `ctrl+c`, `shift+tab`, etc.
 
 ## Benefits
 

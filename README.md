@@ -16,15 +16,15 @@ LLMs are a part of our lives from here on out so join us in learning about and c
 
 ## Documentation/Other Notes:
 
-* [Agent Mode](https://github.com/dwash96/cecli/blob/main/aider/website/docs/config/agent-mode.md)
-* [MCP Configuration](https://github.com/dwash96/cecli/blob/main/aider/website/docs/config/mcp.md)
-* [TUI Configuration](https://github.com/dwash96/cecli/blob/main/aider/website/docs/config/tui.md)
-* [Skills](https://github.com/dwash96/cecli/blob/main/aider/website/docs/config/skills.md)
-* [Session Management](https://github.com/dwash96/cecli/blob/main/aider/website/docs/sessions.md)
+* [Agent Mode](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/agent-mode.md)
+* [MCP Configuration](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/mcp.md)
+* [TUI Configuration](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/tui.md)
+* [Skills](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/skills.md)
+* [Session Management](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/sessions.md)
 * [Custom Commands](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/custom-commands.md)
 * [Custom System Prompts](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/custom-system-prompts.md)
 * [Custom Tools](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/agent-mode.md#creating-custom-tools)
-* [Advanced Model Configuration](https://github.com/dwash96/cecli/blob/main/aider/website/docs/config/model-aliases.md#advanced-model-settings)
+* [Advanced Model Configuration](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/model-aliases.md#advanced-model-settings)
 * [Aider Original Documentation (still mostly applies)](https://aider.chat/)
 
 You can see a selection of the enhancements and updates by comparing the help output:
@@ -101,7 +101,15 @@ DEEPSEEK_API_KEY="..."
 
 ### Run Program
 
-If you are in the directory with your .aider.conf.yml file, then simply running `cecli` or `aider-ce` will start the agent with your configuration. If you want additional sandboxing, we publish a docker container that can be ran as follows:
+If you are in the directory with your .aider.conf.yml file, then simply running `cecli` or `aider-ce` will start the agent with your configuration. For best results, since terminal emulators can be finicky, we highly suggest running:
+
+```bash
+cecli --terminal-setup
+```
+
+On first run to configure keybindings for the program (notably `shift+enter`). Support for terminals is ongoing so feel free to make a github issue or chat in the discord for us to figure out what's needed to support automatically setting up a given terminal.
+
+If you want additional sandboxing, we publish a docker container that can be ran as follows:
 
 ```bash
 docker pull dustinwashington/aider-ce

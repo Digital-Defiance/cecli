@@ -1,4 +1,3 @@
-
 # Contributing to the Project
 
 We welcome contributions in the form of bug reports, feature requests,
@@ -24,29 +23,28 @@ ensure that your contributions can be integrated smoothly.
 
 ```bash
 # Clone the repository
-git clone https://github.com/dwash96/aider-ce.git
-cd aider-ce
+git clone https://github.com/dwash96/cecli.git
+cd cecli
 
 # Make a venv
 python3 -m venv venv
 source venv/bin/activate
 
-# Install UV because it's superior
+# Install UV because it's superior (skip if you already have it installed globally)
 pip install uv
 
 # Build Project
 uv pip install --native-tls -e .
 
 # Add tool chain
-uv install --native-tls pre-commit
+uv pip install --native-tls pre-commit
 pre-commit install
 
 # Run Program
-aider-ce
-
-# OR!
-
 cecli
+
+# OR! (legacy)
+aider-ce
 
 ```
 

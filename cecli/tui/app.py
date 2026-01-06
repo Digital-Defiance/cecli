@@ -165,9 +165,6 @@ class TUI(App):
         if "key_bindings" not in config:
             config["key_bindings"] = {}
 
-        coder = self.worker.coder
-        is_multiline = coder.args.multiline
-
         # Ensure colors dict has all expected keys with default values
         default_colors = {
             "primary": "#00ff5f",
@@ -188,8 +185,8 @@ class TUI(App):
         }
 
         default_key_bindings = {
-            "newline": "enter" if is_multiline else "shift+enter",
-            "submit": "shift+enter" if is_multiline else "enter",
+            "newline": "shift+enter",
+            "submit": "enter",
             "stop": "escape",
             "cycle_forward": "tab",
             "cycle_backward": "shift+tab",

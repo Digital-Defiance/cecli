@@ -60,7 +60,7 @@ async def check_version(io, just_check=False, verbose=False):
     import requests
 
     try:
-        response = requests.get("https://pypi.org/pypi/aider-ce/json")
+        response = requests.get("https://pypi.org/pypi/cecli-dev/json")
         data = response.json()
         latest_version = data["info"]["version"]
         current_version = cecli.__version__
