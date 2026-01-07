@@ -518,9 +518,10 @@ class ModelProviderManager:
         if "{account_id}" in models_url:
             account_id = self._get_account_id(provider)
             if not account_id:
-                print(f"Failed to fetch {provider} model list: account_id_env not set")
-                return None
-            models_url = models_url.replace("{account_id}", account_id)
+                # Remove /accounts/{account_id} portion from URL if account_id is not set
+                models_url = models_url.replace("/accounts/{account_id}", "")
+            else:
+                models_url = models_url.replace("{account_id}", account_id)
         headers = {}
         default_headers = config.get("default_headers") or {}
         headers.update(default_headers)
