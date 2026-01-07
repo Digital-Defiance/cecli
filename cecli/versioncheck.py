@@ -86,5 +86,9 @@ async def check_version(io, just_check=False, verbose=False):
         return is_update_available
     if not is_update_available:
         return False
-    await install_upgrade(io, latest_version)
+    if await io.confirm_ask(
+        "Install updated version?",
+        explicit_yes_required=True,
+    ):
+        await install_upgrade(io, latest_version)
     return True
