@@ -50,6 +50,7 @@ tui-config:
     submit: "enter"
     completion: "tab"
     stop: "escape"
+    editor: "ctrl+o"
     cycle_forward: "tab"
     cycle_backward: "shift+tab"
     focus: "ctrl+f"
@@ -69,6 +70,7 @@ The TUI provides customizable key bindings for all major actions. The default ke
 | Submit | `enter` | Submit the current input |
 | Cancel | `ctrl+c` | Stop and stash current input prompt |
 | Stop | `escape` | Interrupt the current LLM response or task |
+| Editor | `ctrl+o` | Open up default terminal text editor for input | 
 | Cycle Forward | `tab` | Cycle forward through completion suggestions |
 | Cycle Backward | `shift+tab` | Cycle backward through completion suggestions |
 | Focus | `ctrl+f` | Focus the input area |
