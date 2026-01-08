@@ -49,6 +49,7 @@ class OutputContainer(RichLog):
         self.highlight = True
         self.markup = True
         self.wrap = True
+        self.can_focus = False
 
     async def start_response(self):
         """Start a new LLM response section with streaming support."""
