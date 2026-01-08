@@ -262,7 +262,7 @@ def test_gitignore_files_flag_add_command(dummy_io, git_temp_dir, flag, should_i
         args.insert(0, flag)
     coder = main(args, **dummy_io, return_coder=True, force_git_root=git_temp_dir)
     try:
-        asyncio.run(coder.commands.do_run("add", "ignored.txt"))
+        asyncio.run(coder.commands.execute("add", "ignored.txt"))
     except SwitchCoderSignal:
         pass
     if should_include:

@@ -1075,24 +1075,24 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         utils.show_messages(messages)
         return await graceful_exit(coder)
     if args.lint:
-        await coder.commands.do_run("lint", "")
+        await coder.commands.execute("lint", "")
     if args.test:
         if not args.test_cmd:
             io.tool_error("No --test-cmd provided.")
             return await graceful_exit(coder, 1)
-        await coder.commands.do_run("test", args.test_cmd)
+        await coder.commands.execute("test", args.test_cmd)
         if io.placeholder:
             await coder.run(io.placeholder)
     if args.commit:
         if args.dry_run:
             io.tool_output("Dry run enabled, skipping commit.")
         else:
-            await coder.commands.do_run("commit", "")
+            await coder.commands.execute("commit", "")
     if args.terminal_setup:
         if args.dry_run:
-            await coder.commands.do_run("terminal-setup", "dry_run")
+            await coder.commands.execute("terminal-setup", "dry_run")
         else:
-            await coder.commands.do_run("terminal-setup", "")
+            await coder.commands.execute("terminal-setup", "")
     if args.lint or args.test or args.commit:
         return await graceful_exit(coder)
     if args.show_repo_map:
@@ -1133,7 +1133,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     if args.stream and args.cache_prompts:
         io.tool_warning("Cost estimates may be inaccurate when using streaming and caching.")
     if args.load:
-        await commands.cmd_load(args.load)
+        await commands.execute("load", args.load)
     if args.message:
         io.add_to_input_history(args.message)
         io.tool_output()

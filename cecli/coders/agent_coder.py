@@ -1499,7 +1499,7 @@ Just reply with fixed versions of the {blocks} above that failed to match.
                 if shared_output:
                     self.io.tool_output("Shell command output:\n" + shared_output)
                 if self.auto_test and not self.reflected_message:
-                    test_errors = await self.commands.cmd_test(self.test_cmd)
+                    test_errors = await self.commands.execute("test", self.test_cmd)
                     if test_errors:
                         ok = await self.io.confirm_ask("Attempt to fix test errors?")
                         if ok:

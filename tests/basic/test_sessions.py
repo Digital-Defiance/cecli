@@ -40,8 +40,8 @@ class TestSessionCommands(TestCase):
                 full_path = Path(repo_dir) / file_path
                 full_path.parent.mkdir(parents=True, exist_ok=True)
                 full_path.write_text(content)
-            commands.cmd_add("file1.txt file2.py")
-            commands.cmd_read_only("subdir/file3.md")
+            commands.execute("add", "file1.txt file2.py")
+            commands.execute("read_only", "subdir/file3.md")
             coder.done_messages = [
                 {"role": "user", "content": "Hello"},
                 {"role": "assistant", "content": "Hi there!"},
@@ -50,7 +50,7 @@ class TestSessionCommands(TestCase):
             todo_content = "Task 1\nTask 2"
             Path(".cecli.todo.txt").write_text(todo_content, encoding="utf-8")
             session_name = "test_session"
-            commands.cmd_save_session(session_name)
+            commands.execute("save_session", session_name)
             session_file = Path(handle_core_files(".cecli")) / "sessions" / f"{session_name}.json"
             self.assertTrue(session_file.exists())
             with open(session_file, "r", encoding="utf-8") as f:
@@ -113,7 +113,7 @@ class TestSessionCommands(TestCase):
             session_file.parent.mkdir(parents=True, exist_ok=True)
             with open(session_file, "w", encoding="utf-8") as f:
                 json.dump(session_data, f, indent=2, ensure_ascii=False)
-            commands.cmd_load_session("test_session")
+            commands.execute("load_session", "test_session")
             self.assertEqual(coder.done_messages, session_data["chat_history"]["done_messages"])
             self.assertEqual(coder.cur_messages, session_data["chat_history"]["cur_messages"])
             editable_files = {coder.get_rel_fname(f) for f in coder.abs_fnames}
@@ -173,7 +173,7 @@ class TestSessionCommands(TestCase):
                 with open(session_file, "w", encoding="utf-8") as f:
                     json.dump(session_data, f, indent=2, ensure_ascii=False)
             with mock.patch.object(io, "tool_output") as mock_tool_output:
-                commands.cmd_list_sessions("")
+                commands.execute("list_sessions", "")
                 calls = mock_tool_output.call_args_list
                 self.assertGreater(len(calls), 2)
                 output_text = "\n".join([(call[0][0] if call[0] else "") for call in calls])

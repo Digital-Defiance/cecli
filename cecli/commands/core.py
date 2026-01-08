@@ -178,7 +178,7 @@ class Commands:
         commands = [f"/{cmd}" for cmd in registry_commands]
         return sorted(commands)
 
-    async def do_run(self, cmd_name, args, **kwargs):
+    async def execute(self, cmd_name, args, **kwargs):
         command_class = CommandRegistry.get_command(cmd_name)
         if not command_class:
             self.io.tool_output(f"Error: Command {cmd_name} not found.")
@@ -224,17 +224,17 @@ class Commands:
 
     async def run(self, inp):
         if inp.startswith("!"):
-            return await self.do_run("run", inp[1:])
+            return await self.execute("run", inp[1:])
         res = self.matching_commands(inp)
         if res is None:
             return
         matching_commands, first_word, rest_inp = res
         if len(matching_commands) == 1:
             command = matching_commands[0][1:]
-            return await self.do_run(command, rest_inp)
+            return await self.execute(command, rest_inp)
         elif first_word in matching_commands:
             command = first_word[1:]
-            return await self.do_run(command, rest_inp)
+            return await self.execute(command, rest_inp)
         elif len(matching_commands) > 1:
             self.io.tool_error(f"Ambiguous command: {', '.join(matching_commands)}")
         else:

@@ -1564,7 +1564,7 @@ class Coder:
 
     def copy_context(self):
         if self.auto_copy_context:
-            self.commands.cmd_copy_context()
+            self.commands.execute("copy-context", "")
 
     async def get_input(self):
         inchat_files = self.get_inchat_relative_files()
@@ -1684,7 +1684,7 @@ class Coder:
                     explicit_yes_required=self.args.yes_always_commands,
                 ):
                     inp += "\n\n"
-                    inp += await self.commands.do_run("web", url, return_content=True)
+                    inp += await self.commands.execute("web", url, return_content=True)
                 else:
                     self.rejected_urls.add(url)
 
@@ -2438,7 +2438,7 @@ class Coder:
             ]
 
         if edited and self.auto_test:
-            test_errors = await self.commands.cmd_test(self.test_cmd)
+            test_errors = await self.commands.execute("test", self.test_cmd)
             self.test_outcome = not test_errors
             if test_errors:
                 ok = await self.io.confirm_ask("Attempt to fix test errors?")
@@ -3852,7 +3852,7 @@ class Coder:
         self.coder_commit_hashes.add(commit_hash)
         self.last_coder_commit_message = commit_message
         if self.show_diffs:
-            self.commands.cmd_diff()
+            self.commands.execute("diff", "")
 
     def show_undo_hint(self):
         if not self.commit_before_message:

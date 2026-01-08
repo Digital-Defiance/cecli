@@ -55,7 +55,7 @@ class TestScrape:
         commands.io.tool_error = MagicMock()
 
         try:
-            result = await commands.do_run("web", "https://example.com", return_content=True)
+            result = await commands.execute("web", "https://example.com", return_content=True)
 
             assert result is not None
             assert "Scraped content" in result

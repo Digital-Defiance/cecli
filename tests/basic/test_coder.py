@@ -857,13 +857,13 @@ two
         mock_args.disable_scraping = False
         coder = await Coder.create(self.GPT35, None, io=io, args=mock_args)
 
-        # Mock the do_run command to return scraped content
-        async def mock_do_run(cmd_name, url, **kwargs):
+        # Mock the execute command to return scraped content
+        async def mock_execute(cmd_name, url, **kwargs):
             if cmd_name == "web" and kwargs.get("return_content"):
                 return f"Scraped content from {url}"
             return None
 
-        coder.commands.do_run = mock_do_run
+        coder.commands.execute = mock_execute
 
         # Test various URL formats
         test_cases = [
@@ -1021,26 +1021,26 @@ This command will print 'Hello, World!' to the console."""
             mock_args.disable_scraping = False
             coder = await Coder.create(self.GPT35, "diff", io=io, detect_urls=True, args=mock_args)
 
-            # Track calls to do_run
-            do_run_calls = []
+            # Track calls to execute
+            execute_calls = []
 
-            async def mock_do_run(cmd_name, url, **kwargs):
-                do_run_calls.append((cmd_name, url, kwargs))
+            async def mock_execute(cmd_name, url, **kwargs):
+                execute_calls.append((cmd_name, url, kwargs))
                 if cmd_name == "web" and kwargs.get("return_content"):
                     return f"Scraped content from {url}"
                 return None
 
-            coder.commands.do_run = mock_do_run
+            coder.commands.execute = mock_execute
 
             # Test with a message containing a URL
             message = "Check out https://example.com"
             await coder.check_for_urls(message)
 
-            # Verify do_run was called with the web command and correct URL
-            assert len(do_run_calls) == 1
-            assert do_run_calls[0][0] == "web"
-            assert do_run_calls[0][1] == "https://example.com"
-            assert do_run_calls[0][2].get("return_content") is True
+            # Verify execute was called with the web command and correct URL
+            assert len(execute_calls) == 1
+            assert execute_calls[0][0] == "web"
+            assert execute_calls[0][1] == "https://example.com"
+            assert execute_calls[0][2].get("return_content") is True
 
     async def test_detect_urls_disabled(self):
         with GitTemporaryDirectory():
