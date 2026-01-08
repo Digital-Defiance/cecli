@@ -2,10 +2,9 @@ import json
 import os
 import platform
 import shutil
+import tomllib
 from pathlib import Path
 from typing import List
-
-import toml
 
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
@@ -133,7 +132,7 @@ class TerminalSetupCommand(BaseCommand):
             io.tool_output(f"DRY-RUN: Would add binding: {new_binding}")
             try:
                 with open(path, "r", encoding="utf-8") as f:
-                    data = toml.load(f)
+                    data = tomllib.load(f)
 
                 # Check if binding already exists
                 keyboard_section = data.get("keyboard", {})
@@ -155,7 +154,7 @@ class TerminalSetupCommand(BaseCommand):
                 else:
                     io.tool_output("DRY-RUN: Would update Alacritty config.")
                     return True
-            except toml.TomlDecodeError:
+            except tomllib.TomlDecodeError:
                 io.tool_output("DRY-RUN: Error: Could not parse Alacritty TOML file.")
                 return False
             except Exception as e:
@@ -166,7 +165,7 @@ class TerminalSetupCommand(BaseCommand):
 
         try:
             with open(path, "r", encoding="utf-8") as f:
-                data = toml.load(f)
+                data = tomllib.load(f)
 
             # Ensure keyboard section exists
             if "keyboard" not in data:
@@ -197,12 +196,12 @@ class TerminalSetupCommand(BaseCommand):
 
             # Write back to file
             with open(path, "w", encoding="utf-8") as f:
-                toml.dump(data, f)
+                tomllib.dump(data, f)
 
             io.tool_output("Updated Alacritty config.")
             return True
 
-        except toml.TomlDecodeError:
+        except tomllib.TomlDecodeError:
             io.tool_output("Error: Could not parse Alacritty TOML file. Is it valid TOML?")
             return False
         except Exception as e:
