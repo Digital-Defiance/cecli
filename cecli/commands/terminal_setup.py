@@ -5,6 +5,8 @@ import shutil
 from pathlib import Path
 from typing import List
 
+import toml
+
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
 
@@ -12,15 +14,6 @@ from cecli.commands.utils.helpers import format_command_result
 class TerminalSetupCommand(BaseCommand):
     NORM_NAME = "terminal-setup"
     DESCRIPTION = "Configure terminal config files to support shift+enter for newline"
-
-    # Configuration constants
-    ALACRITTY_BINDING = """
-# Added by cecli terminal-setup command
-[[keyboard.bindings]]
-key = "Return"
-mods = "Shift"
-chars = "\\n"
-"""
 
     KITTY_BINDING = "\n# Added by cecli terminal-setup command\nmap shift+enter send_text all \\n\n"
 
@@ -98,50 +91,94 @@ chars = "\\n"
 
     @classmethod
     def _update_alacritty(cls, path, io, dry_run=False):
-        """Appends the TOML configuration if not already present."""
+        """Updates Alacritty TOML configuration with shift+enter binding."""
         if not path.exists():
             io.tool_output(f"Skipping Alacritty: File not found at {path}")
             return False
 
+        # Define the binding to add
+        new_binding = {"key": "Return", "mods": "Shift", "chars": "\n"}
+
         if dry_run:
             io.tool_output(f"DRY-RUN: Would check Alacritty config at {path}")
-            io.tool_output(f"DRY-RUN: Would append binding:\n{cls.ALACRITTY_BINDING.strip()}")
-            # Simulate checking for duplicates
+            io.tool_output(f"DRY-RUN: Would add binding: {new_binding}")
             try:
                 with open(path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                if (
-                    'key = "Return"' in content
-                    and 'mods = "Shift"' in content
-                    and 'chars = "\\n"' in content
-                ):
+                    data = toml.load(f)
+
+                # Check if binding already exists
+                keyboard_section = data.get("keyboard", {})
+                bindings = keyboard_section.get("bindings", [])
+
+                already_exists = False
+                for binding in bindings:
+                    if (
+                        binding.get("key") == "Return"
+                        and binding.get("mods") == "Shift"
+                        and binding.get("chars") == "\n"
+                    ):
+                        already_exists = True
+                        break
+
+                if already_exists:
                     io.tool_output("DRY-RUN: Alacritty already configured.")
                     return False
                 else:
                     io.tool_output("DRY-RUN: Would update Alacritty config.")
                     return True
+            except toml.TomlDecodeError:
+                io.tool_output("DRY-RUN: Error: Could not parse Alacritty TOML file.")
+                return False
             except Exception as e:
                 io.tool_output(f"DRY-RUN: Error reading file: {e}")
                 return False
 
         cls._backup_file(path, io)
 
-        with open(path, "r", encoding="utf-8") as f:
-            content = f.read()
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = toml.load(f)
 
-        # Simple check to avoid duplicates
-        if (
-            'key = "Return"' in content
-            and 'mods = "Shift"' in content
-            and 'chars = "\\n"' in content
-        ):
-            io.tool_output("Alacritty already configured.")
+            # Ensure keyboard section exists
+            if "keyboard" not in data:
+                data["keyboard"] = {}
+
+            # Ensure bindings array exists
+            if "bindings" not in data["keyboard"]:
+                data["keyboard"]["bindings"] = []
+
+            # Check if binding already exists
+            bindings = data["keyboard"]["bindings"]
+            already_exists = False
+            for binding in bindings:
+                if (
+                    binding.get("key") == "Return"
+                    and binding.get("mods") == "Shift"
+                    and binding.get("chars") == "\n"
+                ):
+                    already_exists = True
+                    break
+
+            if already_exists:
+                io.tool_output("Alacritty already configured.")
+                return False
+
+            # Add the new binding
+            data["keyboard"]["bindings"].append(new_binding)
+
+            # Write back to file
+            with open(path, "w", encoding="utf-8") as f:
+                toml.dump(data, f)
+
+            io.tool_output("Updated Alacritty config.")
+            return True
+
+        except toml.TomlDecodeError:
+            io.tool_output("Error: Could not parse Alacritty TOML file. Is it valid TOML?")
             return False
-
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(cls.ALACRITTY_BINDING)
-        io.tool_output("Updated Alacritty config.")
-        return True
+        except Exception as e:
+            io.tool_output(f"Error updating Alacritty config: {e}")
+            return False
 
     @classmethod
     def _update_kitty(cls, path, io, dry_run=False):
