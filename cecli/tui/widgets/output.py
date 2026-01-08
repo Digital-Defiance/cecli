@@ -139,13 +139,25 @@ class OutputContainer(RichLog):
         self.auto_scroll = True
         self.set_last_write_type("user")
 
-        # Wrap the entire user message with "> " prefix
-        wrapped_text = self._wrap_text_with_prefix(text, prefix="> ")
+        # Split text by newlines and process each line individually
+        lines = text.split("\n")
+        is_first_line = True
 
-        # Output each wrapped line with green styling
-        for line in wrapped_text.split("\n"):
-            if line.strip():
-                self.output(f"[bold medium_spring_green]{line}[/bold medium_spring_green]")
+        for line in lines:
+            if line.rstrip():
+                # Wrap each line with proper prefix
+                if is_first_line:
+                    wrapped_line = self._wrap_text_with_prefix(line, prefix="> ")
+                    is_first_line = False
+                else:
+                    wrapped_line = self._wrap_text_with_prefix(line, prefix="  ")
+
+                # Output each wrapped line with green styling
+                for wrapped in wrapped_line.split("\n"):
+                    if wrapped.strip():
+                        self.output(
+                            f"[bold medium_spring_green]{wrapped}[/bold medium_spring_green]"
+                        )
 
         self.scroll_end(animate=False)
 
