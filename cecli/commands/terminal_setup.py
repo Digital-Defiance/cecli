@@ -23,6 +23,24 @@ class TerminalSetupCommand(BaseCommand):
     }
 
     WT_KEYBINDING = {"id": "User.sendInput.shift_enter", "keys": "shift+enter"}
+    # VS Code configuration constants
+    VSCODE_SHIFT_ENTER_SEQUENCE = "\n"
+
+    VSCODE_SHIFT_ENTER_BINDING = {
+        "key": "shift+enter",
+        "command": "workbench.action.terminal.sendSequence",
+        "when": "terminalFocus",
+        "args": {"text": "\n"},
+    }
+
+    @staticmethod
+    def _strip_json_comments(content: str) -> str:
+        """Remove single-line JSON comments (// ...) from a string to allow parsing
+        VS Code style JSON files that may contain comments."""
+        # Remove single-line comments (// ...)
+        import re
+
+        return re.sub(r"^\s*//.*$", "", content, flags=re.MULTILINE)
 
     @classmethod
     def _get_config_paths(cls):
@@ -38,6 +56,7 @@ class TerminalSetupCommand(BaseCommand):
             # Standard Linux paths (applies to WSL instances of Kitty/Alacritty too)
             paths["alacritty"] = home / ".config" / "alacritty" / "alacritty.toml"
             paths["kitty"] = home / ".config" / "kitty" / "kitty.conf"
+            paths["vscode"] = home / ".config" / "Code" / "User" / "keybindings.json"
 
             if is_wsl_env:
                 # Try to find Windows Terminal settings from inside WSL
@@ -62,11 +81,17 @@ class TerminalSetupCommand(BaseCommand):
         elif system == "Darwin":  # macOS
             paths["alacritty"] = home / ".config" / "alacritty" / "alacritty.toml"
             paths["kitty"] = home / ".config" / "kitty" / "kitty.conf"
+            # VS Code on macOS
+            paths["vscode"] = (
+                home / "Library" / "Application Support" / "Code" / "User" / "keybindings.json"
+            )
 
         elif system == "Windows":
             appdata = Path(os.getenv("APPDATA"))
             paths["alacritty"] = appdata / "alacritty" / "alacritty.toml"
             paths["kitty"] = appdata / "kitty" / "kitty.conf"
+            # VS Code on Windows
+            paths["vscode"] = appdata / "Code" / "User" / "keybindings.json"
 
             # Windows Terminal path is tricky (has a unique hash in folder name)
             # We look for the folder starting with Microsoft.WindowsTerminal
@@ -76,6 +101,10 @@ class TerminalSetupCommand(BaseCommand):
             )
             if wt_glob:
                 paths["windows_terminal"] = wt_glob[0]
+
+        else:  # Linux
+            # VS Code on Linux
+            paths["vscode"] = home / ".config" / "Code" / "User" / "keybindings.json"
 
         return paths
 
@@ -326,6 +355,133 @@ class TerminalSetupCommand(BaseCommand):
             return False
 
     @classmethod
+    def _update_vscode(cls, path, io, dry_run=False):
+        """Updates VS Code keybindings.json with shift+enter binding."""
+        # Create directory if it doesn't exist
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        if not path.exists():
+            if dry_run:
+                io.tool_output(f"DRY-RUN: VS Code keybindings.json doesn't exist at {path}")
+                io.tool_output(
+                    "DRY-RUN: Would create file with binding:"
+                    f" {json.dumps(cls.VSCODE_SHIFT_ENTER_BINDING, indent=2)}"
+                )
+                return True
+            else:
+                io.tool_output(f"Creating VS Code keybindings.json at {path}")
+                # Create file with our binding
+                data = [cls.VSCODE_SHIFT_ENTER_BINDING]
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=4)
+                io.tool_output("Created VS Code config with shift+enter binding.")
+                return True
+
+        if dry_run:
+            io.tool_output(f"DRY-RUN: Would check VS Code keybindings at {path}")
+            io.tool_output(
+                "DRY-RUN: Would add binding:"
+                f" {json.dumps(cls.VSCODE_SHIFT_ENTER_BINDING, indent=2)}"
+            )
+            # Simulate checking for duplicates
+            try:
+                content = ""
+                with open(path, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+                # Strip comments before parsing
+                content_no_comments = cls._strip_json_comments(content)
+                if content_no_comments.strip():
+                    data = json.loads(content_no_comments)
+                else:
+                    data = []
+
+                # Check if binding already exists
+                already_exists = False
+                if isinstance(data, list):
+                    for binding in data:
+                        if isinstance(binding, dict):
+                            # Check if this is our shift+enter binding
+                            if (
+                                binding.get("key") == "shift+enter"
+                                and binding.get("command")
+                                == "workbench.action.terminal.sendSequence"
+                                and binding.get("when") == "terminalFocus"
+                            ):
+                                already_exists = True
+                                break
+
+                if already_exists:
+                    io.tool_output("DRY-RUN: VS Code already configured.")
+                    return False
+                else:
+                    io.tool_output("DRY-RUN: Would update VS Code config.")
+                    return True
+            except json.JSONDecodeError:
+                io.tool_output(
+                    "DRY-RUN: Error: Could not parse VS Code keybindings.json. Is it valid JSON?"
+                )
+                return False
+            except Exception as e:
+                io.tool_output(f"DRY-RUN: Error reading file: {e}")
+                return False
+
+        cls._backup_file(path, io)
+
+        try:
+            content = ""
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            # Strip comments before parsing
+            content_no_comments = cls._strip_json_comments(content)
+            if content_no_comments.strip():
+                data = json.loads(content_no_comments)
+            else:
+                data = []
+
+            # Ensure data is a list
+            if not isinstance(data, list):
+                io.tool_output(
+                    "Error: VS Code keybindings.json should contain an array of keybindings."
+                )
+                return False
+
+            # Check if binding already exists
+            already_exists = False
+            for binding in data:
+                if isinstance(binding, dict):
+                    # Check if this is our shift+enter binding
+                    if (
+                        binding.get("key") == "shift+enter"
+                        and binding.get("command") == "workbench.action.terminal.sendSequence"
+                        and binding.get("when") == "terminalFocus"
+                    ):
+                        already_exists = True
+                        break
+
+            if already_exists:
+                io.tool_output("VS Code already configured.")
+                return False
+
+            # Add our binding
+            data.append(cls.VSCODE_SHIFT_ENTER_BINDING)
+
+            # Write back to file
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+
+            io.tool_output("Updated VS Code config.")
+            return True
+
+        except json.JSONDecodeError:
+            io.tool_output("Error: Could not parse VS Code keybindings.json. Is it valid JSON?")
+            return False
+        except Exception as e:
+            io.tool_output(f"Error updating VS Code config: {e}")
+            return False
+
+    @classmethod
     async def execute(cls, io, coder, args, **kwargs):
         """Configure terminal config files to support shift+enter for newline."""
         io.tool_output(f"Detecting OS: {platform.system()}")
@@ -348,6 +504,10 @@ class TerminalSetupCommand(BaseCommand):
 
         if "windows_terminal" in paths:
             if cls._update_windows_terminal(paths["windows_terminal"], io, dry_run=dry_run):
+                updated = True
+
+        if "vscode" in paths:
+            if cls._update_vscode(paths["vscode"], io, dry_run=dry_run):
                 updated = True
 
         if dry_run:
@@ -392,7 +552,7 @@ class TerminalSetupCommand(BaseCommand):
         )
         help_text += (
             "\nNote: This command modifies terminal configuration files (Alacritty, Kitty, Windows"
-            " Terminal)\n"
+            " Terminal, VS Code)\n"
         )
         help_text += (
             "to add a key binding that sends a newline character when shift+enter is pressed.\n"
