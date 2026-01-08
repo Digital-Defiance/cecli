@@ -129,6 +129,7 @@ class CompletionBar(Widget, can_focus=False):
             self._display_names = [os.path.basename(s) for s in self.suggestions]
         else:
             # Find longest common path prefix
+            self.suggestions = [os.path.relpath(suggestion) for suggestion in self.suggestions]
             common = os.path.commonpath(self.suggestions) if self.suggestions else ""
             if common and "/" in common:
                 # Use the directory part of common prefix
