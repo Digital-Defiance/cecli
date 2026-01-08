@@ -14,14 +14,6 @@ class ExitCommand(BaseCommand):
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
         """Execute the exit command with given parameters."""
-        for server in coder.mcp_servers:
-            try:
-                await server.exit_stack.aclose()
-            except Exception:
-                pass
-
-        await asyncio.sleep(0)
-
         # Check if running in TUI mode - use graceful exit to restore terminal
         if hasattr(io, "request_exit"):
             io.request_exit()
