@@ -42,7 +42,7 @@ def _execute_fzf(input_data, multi=False):
     if not shutil.which("fzf"):
         return []  # fzf not available
 
-    fzf_command = ["fzf"]
+    fzf_command = ["fzf", "--read0"]
     if multi:
         fzf_command.append("--multi")
 
@@ -53,14 +53,17 @@ def _execute_fzf(input_data, multi=False):
         fzf_command,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
-        text=True,
+        text=False,  # Use binary mode for null character handling
     )
-    # fzf expects a newline-separated list of strings
-    stdout, _ = process.communicate("\n".join(input_data))
+    # fzf expects a null-separated list of strings for multi-line items
+    # Join with null character instead of newline
+    input_bytes = "\0".join(input_data).encode("utf-8")
+    stdout, _ = process.communicate(input_bytes)
 
     if process.returncode == 0:
-        # fzf returns selected items newline-separated
-        return stdout.strip().splitlines()
+        # fzf returns selected items null-separated when using --read0
+        output = stdout.decode("utf-8").rstrip("\0\n")
+        return output.split("\0") if output else []
     else:
         # User cancelled (e.g., pressed Esc)
         return []
