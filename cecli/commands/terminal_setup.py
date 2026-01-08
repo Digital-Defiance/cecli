@@ -26,14 +26,18 @@ class TerminalSetupCommand(BaseCommand):
     }
 
     WT_KEYBINDING = {"id": "User.sendInput.shift_enter", "keys": "shift+enter"}
-    # VS Code configuration constants
-    VSCODE_SHIFT_ENTER_SEQUENCE = "\n"
 
     VSCODE_SHIFT_ENTER_BINDING = {
         "key": "shift+enter",
         "command": "workbench.action.terminal.sendSequence",
         "when": "terminalFocus",
-        "args": {"text": "\n"},
+        "args": {"text": "\u001b[106;5u"},
+    }
+
+    # VS Code settings to configure for proper shift+enter support
+    VSCODE_TERMINAL_SETTINGS = {
+        "terminal.integrated.detectLocale": "off",
+        "terminal.integrated.commandsToSkipShell": ["workbench.action.terminal.sendSequence"],
     }
 
     @staticmethod
@@ -65,11 +69,33 @@ class TerminalSetupCommand(BaseCommand):
                 # Try to find Windows Terminal settings from inside WSL
                 # We have to guess the Windows username, usually defaults to the WSL user
                 # or requires searching /mnt/c/Users/
+                win_user = None
+                win_home = None
+
+                # Method 1: Try to get Windows username via cmd.exe (most accurate)
                 try:
-                    # Get Windows username by invoking cmd.exe (slow but accurate)
                     win_user = os.popen("cmd.exe /c 'echo %USERNAME%'").read().strip()
-                    if win_user:
-                        win_home = Path(f"/mnt/c/Users/{win_user}")
+                except Exception:
+                    pass  # cmd.exe might not be in path or accessible
+
+                # Method 2: If cmd.exe failed, try to find a user directory in /mnt/c/Users/
+                if not win_user:
+                    try:
+                        users_dir = Path("/mnt/c/Users")
+                        if users_dir.exists():
+                            # Look for directories that are likely user directories
+                            # Skip system directories like "Public", "Default", etc.
+                            system_dirs = {"Public", "Default", "All Users", "Default User"}
+                            for item in users_dir.iterdir():
+                                if item.is_dir() and item.name not in system_dirs:
+                                    win_user = item.name
+                                    break
+                    except Exception:
+                        pass
+
+                if win_user:
+                    win_home = Path(f"/mnt/c/Users/{win_user}")
+                    try:
                         local_appdata = win_home / "AppData/Local"
                         wt_glob = list(
                             local_appdata.glob(
@@ -78,8 +104,13 @@ class TerminalSetupCommand(BaseCommand):
                         )
                         if wt_glob:
                             paths["windows_terminal"] = wt_glob[0]
-                except Exception:
-                    pass  # cmd.exe might not be in path or accessible
+
+                        # Also try to find Windows host VS Code configuration
+                        appdata = win_home / "AppData" / "Roaming"
+                        vscode_path = appdata / "Code" / "User" / "keybindings.json"
+                        paths["vscode_windows"] = vscode_path
+                    except Exception:
+                        pass  # Windows paths might not be accessible
 
         elif system == "Darwin":  # macOS
             paths["alacritty"] = home / ".config" / "alacritty" / "alacritty.toml"
@@ -485,6 +516,158 @@ class TerminalSetupCommand(BaseCommand):
             return False
 
     @classmethod
+    def _update_vscode_settings(cls, keybindings_path, io, dry_run=False):
+        """Updates VS Code settings.json with terminal configuration for proper shift+enter support."""
+        # settings.json is in the same directory as keybindings.json
+        settings_path = keybindings_path.parent / "settings.json"
+
+        if dry_run:
+            io.tool_output(f"DRY-RUN: Would check VS Code settings at {settings_path}")
+            io.tool_output(
+                "DRY-RUN: Would update settings with:"
+                f" {json.dumps(cls.VSCODE_TERMINAL_SETTINGS, indent=2)}"
+            )
+            # Simulate checking for existing settings
+            try:
+                if settings_path.exists():
+                    content = ""
+                    with open(settings_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+
+                    content_no_comments = cls._strip_json_comments(content)
+                    if content_no_comments.strip():
+                        data = json.loads(content_no_comments)
+                    else:
+                        data = {}
+
+                    # Check if settings are already configured
+                    settings_configured = True
+
+                    # Check terminal.integrated.detectLocale
+                    if (
+                        "terminal.integrated.detectLocale" not in data
+                        or data.get("terminal.integrated.detectLocale") != "off"
+                    ):
+                        settings_configured = False
+
+                    # Check terminal.integrated.commandsToSkipShell
+                    if "terminal.integrated.commandsToSkipShell" in data:
+                        commands_list = data["terminal.integrated.commandsToSkipShell"]
+                        if (
+                            isinstance(commands_list, list)
+                            and "workbench.action.terminal.sendSequence" in commands_list
+                        ):
+                            # Command is already in the list
+                            pass
+                        else:
+                            settings_configured = False
+                    else:
+                        settings_configured = False
+
+                    if settings_configured:
+                        io.tool_output("DRY-RUN: VS Code settings already configured.")
+                        return False
+                    else:
+                        io.tool_output("DRY-RUN: Would update VS Code settings.")
+                        return True
+                else:
+                    io.tool_output(
+                        "DRY-RUN: Would create VS Code settings.json with required settings."
+                    )
+                    return True
+            except Exception as e:
+                io.tool_output(f"DRY-RUN: Error checking settings: {e}")
+                return False
+
+        # Create directory if it doesn't exist
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            data = {}
+            if settings_path.exists():
+                cls._backup_file(settings_path, io)
+                content = ""
+                with open(settings_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+                # Strip comments before parsing
+                content_no_comments = cls._strip_json_comments(content)
+                if content_no_comments.strip():
+                    data = json.loads(content_no_comments)
+                else:
+                    data = {}
+
+            # Ensure data is a dictionary
+            if not isinstance(data, dict):
+                io.tool_output("Error: VS Code settings.json should be a JSON object.")
+                return False
+
+            # Check if settings are already configured
+            settings_configured = True
+
+            # Check terminal.integrated.detectLocale
+            if (
+                "terminal.integrated.detectLocale" not in data
+                or data.get("terminal.integrated.detectLocale") != "off"
+            ):
+                settings_configured = False
+
+            # Check terminal.integrated.commandsToSkipShell
+            if "terminal.integrated.commandsToSkipShell" in data:
+                commands_list = data["terminal.integrated.commandsToSkipShell"]
+                if (
+                    isinstance(commands_list, list)
+                    and "workbench.action.terminal.sendSequence" in commands_list
+                ):
+                    # Command is already in the list
+                    pass
+                else:
+                    settings_configured = False
+            else:
+                settings_configured = False
+
+            if settings_configured:
+                io.tool_output("VS Code settings already configured.")
+                return False
+
+            # Update settings with our configuration
+            # Set terminal.integrated.detectLocale
+            data["terminal.integrated.detectLocale"] = "off"
+
+            # Handle terminal.integrated.commandsToSkipShell
+            if "terminal.integrated.commandsToSkipShell" in data:
+                commands_list = data["terminal.integrated.commandsToSkipShell"]
+                if isinstance(commands_list, list):
+                    # Add our command if not already present
+                    if "workbench.action.terminal.sendSequence" not in commands_list:
+                        commands_list.append("workbench.action.terminal.sendSequence")
+                        data["terminal.integrated.commandsToSkipShell"] = commands_list
+                else:
+                    # If it's not a list, replace with our list
+                    data["terminal.integrated.commandsToSkipShell"] = [
+                        "workbench.action.terminal.sendSequence"
+                    ]
+            else:
+                # Create new list with our command
+                data["terminal.integrated.commandsToSkipShell"] = [
+                    "workbench.action.terminal.sendSequence"
+                ]
+
+            # Write back to file
+            with open(settings_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+
+            io.tool_output("Updated VS Code settings.")
+            return True
+
+        except json.JSONDecodeError:
+            io.tool_output("Error: Could not parse VS Code settings.json. Is it valid JSON?")
+            return False
+        except Exception as e:
+            io.tool_output(f"Error updating VS Code settings: {e}")
+            return False
+
+    @classmethod
     async def execute(cls, io, coder, args, **kwargs):
         """Configure terminal config files to support shift+enter for newline."""
         io.tool_output(f"Detecting OS: {platform.system()}")
@@ -511,6 +694,17 @@ class TerminalSetupCommand(BaseCommand):
 
         if "vscode" in paths:
             if cls._update_vscode(paths["vscode"], io, dry_run=dry_run):
+                updated = True
+            # Also update VS Code settings.json for proper shift+enter support
+            if cls._update_vscode_settings(paths["vscode"], io, dry_run=dry_run):
+                updated = True
+
+        if "vscode_windows" in paths:
+            io.tool_output("Found Windows host VS Code configuration (running in WSL)")
+            if cls._update_vscode(paths["vscode_windows"], io, dry_run=dry_run):
+                updated = True
+            # Also update Windows host VS Code settings.json
+            if cls._update_vscode_settings(paths["vscode_windows"], io, dry_run=dry_run):
                 updated = True
 
         if dry_run:
