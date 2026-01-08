@@ -44,7 +44,7 @@ from cecli.history import ChatSummary
 from cecli.io import ConfirmGroup, InputOutput
 from cecli.linter import Linter
 from cecli.llm import litellm
-from cecli.mcp.server import LocalServer
+from cecli.mcp import LocalServer
 from cecli.models import RETRY_TIMEOUT
 from cecli.reasoning_tags import (
     REASONING_TAG,
@@ -138,7 +138,7 @@ class Coder:
     chat_language = None
     commit_language = None
     file_watcher = None
-    mcp_servers = None
+    mcp_manager = None
     mcp_tools = None
     run_one_completed = True
     compact_context_completed = True
@@ -249,8 +249,8 @@ class Coder:
 
         if res is not None:
             if from_coder:
-                if from_coder.mcp_servers and kwargs.get("mcp_servers", False):
-                    res.mcp_servers = from_coder.mcp_servers
+                if from_coder.mcp_manager:
+                    res.mcp_manager = from_coder.mcp_manager
                     res.mcp_tools = from_coder.mcp_tools
 
                 # Transfer TUI app weak reference
@@ -316,7 +316,7 @@ class Coder:
         file_watcher=None,
         auto_copy_context=False,
         auto_accept_architect=True,
-        mcp_servers=None,
+        mcp_manager=None,
         enable_context_compaction=False,
         context_compaction_max_tokens=None,
         context_compaction_summary_tokens=8192,
@@ -350,7 +350,7 @@ class Coder:
         self.args = args
 
         self.num_cache_warming_pings = num_cache_warming_pings
-        self.mcp_servers = mcp_servers
+        self.mcp_manager = mcp_manager
         self.enable_context_compaction = enable_context_compaction
 
         self.context_compaction_max_tokens = context_compaction_max_tokens
@@ -1564,7 +1564,7 @@ class Coder:
 
     def copy_context(self):
         if self.auto_copy_context:
-            self.commands.cmd_copy_context()
+            self.commands.execute("copy-context", "")
 
     async def get_input(self):
         inchat_files = self.get_inchat_relative_files()
@@ -1684,7 +1684,7 @@ class Coder:
                     explicit_yes_required=self.args.yes_always_commands,
                 ):
                     inp += "\n\n"
-                    inp += await self.commands.do_run("web", url, return_content=True)
+                    inp += await self.commands.execute("web", url, return_content=True)
                 else:
                     self.rejected_urls.add(url)
 
@@ -2438,7 +2438,7 @@ class Coder:
             ]
 
         if edited and self.auto_test:
-            test_errors = await self.commands.cmd_test(self.test_cmd)
+            test_errors = await self.commands.execute("test", self.test_cmd)
             self.test_outcome = not test_errors
             if test_errors:
                 ok = await self.io.confirm_ask("Attempt to fix test errors?")
@@ -2562,7 +2562,7 @@ class Coder:
                         and tool_name_from_schema.lower() == tool_call.function.name.lower()
                     ):
                         # Find the McpServer instance that will be used for communication
-                        for server in self.mcp_servers:
+                        for server in self.mcp_manager:
                             if server.name == server_name:
                                 if server not in server_tool_calls:
                                     server_tool_calls[server] = []
@@ -2740,6 +2740,7 @@ class Coder:
         Initialize tools from all configured MCP servers. MCP Servers that fail to be
         initialized will not be available to the Coder instance.
         """
+        # TODO(@gopar): refactor here once we have fully moved over to use the mcp manager
         tools = []
 
         async def get_server_tools(server):
@@ -2750,9 +2751,13 @@ class Coder:
                         return (server.name, server_tools)
 
             try:
-                session = await server.connect()
+                did_connect = await self.mcp_manager.connect_server(server.name)
+                if not did_connect:
+                    raise Exception("Failed to load tools")
+
+                server = self.mcp_manager.get_server(server.name)
                 server_tools = await experimental_mcp_client.load_mcp_tools(
-                    session=session, format="openai"
+                    session=server.session, format="openai"
                 )
                 return (server.name, server_tools)
             except Exception as e:
@@ -2761,11 +2766,11 @@ class Coder:
                 return None
 
         async def get_all_server_tools():
-            tasks = [get_server_tools(server) for server in self.mcp_servers]
+            tasks = [get_server_tools(server) for server in self.mcp_manager]
             results = await asyncio.gather(*tasks)
             return [result for result in results if result is not None]
 
-        if self.mcp_servers:
+        if self.mcp_manager:
             # Retry initialization in case of CancelledError
             max_retries = 3
             for i in range(max_retries):
@@ -3852,7 +3857,7 @@ class Coder:
         self.coder_commit_hashes.add(commit_hash)
         self.last_coder_commit_message = commit_message
         if self.show_diffs:
-            self.commands.cmd_diff()
+            self.commands.execute("diff", "")
 
     def show_undo_hint(self):
         if not self.commit_before_message:

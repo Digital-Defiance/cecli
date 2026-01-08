@@ -42,7 +42,7 @@ class TestCommands(TestCase):
         commands = Commands(io, coder)
 
         # Call the cmd_add method with 'foo.txt' and 'bar.txt' as a single string
-        commands.cmd_add("foo.txt bar.txt")
+        commands.execute("add", "foo.txt bar.txt")
 
         # Check if both files have been created in the temporary directory
         self.assertTrue(os.path.exists("foo.txt"))
@@ -67,7 +67,7 @@ class TestCommands(TestCase):
             mock.patch.object(io, "tool_output") as mock_tool_output,
         ):
             # Invoke the /copy command
-            commands.cmd_copy("")
+            commands.execute("copy", "")
 
             # Assert pyperclip.copy was called with the last assistant message
             mock_copy.assert_called_once_with("Second assistant message")
@@ -105,7 +105,7 @@ class TestCommands(TestCase):
             mock.patch.object(io, "tool_output") as mock_tool_output,
         ):
             # Invoke the /copy command
-            commands.cmd_copy("")
+            commands.execute("copy", "")
 
             # Assert pyperclip.copy was called with the last assistant message in cur_messages
             mock_copy.assert_called_once_with("Latest assistant message in cur_messages")
@@ -127,7 +127,7 @@ class TestCommands(TestCase):
 
         # Mock io.tool_error
         with mock.patch.object(io, "tool_error") as mock_tool_error:
-            commands.cmd_copy("")
+            commands.execute("copy", "")
             # Assert tool_error was called indicating no assistant messages
             mock_tool_error.assert_called_once_with("No assistant messages found to copy.")
 
@@ -158,7 +158,7 @@ class TestCommands(TestCase):
             ),
             mock.patch.object(io, "tool_error") as mock_tool_error,
         ):
-            commands.cmd_copy("")
+            commands.execute("copy", "")
 
             # Assert that tool_error was called with the clipboard error message
             mock_tool_error.assert_called_once_with("Failed to copy to clipboard: Clipboard error")
@@ -172,7 +172,7 @@ class TestCommands(TestCase):
         coder = await Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
 
-        commands.cmd_add("**.txt")
+        commands.execute("add", "**.txt")
 
     async def test_cmd_add_with_glob_patterns(self):
         # Initialize the Commands and InputOutput objects
@@ -191,7 +191,7 @@ class TestCommands(TestCase):
             f.write("test")
 
         # Call the cmd_add method with a glob pattern
-        commands.cmd_add("*.py")
+        commands.execute("add", "*.py")
 
         # Check if the Python files have been added to the chat session
         self.assertIn(str(Path("test1.py").resolve()), coder.abs_fnames)
@@ -209,7 +209,7 @@ class TestCommands(TestCase):
         commands = Commands(io, coder)
 
         # Call the cmd_add method with a non-existent file pattern
-        commands.cmd_add("*.nonexistent")
+        commands.execute("add", "*.nonexistent")
 
         # Check if no files have been added to the chat session
         self.assertEqual(len(coder.abs_fnames), 0)
@@ -225,7 +225,7 @@ class TestCommands(TestCase):
         fname = Path("[abc].nonexistent")
 
         # Call the cmd_add method with a non-existent file pattern
-        commands.cmd_add(str(fname))
+        commands.execute("add", str(fname))
 
         # Check if no files have been added to the chat session
         self.assertEqual(len(coder.abs_fnames), 1)
@@ -247,14 +247,14 @@ class TestCommands(TestCase):
         Path("test_dir/another_dir/test_file.txt").write_text("Test file 3")
 
         # Call the cmd_add method with a directory
-        commands.cmd_add("test_dir test_dir/test_file2.txt")
+        commands.execute("add", "test_dir test_dir/test_file2.txt")
 
         # Check if the files have been added to the chat session
         self.assertIn(str(Path("test_dir/test_file1.txt").resolve()), coder.abs_fnames)
         self.assertIn(str(Path("test_dir/test_file2.txt").resolve()), coder.abs_fnames)
         self.assertIn(str(Path("test_dir/another_dir/test_file.txt").resolve()), coder.abs_fnames)
 
-        commands.cmd_drop(str(Path("test_dir/another_dir")))
+        commands.execute("drop", str(Path("test_dir/another_dir")))
         self.assertIn(str(Path("test_dir/test_file1.txt").resolve()), coder.abs_fnames)
         self.assertIn(str(Path("test_dir/test_file2.txt").resolve()), coder.abs_fnames)
         self.assertNotIn(
@@ -271,13 +271,13 @@ class TestCommands(TestCase):
         os.chdir("side_dir")
 
         # add it via it's git_root referenced name
-        commands.cmd_add("test_dir/another_dir/test_file.txt")
+        commands.execute("add", "test_dir/another_dir/test_file.txt")
 
         # it should be there, but was not in v0.10.0
         self.assertIn(abs_fname, coder.abs_fnames)
 
         # drop it via it's git_root referenced name
-        commands.cmd_drop("test_dir/another_dir/test_file.txt")
+        commands.execute("drop", "test_dir/another_dir/test_file.txt")
 
         # it should be there, but was not in v0.10.0
         self.assertNotIn(abs_fname, coder.abs_fnames)
@@ -301,12 +301,12 @@ class TestCommands(TestCase):
         Path("test3.txt").touch()
 
         # Add all Python files to the chat session
-        commands.cmd_add("*.py")
+        commands.execute("add", "*.py")
         initial_count = len(coder.abs_fnames)
         self.assertEqual(initial_count, 2)  # Only root .py files should be added
 
         # Test dropping with glob pattern
-        commands.cmd_drop("*2.py")
+        commands.execute("drop", "*2.py")
         self.assertIn(str(Path("test1.py").resolve()), coder.abs_fnames)
         self.assertNotIn(str(Path("test2.py").resolve()), coder.abs_fnames)
         self.assertEqual(len(coder.abs_fnames), initial_count - 1)
@@ -326,19 +326,19 @@ class TestCommands(TestCase):
 
         # Add all files to the chat session
         for fname in test_files:
-            commands.cmd_add(fname)
+            commands.execute("add", fname)
 
         initial_count = len(coder.abs_fnames)
         self.assertEqual(initial_count, 3)
 
         # Test dropping individual files without glob
-        commands.cmd_drop("file1.txt")
+        commands.execute("drop", "file1.txt")
         self.assertNotIn(str(Path("file1.txt").resolve()), coder.abs_fnames)
         self.assertIn(str(Path("file2.txt").resolve()), coder.abs_fnames)
         self.assertEqual(len(coder.abs_fnames), initial_count - 1)
 
         # Test dropping multiple files without glob
-        commands.cmd_drop("file2.txt file3.py")
+        commands.execute("drop", "file2.txt file3.py")
         self.assertNotIn(str(Path("file2.txt").resolve()), coder.abs_fnames)
         self.assertNotIn(str(Path("file3.py").resolve()), coder.abs_fnames)
         self.assertEqual(len(coder.abs_fnames), 0)
@@ -355,7 +355,7 @@ class TestCommands(TestCase):
         with codecs.open("foo.bad", "w", encoding="iso-8859-15") as f:
             f.write("ÆØÅ")  # Characters not present in utf-8
 
-        commands.cmd_add("foo.bad")
+        commands.execute("add", "foo.bad")
 
         self.assertEqual(coder.abs_fnames, set())
 
@@ -372,8 +372,8 @@ class TestCommands(TestCase):
             commands = Commands(io, coder)
 
             # Run the cmd_git method with the arguments "commit -a -m msg"
-            commands.cmd_git("add test.txt")
-            commands.cmd_git("commit -a -m msg")
+            commands.execute("git", "add test.txt")
+            commands.execute("git", "commit -a -m msg")
 
             # Check if the file has been committed to the repository
             repo = git.Repo(tempdir)
@@ -387,13 +387,13 @@ class TestCommands(TestCase):
         coder = await Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
 
-        commands.cmd_add("foo.txt bar.txt")
+        commands.execute("add", "foo.txt bar.txt")
 
         # Redirect the standard output to an instance of io.StringIO
         stdout = StringIO()
         sys.stdout = stdout
 
-        commands.cmd_tokens("")
+        commands.execute("tokens", "")
 
         # Reset the standard output
         sys.stdout = sys.__stdout__
@@ -433,10 +433,10 @@ class TestCommands(TestCase):
         commands = Commands(io, coder)
 
         # this should get added
-        commands.cmd_add(str(Path("anotherdir") / "three.py"))
+        commands.execute("add", str(Path("anotherdir") / "three.py"))
 
         # this should add one.py
-        commands.cmd_add("*.py")
+        commands.execute("add", "*.py")
 
         self.assertIn(filenames[0], coder.abs_fnames)
         self.assertNotIn(filenames[1], coder.abs_fnames)
@@ -459,7 +459,7 @@ class TestCommands(TestCase):
 
             # this was blowing up with GitCommandError, per:
             # https://github.com/Aider-AI/cecli/issues/201
-            commands.cmd_add("temp.txt")
+            commands.execute("add", "temp.txt")
 
     async def test_cmd_commit(self):
         with GitTemporaryDirectory():
@@ -480,7 +480,7 @@ class TestCommands(TestCase):
             self.assertTrue(repo.is_dirty())
 
             commit_message = "Test commit message"
-            commands.cmd_commit(commit_message)
+            commands.execute("commit", commit_message)
             self.assertFalse(repo.is_dirty())
 
     async def test_cmd_add_from_outside_root(self):
@@ -500,7 +500,7 @@ class TestCommands(TestCase):
 
             # This should not be allowed!
             # https://github.com/Aider-AI/cecli/issues/178
-            commands.cmd_add("../outside.txt")
+            commands.execute("add", "../outside.txt")
 
             self.assertEqual(len(coder.abs_fnames), 0)
 
@@ -524,7 +524,7 @@ class TestCommands(TestCase):
             # This should not be allowed!
             # It was blowing up with GitCommandError, per:
             # https://github.com/Aider-AI/cecli/issues/178
-            commands.cmd_add("../outside.txt")
+            commands.execute("add", "../outside.txt")
 
             self.assertEqual(len(coder.abs_fnames), 0)
 
@@ -539,7 +539,7 @@ class TestCommands(TestCase):
             fname = Path("with[brackets].txt")
             fname.touch()
 
-            commands.cmd_add(str(fname))
+            commands.execute("add", str(fname))
 
             self.assertIn(str(fname.resolve()), coder.abs_fnames)
 
@@ -562,7 +562,7 @@ class TestCommands(TestCase):
             print(coder.get_announcements())
             commands = Commands(io, coder)
 
-            commands.cmd_add("*.txt")
+            commands.execute("add", "*.txt")
 
             # Capture the output of cmd_tokens
             original_tool_output = io.tool_output
@@ -575,7 +575,7 @@ class TestCommands(TestCase):
             io.tool_output = capture_output
 
             # Run cmd_tokens
-            commands.cmd_tokens("")
+            commands.execute("tokens", "")
 
             # Restore original tool_output
             io.tool_output = original_tool_output
@@ -606,7 +606,7 @@ class TestCommands(TestCase):
             fname = dname / "filename.txt"
             fname.touch()
 
-            commands.cmd_add(str(dname))
+            commands.execute("add", str(dname))
 
             dump(coder.abs_fnames)
             self.assertIn(str(fname.resolve()), coder.abs_fnames)
@@ -628,7 +628,7 @@ class TestCommands(TestCase):
             repo.git.add(str(fname))
             repo.git.commit("-m", "init")
 
-            commands.cmd_add(str(dname))
+            commands.execute("add", str(dname))
 
             dump(coder.abs_fnames)
             self.assertIn(str(fname.resolve()), coder.abs_fnames)
@@ -644,7 +644,7 @@ class TestCommands(TestCase):
             fname = Path("file.txt")
             fname.touch()
 
-            commands.cmd_add(str(fname.resolve()))
+            commands.execute("add", str(fname.resolve()))
 
             self.assertIn(str(fname.resolve()), coder.abs_fnames)
 
@@ -659,7 +659,7 @@ class TestCommands(TestCase):
             fname = Path("file with spaces.txt")
             fname.touch()
 
-            commands.cmd_add(f'"{fname}"')
+            commands.execute("add", f'"{fname}"')
 
             self.assertIn(str(fname.resolve()), coder.abs_fnames)
 
@@ -685,7 +685,7 @@ class TestCommands(TestCase):
             commands = Commands(io, coder)
 
             # There's no reason this /add should trigger a commit
-            commands.cmd_add("two.txt")
+            commands.execute("add", "two.txt")
 
             self.assertEqual(commit, repo.head.commit.hexsha)
 
@@ -718,12 +718,12 @@ class TestCommands(TestCase):
                 full_path.write_text(content)
 
             # Add some files as editable and some as read-only
-            commands.cmd_add("file1.txt file2.py")
-            commands.cmd_read_only("subdir/file3.md")
+            commands.execute("add", "file1.txt file2.py")
+            commands.execute("read_only", "subdir/file3.md")
 
             # Save the session to a file
             session_file = "test_session.txt"
-            commands.cmd_save(session_file)
+            commands.execute("save", session_file)
 
             # Verify the session file was created and contains the expected commands
             self.assertTrue(Path(session_file).exists())
@@ -754,12 +754,12 @@ class TestCommands(TestCase):
                 self.assertTrue(found_file3, "file3.md not found in commands")
 
             # Clear the current session
-            commands.cmd_reset("")
+            commands.execute("reset", "")
             self.assertEqual(len(coder.abs_fnames), 0)
             self.assertEqual(len(coder.abs_read_only_fnames), 0)
 
             # Load the session back
-            commands.cmd_load(session_file)
+            commands.execute("load", session_file)
 
             # Verify files were restored correctly
             added_files = {Path(coder.get_rel_fname(f)).as_posix() for f in coder.abs_fnames}
@@ -796,12 +796,12 @@ class TestCommands(TestCase):
                     full_path.write_text(content)
 
                 # Add some files as editable and some as read-only
-                commands.cmd_add(str(Path("file1.txt")))
-                commands.cmd_read_only(external_file_path)
+                commands.execute("add", str(Path("file1.txt")))
+                commands.execute("read_only", external_file_path)
 
                 # Save the session to a file
                 session_file = str(Path("test_session.txt"))
-                commands.cmd_save(session_file)
+                commands.execute("save", session_file)
 
                 # Verify the session file was created and contains the expected commands
                 self.assertTrue(Path(session_file).exists())
@@ -821,12 +821,12 @@ class TestCommands(TestCase):
                         self.fail(f"No matching read-only command found for {external_file_path}")
 
                 # Clear the current session
-                commands.cmd_reset("")
+                commands.execute("reset", "")
                 self.assertEqual(len(coder.abs_fnames), 0)
                 self.assertEqual(len(coder.abs_read_only_fnames), 0)
 
                 # Load the session back
-                commands.cmd_load(session_file)
+                commands.execute("load", session_file)
 
                 # Verify files were restored correctly
                 added_files = {coder.get_rel_fname(f) for f in coder.abs_fnames}
@@ -871,13 +871,13 @@ class TestCommands(TestCase):
                     full_path.write_text(content)
 
                 # Add files as editable and read-only
-                commands.cmd_add(str(Path("internal1.txt")))
-                commands.cmd_read_only(external_file1_path)
-                commands.cmd_read_only(external_file2_path)
+                commands.execute("add", str(Path("internal1.txt")))
+                commands.execute("read_only", external_file1_path)
+                commands.execute("read_only", external_file2_path)
 
                 # Save the session to a file
                 session_file = str(Path("test_session.txt"))
-                commands.cmd_save(session_file)
+                commands.execute("save", session_file)
 
                 # Verify the session file was created and contains the expected commands
                 self.assertTrue(Path(session_file).exists())
@@ -905,12 +905,12 @@ class TestCommands(TestCase):
                         self.fail(f"No matching read-only command found for {external_file2_path}")
 
                 # Clear the current session
-                commands.cmd_reset("")
+                commands.execute("reset", "")
                 self.assertEqual(len(coder.abs_fnames), 0)
                 self.assertEqual(len(coder.abs_read_only_fnames), 0)
 
                 # Load the session back
-                commands.cmd_load(session_file)
+                commands.execute("load", session_file)
 
                 # Verify files were restored correctly
                 added_files = {coder.get_rel_fname(f) for f in coder.abs_fnames}
@@ -942,7 +942,7 @@ class TestCommands(TestCase):
             test_file.write_text("Mock image content")
 
             # Test with non-vision model
-            commands.cmd_read_only(str(test_file))
+            commands.execute("read_only", str(test_file))
             self.assertEqual(len(coder.abs_read_only_fnames), 0)
 
             # Test with vision model
@@ -950,7 +950,7 @@ class TestCommands(TestCase):
             vision_coder = await Coder.create(vision_model, None, io)
             vision_commands = Commands(io, vision_coder)
 
-            vision_commands.cmd_read_only(str(test_file))
+            vision_commands.execute("read_only", str(test_file))
             self.assertEqual(len(vision_coder.abs_read_only_fnames), 1)
             self.assertTrue(
                 any(
@@ -989,7 +989,7 @@ class TestCommands(TestCase):
                 file_path.write_text(f"Content of {file_name}")
 
             # Test the /read-only command with a glob pattern
-            commands.cmd_read_only("test_*.txt")
+            commands.execute("read_only", "test_*.txt")
 
             # Check if only the matching files were added to abs_read_only_fnames
             self.assertEqual(len(coder.abs_read_only_fnames), 2)
@@ -1029,7 +1029,7 @@ class TestCommands(TestCase):
                 file_path.write_text(f"Content of {file_name}")
 
             # Test the /read-only command with a recursive glob pattern
-            commands.cmd_read_only("**/*.txt")
+            commands.execute("read_only", "**/*.txt")
 
             # Check if all .txt files were added to abs_read_only_fnames
             self.assertEqual(len(coder.abs_read_only_fnames), 3)
@@ -1050,7 +1050,7 @@ class TestCommands(TestCase):
 
             # Test the /read-only command with a non-existent glob pattern
             with mock.patch.object(io, "tool_error") as mock_tool_error:
-                commands.cmd_read_only(str(Path(repo_dir) / "nonexistent*.txt"))
+                commands.execute("read_only", str(Path(repo_dir) / "nonexistent*.txt"))
 
             # Check if the appropriate error message was displayed
             mock_tool_error.assert_called_once_with(
@@ -1074,7 +1074,7 @@ class TestCommands(TestCase):
         with open(fname, "wb") as f:
             f.write(some_content_which_will_error_if_read_with_encoding_utf8)
 
-        commands.cmd_add("file.txt")
+        commands.execute("add", "file.txt")
         self.assertEqual(coder.abs_fnames, set())
 
     async def test_cmd_add_read_only_file(self):
@@ -1091,7 +1091,7 @@ class TestCommands(TestCase):
             test_file.write_text("Test content")
 
             # Add the file as read-only
-            commands.cmd_read_only(str(test_file))
+            commands.execute("read_only", str(test_file))
 
             # Verify it's in abs_read_only_fnames
             self.assertTrue(
@@ -1102,7 +1102,7 @@ class TestCommands(TestCase):
             )
 
             # Try to add the read-only file
-            commands.cmd_add(str(test_file))
+            commands.execute("add", str(test_file))
 
             # It's not in the repo, should not do anything
             self.assertFalse(
@@ -1120,7 +1120,7 @@ class TestCommands(TestCase):
             repo.git.commit("-m", "initial")
 
             # Try to add the read-only file
-            commands.cmd_add(str(test_file))
+            commands.execute("add", str(test_file))
 
             # Verify it's now in abs_fnames and not in abs_read_only_fnames
             self.assertTrue(
@@ -1145,7 +1145,7 @@ class TestCommands(TestCase):
             io.prompt_ask = lambda *args, **kwargs: "y"
 
             # Test the cmd_run method with a command that should not raise an error
-            commands.cmd_run("exit 1", add_on_nonzero_exit=True)
+            commands.execute("run", "exit 1", add_on_nonzero_exit=True)
 
             # Check that the output was added to cur_messages
             self.assertTrue(any("exit 1" in msg["content"] for msg in coder.cur_messages))
@@ -1163,7 +1163,7 @@ class TestCommands(TestCase):
             expected_output_fragment = "error output"
 
             # Run cmd_test
-            result = commands.cmd_test(test_cmd)
+            result = commands.execute("test", test_cmd)
 
             # Assert that the result contains the expected output
             self.assertIsNotNone(result)
@@ -1188,14 +1188,14 @@ class TestCommands(TestCase):
 
             self.assertEqual(len(coder.abs_fnames), 0)
 
-            commands.cmd_add(str(fname))
+            commands.execute("add", str(fname))
 
             files_in_repo = repo.git.ls_files()
             self.assertNotIn(str(fname), files_in_repo)
 
             self.assertEqual(len(coder.abs_fnames), 1)
 
-            commands.cmd_drop(str(fname))
+            commands.execute("drop", str(fname))
 
             self.assertEqual(len(coder.abs_fnames), 0)
 
@@ -1228,7 +1228,7 @@ class TestCommands(TestCase):
             file_path.write_text("dirty content")
 
             # Attempt to undo the last commit
-            commands.cmd_undo("")
+            commands.execute("undo", "")
 
             # Check that the last commit is still present
             self.assertEqual(last_commit_hash, repo.head.commit.hexsha[:7])
@@ -1237,7 +1237,7 @@ class TestCommands(TestCase):
             file_path.write_text("second content")
             other_path.write_text("dirty content")
 
-            commands.cmd_undo("")
+            commands.execute("undo", "")
             self.assertNotEqual(last_commit_hash, repo.head.commit.hexsha[:7])
 
             self.assertEqual(file_path.read_text(), "first content")
@@ -1273,7 +1273,7 @@ class TestCommands(TestCase):
             coder.coder_commit_hashes.add(last_commit_hash)
 
             # Attempt to undo the last commit, should refuse
-            commands.cmd_undo("")
+            commands.execute("undo", "")
 
             # Check that the last commit was not undone
             self.assertEqual(last_commit_hash, repo.head.commit.hexsha[:7])
@@ -1302,7 +1302,7 @@ class TestCommands(TestCase):
             coder.coder_commit_hashes.add(last_commit_hash)
 
             # Attempt to undo the last commit
-            commands.cmd_undo("")
+            commands.execute("undo", "")
 
             # Check that the commit is still present
             self.assertEqual(last_commit_hash, repo.head.commit.hexsha[:7])
@@ -1327,7 +1327,7 @@ class TestCommands(TestCase):
             commands = Commands(io, coder)
 
             # Try to add the ignored file
-            commands.cmd_add(str(ignored_file))
+            commands.execute("add", str(ignored_file))
 
             # Verify the file was not added
             self.assertEqual(len(coder.abs_fnames), 0)
@@ -1346,7 +1346,7 @@ class TestCommands(TestCase):
 
         for input_value, expected_tokens in test_values.items():
             with mock.patch.object(io, "tool_output") as mock_tool_output:
-                commands.cmd_think_tokens(input_value)
+                commands.execute("think_tokens", input_value)
 
                 # Check that the model's thinking tokens were updated
                 self.assertEqual(
@@ -1362,7 +1362,7 @@ class TestCommands(TestCase):
 
         # Test with no value provided - should display current value
         with mock.patch.object(io, "tool_output") as mock_tool_output:
-            commands.cmd_think_tokens("")
+            commands.execute("think_tokens", "")
             mock_tool_output.assert_any_call(mock.ANY)  # Just verify it calls tool_output
 
     async def test_cmd_add_cecli_ignored_file(self):
@@ -1399,7 +1399,7 @@ class TestCommands(TestCase):
             )
             commands = Commands(io, coder)
 
-            commands.cmd_add(f"{fname1} {fname2} {fname3}")
+            commands.execute("add", f"{fname1} {fname2} {fname3}")
 
             self.assertNotIn(fname1, str(coder.abs_fnames))
             self.assertNotIn(fname2, str(coder.abs_fnames))
@@ -1416,7 +1416,7 @@ class TestCommands(TestCase):
             test_file.write_text("Test content")
 
             # Test the /read command
-            commands.cmd_read_only(str(test_file))
+            commands.execute("read_only", str(test_file))
 
             # Check if the file was added to abs_read_only_fnames
             self.assertTrue(
@@ -1427,7 +1427,7 @@ class TestCommands(TestCase):
             )
 
             # Test dropping the read-only file
-            commands.cmd_drop(str(test_file))
+            commands.execute("drop", str(test_file))
 
             # Check if the file was removed from abs_read_only_fnames
             self.assertFalse(
@@ -1453,7 +1453,7 @@ class TestCommands(TestCase):
             os.chdir(subdir)
 
             # Test the /read-only command using git_root referenced name
-            commands.cmd_read_only(os.path.join("subdir", "test_read_only_file.txt"))
+            commands.execute("read_only", os.path.join("subdir", "test_read_only_file.txt"))
 
             # Check if the file was added to abs_read_only_fnames
             self.assertTrue(
@@ -1464,7 +1464,7 @@ class TestCommands(TestCase):
             )
 
             # Test dropping the read-only file using git_root referenced name
-            commands.cmd_drop(os.path.join("subdir", "test_read_only_file.txt"))
+            commands.execute("drop", os.path.join("subdir", "test_read_only_file.txt"))
 
             # Check if the file was removed from abs_read_only_fnames
             self.assertFalse(
@@ -1489,7 +1489,7 @@ class TestCommands(TestCase):
                 commands = Commands(io, coder)
 
                 # Test the /read command with an external file
-                commands.cmd_read_only(external_file_path)
+                commands.execute("read_only", external_file_path)
 
                 # Check if the external file was added to abs_read_only_fnames
                 real_external_file_path = os.path.realpath(external_file_path)
@@ -1501,7 +1501,7 @@ class TestCommands(TestCase):
                 )
 
                 # Test dropping the external read-only file
-                commands.cmd_drop(Path(external_file_path).name)
+                commands.execute("drop", Path(external_file_path).name)
 
                 # Check if the file was removed from abs_read_only_fnames
                 self.assertFalse(
@@ -1529,25 +1529,25 @@ class TestCommands(TestCase):
 
             # Add the file as read-only using absolute path
             rel_path = str(Path("..") / "test_file.txt")
-            commands.cmd_read_only(rel_path)
+            commands.execute("read_only", rel_path)
             self.assertEqual(len(coder.abs_read_only_fnames), 1)
 
             # Try to drop using relative path from different working directories
-            commands.cmd_drop("test_file.txt")
+            commands.execute("drop", "test_file.txt")
             self.assertEqual(len(coder.abs_read_only_fnames), 0)
 
             # Add it again
-            commands.cmd_read_only(rel_path)
+            commands.execute("read_only", rel_path)
             self.assertEqual(len(coder.abs_read_only_fnames), 1)
 
-            commands.cmd_drop(rel_path)
+            commands.execute("drop", rel_path)
             self.assertEqual(len(coder.abs_read_only_fnames), 0)
 
             # Add it one more time
-            commands.cmd_read_only(rel_path)
+            commands.execute("read_only", rel_path)
             self.assertEqual(len(coder.abs_read_only_fnames), 1)
 
-            commands.cmd_drop("test_file.txt")
+            commands.execute("drop", "test_file.txt")
             self.assertEqual(len(coder.abs_read_only_fnames), 0)
 
     async def test_cmd_read_only_bulk_conversion(self):
@@ -1560,14 +1560,14 @@ class TestCommands(TestCase):
             test_files = ["test1.txt", "test2.txt", "test3.txt"]
             for fname in test_files:
                 Path(fname).write_text(f"Content of {fname}")
-                commands.cmd_add(fname)
+                commands.execute("add", fname)
 
             # Verify files are in editable mode
             self.assertEqual(len(coder.abs_fnames), 3)
             self.assertEqual(len(coder.abs_read_only_fnames), 0)
 
             # Convert all files to read-only mode
-            commands.cmd_read_only("")
+            commands.execute("read_only", "")
 
             # Verify all files were moved to read-only
             self.assertEqual(len(coder.abs_fnames), 0)
@@ -1596,7 +1596,7 @@ class TestCommands(TestCase):
                 file_path.write_text(f"Content of {file_name}")
 
             # Test the /read-only command with multiple files
-            commands.cmd_read_only(" ".join(test_files))
+            commands.execute("read_only", " ".join(test_files))
 
             # Check if all test files were added to abs_read_only_fnames
             for file_name in test_files:
@@ -1609,7 +1609,7 @@ class TestCommands(TestCase):
                 )
 
             # Test dropping all read-only files
-            commands.cmd_drop(" ".join(test_files))
+            commands.execute("drop", " ".join(test_files))
 
             # Check if all files were removed from abs_read_only_fnames
             self.assertEqual(len(coder.abs_read_only_fnames), 0)
@@ -1628,7 +1628,7 @@ class TestCommands(TestCase):
             try:
                 # Test the /read-only command with a path in the user's home directory
                 relative_path = os.path.join("~", "test_read_only_file.txt")
-                commands.cmd_read_only(relative_path)
+                commands.execute("read_only", relative_path)
 
                 # Check if the file was added to abs_read_only_fnames
                 self.assertTrue(
@@ -1639,7 +1639,7 @@ class TestCommands(TestCase):
                 )
 
                 # Test dropping the read-only file
-                commands.cmd_drop(relative_path)
+                commands.execute("drop", relative_path)
 
                 # Check if the file was removed from abs_read_only_fnames
                 self.assertEqual(len(coder.abs_read_only_fnames), 0)
@@ -1662,7 +1662,7 @@ class TestCommands(TestCase):
             test_file.write_text("Test file")
 
             # Test the /read-only command
-            commands.cmd_read_only("[id]/page.tsx")
+            commands.execute("read_only", "[id]/page.tsx")
 
             # Check if test file was added to abs_read_only_fnames
             self.assertTrue(
@@ -1670,7 +1670,7 @@ class TestCommands(TestCase):
             )
 
             # Test dropping all read-only files
-            commands.cmd_drop("[id]/page.tsx")
+            commands.execute("drop", "[id]/page.tsx")
 
             # Check if all files were removed from abs_read_only_fnames
             self.assertEqual(len(coder.abs_read_only_fnames), 0)
@@ -1694,7 +1694,7 @@ class TestCommands(TestCase):
                 mock_run_fzf.return_value = ["test1.txt", "test3.txt"]
 
                 # Run the /read-only command without arguments
-                commands.cmd_read_only("")
+                commands.execute("read_only", "")
 
                 # Verify that the selected files were added as read-only
                 self.assertEqual(len(coder.abs_read_only_fnames), 2)
@@ -1721,14 +1721,14 @@ class TestCommands(TestCase):
             test_files = ["test1.txt", "test2.txt", "test3.txt"]
             for fname in test_files:
                 Path(fname).write_text(f"Content of {fname}")
-                commands.cmd_add(fname)
+                commands.execute("add", fname)
 
             # Mock run_fzf to return an empty selection
             with mock.patch("cecli.commands.run_fzf") as mock_run_fzf:
                 mock_run_fzf.return_value = []
 
                 # Run the /read-only command without arguments
-                commands.cmd_read_only("")
+                commands.execute("read_only", "")
 
                 # Verify that all editable files were converted to read-only
                 self.assertEqual(len(coder.abs_fnames), 0)
@@ -1756,11 +1756,13 @@ class TestCommands(TestCase):
                 coder.repo, "get_commit_message", return_value="Canned commit message"
             ):
                 # Run cmd_commit
-                commands.cmd_commit()
+                commands.execute(
+                    "commit",
+                )
 
                 # Capture the output of cmd_diff
                 with mock.patch("builtins.print") as mock_print:
-                    commands.cmd_diff("")
+                    commands.execute("diff", "")
 
                 # Check if the diff output is correct
                 mock_print.assert_called_with(mock.ANY)
@@ -1772,11 +1774,13 @@ class TestCommands(TestCase):
                 file_path.write_text("Further modified content")
 
                 # Run cmd_commit again
-                commands.cmd_commit()
+                commands.execute(
+                    "commit",
+                )
 
                 # Capture the output of cmd_diff
                 with mock.patch("builtins.print") as mock_print:
-                    commands.cmd_diff("")
+                    commands.execute("diff", "")
 
                 # Check if the diff output is correct
                 mock_print.assert_called_with(mock.ANY)
@@ -1788,11 +1792,13 @@ class TestCommands(TestCase):
                 file_path.write_text("Final modified content")
 
                 # Run cmd_commit again
-                commands.cmd_commit()
+                commands.execute(
+                    "commit",
+                )
 
                 # Capture the output of cmd_diff
                 with mock.patch("builtins.print") as mock_print:
-                    commands.cmd_diff("")
+                    commands.execute("diff", "")
 
                 # Check if the diff output is correct
                 mock_print.assert_called_with(mock.ANY)
@@ -1807,7 +1813,7 @@ class TestCommands(TestCase):
 
         # Test switching the main model
         with self.assertRaises(SwitchCoderSignal) as context:
-            commands.cmd_model("gpt-4")
+            commands.execute("model", "gpt-4")
 
         # Check that the SwitchCoderSignal exception contains the correct model configuration
         self.assertEqual(context.exception.kwargs.get("main_model").name, "gpt-4")
@@ -1834,7 +1840,7 @@ class TestCommands(TestCase):
         with mock.patch("cecli.models.sanity_check_models"):
             # Test switching the main model to gpt-4 (default 'whole')
             with self.assertRaises(SwitchCoderSignal) as context:
-                commands.cmd_model("gpt-4")
+                commands.execute("model", "gpt-4")
 
         # Check that the SwitchCoderSignal exception contains the correct model configuration
         self.assertEqual(context.exception.kwargs.get("main_model").name, "gpt-4")
@@ -1848,7 +1854,7 @@ class TestCommands(TestCase):
 
         # Test switching the editor model
         with self.assertRaises(SwitchCoderSignal) as context:
-            commands.cmd_editor_model("gpt-4")
+            commands.execute("editor_model", "gpt-4")
 
         # Check that the SwitchCoder exception contains the correct model configuration
         self.assertEqual(context.exception.kwargs.get("main_model").name, self.GPT35.name)
@@ -1865,7 +1871,7 @@ class TestCommands(TestCase):
 
         # Test switching the weak model
         with self.assertRaises(SwitchCoderSignal) as context:
-            commands.cmd_weak_model("gpt-4")
+            commands.execute("weak_model", "gpt-4")
 
         # Check that the SwitchCoderSignal exception contains the correct model configuration
         self.assertEqual(context.exception.kwargs.get("main_model").name, self.GPT35.name)
@@ -1887,7 +1893,7 @@ class TestCommands(TestCase):
         with mock.patch("cecli.models.sanity_check_models"):
             # Test switching the main model to gpt-4 (default 'whole')
             with self.assertRaises(SwitchCoderSignal) as context:
-                commands.cmd_model("gpt-4")
+                commands.execute("model", "gpt-4")
 
         # Check that the SwitchCoderSignal exception contains the correct model configuration
         self.assertEqual(context.exception.kwargs.get("main_model").name, "gpt-4")
@@ -1906,7 +1912,7 @@ class TestCommands(TestCase):
             mock_run.return_value = canned_reply
 
             with self.assertRaises(SwitchCoderSignal):
-                commands.cmd_ask(question)
+                commands.execute("ask", question)
 
             mock_run.assert_called_once()
             mock_run.assert_called_once_with(question)
@@ -1934,7 +1940,9 @@ class TestCommands(TestCase):
                 mock_lint.return_value = ""
 
                 # Run cmd_lint
-                commands.cmd_lint()
+                commands.execute(
+                    "lint",
+                )
 
                 # Check if the linter was called with a filename string
                 # whose Path().name matches the expected filename
@@ -1960,14 +1968,14 @@ class TestCommands(TestCase):
             file2 = Path(repo_dir) / "file2.txt"
             file1.write_text("Content of file 1")
             file2.write_text("Content of file 2")
-            commands.cmd_add(f"{file1} {file2}")
+            commands.execute("add", f"{file1} {file2}")
 
             # Add some messages to the chat history
             coder.cur_messages = [{"role": "user", "content": "Test message 1"}]
             coder.done_messages = [{"role": "assistant", "content": "Test message 2"}]
 
             # Run the reset command
-            commands.cmd_reset("")
+            commands.execute("reset", "")
 
             # Check that all files have been dropped
             self.assertEqual(len(coder.abs_fnames), 0)
@@ -2018,7 +2026,7 @@ class TestCommands(TestCase):
             self.assertEqual(len(coder.done_messages), 1)
 
             # Test reset command
-            commands.cmd_reset("")
+            commands.execute("reset", "")
 
             # Verify that original read-only file is preserved
             # but other files and messages are cleared
@@ -2061,7 +2069,7 @@ class TestCommands(TestCase):
             self.assertEqual(len(coder.done_messages), 1)
 
             # Test reset command
-            commands.cmd_reset("")
+            commands.execute("reset", "")
 
             # Verify that all files and messages are cleared
             self.assertEqual(len(coder.abs_fnames), 0)
@@ -2076,23 +2084,23 @@ class TestCommands(TestCase):
 
         # Test with numeric values
         with mock.patch.object(io, "tool_output") as mock_tool_output:
-            commands.cmd_reasoning_effort("0.8")
+            commands.execute("reasoning_effort", "0.8")
             mock_tool_output.assert_any_call("Set reasoning effort to 0.8")
 
         # Test with text values (low/medium/high)
         for effort_level in ["low", "medium", "high"]:
             with mock.patch.object(io, "tool_output") as mock_tool_output:
-                commands.cmd_reasoning_effort(effort_level)
+                commands.execute("reasoning_effort", effort_level)
                 mock_tool_output.assert_any_call(f"Set reasoning effort to {effort_level}")
 
         # Check model's reasoning effort was updated
         with mock.patch.object(coder.main_model, "set_reasoning_effort") as mock_set_effort:
-            commands.cmd_reasoning_effort("0.5")
+            commands.execute("reasoning_effort", "0.5")
             mock_set_effort.assert_called_once_with("0.5")
 
         # Test with no value provided - should display current value
         with mock.patch.object(io, "tool_output") as mock_tool_output:
-            commands.cmd_reasoning_effort("")
+            commands.execute("reasoning_effort", "")
             mock_tool_output.assert_any_call("Current reasoning effort: high")
 
     async def test_drop_with_original_read_only_files(self):
@@ -2124,7 +2132,7 @@ class TestCommands(TestCase):
 
             # Test bare drop command
             with mock.patch.object(io, "tool_output") as mock_tool_output:
-                commands.cmd_drop("")
+                commands.execute("drop", "")
                 mock_tool_output.assert_called_with(
                     "Dropping all files from the chat session except originally read-only files."
                 )
@@ -2154,7 +2162,7 @@ class TestCommands(TestCase):
             self.assertEqual(len(coder.abs_read_only_fnames), 1)
 
             # Test specific drop command
-            commands.cmd_drop("orig_read_only.txt")
+            commands.execute("drop", "orig_read_only.txt")
 
             # Verify that the original read-only file is dropped when specified explicitly
             self.assertEqual(len(coder.abs_read_only_fnames), 0)
@@ -2184,7 +2192,7 @@ class TestCommands(TestCase):
 
             # Test bare drop command
             with mock.patch.object(io, "tool_output") as mock_tool_output:
-                commands.cmd_drop("")
+                commands.execute("drop", "")
                 mock_tool_output.assert_called_with("Dropping all files from the chat session.")
 
             # Verify that all files are dropped
@@ -2210,7 +2218,7 @@ class TestCommands(TestCase):
             with mock.patch.object(commands, "run", side_effect=mock_run):
                 # Capture tool_error output
                 with mock.patch.object(io, "tool_error") as mock_tool_error:
-                    commands.cmd_load(str(commands_file))
+                    commands.execute("load", str(commands_file))
 
                     # Check that appropriate error messages were shown
                     mock_tool_error.assert_any_call(
@@ -2259,7 +2267,7 @@ class TestCommands(TestCase):
             new_commands = new_coder.commands
 
             # Perform /reset
-            new_commands.cmd_reset("")
+            new_commands.execute("reset", "")
 
             # Assertions for /reset
             self.assertEqual(len(new_coder.abs_fnames), 0)
@@ -2305,7 +2313,7 @@ class TestCommands(TestCase):
 
             new_coder = await Coder.create(from_coder=orig_coder)
             new_commands = new_coder.commands
-            new_commands.cmd_drop("")
+            new_commands.execute("drop", "")
 
             self.assertEqual(len(new_coder.abs_fnames), 0)
             self.assertEqual(len(new_coder.abs_read_only_fnames), 1)

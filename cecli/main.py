@@ -47,12 +47,12 @@ from cecli.helpers.file_searcher import generate_search_path_list
 from cecli.history import ChatSummary
 from cecli.io import InputOutput
 from cecli.llm import litellm
-from cecli.mcp import load_mcp_servers
+from cecli.mcp import McpServerManager, load_mcp_servers
 from cecli.models import ModelSettings
 from cecli.onboarding import offer_openrouter_oauth, select_default_model
 from cecli.repo import ANY_GIT_ERROR, GitRepo
 from cecli.report import report_uncaught_exceptions, set_args_error_data
-from cecli.versioncheck import check_version, install_from_main_branch, install_upgrade
+from cecli.versioncheck import check_version
 from cecli.watch import FileWatcher
 
 from .dump import dump  # noqa
@@ -628,20 +628,26 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     output_queue = None
     input_queue = None
     pre_init_io = get_io(args.pretty)
-    if args.tui or (args.tui is None and not args.linear_output):
-        try:
-            from cecli.tui import create_tui_io
+    # Check if we're in "send message and exit" mode to skip non-essential initialization
+    suppress_pre_init = args.message or args.message_file or args.apply_clipboard_edits
+    supress_tui = True
 
-            args.tui = True
-            args.linear_output = True
-            print("Starting cecli TUI...", flush=True)
-            io, output_queue, input_queue = create_tui_io(args, editing_mode)
-        except ImportError as e:
-            print("Error: --tui requires 'textual' package")
-            print("Install with: pip install cecli[tui]")
-            print(f"Import error: {e}")
-            sys.exit(1)
-    else:
+    if not suppress_pre_init:
+        if args.tui or (args.tui is None and not args.linear_output):
+            try:
+                from cecli.tui import create_tui_io
+
+                args.tui = True
+                args.linear_output = True
+                io, output_queue, input_queue = create_tui_io(args, editing_mode)
+                supress_tui = False
+            except ImportError as e:
+                print("Error: --tui requires 'textual' package")
+                print("Install with: pip install cecli[tui]")
+                print(f"Import error: {e}")
+                sys.exit(1)
+
+    if supress_tui:
         io = pre_init_io
         if args.linear_output is None:
             args.linear_output = True
@@ -728,21 +734,16 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             else:
                 io.tool_error(f"{all_files[0]} is a directory, but --no-git selected.")
                 return await graceful_exit(None, 1)
-    if args.git and not force_git_root and git is not None:
-        right_repo_root = guessed_wrong_repo(io, git_root, fnames, git_dname)
+    if args.git and not force_git_root and git is not None and not suppress_pre_init:
+        right_repo_root = guessed_wrong_repo(pre_init_io, git_root, fnames, git_dname)
         if right_repo_root:
             return await main_async(argv, input, output, right_repo_root, return_coder=return_coder)
-    if args.just_check_update:
-        update_available = await check_version(io, just_check=True, verbose=args.verbose)
+
+    if (args.check_update or args.upgrade) and not args.just_check_update and not suppress_pre_init:
+        await check_version(pre_init_io, verbose=args.verbose)
+    elif args.just_check_update:
+        update_available = await check_version(pre_init_io, just_check=True, verbose=args.verbose)
         return await graceful_exit(None, 0 if not update_available else 1)
-    if args.install_main_branch:
-        success = await install_from_main_branch(io)
-        return await graceful_exit(None, 0 if success else 1)
-    if args.upgrade:
-        success = await install_upgrade(io)
-        return await graceful_exit(None, 0 if success else 1)
-    if args.check_update:
-        await check_version(io, verbose=args.verbose)
     if args.verbose:
         show = format_settings(parser, args)
         io.tool_output(show)
@@ -933,8 +934,8 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             )
         except FileNotFoundError:
             pass
-    if not args.skip_sanity_check_repo:
-        if not await sanity_check_repo(repo, io):
+    if not args.skip_sanity_check_repo and not suppress_pre_init:
+        if not await sanity_check_repo(repo, pre_init_io):
             return await graceful_exit(None, 1)
     commands = Commands(
         io,
@@ -979,8 +980,8 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         mcp_servers = load_mcp_servers(
             args.mcp_servers, args.mcp_servers_file, io, args.verbose, args.mcp_transport
         )
-        if not mcp_servers:
-            mcp_servers = []
+        mcp_manager = McpServerManager(mcp_servers, io, args.verbose)
+
         coder = await Coder.create(
             main_model=main_model,
             edit_format=args.edit_format,
@@ -1016,7 +1017,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             detect_urls=args.detect_urls,
             auto_copy_context=args.copy_paste,
             auto_accept_architect=args.auto_accept_architect,
-            mcp_servers=mcp_servers,
+            mcp_manager=mcp_manager,
             add_gitignore_files=args.add_gitignore_files,
             enable_context_compaction=args.enable_context_compaction,
             context_compaction_max_tokens=args.context_compaction_max_tokens,
@@ -1025,7 +1026,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             repomap_in_memory=args.map_memory_cache,
             linear_output=args.linear_output,
         )
-        if args.show_model_warnings:
+        if args.show_model_warnings and not suppress_pre_init:
             problem = await models.sanity_check_models(pre_init_io, main_model)
             if problem:
                 pre_init_io.tool_output("You can skip this check with --no-show-model-warnings")
@@ -1038,7 +1039,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
                     pre_init_io.tool_output()
                 except KeyboardInterrupt:
                     return await graceful_exit(coder, 1)
-        if args.git:
+        if args.git and not suppress_pre_init:
             git_root = await setup_git(git_root, pre_init_io)
             if args.gitignore:
                 await check_gitignore(git_root, pre_init_io)
@@ -1074,33 +1075,33 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         utils.show_messages(messages)
         return await graceful_exit(coder)
     if args.lint:
-        await coder.commands.do_run("lint", "")
+        await coder.commands.execute("lint", "")
     if args.test:
         if not args.test_cmd:
             io.tool_error("No --test-cmd provided.")
             return await graceful_exit(coder, 1)
-        await coder.commands.do_run("test", args.test_cmd)
+        await coder.commands.execute("test", args.test_cmd)
         if io.placeholder:
             await coder.run(io.placeholder)
     if args.commit:
         if args.dry_run:
             io.tool_output("Dry run enabled, skipping commit.")
         else:
-            await coder.commands.do_run("commit", "")
+            await coder.commands.execute("commit", "")
     if args.terminal_setup:
         if args.dry_run:
-            await coder.commands.do_run("terminal-setup", "dry_run")
+            await coder.commands.execute("terminal-setup", "dry_run")
         else:
-            await coder.commands.do_run("terminal-setup", "")
+            await coder.commands.execute("terminal-setup", "")
     if args.lint or args.test or args.commit:
         return await graceful_exit(coder)
     if args.show_repo_map:
         repo_map = coder.get_repo_map()
         if repo_map:
-            io.tool_output(repo_map)
+            pre_init_io.tool_output(repo_map)
         return await graceful_exit(coder)
     if args.apply:
-        content = io.read_text(args.apply)
+        content = pre_init_io.read_text(args.apply)
         if content is None:
             return await graceful_exit(coder)
         coder.partial_response_content = content
@@ -1110,12 +1111,13 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         args.edit_format = main_model.editor_edit_format
         args.message = "/paste"
     if args.show_release_notes is True:
-        io.tool_output(f"Opening release notes: {urls.release_notes}")
-        io.tool_output()
+        pre_init_io.tool_output(f"Opening release notes: {urls.release_notes}")
+        pre_init_io.tool_output()
         webbrowser.open(urls.release_notes)
+        return await graceful_exit(coder)
     elif args.show_release_notes is None and is_first_run:
-        io.tool_output()
-        await io.offer_url(
+        pre_init_io.tool_output()
+        await pre_init_io.offer_url(
             urls.release_notes,
             "Would you like to see what's new in this version?",
             allow_never=False,
@@ -1131,7 +1133,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     if args.stream and args.cache_prompts:
         io.tool_warning("Cost estimates may be inaccurate when using streaming and caching.")
     if args.load:
-        await commands.cmd_load(args.load)
+        await commands.execute("load", args.load)
     if args.message:
         io.add_to_input_history(args.message)
         io.tool_output()
@@ -1166,10 +1168,15 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             )
         except Exception:
             pass
+
+    if suppress_pre_init:
+        await graceful_exit(coder)
+
     if args.tui:
         from cecli.tui import launch_tui
 
         del pre_init_io
+        print("Starting cecli TUI...", flush=True)
         return_code = await launch_tui(coder, output_queue, input_queue, args)
         return await graceful_exit(coder, return_code)
     while True:
@@ -1275,11 +1282,9 @@ async def graceful_exit(coder=None, exit_code=0):
     if coder:
         if hasattr(coder, "_autosave_future"):
             await coder._autosave_future
-        for server in coder.mcp_servers:
-            try:
-                await server.exit_stack.aclose()
-            except Exception:
-                pass
+
+        if coder.mcp_manager and coder.mcp_manager.is_connected:
+            await coder.mcp_manager.disconnect_all()
     return exit_code
 
 

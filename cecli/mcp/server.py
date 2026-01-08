@@ -13,10 +13,9 @@ from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamable_http_client
 from mcp.shared.auth import OAuthClientMetadata
 
-from cecli.mcp.oauth import (
+from .oauth import (
     FileBasedTokenStorage,
     create_oauth_callback_server,
-    find_available_port,
     get_mcp_oauth_token,
     save_mcp_oauth_token,
 )
@@ -94,9 +93,14 @@ class McpServer:
         async with self._cleanup_lock:
             try:
                 await self.exit_stack.aclose()
-                self.session = None
+            except (asyncio.CancelledError, RuntimeError, GeneratorExit):
+                # Expected during shutdown - anyio cancel scopes don't play
+                # well with asyncio teardown. Resources are still cleaned up.
+                pass
             except Exception as e:
                 logging.error(f"Error during cleanup of server {self.name}: {e}")
+            finally:
+                self.session = None
 
 
 class HttpBasedMcpServer(McpServer):
@@ -121,6 +125,8 @@ class HttpBasedMcpServer(McpServer):
                     self.io.tool_output(
                         f"Found existing redirect URI: {existing_redirect_uri}", log_only=True
                     )
+
+        from .utils import find_available_port
 
         # If we have an existing redirect URI, parse it to get the port
         if existing_redirect_uri:
@@ -236,9 +242,14 @@ class HttpBasedMcpServer(McpServer):
                 if hasattr(self, "_oauth_shutdown"):
                     self._oauth_shutdown()
                 await self.exit_stack.aclose()
-                self.session = None
+            except (asyncio.CancelledError, RuntimeError, GeneratorExit):
+                # Expected during shutdown - anyio cancel scopes don't play
+                # well with asyncio teardown. Resources are still cleaned up.
+                pass
             except Exception as e:
                 logging.error(f"Error during cleanup of server {self.name}: {e}")
+            finally:
+                self.session = None
 
 
 class HttpStreamingServer(HttpBasedMcpServer):

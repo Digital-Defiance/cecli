@@ -253,6 +253,10 @@ class InputArea(TextArea):
                 current_row, current_col = self.cursor_location
                 self.cursor_location = (current_row + 1, 0)
 
+            current_row, current_col = self.cursor_location
+            if current_row + 1 >= self.document.line_count:
+                self.app.call_later(self.scroll_end, animate=False)
+
             return
 
         if self.app.is_key_for("cycle_forward", event.key):

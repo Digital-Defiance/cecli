@@ -94,11 +94,16 @@ class TUI(App):
         self.bind(
             self._encode_keys(self.get_keys_for("cancel")), "noop", description="Cancel", show=True
         )
-
         self.bind(
             self._encode_keys(self.get_keys_for("editor")),
             "open_editor",
             description="Editor",
+            show=True,
+        )
+        self.bind(
+            self._encode_keys(self.get_keys_for("history")),
+            "history_search",
+            description="History Search",
             show=True,
         )
         self.bind(
@@ -191,6 +196,7 @@ class TUI(App):
             "cycle_forward": "tab",
             "cycle_backward": "shift+tab",
             "editor": "ctrl+o",
+            "history": "ctrl+r",
             "focus": "ctrl+f",
             "cancel": "ctrl+c",
             "clear": "ctrl+l",
@@ -518,6 +524,7 @@ class TUI(App):
         """Find the input widget and set focus to it."""
         input_area = self.query_one("#input", InputArea)
         input_area.value = text
+        input_area.cursor_position = len(input_area.value)
 
     def action_focus_input(self) -> None:
         """Find the input widget and set focus to it."""
@@ -558,6 +565,12 @@ class TUI(App):
 
     def action_noop(self):
         pass
+
+    def action_history_search(self):
+        """Open an external editor to compose a prompt (keyboard shortcut)."""
+        # Get current input text to use as initial content
+        input_area = self.query_one("#input", InputArea)
+        input_area.post_message(input_area.Submit("/history-search"))
 
     def action_open_editor(self):
         """Open an external editor to compose a prompt (keyboard shortcut)."""

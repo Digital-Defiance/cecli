@@ -12,6 +12,7 @@ from cecli.coders.base_coder import FinishReasonLength, UnknownEditFormat
 from cecli.commands import SwitchCoderSignal
 from cecli.dump import dump  # noqa: F401
 from cecli.io import InputOutput
+from cecli.mcp import McpServerManager
 from cecli.models import Model
 from cecli.repo import GitRepo
 from cecli.sendchat import sanity_check_messages
@@ -857,13 +858,13 @@ two
         mock_args.disable_scraping = False
         coder = await Coder.create(self.GPT35, None, io=io, args=mock_args)
 
-        # Mock the do_run command to return scraped content
-        async def mock_do_run(cmd_name, url, **kwargs):
+        # Mock the execute command to return scraped content
+        async def mock_execute(cmd_name, url, **kwargs):
             if cmd_name == "web" and kwargs.get("return_content"):
                 return f"Scraped content from {url}"
             return None
 
-        coder.commands.do_run = mock_do_run
+        coder.commands.execute = mock_execute
 
         # Test various URL formats
         test_cases = [
@@ -1021,26 +1022,26 @@ This command will print 'Hello, World!' to the console."""
             mock_args.disable_scraping = False
             coder = await Coder.create(self.GPT35, "diff", io=io, detect_urls=True, args=mock_args)
 
-            # Track calls to do_run
-            do_run_calls = []
+            # Track calls to execute
+            execute_calls = []
 
-            async def mock_do_run(cmd_name, url, **kwargs):
-                do_run_calls.append((cmd_name, url, kwargs))
+            async def mock_execute(cmd_name, url, **kwargs):
+                execute_calls.append((cmd_name, url, kwargs))
                 if cmd_name == "web" and kwargs.get("return_content"):
                     return f"Scraped content from {url}"
                 return None
 
-            coder.commands.do_run = mock_do_run
+            coder.commands.execute = mock_execute
 
             # Test with a message containing a URL
             message = "Check out https://example.com"
             await coder.check_for_urls(message)
 
-            # Verify do_run was called with the web command and correct URL
-            assert len(do_run_calls) == 1
-            assert do_run_calls[0][0] == "web"
-            assert do_run_calls[0][1] == "https://example.com"
-            assert do_run_calls[0][2].get("return_content") is True
+            # Verify execute was called with the web command and correct URL
+            assert len(execute_calls) == 1
+            assert execute_calls[0][0] == "web"
+            assert execute_calls[0][1] == "https://example.com"
+            assert execute_calls[0][2].get("return_content") is True
 
     async def test_detect_urls_disabled(self):
         with GitTemporaryDirectory():
@@ -1450,7 +1451,7 @@ This command will print 'Hello, World!' to the console."""
 
             # Create coder with mock MCP server
             with patch.object(Coder, "initialize_mcp_tools", return_value=mock_tools):
-                coder = await Coder.create(self.GPT35, "diff", io=io, mcp_servers=[mock_server])
+                coder = await Coder.create(self.GPT35, "diff", io=io)
 
                 # Manually set mcp_tools since we're bypassing initialize_mcp_tools
                 coder.mcp_tools = mock_tools
@@ -1478,9 +1479,12 @@ This command will print 'Hello, World!' to the console."""
             failing_server.connect = AsyncMock()
             failing_server.disconnect = AsyncMock()
 
+            manager = McpServerManager([working_server, failing_server])
+            manager._connected_servers = [working_server]
+
             # Mock load_mcp_tools to succeed for working_server and fail for failing_server
             async def mock_load_mcp_tools(session, format):
-                if session == await working_server.connect():
+                if session == working_server.session:
                     return [{"function": {"name": "working_tool"}}]
                 else:
                     raise Exception("Failed to load tools")
@@ -1492,7 +1496,7 @@ This command will print 'Hello, World!' to the console."""
                 self.GPT35,
                 "diff",
                 io=io,
-                mcp_servers=[working_server, failing_server],
+                mcp_manager=manager,
                 verbose=True,
             )
 
@@ -1526,6 +1530,9 @@ This command will print 'Hello, World!' to the console."""
             failing_server.connect = AsyncMock()
             failing_server.disconnect = AsyncMock()
 
+            manager = McpServerManager([failing_server])
+            manager._connected_servers = []
+
             # Mock load_mcp_tools to succeed for working_server and fail for failing_server
             async def mock_load_mcp_tools(session, format):
                 raise Exception("Failed to load tools")
@@ -1537,7 +1544,7 @@ This command will print 'Hello, World!' to the console."""
                 self.GPT35,
                 "diff",
                 io=io,
-                mcp_servers=[failing_server],
+                mcp_manager=manager,
                 verbose=True,
             )
 
@@ -1594,6 +1601,9 @@ This command will print 'Hello, World!' to the console."""
             mock_server.connect = AsyncMock()
             mock_server.disconnect = AsyncMock()
 
+            manager = McpServerManager([mock_server])
+            manager._connected_servers = [mock_server]
+
             # Create a tool call
             tool_call = MagicMock()
             tool_call.id = "test_id"
@@ -1612,9 +1622,8 @@ This command will print 'Hello, World!' to the console."""
             )
 
             # Create coder with mock MCP tools and servers
-            coder = await Coder.create(self.GPT35, "diff", io=io)
+            coder = await Coder.create(self.GPT35, "diff", io=io, mcp_manager=manager)
             coder.mcp_tools = [("test_server", [{"function": {"name": "test_tool"}}])]
-            coder.mcp_servers = [mock_server]
 
             # Mock _execute_tool_calls to return tool responses
             tool_responses = [
@@ -1661,12 +1670,16 @@ This command will print 'Hello, World!' to the console."""
             # Create mock MCP server
             mock_server = MagicMock()
             mock_server.name = "test_server"
+            mock_server.connect = AsyncMock()
+            mock_server.session = AsyncMock()
+
+            manager = McpServerManager([mock_server])
+            manager._connected_servers = [mock_server]
 
             # Create coder with max tool calls exceeded
-            coder = await Coder.create(self.GPT35, "diff", io=io)
+            coder = await Coder.create(self.GPT35, "diff", io=io, mcp_manager=manager)
             coder.num_tool_calls = coder.max_tool_calls
             coder.mcp_tools = [("test_server", [{"function": {"name": "test_tool"}}])]
-            coder.mcp_servers = [mock_server]
 
             # Test process_tool_calls
             result = await coder.process_tool_calls(response)
@@ -1702,10 +1715,12 @@ This command will print 'Hello, World!' to the console."""
             mock_server.connect = AsyncMock()
             mock_server.disconnect = AsyncMock()
 
+            manager = McpServerManager([mock_server])
+            manager._connected_servers = [mock_server]
+
             # Create coder with mock MCP tools
-            coder = await Coder.create(self.GPT35, "diff", io=io)
+            coder = await Coder.create(self.GPT35, "diff", io=io, mcp_manager=manager)
             coder.mcp_tools = [("test_server", [{"function": {"name": "test_tool"}}])]
-            coder.mcp_servers = [mock_server]
 
             # Test process_tool_calls
             result = await coder.process_tool_calls(response)
