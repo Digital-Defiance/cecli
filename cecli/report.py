@@ -69,15 +69,12 @@ def format_args_for_reporting(args):
                 pass
 
     # Format the output line by line
-    lines = [
-        "Configuration:\n"
-        "```yaml"
-    ]
+    lines = ["Configuration:\n```yaml"]
     for key, value in sorted(args_dict.items()):
         lines.append(f"{key}: {value}")
 
     lines.append("```")
-    return  "\n".join(lines)
+    return "\n".join(lines)
 
 
 def get_args_error_data():
@@ -89,6 +86,7 @@ def set_args_error_data(args):
     global resolved_args_data
     resolved_args_data = args
 
+
 def get_error_prefix():
     global error_prefix
     return error_prefix
@@ -98,6 +96,7 @@ def update_error_prefix(prefix):
     global error_prefix
     error_prefix.append(f"{prefix}\n")
     error_prefix = error_prefix[-10:]
+
 
 def report_github_issue(issue_text, title=None, confirm=True):
     """
@@ -140,11 +139,13 @@ def report_github_issue(issue_text, title=None, confirm=True):
     issue_url = f"{github_issues}?{urllib.parse.urlencode(params)}"
 
     if confirm:
-        #print(f"\n# {title}\n")
-        #print(issue_text.strip())
-        #print()
+        # print(f"\n# {title}\n")
+        # print(issue_text.strip())
+        # print()
         print("Please consider reporting this bug to help improve cecli!")
-        prompt = "Open a GitHub Issue pre-filled with the above error messages in your browser? (Y/n) "
+        prompt = (
+            "Open a GitHub Issue pre-filled with the above error messages in your browser? (Y/n) "
+        )
         confirmation = input(prompt).strip().lower()
 
         yes = not confirmation or confirmation.startswith("y")

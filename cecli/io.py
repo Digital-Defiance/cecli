@@ -1046,11 +1046,12 @@ class InputOutput:
             ):
                 pass
             except (
-                Exception, 
-                IndexError, 
+                Exception,
+                IndexError,
                 RuntimeError,
             ):
                 import traceback
+
                 traceback_str = traceback.format_exc()
                 update_error_prefix(traceback_str)
                 update_error_prefix(str(output_task))
