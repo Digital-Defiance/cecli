@@ -59,6 +59,10 @@ mcp-servers-file: /path/to/mcp.json
 
 These options are configurable in any of Aider's config file formats.
 
+Also, you are able to say if you would like an mcp enabled/disabled in the config itself via `"enabled"` key
+By default MCP servers are enabled, so you MUST explicitly disable them in the config if you dont wish
+for them to be included when cecli starts up
+
 ### Flags
 
 You can specify MCP servers directly on the command line using the `--mcp-servers` option with a JSON or YAML string:
@@ -204,7 +208,7 @@ mcp-servers:
         "-i",
         "--rm",
         "-e",
-        "GITHUB_PERSONAL_ACCESS_TOKEN=<access_token>",     
+        "GITHUB_PERSONAL_ACCESS_TOKEN=<access_token>",
         "ghcr.io/github/github-mcp-server"
       ]
 ```

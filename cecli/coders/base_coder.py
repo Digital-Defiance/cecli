@@ -2766,7 +2766,7 @@ class Coder:
                 return None
 
         async def get_all_server_tools():
-            tasks = [get_server_tools(server) for server in self.mcp_manager]
+            tasks = [get_server_tools(server) for server in self.mcp_manager if server.is_enabled]
             results = await asyncio.gather(*tasks)
             return [result for result in results if result is not None]
 
