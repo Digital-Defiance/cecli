@@ -146,6 +146,7 @@ The current priorities are to improve core capabilities and user experience of t
 4. **Context Delivery** - [Discussion](https://github.com/dwash96/cecli/issues/47)
   * [ ] Use workflow for internal discovery to better target file snippets needed for specific tasks
   * [ ] Add support for partial files and code snippets in model completion messages
+  * [ ] Update message request structure for optimal caching
 
 5. **TUI Experience** - [Discussion](https://github.com/dwash96/cecli/issues/48)
   * [x] Add a full TUI (probably using textual) to have a visual interface competitive with the other coding agent terminal programs
@@ -157,8 +158,8 @@ The current priorities are to improve core capabilities and user experience of t
   * [x] Add an explicit "finished" internal tool
   * [x] Add a configuration json setting for agent mode to specify allowed local tools to use, tool call limits, etc.
   * [ ] Add a RAG tool for the model to ask questions about the codebase
-  * [ ] Make the system prompts more aggressive about removing unneeded files/content from the context
-  * [ ] Add a plugin-like system for allowing agent mode to use user-defined tools in simple python files
+  * [x] Make the system prompts more aggressive about removing unneeded files/content from the context
+  * [x] Add a plugin-like system for allowing agent mode to use user-defined tools in simple python files
   * [x] Add a dynamic tool discovery tool to allow the system to have only the tools it needs in context
 
 ### All Contributors (Both Cecli and Aider main)
