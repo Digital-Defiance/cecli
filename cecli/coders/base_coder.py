@@ -1330,14 +1330,24 @@ class Coder:
                     await self.io.input_task
                     user_message = self.io.input_task.result()
 
-                    if self.args and not self.args.tui and self.show_pretty():
+                    if (
+                        self.args
+                        and not self.args.tui
+                        and self.show_pretty()
+                        and self.args.fancy_input
+                    ):
                         self.io.tool_output("Processing...\n")
 
                     self.io.output_task = asyncio.create_task(self.generate(user_message, preproc))
 
                     await self.io.output_task
 
-                    if self.args and not self.args.tui and self.show_pretty():
+                    if (
+                        self.args
+                        and not self.args.tui
+                        and self.show_pretty()
+                        and self.args.fancy_input
+                    ):
                         self.io.tool_output("Finished.")
 
                     self.io.ring_bell()
