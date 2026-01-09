@@ -42,6 +42,7 @@ from rich.text import Text
 
 from cecli.commands import SwitchCoderSignal
 from cecli.helpers import coroutines
+from cecli.report import update_error_prefix
 
 from .dump import dump  # noqa: F401
 from .editor import pipe_editor
@@ -1039,13 +1040,20 @@ class InputOutput:
                 await output_task
             except (
                 asyncio.CancelledError,
-                Exception,
                 EOFError,
-                IndexError,
-                RuntimeError,
                 SystemExit,
                 SwitchCoderSignal,
             ):
+                pass
+            except (
+                Exception, 
+                IndexError, 
+                RuntimeError,
+            ):
+                import traceback
+                traceback_str = traceback.format_exc()
+                update_error_prefix(traceback_str)
+                update_error_prefix(str(output_task))
                 pass
 
     async def stop_task_streams(self):

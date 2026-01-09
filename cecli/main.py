@@ -976,6 +976,9 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             ratio = args.context_compaction_max_tokens
         if max_input_tokens:
             args.context_compaction_max_tokens = int(max_input_tokens * ratio)
+        else:
+            # Default since some models do not have max_input_tokens specified somehow
+            args.context_compaction_max_tokens = 65536
     try:
         mcp_servers = load_mcp_servers(
             args.mcp_servers, args.mcp_servers_file, io, args.verbose, args.mcp_transport
