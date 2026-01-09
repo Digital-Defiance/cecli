@@ -22,14 +22,14 @@ class McpServerManager:
         Initialize the MCP server manager.
 
         Args:
-            mcp_servers: JSON string containing MCP server configurations
-            mcp_servers_file: Path to a JSON file containing MCP server configurations
+            servers: List of MCP Servers to manage
             io: InputOutput instance for user interaction
             verbose: Whether to output verbose logging
         """
         self.io = io
         self.verbose = verbose
         self._servers = servers
+
         self._server_tools: dict[str, list] = {}  # Maps server name to its tools
         self._connected_servers: set[McpServer] = set()
 
@@ -74,7 +74,7 @@ class McpServerManager:
             return None
 
     async def connect_all(self) -> None:
-        """Connect to all MCP servers."""
+        """Connect to all MCP servers while skipping ones that are not enabled."""
         if self.is_connected:
             self._log_verbose("Some MCP servers already connected")
             return
@@ -93,7 +93,9 @@ class McpServerManager:
                 self._log_error(f"Failed to connect to MCP server {server.name}: {e}")
                 return (server, False)
 
-        results = await asyncio.gather(*[connect_server(server) for server in self._servers])
+        results = await asyncio.gather(
+            *[connect_server(server) for server in self._servers if server.is_enabled]
+        )
 
         for server, success in results:
             if success:
@@ -140,6 +142,10 @@ class McpServerManager:
         server = self.get_server(name)
         if not server:
             self._log_warning(f"MCP server not found: {name}")
+            return False
+
+        if not server.is_enabled:
+            self._log_verbose("MCP is not enabled.")
             return False
 
         if server in self._connected_servers:
