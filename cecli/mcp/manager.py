@@ -89,8 +89,9 @@ class McpServerManager:
                 self._log_verbose(f"Connected to MCP server: {server.name}")
                 return (server, True)
             except Exception as e:
-                logging.error(f"Error connecting to MCP server {server.name}: {e}")
-                self._log_error(f"Failed to connect to MCP server {server.name}: {e}")
+                if server.name != "unnamed-server":
+                    logging.error(f"Error connecting to MCP server {server.name}: {e}")
+                    self._log_error(f"Failed to connect to MCP server {server.name}: {e}")
                 return (server, False)
 
         results = await asyncio.gather(
@@ -160,8 +161,9 @@ class McpServerManager:
             self._log_verbose(f"Connected to MCP server: {name}")
             return True
         except Exception as e:
-            logging.error(f"Error connecting to MCP server {name}: {e}")
-            self._log_error(f"Failed to connect to MCP server {name}: {e}")
+            if server.name != "unnamed-server":
+                logging.error(f"Error connecting to MCP server {name}: {e}")
+                self._log_error(f"Failed to connect to MCP server {name}: {e}")
             return False
 
     async def disconnect_server(self, name: str) -> bool:
