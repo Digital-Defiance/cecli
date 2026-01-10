@@ -80,9 +80,15 @@ class Tool(BaseTool):
         try:
             # 1. Validate parameters
             if sum(is_provided(x) for x in [after_pattern, before_pattern, position]) != 1:
-                raise ToolError(
-                    "Must specify exactly one of: after_pattern, before_pattern, or position"
-                )
+                # Check if file is empty or contains only whitespace
+                abs_path, rel_path, original_content = validate_file_for_edit(coder, file_path)
+                if not original_content.strip():
+                    # File is empty or contains only whitespace, default to inserting at beginning
+                    position = "top"
+                else:
+                    raise ToolError(
+                        "Must specify exactly one of: after_pattern, before_pattern, or position"
+                    )
 
             # 2. Validate file and get content
             abs_path, rel_path, original_content = validate_file_for_edit(coder, file_path)
