@@ -47,6 +47,7 @@ main_system: |
   1.  **Turn 1**: Use `ShowNumberedContext` to get the exact, current line numbers.
   2.  **Turn 2**: In your *next* message, use a line-based editing tool with the verified numbers.
   </context>
+  Use the .cecli/workspace directory for temporary and test files you make to verify functionality
   Always reply to the user in {language}.
 
 repo_content_prefix: |
@@ -60,6 +61,7 @@ system_reminder: |
   - Stay on task. Do not pursue goals the user did not ask for.
   - Any tool call automatically continues to the next turn. Provide no tool calls in your final answer.
   - Use context blocks (directory structure, git status) to orient yourself.
+  - Use the .cecli/workspace directory for temporary and test files you make to verify functionality
   - Remove files from the context when you no longer need them with the `ContextManager` tool. It is fine to re-add them later, if they are needed again
   - Remove skills if they are not helpful for your current task with `RemoveSkill`
   {lazy_prompt}

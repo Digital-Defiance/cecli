@@ -17,6 +17,7 @@ from litellm import experimental_mcp_client
 from cecli import urls, utils
 from cecli.change_tracker import ChangeTracker
 from cecli.helpers import nested
+from cecli.helpers.background_commands import BackgroundCommandManager
 from cecli.helpers.similarity import (
     cosine_similarity,
     create_bigram_vector,
@@ -596,6 +597,12 @@ class AgentCoder(Coder):
                 write_context = self._generate_write_context()
                 if write_context:
                     post_message_blocks.append(write_context)
+
+        # Add background command output if any
+        bg_output = self.get_background_command_output()
+        if bg_output:
+            post_message_blocks.append(bg_output)
+
         if static_blocks:
             for block in static_blocks:
                 if block:
@@ -608,6 +615,7 @@ class AgentCoder(Coder):
             for block in post_message_blocks:
                 if block:
                     chunks.post_message.append(dict(role="system", content=block))
+
         base_messages = chunks.all_messages()
         messages_tokens = self.main_model.token_count(base_messages)
         reminder_tokens = self.main_model.token_count(reminder_message)
@@ -1729,6 +1737,32 @@ Todo list does not exist. Please update it with the `UpdataTodoList` tool.</cont
         except Exception as e:
             self.io.tool_error(f"Error generating skills content context: {str(e)}")
             return None
+
+    def get_background_command_output(self):
+        """
+        Get background command output to append after the main message.
+
+        Returns:
+            String containing formatted background command output, or empty string if none
+        """
+        # Get output from all running background commands
+        bg_outputs = BackgroundCommandManager.get_all_command_outputs(clear=True)
+
+        if not bg_outputs:
+            return ""
+
+        # Get command info to show actual command strings
+        command_info = BackgroundCommandManager.list_background_commands()
+
+        # Create formatted output for background commands
+        output = "--- Background Commands Output ---\n"
+        for command_key, cmd_output in bg_outputs.items():
+            if cmd_output.strip():  # Only add if there's output
+                # Get the actual command string if available
+                command_str = command_info.get(command_key, {}).get("command", command_key)
+                output += f"\n[bg: {command_str}]\n{cmd_output}\n"
+
+        return output
 
     def get_git_status(self):
         """
