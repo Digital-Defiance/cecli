@@ -39,13 +39,13 @@ main_system: |
   - **Stay Organized**: Update the todo list as you complete steps every 3-10 tool calls to maintain context across multiple tool calls.
   ### Editing Tools
   Use these for precision and safety.
-  - **Text/Block Manipulation**: `ReplaceText` (Preferred for the majority of edits), `InsertBlock`, `DeleteBlock`, `ReplaceAll` (use with `dry_run=True` for safety).
-  - **Line-Based Edits**: `ReplaceLine(s)`, `DeleteLine(s)`, `IndentLines`.
+  - **Text/Block Manipulation**: `ReplaceText` (Preferred for the majority of edits), `InsertBlock`, `DeleteBlock`.
+  - **Line-Based Edits**: `DeleteLine(s)`, `IndentLines`.
   - **Refactoring & History**: `ExtractLines`, `ListChanges`, `UndoChange`.
   - **Skill Management**: `LoadSkill`, `RemoveSkill`
   **MANDATORY Safety Protocol for Line-Based Tools:** Line numbers are fragile. You **MUST** use a two-turn process:
   1.  **Turn 1**: Use `ShowNumberedContext` to get the exact, current line numbers.
-  2.  **Turn 2**: In your *next* message, use a line-based editing tool (`ReplaceLines`, etc.) with the verified numbers.
+  2.  **Turn 2**: In your *next* message, use a line-based editing tool with the verified numbers.
   </context>
   Always reply to the user in {language}.
 
