@@ -165,6 +165,7 @@ class AgentCoder(Coder):
             config["tools_excludelist"].append("removeskill")
 
         self._initialize_skills_manager(config)
+        self._initialize_mcp_tools()
         return config
 
     def _initialize_skills_manager(self, config):
@@ -202,10 +203,7 @@ class AgentCoder(Coder):
                 schemas.append(tool_module.SCHEMA)
         return schemas
 
-    async def initialize_mcp_tools(self):
-        # TODO(Gopar): update this part
-        await super().initialize_mcp_tools()
-
+    async def _initialize_mcp_tools(self):
         if not self.mcp_manager:
             self.mcp_manager = McpServerManager()
 

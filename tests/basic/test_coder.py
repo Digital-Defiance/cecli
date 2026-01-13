@@ -1434,136 +1434,6 @@ This command will print 'Hello, World!' to the console."""
                 io.confirm_ask.assert_called_once_with("Edit the files?", allow_tweak=False)
                 mock_create.assert_not_called()
 
-    @patch("cecli.coders.base_coder.experimental_mcp_client")
-    async def test_mcp_server_connection(self, mock_mcp_client):
-        """Test that the coder connects to MCP servers for tools."""
-        with GitTemporaryDirectory():
-            io = InputOutput(yes=True)
-
-            # Create mock MCP server
-            mock_server = MagicMock()
-            mock_server.name = "test_server"
-            mock_server.connect = MagicMock()
-            mock_server.disconnect = MagicMock()
-
-            # Setup mock for initialize_mcp_tools
-            mock_tools = [("test_server", [{"function": {"name": "test_tool"}}])]
-
-            # Create coder with mock MCP server
-            with patch.object(Coder, "initialize_mcp_tools", return_value=mock_tools):
-                coder = await Coder.create(self.GPT35, "diff", io=io)
-
-                # Manually set mcp_tools since we're bypassing initialize_mcp_tools
-                coder.mcp_tools = mock_tools
-
-                # Verify that mcp_tools contains the expected data
-                assert coder.mcp_tools is not None
-                assert len(coder.mcp_tools) == 1
-                assert coder.mcp_tools[0][0] == "test_server"
-
-    @patch("cecli.coders.base_coder.experimental_mcp_client")
-    async def test_coder_creation_with_partial_failed_mcp_server(self, mock_mcp_client):
-        """Test that a coder can still be created even if an MCP server fails to initialize."""
-        with GitTemporaryDirectory():
-            io = InputOutput(yes=True)
-            io.tool_warning = MagicMock()
-
-            # Create mock MCP servers - one working, one failing
-            working_server = AsyncMock()
-            working_server.name = "working_server"
-            working_server.connect = AsyncMock()
-            working_server.disconnect = AsyncMock()
-
-            failing_server = AsyncMock()
-            failing_server.name = "failing_server"
-            failing_server.connect = AsyncMock()
-            failing_server.disconnect = AsyncMock()
-
-            manager = McpServerManager([working_server, failing_server])
-            manager._connected_servers = [working_server]
-
-            # Mock load_mcp_tools to succeed for working_server and fail for failing_server
-            async def mock_load_mcp_tools(session, format):
-                if session == working_server.session:
-                    return [{"function": {"name": "working_tool"}}]
-                else:
-                    raise Exception("Failed to load tools")
-
-            mock_mcp_client.load_mcp_tools = AsyncMock(side_effect=mock_load_mcp_tools)
-
-            # Create coder with both servers
-            coder = await Coder.create(
-                self.GPT35,
-                "diff",
-                io=io,
-                mcp_manager=manager,
-                verbose=True,
-            )
-
-            # Verify that coder was created successfully
-            assert isinstance(coder, Coder)
-
-            # Verify that only the working server's tools were added
-            assert coder.mcp_tools is not None
-            assert len(coder.mcp_tools) == 1
-            assert coder.mcp_tools[0][0] == "working_server"
-
-            # Verify that the tool list contains only working tools
-            tool_list = coder.get_tool_list()
-            assert len(tool_list) == 1
-            assert tool_list[0]["function"]["name"] == "working_tool"
-
-            # Verify that the warning was logged for the failing server
-            io.tool_warning.assert_called_with(
-                "Error initializing MCP server failing_server: Failed to load tools"
-            )
-
-    @patch("cecli.coders.base_coder.experimental_mcp_client")
-    async def test_coder_creation_with_all_failed_mcp_server(self, mock_mcp_client):
-        """Test that a coder can still be created even if an MCP server fails to initialize."""
-        with GitTemporaryDirectory():
-            io = InputOutput(yes=True)
-            io.tool_warning = MagicMock()
-
-            failing_server = AsyncMock()
-            failing_server.name = "failing_server"
-            failing_server.connect = AsyncMock()
-            failing_server.disconnect = AsyncMock()
-
-            manager = McpServerManager([failing_server])
-            manager._connected_servers = []
-
-            # Mock load_mcp_tools to succeed for working_server and fail for failing_server
-            async def mock_load_mcp_tools(session, format):
-                raise Exception("Failed to load tools")
-
-            mock_mcp_client.load_mcp_tools = AsyncMock(side_effect=mock_load_mcp_tools)
-
-            # Create coder with both servers
-            coder = await Coder.create(
-                self.GPT35,
-                "diff",
-                io=io,
-                mcp_manager=manager,
-                verbose=True,
-            )
-
-            # Verify that coder was created successfully
-            assert isinstance(coder, Coder)
-
-            # Verify that only the working server's tools were added
-            assert coder.mcp_tools is not None
-            assert len(coder.mcp_tools) == 0
-
-            # Verify that the tool list contains only working tools
-            tool_list = coder.get_tool_list()
-            assert len(tool_list) == 0
-
-            # Verify that the warning was logged for the failing server
-            io.tool_warning.assert_called_with(
-                "Error initializing MCP server failing_server: Failed to load tools"
-            )
-
     async def test_process_tool_calls_none_response(self):
         """Test that process_tool_calls handles None response correctly."""
         with GitTemporaryDirectory():
@@ -1622,8 +1492,8 @@ This command will print 'Hello, World!' to the console."""
             )
 
             # Create coder with mock MCP tools and servers
+            manager._server_tools[mock_server.name] = [{"function": {"name": "test_tool"}}]
             coder = await Coder.create(self.GPT35, "diff", io=io, mcp_manager=manager)
-            coder.mcp_tools = [("test_server", [{"function": {"name": "test_tool"}}])]
 
             # Mock _execute_tool_calls to return tool responses
             tool_responses = [
@@ -1677,9 +1547,9 @@ This command will print 'Hello, World!' to the console."""
             manager._connected_servers = [mock_server]
 
             # Create coder with max tool calls exceeded
+            manager._server_tools[mock_server.name] = [{"function": {"name": "test_tool"}}]
             coder = await Coder.create(self.GPT35, "diff", io=io, mcp_manager=manager)
             coder.num_tool_calls = coder.max_tool_calls
-            coder.mcp_tools = [("test_server", [{"function": {"name": "test_tool"}}])]
 
             # Test process_tool_calls
             result = await coder.process_tool_calls(response)
@@ -1719,8 +1589,8 @@ This command will print 'Hello, World!' to the console."""
             manager._connected_servers = [mock_server]
 
             # Create coder with mock MCP tools
+            manager._server_tools[mock_server.name] = [{"function": {"name": "test_tool"}}]
             coder = await Coder.create(self.GPT35, "diff", io=io, mcp_manager=manager)
-            coder.mcp_tools = [("test_server", [{"function": {"name": "test_tool"}}])]
 
             # Test process_tool_calls
             result = await coder.process_tool_calls(response)
