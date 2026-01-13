@@ -139,7 +139,6 @@ class Coder:
     commit_language = None
     file_watcher = None
     mcp_manager = None
-    mcp_tools = None
     run_one_completed = True
     compact_context_completed = True
     suppress_announcements_for_next_prompt = False
@@ -228,6 +227,7 @@ class Coder:
                 total_tokens_sent=from_coder.total_tokens_sent,
                 total_tokens_received=from_coder.total_tokens_received,
                 file_watcher=from_coder.file_watcher,
+                mcp_manager=from_coder.mcp_manager,
             )
             use_kwargs.update(update)  # override to complete the switch
             use_kwargs.update(kwargs)  # override passed kwargs
@@ -251,7 +251,6 @@ class Coder:
             if from_coder:
                 if from_coder.mcp_manager:
                     res.mcp_manager = from_coder.mcp_manager
-                    res.mcp_tools = from_coder.mcp_tools
 
                 # Transfer TUI app weak reference
                 res.tui = from_coder.tui
@@ -2750,66 +2749,17 @@ class Coder:
         Initialize tools from all configured MCP servers. MCP Servers that fail to be
         initialized will not be available to the Coder instance.
         """
-        # TODO(@gopar): refactor here once we have fully moved over to use the mcp manager
-        tools = []
 
-        async def get_server_tools(server):
-            # Check if we already have tools for this server in mcp_tools
-            if self.mcp_tools:
-                for server_name, server_tools in self.mcp_tools:
-                    if server_name == server.name:
-                        return (server.name, server_tools)
+    @property
+    def mcp_tools(self):
+        if not self.mcp_manager:
+            return []
 
-            try:
-                did_connect = await self.mcp_manager.connect_server(server.name)
-                if not did_connect:
-                    raise Exception("Failed to load tools")
+        return list(self.mcp_manager.all_tools.items())
 
-                server = self.mcp_manager.get_server(server.name)
-                server_tools = await experimental_mcp_client.load_mcp_tools(
-                    session=server.session, format="openai"
-                )
-                return (server.name, server_tools)
-            except Exception as e:
-                if server.name != "unnamed-server" and server.name != "Local":
-                    self.io.tool_warning(f"Error initializing MCP server {server.name}: {e}")
-                return None
-
-        async def get_all_server_tools():
-            tasks = [get_server_tools(server) for server in self.mcp_manager if server.is_enabled]
-            results = await asyncio.gather(*tasks)
-            return [result for result in results if result is not None]
-
-        if self.mcp_manager:
-            # Retry initialization in case of CancelledError
-            max_retries = 3
-            for i in range(max_retries):
-                try:
-                    tools = await get_all_server_tools()
-                    break
-                except asyncio.exceptions.CancelledError:
-                    if i < max_retries - 1:
-                        await asyncio.sleep(0.1)  # Brief pause before retrying
-                    else:
-                        self.io.tool_warning(
-                            "MCP tool initialization failed after multiple retries due to"
-                            " cancellation."
-                        )
-                        tools = []
-
-        if len(tools) > 0:
-            if self.verbose:
-                self.io.tool_output("MCP servers configured:")
-
-                for server_name, server_tools in tools:
-                    self.io.tool_output(f"  - {server_name}")
-
-                    for tool in server_tools:
-                        tool_name = tool.get("function", {}).get("name", "unknown")
-                        tool_desc = tool.get("function", {}).get("description", "").split("\n")[0]
-                        self.io.tool_output(f"    - {tool_name}: {tool_desc}")
-
-        self.mcp_tools = tools
+    @mcp_tools.setter
+    def mcp_tools(self, value):
+        raise AttributeError("mcp_tools is read only.")
 
     def get_tool_list(self):
         """Get a flattened list of all MCP tools."""
