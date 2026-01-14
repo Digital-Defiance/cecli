@@ -177,7 +177,7 @@ __all__ = [
     "AddCommand",
     "ModelCommand",
     "WeakModelCommand",
-    "EditorModelCommand",    
+    "EditorModelCommand",
     "WebCommand",
     "LintCommand",
     "TestCommand",
