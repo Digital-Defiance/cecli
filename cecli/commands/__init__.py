@@ -24,6 +24,7 @@ from .diff import DiffCommand
 # Import and register commands
 from .drop import DropCommand
 from .editor import EditCommand, EditorCommand
+from .editor_model import EditorModelCommand
 from .exit import ExitCommand
 from .git import GitCommand
 from .help import HelpCommand
@@ -110,6 +111,7 @@ CommandRegistry.register(ReadOnlyStubCommand)
 CommandRegistry.register(AddCommand)
 CommandRegistry.register(ModelCommand)
 CommandRegistry.register(WeakModelCommand)
+CommandRegistry.register(EditorModelCommand)
 CommandRegistry.register(WebCommand)
 CommandRegistry.register(LintCommand)
 CommandRegistry.register(TestCommand)
@@ -175,6 +177,7 @@ __all__ = [
     "AddCommand",
     "ModelCommand",
     "WeakModelCommand",
+    "EditorModelCommand",    
     "WebCommand",
     "LintCommand",
     "TestCommand",

@@ -5,34 +5,34 @@ from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
 
 
-class WeakModelCommand(BaseCommand):
-    NORM_NAME = "weak-model"
-    DESCRIPTION = "Switch the Weak Model to a new LLM"
+class EditorModelCommand(BaseCommand):
+    NORM_NAME = "editor-model"
+    DESCRIPTION = "Switch the Editor Model to a new LLM"
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
-        """Execute the weak-model command with given parameters."""
+        """Execute the editor-model command with given parameters."""
         arg_split = args.split(" ", 1)
         model_name = arg_split[0].strip()
         if not model_name:
-            # If no model name provided, show current weak model
-            current_weak_model = coder.main_model.weak_model.name
-            io.tool_output(f"Current weak model: {current_weak_model}")
+            # If no model name provided, show current editor model
+            current_editor_model = coder.main_model.editor_model.name
+            io.tool_output(f"Current editor model: {current_editor_model}")
             return format_command_result(
-                io, "weak-model", f"Displayed current weak model: {current_weak_model}"
+                io, "editor-model", f"Displayed current editor model: {current_editor_model}"
             )
 
-        # Create a new model with the same main model and editor model, but updated weak model
+        # Create a new model with the same main model and editor model, but updated editor model
         model = models.Model(
             coder.main_model.name,
-            editor_model=coder.main_model.editor_model.name,
-            weak_model=model_name,
+            editor_model=model_name,
+            weak_model=coder.main_model.weak_model.name,
             io=io,
         )
         await models.sanity_check_models(io, model)
 
         if len(arg_split) > 1:
-            # implement architect coder-like generation call for weak model
+            # implement architect coder-like generation call for editor model
             message = arg_split[1].strip()
 
             # Store the original model configuration
@@ -92,32 +92,32 @@ class WeakModelCommand(BaseCommand):
 
     @classmethod
     def get_completions(cls, io, coder, args) -> List[str]:
-        """Get completion options for weak-model command."""
+        """Get completion options for edit_model command."""
         return models.get_chat_model_names()
 
     @classmethod
     def get_help(cls) -> str:
-        """Get help text for the weak-model command."""
+        """Get help text for the edit_model command."""
         help_text = super().get_help()
         help_text += "\nUsage:\n"
-        help_text += "  /weak-model <model-name>              # Switch to a new weak model\n"
+        help_text += "  /editor-model <model-name>              # Switch to a new editor model\n"
         help_text += (
-            "  /weak-model <model-name> <prompt>     # Use a specific weak model for a single"
+            "  /editor-model <model-name> <prompt>     # Use a specific editor model for a single"
             " prompt\n"
         )
         help_text += "\nExamples:\n"
         help_text += (
-            "  /weak-model gpt-4o-mini               # Switch to GPT-4o Mini as weak model\n"
+            "  /editor-model gpt-4o-mini               # Switch to GPT-4o Mini as editor model\n"
         )
         help_text += (
-            "  /weak-model claude-3-haiku            # Switch to Claude 3 Haiku as weak model\n"
+            "  /editor-model claude-3-haiku            # Switch to Claude 3 Haiku as editor model\n"
         )
-        help_text += '  /weak-model o1-mini "review this code" # Use o1-mini to review code\n'
+        help_text += '  /editor-model o1-mini "review this code" # Use o1-mini to review code\n'
         help_text += (
-            "\nWhen switching weak models, the main model and editor model remain unchanged.\n"
+            "\nWhen switching editor models, the main model and editor model remain unchanged.\n"
         )
         help_text += (
-            "\nIf you provide a prompt after the model name, that weak model will be used\n"
+            "\nIf you provide a prompt after the model name, that editor model will be used\n"
         )
-        help_text += "just for that prompt, then you'll return to your original weak model.\n"
+        help_text += "just for that prompt, then you'll return to your original editor model.\n"
         return help_text
