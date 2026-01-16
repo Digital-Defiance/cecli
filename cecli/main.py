@@ -37,7 +37,7 @@ from prompt_toolkit.enums import EditingMode
 
 from cecli import __version__, models, urls, utils
 from cecli.args import get_parser
-from cecli.coders import Coder
+from cecli.coders import AgentCoder, Coder
 from cecli.coders.base_coder import UnknownEditFormat
 from cecli.commands import Commands, SwitchCoderSignal
 from cecli.deprecated_args import handle_deprecated_model_args
@@ -1189,17 +1189,28 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             return await graceful_exit(coder)
         except SwitchCoderSignal as switch:
             coder.ok_to_warm_cache = False
+
             if hasattr(switch, "placeholder") and switch.placeholder is not None:
                 io.placeholder = switch.placeholder
             kwargs = dict(io=io, from_coder=coder)
             kwargs.update(switch.kwargs)
+
             if "show_announcements" in kwargs:
                 del kwargs["show_announcements"]
             kwargs["num_cache_warming_pings"] = 0
             kwargs["args"] = coder.args
+
+            if kwargs["edit_format"] != AgentCoder.edit_format and (
+                coder := kwargs.get("from_coder")
+            ):
+                if coder.mcp_manager.get_server("Local"):
+                    await coder.mcp_manager.disconnect_server("Local")
+
             coder = await Coder.create(**kwargs)
+
             if switch.kwargs.get("show_announcements") is False:
                 coder.suppress_announcements_for_next_prompt = True
+
         except SystemExit:
             sys.settrace(None)
             return await graceful_exit(coder)

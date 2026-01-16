@@ -255,6 +255,8 @@ class Coder:
                 # Transfer TUI app weak reference
                 res.tui = from_coder.tui
 
+            await res.initialize_mcp_tools()
+
             res.original_kwargs = dict(kwargs)
             return res
 
@@ -2741,6 +2743,12 @@ class Coder:
                 tool_responses.extend(server_results)
 
         return tool_responses
+
+    async def initialize_mcp_tools(self):
+        """
+        Any setup that needs to happen for MCP Servers so that coder can use it properly
+        """
+        pass
 
     @property
     def mcp_tools(self):
