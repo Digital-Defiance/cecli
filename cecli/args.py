@@ -150,6 +150,12 @@ def get_parser(default_config_files, git_root):
         ),
     )
     group.add_argument(
+        "--show-thinking",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Show reasoning content in the response (default: True)",
+    )
+    group.add_argument(
         "--verify-ssl",
         action=argparse.BooleanOptionalAction,
         default=True,

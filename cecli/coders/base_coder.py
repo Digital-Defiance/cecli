@@ -2960,15 +2960,17 @@ class Coder:
         show_resp = self.render_incremental_response(True)
 
         if self.partial_response_reasoning_content:
-            formatted_reasoning = format_reasoning_content(
-                self.partial_response_reasoning_content, self.reasoning_tag_name
-            )
-            show_resp = formatted_reasoning + show_resp
+            if nested.getter(self, "args.show_thinking"):
+                formatted_reasoning = format_reasoning_content(
+                    self.partial_response_reasoning_content, self.reasoning_tag_name
+                )
+                show_resp = formatted_reasoning + show_resp
 
         if len(self.partial_response_tool_calls):
             self.tool_reflection = True
 
-        show_resp = replace_reasoning_tags(show_resp, self.reasoning_tag_name)
+        if nested.getter(self, "args.show_thinking"):
+            show_resp = replace_reasoning_tags(show_resp, self.reasoning_tag_name)
 
         if (
             not len(self.partial_response_content)
@@ -3056,11 +3058,12 @@ class Coder:
                         reasoning_content = None
 
                 if reasoning_content:
-                    if not self.got_reasoning_content:
-                        text += f"<{REASONING_TAG}>\n\n"
-                    text += reasoning_content
-                    self.got_reasoning_content = True
-                    received_content = True
+                    if nested.getter(self, "args.show_thinking"):
+                        if not self.got_reasoning_content:
+                            text += f"<{REASONING_TAG}>\n\n"
+                        text += reasoning_content
+                        self.got_reasoning_content = True
+                        received_content = True
                     self.token_profiler.on_token()
                     self.io.update_spinner_suffix(reasoning_content)
                     self.partial_response_reasoning_content += reasoning_content
@@ -3089,7 +3092,8 @@ class Coder:
                 self.stream_wrapper(content_to_show, final=False)
             elif text:
                 # Apply reasoning tag formatting for non-pretty output
-                text = replace_reasoning_tags(text, self.reasoning_tag_name)
+                if nested.getter(self, "args.show_thinking"):
+                    text = replace_reasoning_tags(text, self.reasoning_tag_name)
                 try:
                     self.stream_wrapper(text, final=False)
                 except UnicodeEncodeError:
@@ -3236,7 +3240,8 @@ class Coder:
     def live_incremental_response(self, final):
         show_resp = self.render_incremental_response(final)
         # Apply any reasoning tag formatting
-        show_resp = replace_reasoning_tags(show_resp, self.reasoning_tag_name)
+        if nested.getter(self, "args.show_thinking"):
+            show_resp = replace_reasoning_tags(show_resp, self.reasoning_tag_name)
 
         # Track streaming state to avoid repetitive output
         if not hasattr(self, "_streaming_buffer_length"):
