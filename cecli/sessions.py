@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from cecli import models
+from cecli.helpers.conversation import ConversationManager, MessageTag
 
 
 class SessionManager:
@@ -129,13 +130,17 @@ class SessionManager:
         # Capture todo list content so it can be restored with the session
         todo_content = None
         try:
-            todo_path = self.coder.abs_root_path(".cecli.todo.txt")
+            todo_path = self.coder.abs_root_path(".cecli/todo.txt")
             if os.path.isfile(todo_path):
                 todo_content = self.io.read_text(todo_path)
                 if todo_content is None:
                     todo_content = ""
         except Exception as e:
             self.io.tool_warning(f"Could not read todo list file: {e}")
+
+        # Get CUR and DONE messages from ConversationManager
+        cur_messages = ConversationManager.get_messages_dict(MessageTag.CUR)
+        done_messages = ConversationManager.get_messages_dict(MessageTag.DONE)
 
         return {
             "version": 1,
@@ -146,8 +151,8 @@ class SessionManager:
             "editor_edit_format": self.coder.main_model.editor_edit_format,
             "edit_format": self.coder.edit_format,
             "chat_history": {
-                "done_messages": self.coder.done_messages,
-                "cur_messages": self.coder.cur_messages,
+                "done_messages": done_messages,
+                "cur_messages": cur_messages,
             },
             "files": {
                 "editable": editable_files,
@@ -193,13 +198,29 @@ class SessionManager:
             self.coder.abs_fnames = set()
             self.coder.abs_read_only_fnames = set()
             self.coder.abs_read_only_stubs_fnames = set()
-            self.coder.done_messages = []
-            self.coder.cur_messages = []
+
+            # Clear CUR and DONE messages from ConversationManager
+            ConversationManager.clear_tag(MessageTag.CUR)
+            ConversationManager.clear_tag(MessageTag.DONE)
 
             # Load chat history
             chat_history = session_data.get("chat_history", {})
-            self.coder.done_messages = chat_history.get("done_messages", [])
-            self.coder.cur_messages = chat_history.get("cur_messages", [])
+            done_messages = chat_history.get("done_messages", [])
+            cur_messages = chat_history.get("cur_messages", [])
+
+            # Add messages to ConversationManager (source of truth)
+            # Add done messages
+            for msg in done_messages:
+                ConversationManager.add_message(
+                    message_dict=msg,
+                    tag=MessageTag.DONE,
+                )
+            # Add current messages
+            for msg in cur_messages:
+                ConversationManager.add_message(
+                    message_dict=msg,
+                    tag=MessageTag.CUR,
+                )
 
             # Load files
             files = session_data.get("files", {})
@@ -246,7 +267,7 @@ class SessionManager:
 
             # Restore todo list content if present in the session
             if "todo_list" in session_data:
-                todo_path = self.coder.abs_root_path(".cecli.todo.txt")
+                todo_path = self.coder.abs_root_path(".cecli/todo.txt")
                 todo_content = session_data.get("todo_list")
                 try:
                     if todo_content is None:

@@ -88,6 +88,7 @@ compaction_prompt: |
   The user is going to provide you with a conversation.
   This conversation is getting too long to fit in the context window of a language model.
   You need to summarize the conversation to reduce its length, while retaining all the important information.
+  Prioritize the latest instructions and don't include conflicting information from earlier instructions.
   The summary should contain four parts:
   - Overall Goal: What is the user trying to achieve with this conversation?
   - Next Steps: What are the next steps for the language model to take to help the user?

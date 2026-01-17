@@ -3,6 +3,7 @@ from typing import List
 import cecli.models as models
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
+from cecli.helpers.conversation import ConversationManager, MessageTag
 
 
 class ModelCommand(BaseCommand):
@@ -24,6 +25,7 @@ class ModelCommand(BaseCommand):
             editor_model=coder.main_model.editor_model.name,
             weak_model=coder.main_model.weak_model.name,
             io=io,
+            debug=coder.main_model.debug,
         )
         await models.sanity_check_models(io, model)
 
@@ -58,9 +60,18 @@ class ModelCommand(BaseCommand):
             new_kwargs = dict(io=io, from_coder=coder)
             new_kwargs.update(kwargs)
 
+            # Save current conversation state
+            original_all_messages = ConversationManager.get_messages()
+            original_coder = coder
+
             temp_coder = await Coder.create(**new_kwargs)
-            temp_coder.cur_messages = []
-            temp_coder.done_messages = []
+
+            # Clear ALL messages for temp coder (start fresh)
+            ConversationManager.reset()
+
+            # Re-initialize ConversationManager with temp coder
+            ConversationManager.initialize(temp_coder)
+            ConversationManager.clear_cache()
 
             verbose = kwargs.get("verbose", False)
             if verbose:
@@ -68,9 +79,41 @@ class ModelCommand(BaseCommand):
 
             try:
                 await temp_coder.generate(user_message=message, preproc=False)
-                coder.move_back_cur_messages(f"Model {model_name} made those changes to the files.")
                 coder.total_cost = temp_coder.total_cost
                 coder.coder_commit_hashes = temp_coder.coder_commit_hashes
+
+                # Save temp coder's ALL messages
+                temp_all_messages = ConversationManager.get_messages()
+
+                # Clear manager and restore original state
+                ConversationManager.reset()
+                ConversationManager.initialize(original_coder)
+
+                # Restore original messages with all metadata
+                for msg in original_all_messages:
+                    ConversationManager.add_message(
+                        msg.to_dict(),
+                        MessageTag(msg.tag),
+                        priority=msg.priority,
+                        timestamp=msg.timestamp,
+                        mark_for_delete=msg.mark_for_delete,
+                        hash_key=msg.hash_key,
+                    )
+
+                # Append temp coder's DONE and CUR messages (but not other tags like SYSTEM)
+                for msg in temp_all_messages:
+                    if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
+                        ConversationManager.add_message(
+                            msg.to_dict(),
+                            MessageTag(msg.tag),
+                            priority=msg.priority,
+                            timestamp=msg.timestamp,
+                            mark_for_delete=msg.mark_for_delete,
+                            hash_key=msg.hash_key,
+                        )
+
+                # Move back cur messages with appropriate message
+                coder.move_back_cur_messages(f"Model {model_name} made those changes to the files.")
 
                 # Restore the original model configuration
                 from cecli.commands import SwitchCoderSignal

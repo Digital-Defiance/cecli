@@ -4,6 +4,7 @@ from typing import List
 import cecli.prompts.utils.system as prompts
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
+from cecli.helpers.conversation import ConversationManager, MessageTag
 from cecli.run_cmd import run_cmd
 
 
@@ -60,10 +61,10 @@ class RunCommand(BaseCommand):
                 output=combined_output,
             )
 
-            coder.cur_messages += [
-                dict(role="user", content=msg),
-                dict(role="assistant", content="Ok."),
-            ]
+            # Add user message with CUR tag
+            ConversationManager.add_message(dict(role="user", content=msg), MessageTag.CUR)
+            # Add assistant acknowledgment with CUR tag
+            ConversationManager.add_message(dict(role="assistant", content="Ok."), MessageTag.CUR)
 
             if add_on_nonzero_exit and exit_status != 0:
                 # Return the formatted output message for test failures

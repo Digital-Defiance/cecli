@@ -1,10 +1,5 @@
 from cecli.tools.utils.base_tool import BaseTool
-from cecli.tools.utils.helpers import (
-    ToolError,
-    format_tool_result,
-    generate_unified_diff_snippet,
-    handle_tool_error,
-)
+from cecli.tools.utils.helpers import ToolError, format_tool_result, handle_tool_error
 from cecli.tools.utils.output import tool_body_unwrapped, tool_footer, tool_header
 
 
@@ -49,13 +44,13 @@ class Tool(BaseTool):
     @classmethod
     def execute(cls, coder, content, append=False, change_id=None, dry_run=False):
         """
-        Update the todo list file (.cecli.todo.txt) with new content.
+        Update the todo list file (.cecli/todo.txt) with new content.
         Can either replace the entire content or append to it.
         """
         tool_name = "UpdateTodoList"
         try:
             # Define the todo file path
-            todo_file_path = ".cecli.todo.txt"
+            todo_file_path = ".cecli/todo.txt"
             abs_path = coder.abs_root_path(todo_file_path)
 
             # Get existing content if appending
@@ -85,22 +80,12 @@ class Tool(BaseTool):
                 coder.io.tool_warning("No changes made: new content is identical to existing")
                 return "Warning: No changes made (content identical to existing)"
 
-            # Generate diff for feedback
-            diff_snippet = generate_unified_diff_snippet(
-                existing_content, new_content, todo_file_path
-            )
-
             # Handle dry run
             if dry_run:
                 action = "append to" if append else "replace"
                 dry_run_message = f"Dry run: Would {action} todo list in {todo_file_path}."
                 return format_tool_result(
-                    coder,
-                    tool_name,
-                    "",
-                    dry_run=True,
-                    dry_run_message=dry_run_message,
-                    diff_snippet=diff_snippet,
+                    coder, tool_name, "", dry_run=True, dry_run_message=dry_run_message
                 )
 
             # Apply change
@@ -133,7 +118,6 @@ class Tool(BaseTool):
                 tool_name,
                 success_message,
                 change_id=final_change_id,
-                diff_snippet=diff_snippet,
             )
 
         except ToolError as e:

@@ -663,6 +663,8 @@ wrapt==2.0.1
     # via
     #   deprecated
     #   llama-index-core
+xxhash==3.6.0
+    # via -r requirements/requirements.in
 yarl==1.22.0
     # via aiohttp
 zipp==3.23.0

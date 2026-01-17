@@ -2,6 +2,7 @@ from typing import List
 
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
+from cecli.helpers.conversation import ConversationFiles, ConversationManager
 
 
 class ResetCommand(BaseCommand):
@@ -14,9 +15,13 @@ class ResetCommand(BaseCommand):
             # Drop all files
             cls._drop_all_files(io, coder, kwargs.get("original_read_only_fnames"))
 
-            # Clear chat history
-            coder.done_messages = []
-            coder.cur_messages = []
+            # Clear everything in ConversationManager and ConversationFiles
+            ConversationManager.reset()  # Clear all messages and reset manager
+            ConversationFiles.reset()  # Clear all file caches
+
+            # Re-initialize ConversationManager with current coder
+            ConversationManager.initialize(coder)
+            ConversationFiles.initialize(coder)
 
             # Clear TUI output if available
             if coder.tui and coder.tui():

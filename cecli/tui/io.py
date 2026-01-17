@@ -170,7 +170,6 @@ class TextualInputOutput(InputOutput):
             pretty: Whether to use pretty formatting (unused in TUI, kept for compatibility)
         """
         if not message:
-            self.tool_warning("Empty response received from LLM. Check your provider account?")
             return
 
         # Use the streaming path so markdown rendering is applied

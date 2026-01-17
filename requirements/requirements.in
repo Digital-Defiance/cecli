@@ -31,6 +31,7 @@ google-generativeai>=0.8.5
 mcp>=1.24.0
 textual>=6.0.0
 truststore
+xxhash>=3.6.0
 
 # Replaced networkx with rustworkx for better performance in repomap
 rustworkx>=0.15.0

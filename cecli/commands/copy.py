@@ -4,6 +4,7 @@ import pyperclip
 
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
+from cecli.helpers.conversation import ConversationManager
 
 
 class CopyCommand(BaseCommand):
@@ -12,7 +13,8 @@ class CopyCommand(BaseCommand):
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
-        all_messages = coder.done_messages + coder.cur_messages
+        # Get all messages from ConversationManager
+        all_messages = ConversationManager.get_messages_dict()
         assistant_messages = [msg for msg in reversed(all_messages) if msg["role"] == "assistant"]
 
         if not assistant_messages:

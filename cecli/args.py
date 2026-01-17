@@ -450,12 +450,6 @@ def get_parser(default_config_files, git_root):
         default=default_chat_history_file,
         help=f"Specify the chat history file (default: {default_chat_history_file})",
     ).complete = shtab.FILE
-    group.add_argument(
-        "--restore-chat-history",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Restore the previous chat history messages (default: False)",
-    )
     #########
     group = parser.add_argument_group("Input settings")
     group.add_argument(

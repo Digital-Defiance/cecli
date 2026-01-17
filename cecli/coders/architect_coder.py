@@ -1,6 +1,7 @@
 import asyncio
 
 from ..commands import SwitchCoderSignal
+from ..helpers.conversation import ConversationManager, MessageTag
 from .ask_coder import AskCoder
 from .base_coder import Coder
 
@@ -45,19 +46,71 @@ class ArchitectCoder(AskCoder):
         new_kwargs = dict(io=self.io, from_coder=self)
         new_kwargs.update(kwargs)
 
+        # Save current conversation state
+        original_all_messages = ConversationManager.get_messages()
+        original_coder = self
+
         editor_coder = await Coder.create(**new_kwargs)
-        editor_coder.cur_messages = []
-        editor_coder.done_messages = []
+
+        # Clear ALL messages for editor coder (start fresh)
+        ConversationManager.reset()
+
+        # Re-initialize ConversationManager with editor coder
+        ConversationManager.initialize(editor_coder)
+        ConversationManager.clear_cache()
 
         if self.verbose:
             editor_coder.show_announcements()
 
         try:
             await editor_coder.generate(user_message=content, preproc=False)
+
+            # Save editor's ALL messages
+            editor_all_messages = ConversationManager.get_messages()
+
+            # Clear manager and restore original state
+            ConversationManager.reset()
+            ConversationManager.initialize(original_coder or self)
+
+            # Restore original messages with all metadata
+            for msg in original_all_messages:
+                ConversationManager.add_message(
+                    msg.to_dict(),
+                    MessageTag(msg.tag),
+                    priority=msg.priority,
+                    timestamp=msg.timestamp,
+                    mark_for_delete=msg.mark_for_delete,
+                    hash_key=msg.hash_key,
+                )
+
+            # Append editor's DONE and CUR messages (but not other tags like SYSTEM)
+            for msg in editor_all_messages:
+                if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
+                    ConversationManager.add_message(
+                        msg.to_dict(),
+                        MessageTag(msg.tag),
+                        priority=msg.priority,
+                        timestamp=msg.timestamp,
+                        mark_for_delete=msg.mark_for_delete,
+                        hash_key=msg.hash_key,
+                    )
+
             self.move_back_cur_messages("I made those changes to the files.")
             self.total_cost = editor_coder.total_cost
             self.coder_commit_hashes = editor_coder.coder_commit_hashes
         except Exception as e:
             self.io.tool_error(e)
+            # Restore original state on error
+            ConversationManager.reset()
+            ConversationManager.initialize(original_coder or self)
+            for msg in original_all_messages:
+                ConversationManager.add_message(
+                    msg.to_dict(),
+                    MessageTag(msg.tag),
+                    priority=msg.priority,
+                    timestamp=msg.timestamp,
+                    mark_for_delete=msg.mark_for_delete,
+                    hash_key=msg.hash_key,
+                )
 
         raise SwitchCoderSignal(main_model=self.main_model, edit_format="architect")

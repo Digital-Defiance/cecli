@@ -111,7 +111,7 @@ class RepoMap:
     }
 
     @staticmethod
-    def get_file_stub(fname, io):
+    def get_file_stub(fname, io, line_numbers=False):
         """Generate a complete structural outline of a source code file.
 
         Args:
@@ -138,7 +138,7 @@ class RepoMap:
         lois = [tag.line for tag in tags if tag.kind == "def"]
 
         # Reuse existing tree rendering
-        outline = rm.render_tree(fname, rel_fname, lois)
+        outline = rm.render_tree(fname, rel_fname, lois, line_numbers=line_numbers)
 
         return f"{outline}"
 
@@ -189,6 +189,8 @@ class RepoMap:
         self.map_cache = {}
         self.map_processing_time = 0
         self.last_map = None
+        # Store single global combined repomap dict (not keyed by cache key)
+        self.combined_map_dict = {}
 
         # Initialize cache for mentioned identifiers similarity
         self._last_mentioned_idents = None
@@ -250,7 +252,7 @@ class RepoMap:
             max_map_tokens = target
 
         try:
-            files_listing = self.get_ranked_tags_map(
+            combined_dict, new_dict = self.get_ranked_tags_map(
                 chat_files,
                 other_files,
                 max_map_tokens,
@@ -263,26 +265,33 @@ class RepoMap:
             self.max_map_tokens = 0
             return
 
-        if not files_listing:
+        if not combined_dict and not new_dict:
             return
 
+        # For backward compatibility, use combined_dict as files_listing
+        files_listing = combined_dict
+
         if self.verbose:
-            num_tokens = self.token_count(files_listing)
-            self.io.tool_output(f"Repo-map: {num_tokens / 1024:.1f} k-tokens")
+            # Estimate token count for the dict
+            # This is rough - we'd need to format it to get accurate count
+            # For now, just note that we have data
+            self.io.tool_output(f"Repo-map: generated dict with {len(files_listing)} files")
 
         if chat_files:
             other = "other "
         else:
             other = ""
 
-        if self.repo_content_prefix:
-            repo_content = self.repo_content_prefix.format(other=other)
-        else:
-            repo_content = ""
-
-        repo_content += files_listing
-
-        return repo_content
+        # Return dict with combined dict and new dict for backward compatibility
+        return {
+            "combined_dict": combined_dict,
+            "new_dict": new_dict,
+            "files": combined_dict,  # For backward compatibility
+            "prefix": (
+                self.repo_content_prefix.format(other=other) if self.repo_content_prefix else ""
+            ),
+            "has_chat_files": bool(chat_files),
+        }
 
     def get_rel_fname(self, fname):
         try:
@@ -1016,11 +1025,7 @@ class RepoMap:
             mentioned_idents = set()
 
         # Create a cache key
-        cache_key = [
-            tuple(sorted(chat_fnames)) if chat_fnames else None,
-            len(other_fnames) if other_fnames else None,
-            max_map_tokens,
-        ]
+        cache_key = [max_map_tokens]
 
         if self.refresh == "auto":
             # Handle mentioned_fnames normally
@@ -1031,6 +1036,11 @@ class RepoMap:
             # Handle mentioned_idents with similarity check
             cache_key_component = self._get_mentioned_idents_cache_component(mentioned_idents)
             cache_key.append(cache_key_component)
+        else:
+            cache_key += [
+                tuple(sorted(chat_fnames)) if chat_fnames else None,
+                len(other_fnames) if other_fnames else None,
+            ]
 
         cache_key = hash(str(tuple(cache_key)))
 
@@ -1052,17 +1062,33 @@ class RepoMap:
 
         # If not in cache or force_refresh is True, generate the map
         start_time = time.time()
-        result = self.get_ranked_tags_map_uncached(
-            chat_fnames, other_fnames, max_map_tokens, mentioned_fnames, mentioned_idents
+
+        # Get the current global combined dict
+        combined_dict = self.combined_map_dict
+
+        # Generate new dict and updated combined dict
+        combined_dict_updated, new_dict = self.get_ranked_tags_map_uncached(
+            chat_fnames,
+            other_fnames,
+            max_map_tokens,
+            mentioned_fnames,
+            mentioned_idents,
+            combined_dict,
         )
         end_time = time.time()
         self.map_processing_time = end_time - start_time
 
-        # Store the result in the cache
-        self.map_cache[cache_key] = result
-        self.last_map = result
+        # Store the updated combined dict globally
+        self.combined_map_dict = combined_dict_updated
 
-        return result
+        # Create the return value (tuple)
+        return_value = (combined_dict_updated, new_dict)
+
+        # Store the result in the cache
+        self.map_cache[cache_key] = return_value
+        self.last_map = return_value
+
+        return return_value
 
     def get_ranked_tags_map_uncached(
         self,
@@ -1071,6 +1097,7 @@ class RepoMap:
         max_map_tokens=None,
         mentioned_fnames=None,
         mentioned_idents=None,
+        combined_dict=None,
     ):
         self.io.profile("Start Rank Tags Map Uncached", start=True)
 
@@ -1099,53 +1126,92 @@ class RepoMap:
 
         ranked_tags = special_fnames + ranked_tags
 
-        num_tags = len(ranked_tags)
-        lower_bound = 0
-        upper_bound = num_tags
-        best_tree = None
-        best_tree_tokens = 0
+        # Build file -> tags dict
+        current_tokens = 0
+
+        # Estimate tokens per tag entry: filename + tag name + kind + line info
+        # Rough estimate: each tag entry ~16 tokens
 
         chat_rel_fnames = set(self.get_rel_fname(fname) for fname in chat_fnames)
 
-        self.tree_cache = dict()
+        # Generate full dict (without skipping based on combined_dict)
+        full_dict = {}
+        current_tokens = 0
 
-        middle = min(int(max_map_tokens // 25), num_tags)
-        while lower_bound <= upper_bound:
-            # dump(lower_bound, middle, upper_bound)
+        for tag in ranked_tags:
+            if isinstance(tag, tuple) and len(tag) == 1:
+                # Special file without tags: (fname,)
+                rel_fname = tag[0]
+                if rel_fname in chat_rel_fnames:
+                    continue
+                if rel_fname not in full_dict:
+                    full_dict[rel_fname] = {}
+                # Special files don't count towards token limit
+                continue
 
-            if middle > 1500:
-                show_tokens = f"{middle / 1000.0:.1f}K"
+            # Regular Tag object
+            rel_fname = tag.rel_fname
+            if rel_fname in chat_rel_fnames:
+                continue
+
+            if rel_fname not in full_dict:
+                full_dict[rel_fname] = {}
+
+            tag_name = tag.name
+            kind = tag.kind
+            specific_kind = tag.specific_kind
+            line = tag.line
+            start_line = tag.start_line
+            end_line = tag.end_line
+
+            # Use specific_kind if available, otherwise kind
+            display_kind = specific_kind if specific_kind else kind
+
+            full_dict[rel_fname][tag_name] = {
+                "kind": display_kind,
+                "line": line,
+                "start_line": start_line,
+                "end_line": end_line,
+            }
+
+            # Count this tag towards token limit
+            current_tokens += 16
+            if current_tokens >= max_map_tokens:
+                break
+
+        # Compute new_dict: items in full_dict but not in combined_dict
+        new_dict = {}
+        if combined_dict is None:
+            combined_dict = {}
+
+        for rel_fname, tags_info in full_dict.items():
+            if rel_fname not in combined_dict:
+                # New file
+                new_dict[rel_fname] = tags_info.copy()
             else:
-                show_tokens = str(middle)
+                # Check for new tags in existing file
+                new_tags = {}
+                for tag_name, tag_info in tags_info.items():
+                    if tag_name not in combined_dict[rel_fname]:
+                        new_tags[tag_name] = tag_info
+                if new_tags:
+                    new_dict[rel_fname] = new_tags
 
-            self.io.update_spinner(f"{UPDATING_REPO_MAP_MESSAGE}: {show_tokens} tokens")
-
-            tree = self.to_tree(ranked_tags[:middle], chat_rel_fnames)
-            num_tokens = self.token_count(tree)
-
-            pct_err = abs(num_tokens - max_map_tokens) / max_map_tokens
-            ok_err = 0.15
-            if (num_tokens <= max_map_tokens and num_tokens > best_tree_tokens) or pct_err < ok_err:
-                best_tree = tree
-                best_tree_tokens = num_tokens
-
-                if pct_err < ok_err:
-                    break
-
-            if num_tokens < max_map_tokens:
-                lower_bound = middle + 1
+        # Update combined_dict with new items
+        combined_dict_updated = combined_dict.copy()
+        for rel_fname, tags_info in new_dict.items():
+            if rel_fname not in combined_dict_updated:
+                combined_dict_updated[rel_fname] = tags_info.copy()
             else:
-                upper_bound = middle - 1
-
-            middle = int((lower_bound + upper_bound) // 2)
+                combined_dict_updated[rel_fname].update(tags_info)
 
         self.io.profile("Calculate Best Tree")
 
-        return best_tree
+        return combined_dict_updated, new_dict
 
     tree_cache = dict()
 
-    def render_tree(self, abs_fname, rel_fname, lois):
+    def render_tree(self, abs_fname, rel_fname, lois, line_numbers=False):
         mtime = self.get_mtime(abs_fname)
         key = (rel_fname, tuple(sorted(lois)), mtime)
 
@@ -1164,7 +1230,7 @@ class RepoMap:
                 rel_fname,
                 code,
                 color=False,
-                line_number=False,
+                line_number=line_numbers,
                 child_context=False,
                 last_line=False,
                 margin=0,
