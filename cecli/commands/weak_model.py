@@ -12,7 +12,7 @@ class WeakModelCommand(BaseCommand):
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
-        """Execute the weak_model command with given parameters."""
+        """Execute the weak-model command with given parameters."""
         arg_split = args.split(" ", 1)
         model_name = arg_split[0].strip()
         if not model_name:
@@ -135,27 +135,27 @@ class WeakModelCommand(BaseCommand):
 
     @classmethod
     def get_completions(cls, io, coder, args) -> List[str]:
-        """Get completion options for weak_model command."""
+        """Get completion options for weak-model command."""
         return models.get_chat_model_names()
 
     @classmethod
     def get_help(cls) -> str:
-        """Get help text for the weak_model command."""
+        """Get help text for the weak-model command."""
         help_text = super().get_help()
         help_text += "\nUsage:\n"
-        help_text += "  /weak_model <model-name>              # Switch to a new weak model\n"
+        help_text += "  /weak-model <model-name>              # Switch to a new weak model\n"
         help_text += (
-            "  /weak_model <model-name> <prompt>     # Use a specific weak model for a single"
+            "  /weak-model <model-name> <prompt>     # Use a specific weak model for a single"
             " prompt\n"
         )
         help_text += "\nExamples:\n"
         help_text += (
-            "  /weak_model gpt-4o-mini               # Switch to GPT-4o Mini as weak model\n"
+            "  /weak-model gpt-4o-mini               # Switch to GPT-4o Mini as weak model\n"
         )
         help_text += (
-            "  /weak_model claude-3-haiku            # Switch to Claude 3 Haiku as weak model\n"
+            "  /weak-model claude-3-haiku            # Switch to Claude 3 Haiku as weak model\n"
         )
-        help_text += '  /weak_model o1-mini "review this code" # Use o1-mini to review code\n'
+        help_text += '  /weak-model o1-mini "review this code" # Use o1-mini to review code\n'
         help_text += (
             "\nWhen switching weak models, the main model and editor model remain unchanged.\n"
         )
