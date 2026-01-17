@@ -209,25 +209,29 @@ class AgentCoder(Coder):
         return schemas
 
     async def initialize_mcp_tools(self):
-        await super().initialize_mcp_tools()
-        server_name = "Local"
-        if server_name not in [name for name, _ in self.mcp_tools]:
-            local_tools = self.get_local_tool_schemas()
-            if not local_tools:
-                return
+        if not self.mcp_manager:
+            self.mcp_manager = McpServerManager()
 
+        server_name = "Local"
+        server = self.mcp_manager.get_server(server_name)
+
+        # We have already initialized local server and its connected
+        # then no need to duplicate work
+        if server is not None and server.is_connected:
+            return
+
+        # If we dont have any tools for local server to use, no point in creating it then
+        local_tools = self.get_local_tool_schemas()
+        if not local_tools:
+            return
+
+        if server is None:
             local_server_config = {"name": server_name}
             local_server = LocalServer(local_server_config)
 
-            if not self.mcp_manager:
-                self.mcp_manager = McpServerManager()
-            if not self.mcp_manager.get_server(server_name):
-                await self.mcp_manager.add_server(local_server)
-            if not self.mcp_tools:
-                self.mcp_tools = []
-
-            if server_name not in [name for name, _ in self.mcp_tools]:
-                self.mcp_tools.append((local_server.name, local_tools))
+            await self.mcp_manager.add_server(local_server, connect=True)
+        else:
+            await self.mcp_manager.connect_server(server_name)
 
     async def _execute_local_tool_calls(self, tool_calls_list):
         tool_responses = []

@@ -42,6 +42,7 @@ cog.out(get_help_md())
 | **/history-search** | Fuzzy search your command history and paste the selected command into the chat. |
 | **/lint** | Lint and fix in-chat files or all dirty files if none in chat |
 | **/load** | Load and execute commands from a file |
+| **/load-mcp** | Load a MCP server by name |
 | **/ls** | List all known files and indicate which are included in the chat session |
 | **/map** | Print out the current repository map |
 | **/map-refresh** | Force a refresh of the repository map |
@@ -53,6 +54,7 @@ cog.out(get_help_md())
 | **/read-only** | Add files to the chat that are for reference only, or turn added files to read-only |
 | **/reasoning-effort** | Set the reasoning effort level (values: number or low/medium/high depending on model) |
 | **/report** | Report a problem by opening a GitHub Issue |
+| **/remove-mcp** | Remove a MCP server by name |
 | **/reset** | Drop all files and clear the chat history |
 | **/run** | Run a shell command and optionally add the output to the chat (alias: !) |
 | **/save** | Save commands to a file that can reconstruct the current chat session's files |

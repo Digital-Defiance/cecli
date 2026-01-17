@@ -1,7 +1,9 @@
 import asyncio
-import logging
 
-from cecli.mcp.server import McpServer
+from litellm import experimental_mcp_client
+
+from cecli.mcp.server import LocalServer, McpServer
+from cecli.tools.utils.registry import ToolRegistry
 
 
 class McpServerManager:
@@ -73,35 +75,6 @@ class McpServerManager:
         except StopIteration:
             return None
 
-    async def connect_all(self) -> None:
-        """Connect to all MCP servers while skipping ones that are not enabled."""
-        if self.is_connected:
-            self._log_verbose("Some MCP servers already connected")
-            return
-
-        self._log_verbose(f"Connecting to {len(self._servers)} MCP servers")
-
-        async def connect_server(server: McpServer) -> tuple[McpServer, bool]:
-            try:
-                session = await server.connect()
-                tools_result = await session.list_tools()
-                self._server_tools[server.name] = tools_result.tools
-                self._log_verbose(f"Connected to MCP server: {server.name}")
-                return (server, True)
-            except Exception as e:
-                if server.name != "unnamed-server":
-                    logging.error(f"Error connecting to MCP server {server.name}: {e}")
-                    self._log_error(f"Failed to connect to MCP server {server.name}: {e}")
-                return (server, False)
-
-        results = await asyncio.gather(
-            *[connect_server(server) for server in self._servers if server.is_enabled]
-        )
-
-        for server, success in results:
-            if success:
-                self._connected_servers.add(server)
-
     async def disconnect_all(self) -> None:
         """Disconnect from all MCP servers."""
         if not self._connected_servers:
@@ -145,24 +118,27 @@ class McpServerManager:
             self._log_warning(f"MCP server not found: {name}")
             return False
 
-        if not server.is_enabled:
-            self._log_verbose("MCP is not enabled.")
-            return False
-
         if server in self._connected_servers:
             self._log_verbose(f"MCP server already connected: {name}")
             return True
 
+        # We will handle local server differently since its only used for internal usage
+        # We'll pretend we connect and fetched all tools
+        if isinstance(server, LocalServer):
+            await server.connect()
+            self._connected_servers.add(server)
+            self._server_tools[server.name] = get_local_tool_schemas()
+            return True
+
         try:
             session = await server.connect()
-            tools_result = await session.list_tools()
-            self._server_tools[server.name] = tools_result.tools
+            tools = await experimental_mcp_client.load_mcp_tools(session=session, format="openai")
+            self._server_tools[server.name] = tools
             self._connected_servers.add(server)
             self._log_verbose(f"Connected to MCP server: {name}")
             return True
         except Exception as e:
             if server.name != "unnamed-server":
-                logging.error(f"Error connecting to MCP server {name}: {e}")
                 self._log_error(f"Failed to connect to MCP server {name}: {e}")
             return False
 
@@ -234,7 +210,7 @@ class McpServerManager:
         for server in self._servers:
             yield server
 
-    def get_server_tools(self, name: str) -> list | None:
+    def get_server_tools(self, name: str) -> list:
         """
         Get the tools for a specific server.
 
@@ -242,9 +218,9 @@ class McpServerManager:
             name: Name of the server
 
         Returns:
-            List of tools or None if server not found or not connected
+            List of tools or empty list if server not found or not connected
         """
-        return self._server_tools.get(name)
+        return self._server_tools.get(name, list())
 
     @property
     def all_tools(self) -> dict[str, list]:
@@ -255,3 +231,62 @@ class McpServerManager:
             Dictionary mapping server names to their tools
         """
         return self._server_tools.copy()
+
+    @classmethod
+    async def from_servers(
+        cls, servers: list[McpServer], io=None, verbose: bool = False
+    ) -> "McpServerManager":
+        """
+        Create an MCP Server Manager from a list of servers it should manage.
+        Automatically connects if the server is set to auto connect (by default it is)
+        """
+        mcp_manager = cls(servers=[], io=io, verbose=verbose)
+
+        async def add_server_with_retry(
+            server: McpServer, connect: bool = True, max_retries: int = 3
+        ) -> tuple[McpServer, bool]:
+            """Try to add and connect to a server with retries."""
+            if not connect:
+                success = await mcp_manager.add_server(server, connect=False)
+                return (server, success)
+
+            for _attempt in range(max_retries):
+                success = await mcp_manager.add_server(server, connect=True)
+                if success:
+                    return (server, True)
+            return (server, False)
+
+        tasks = []
+        for server in servers:
+            auto_connect = server.config.get("enabled", True)
+            tasks.append(add_server_with_retry(server, connect=auto_connect))
+
+        results = await asyncio.gather(*tasks)
+        for server, did_connect in results:
+            if not did_connect and server.name not in ["unnamed-server", "Local"]:
+                io.tool_warning(
+                    f"MCP tool initialization failed after multiple retries: {server.name}"
+                )
+
+        if verbose:
+            io.tool_output("MCP servers configured:")
+
+            for server, _ in results:
+                io.tool_output(f"  - {server.name}")
+
+                for tool in mcp_manager.get_server_tools(server.name):
+                    tool_name = tool.get("function", {}).get("name", "unknown")
+                    tool_desc = tool.get("function", {}).get("description", "").split("\n")[0]
+                    io.tool_output(f"    - {tool_name}: {tool_desc}")
+
+        return mcp_manager
+
+
+def get_local_tool_schemas():
+    """Returns the JSON schemas for all local tools using the tool registry."""
+    schemas = []
+    for tool_name in ToolRegistry.get_registered_tools():
+        tool_module = ToolRegistry.get_tool(tool_name)
+        if hasattr(tool_module, "SCHEMA"):
+            schemas.append(tool_module.SCHEMA)
+    return schemas
