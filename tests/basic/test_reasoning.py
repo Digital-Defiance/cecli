@@ -88,6 +88,7 @@ class TestReasoning:
         # Create mock args with debug=False to avoid AttributeError
         mock_args = MagicMock()
         mock_args.debug = False
+        mock_args.show_thinking = True
 
         coder = await Coder.create(model, None, io=io, stream=False, args=mock_args)
 
