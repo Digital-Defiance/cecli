@@ -460,8 +460,10 @@ class ConversationManager:
                 before_msg = messages_before[i]
                 after_msg = messages_after[i]
                 print(f"[DEBUG] Changed at index {i}:")
-                print(f"  Before: {str(before_msg.get('content', '')).split('\n', 1)[0]}...")
-                print(f"  After:  {str(after_msg.get('content', '')).split('\n', 1)[0]}...")
+                before_first_line = str(before_msg.get("content", "")).split("\n", 1)[0]
+                after_first_line = str(after_msg.get("content", "")).split("\n", 1)[0]
+                print(f"  Before: {before_first_line}...")
+                print(f"  After:  {after_first_line}...")
 
         # Note messages added/removed at end without verbose details
         if len(messages_before) > len(messages_after):
