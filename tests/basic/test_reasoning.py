@@ -159,6 +159,7 @@ class TestReasoning:
         # Create mock args with debug=False to avoid AttributeError
         mock_args = MagicMock()
         mock_args.debug = False
+        mock_args.show_thinking = True
 
         coder = await Coder.create(model, None, io=io, stream=False, args=mock_args)
 
@@ -193,6 +194,7 @@ class TestReasoning:
         # Create mock args with debug=False to avoid AttributeError
         mock_args = MagicMock()
         mock_args.debug = False
+        mock_args.show_thinking = True
 
         coder = await Coder.create(model, None, io=io, stream=True, args=mock_args)
 
@@ -262,10 +264,15 @@ class TestReasoning:
         io = InputOutput(pretty=False)
         io.assistant_output = MagicMock()
 
+        # Create mock args with debug=False to avoid AttributeError
+        mock_args = MagicMock()
+        mock_args.debug = False
+        mock_args.show_thinking = True
+
         # Setup model and coder
         model = Model("gpt-3.5-turbo")
         model.reasoning_tag = "think"  # Set to remove <think> tags
-        coder = await Coder.create(model, None, io=io, stream=False)
+        coder = await Coder.create(model, None, io=io, stream=False, args=mock_args)
 
         # Test data
         reasoning_content = "My step-by-step reasoning process"
@@ -342,6 +349,7 @@ class TestReasoning:
         # Create mock args with debug=False to avoid AttributeError
         mock_args = MagicMock()
         mock_args.debug = False
+        mock_args.show_thinking = True
 
         coder = await Coder.create(model, None, io=io, stream=True, args=mock_args)
 
@@ -449,6 +457,7 @@ End"""
         # Create mock args with debug=False to avoid AttributeError
         mock_args = MagicMock()
         mock_args.debug = False
+        mock_args.show_thinking = True
 
         coder = await Coder.create(model, None, io=io, stream=False, args=mock_args)
 
@@ -526,6 +535,7 @@ End"""
         # Create mock args with debug=False to avoid AttributeError
         mock_args = MagicMock()
         mock_args.debug = False
+        mock_args.show_thinking = True
 
         coder = await Coder.create(model, None, io=io, stream=True, args=mock_args)
 
