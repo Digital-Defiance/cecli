@@ -59,6 +59,12 @@ class TestRepoMap:
             file2_content = "def function2():\n    return 'Hello from file2'\n"
             file3_content = "def function3():\n    return 'Hello from file3'\n"
 
+            rel_paths = {
+                "file1.py": os.path.relpath(os.path.join(temp_dir, "file1.py")),
+                "file2.py": os.path.relpath(os.path.join(temp_dir, "file2.py")),
+                "file3.py": os.path.relpath(os.path.join(temp_dir, "file3.py")),
+            }
+
             with open(os.path.join(temp_dir, "file1.py"), "w") as f:
                 f.write(file1_content)
             with open(os.path.join(temp_dir, "file2.py"), "w") as f:
@@ -88,14 +94,14 @@ class TestRepoMap:
             files_dict = initial_map["files"]
 
             # Check if functions are in their respective files
-            assert "file1.py" in files_dict
-            assert "function1" in files_dict["file1.py"]
+            assert rel_paths["file1.py"] in files_dict
+            assert "function1" in files_dict[rel_paths["file1.py"]]
 
-            assert "file2.py" in files_dict
-            assert "function2" in files_dict["file2.py"]
+            assert rel_paths["file2.py"] in files_dict
+            assert "function2" in files_dict[rel_paths["file2.py"]]
 
-            assert "file3.py" in files_dict
-            assert "function3" in files_dict["file3.py"]
+            assert rel_paths["file3.py"] in files_dict
+            assert "function3" in files_dict[rel_paths["file3.py"]]
 
             # Add a new function to file1.py
             with open(os.path.join(temp_dir, "file1.py"), "a") as f:
@@ -115,8 +121,8 @@ class TestRepoMap:
             assert isinstance(second_map, dict)
             assert "files" in second_map
             files_dict = second_map["files"]
-            assert "file1.py" in files_dict
-            assert "functionNEW" in files_dict["file1.py"]
+            assert rel_paths["file1.py"] in files_dict
+            assert "functionNEW" in files_dict[rel_paths["file1.py"]]
 
             # close the open cache files, so Windows won't error
             del repo_map
@@ -129,6 +135,11 @@ class TestRepoMap:
             # Create two source files with one function each
             file1_content = "def function1():\n    return 'Hello from file1'\n"
             file2_content = "def function2():\n    return 'Hello from file2'\n"
+
+            rel_paths = {
+                "file1.py": os.path.relpath(os.path.join(temp_dir, "file1.py")),
+                "file2.py": os.path.relpath(os.path.join(temp_dir, "file2.py")),
+            }
 
             with open(os.path.join(temp_dir, "file1.py"), "w") as f:
                 f.write(file1_content)
@@ -160,12 +171,12 @@ class TestRepoMap:
             assert isinstance(initial_map, dict)
             assert "files" in initial_map
             files_dict = initial_map["files"]
-            assert "file1.py" in files_dict
-            assert "function1" in files_dict["file1.py"]
-            assert "file2.py" in files_dict
-            assert "function2" in files_dict["file2.py"]
+            assert rel_paths["file1.py"] in files_dict
+            assert "function1" in files_dict[rel_paths["file1.py"]]
+            assert rel_paths["file2.py"] in files_dict
+            assert "function2" in files_dict[rel_paths["file2.py"]]
             # functionNEW should not be present yet
-            assert "functionNEW" not in files_dict.get("file1.py", {})
+            assert "functionNEW" not in files_dict.get(rel_paths["file1.py"], {})
 
             # Add a new function to file1.py
             with open(os.path.join(temp_dir, "file1.py"), "a") as f:
@@ -181,8 +192,8 @@ class TestRepoMap:
             assert isinstance(final_map, dict)
             assert "files" in final_map
             final_files_dict = final_map["files"]
-            assert "file1.py" in final_files_dict
-            assert "functionNEW" in final_files_dict["file1.py"]
+            assert rel_paths["file1.py"] in final_files_dict
+            assert "functionNEW" in final_files_dict[rel_paths["file1.py"]]
             assert initial_map != final_map, "RepoMap should change with force_refresh"
 
             # close the open cache files, so Windows won't error
