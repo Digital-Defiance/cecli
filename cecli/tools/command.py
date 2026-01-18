@@ -1,4 +1,5 @@
 # Import necessary functions
+from cecli.helpers.background_commands import BackgroundCommandManager
 from cecli.run_cmd import run_cmd_subprocess
 from cecli.tools.utils.base_tool import BaseTool
 
@@ -17,6 +18,15 @@ class Tool(BaseTool):
                         "type": "string",
                         "description": "The shell command to execute.",
                     },
+                    "background": {
+                        "type": "boolean",
+                        "description": "Run command in background (non-blocking).",
+                        "default": False,
+                    },
+                    "stop_background": {
+                        "type": "string",
+                        "description": "Command string to stop if running in background.",
+                    },
                 },
                 "required": ["command_string"],
             },
@@ -24,80 +34,125 @@ class Tool(BaseTool):
     }
 
     @classmethod
-    async def execute(cls, coder, command_string):
+    async def execute(cls, coder, command_string, background=False, stop_background=None):
         """
-        Execute a non-interactive shell command after user confirmation.
+        Execute a shell command, optionally in background.
         """
-        try:
-            # Ask for confirmation before executing.
-            # allow_never=True enables the 'Always' option.
-            # confirm_ask handles remembering the 'Always' choice based on the subject.
-            command_string = coder.format_command_with_prefix(command_string)
+        # Handle stopping background commands
+        if stop_background:
+            return await cls._stop_background_command(coder, stop_background)
 
-            confirmed = (
-                True
-                if coder.skip_cli_confirmations
-                else await coder.io.confirm_ask(
-                    "Allow execution of this command?",
-                    subject=command_string,
-                    explicit_yes_required=True,  # Require explicit 'yes' or 'always'
-                    allow_never=True,  # Enable the 'Always' option
-                    group_response="Command Tool",
-                )
+        # Check for implicit background (trailing & on Linux)
+        if not background and command_string.strip().endswith("&"):
+            background = True
+            command_string = command_string.strip()[:-1].strip()
+
+        # Get user confirmation
+        confirmed = await cls._get_confirmation(coder, command_string, background)
+        if not confirmed:
+            return "Command execution skipped by user."
+
+        if background:
+            return await cls._execute_background(coder, command_string)
+        else:
+            return await cls._execute_foreground(coder, command_string)
+
+    @classmethod
+    async def _get_confirmation(cls, coder, command_string, background):
+        """Get user confirmation for command execution."""
+        if coder.skip_cli_confirmations:
+            return True
+
+        command_string = coder.format_command_with_prefix(command_string)
+
+        if background:
+            prompt = "Allow execution of this background command?"
+        else:
+            prompt = "Allow execution of this command?"
+
+        return await coder.io.confirm_ask(
+            prompt,
+            subject=command_string,
+            explicit_yes_required=True,
+            allow_never=True,
+            group_response="Command Tool",
+        )
+
+    @classmethod
+    async def _execute_background(cls, coder, command_string):
+        """
+        Execute command in background.
+        """
+        coder.io.tool_output(f"⚙️ Starting background command: {command_string}")
+
+        # Use static manager to start background command
+        command_key = BackgroundCommandManager.start_background_command(
+            command_string, verbose=coder.verbose, cwd=coder.root, max_buffer_size=4096
+        )
+
+        return (
+            f"Background command started: {command_string}\n"
+            f"Command key: {command_key}\n"
+            "Output will be injected into chat stream."
+        )
+
+    @classmethod
+    async def _execute_foreground(cls, coder, command_string):
+        """
+        Execute command in foreground (blocking).
+        """
+        should_print = True
+        tui = None
+        if coder.tui and coder.tui():
+            tui = coder.tui()
+            should_print = False
+
+        coder.io.tool_output(f"⚙️ Executing shell command: {command_string}")
+
+        # Use run_cmd_subprocess for non-interactive execution
+        exit_status, combined_output = run_cmd_subprocess(
+            command_string,
+            verbose=coder.verbose,
+            cwd=coder.root,
+            should_print=should_print,
+        )
+
+        # Format the output for the result message
+        output_content = combined_output or ""
+        output_limit = coder.large_file_token_threshold
+        if len(output_content) > output_limit:
+            output_content = (
+                output_content[:output_limit]
+                + f"\n... (output truncated at {output_limit} characters, based on"
+                " large_file_token_threshold)"
             )
 
-            if not confirmed:
-                # This happens if the user explicitly says 'no' this time.
-                # If 'Always' was chosen previously, confirm_ask returns True directly.
-                coder.io.tool_output(f"Skipped execution of shell command: {command_string}")
-                return "Shell command execution skipped by user."
+        if tui:
+            coder.io.tool_output(output_content)
 
-            should_print = True
-            tui = None
-            if coder.tui and coder.tui():
-                tui = coder.tui()
-                should_print = False
+        if exit_status == 0:
+            return f"Shell command executed successfully (exit code 0). Output:\n{output_content}"
+        else:
+            return f"Shell command failed with exit code {exit_status}. Output:\n{output_content}"
 
-            # Proceed with execution if confirmed is True
-            coder.io.tool_output(f"⚙️ Executing non-interactive shell command: {command_string}")
+    @classmethod
+    async def _stop_background_command(cls, coder, command_key):
+        """
+        Stop a running background command.
+        """
+        success, output, exit_code = BackgroundCommandManager.stop_background_command(command_key)
 
-            # Use run_cmd_subprocess for non-interactive execution
-            exit_status, combined_output = run_cmd_subprocess(
-                command_string,
-                verbose=coder.verbose,
-                cwd=coder.root,  # Execute in the project root
-                should_print=should_print,
+        if success:
+            return (
+                f"Background command stopped: {command_key}\n"
+                f"Exit code: {exit_code}\n"
+                f"Final output:\n{output}"
             )
+        else:
+            return output  # Error message from manager
 
-            # Format the output for the result message, include more content
-            output_content = combined_output or ""
-            # Use the existing token threshold constant as the character limit for truncation
-            output_limit = coder.large_file_token_threshold
-            if len(output_content) > output_limit:
-                # Truncate and add a clear message using the constant value
-                output_content = (
-                    output_content[:output_limit]
-                    + f"\n... (output truncated at {output_limit} characters, based on"
-                    " large_file_token_threshold)"
-                )
-
-            if tui:
-                coder.io.tool_output(output_content)
-
-            if exit_status == 0:
-                return (
-                    f"Shell command executed successfully (exit code 0). Output:\n{output_content}"
-                )
-            else:
-                return (
-                    f"Shell command failed with exit code {exit_status}. Output:\n{output_content}"
-                )
-
-        except Exception as e:
-            coder.io.tool_error(
-                f"Error executing non-interactive shell command '{command_string}': {str(e)}"
-            )
-            # Optionally include traceback for debugging if verbose
-            # if coder.verbose:
-            #     coder.io.tool_error(traceback.format_exc())
-            return f"Error executing command: {str(e)}"
+    @classmethod
+    async def _handle_errors(cls, coder, command_string, e):
+        """Handle errors during command execution."""
+        coder.io.tool_error(f"Error executing shell command '{command_string}': {str(e)}")
+        return f"Error executing command: {str(e)}"

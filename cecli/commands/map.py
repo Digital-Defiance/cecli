@@ -2,6 +2,7 @@ from typing import List
 
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
+from cecli.helpers.conversation import ConversationChunks
 
 
 class MapCommand(BaseCommand):
@@ -13,7 +14,8 @@ class MapCommand(BaseCommand):
         """Execute the map command with given parameters."""
         repo_map = coder.get_repo_map()
         if repo_map:
-            io.tool_output(repo_map)
+            repo_string = ConversationChunks.get_repo_map_string(repo_map)
+            io.tool_output(repo_string)
         else:
             io.tool_output("No repository map available.")
 

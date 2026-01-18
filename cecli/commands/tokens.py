@@ -2,6 +2,7 @@ from typing import List
 
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
+from cecli.helpers.conversation import ConversationManager
 from cecli.utils import is_image_file
 
 
@@ -35,7 +36,7 @@ class TokensCommand(BaseCommand):
         res.append((tokens, "system messages", ""))
 
         # chat history
-        msgs = coder.done_messages + coder.cur_messages
+        msgs = ConversationManager.get_messages_dict()
         if msgs:
             tokens = coder.main_model.token_count(msgs)
             res.append((tokens, "chat history", "use /clear to clear"))

@@ -5,7 +5,6 @@ from cecli.tools.utils.helpers import (
     determine_line_range,
     find_pattern_indices,
     format_tool_result,
-    generate_unified_diff_snippet,
     handle_tool_error,
     select_occurrence_index,
     validate_file_for_edit,
@@ -90,7 +89,6 @@ class Tool(BaseTool):
                 return "Warning: No changes made (deletion would not change file)"
 
             # 5. Generate diff for feedback
-            diff_snippet = generate_unified_diff_snippet(original_content, new_content, rel_path)
             num_deleted = end_line - start_line + 1
             num_occurrences = len(start_pattern_indices)
             occurrence_str = f"occurrence {occurrence} of " if num_occurrences > 1 else ""
@@ -107,7 +105,6 @@ class Tool(BaseTool):
                     "",
                     dry_run=True,
                     dry_run_message=dry_run_message,
-                    diff_snippet=diff_snippet,
                 )
 
             # 7. Apply Change (Not dry run)
@@ -143,7 +140,6 @@ class Tool(BaseTool):
                 tool_name,
                 success_message,
                 change_id=final_change_id,
-                diff_snippet=diff_snippet,
             )
 
         except ToolError as e:

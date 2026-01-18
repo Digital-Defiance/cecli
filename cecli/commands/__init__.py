@@ -24,6 +24,7 @@ from .diff import DiffCommand
 # Import and register commands
 from .drop import DropCommand
 from .editor import EditCommand, EditorCommand
+from .editor_model import EditorModelCommand
 from .exit import ExitCommand
 from .git import GitCommand
 from .help import HelpCommand
@@ -31,6 +32,7 @@ from .history_search import HistorySearchCommand
 from .lint import LintCommand
 from .list_sessions import ListSessionsCommand
 from .load import LoadCommand
+from .load_mcp import LoadMcpCommand
 from .load_session import LoadSessionCommand
 from .load_skill import LoadSkillCommand
 from .ls import LsCommand
@@ -44,6 +46,7 @@ from .quit import QuitCommand
 from .read_only import ReadOnlyCommand
 from .read_only_stub import ReadOnlyStubCommand
 from .reasoning_effort import ReasoningEffortCommand
+from .remove_mcp import RemoveMcpCommand
 from .remove_skill import RemoveSkillCommand
 from .report import ReportCommand
 from .reset import ResetCommand
@@ -110,6 +113,7 @@ CommandRegistry.register(ReadOnlyStubCommand)
 CommandRegistry.register(AddCommand)
 CommandRegistry.register(ModelCommand)
 CommandRegistry.register(WeakModelCommand)
+CommandRegistry.register(EditorModelCommand)
 CommandRegistry.register(WebCommand)
 CommandRegistry.register(LintCommand)
 CommandRegistry.register(TestCommand)
@@ -125,6 +129,8 @@ CommandRegistry.register(CommandPrefixCommand)
 CommandRegistry.register(LoadSkillCommand)
 CommandRegistry.register(RemoveSkillCommand)
 CommandRegistry.register(TerminalSetupCommand)
+CommandRegistry.register(LoadMcpCommand)
+CommandRegistry.register(RemoveMcpCommand)
 
 
 __all__ = [
@@ -175,6 +181,7 @@ __all__ = [
     "AddCommand",
     "ModelCommand",
     "WeakModelCommand",
+    "EditorModelCommand",
     "WebCommand",
     "LintCommand",
     "TestCommand",
@@ -192,4 +199,6 @@ __all__ = [
     "TerminalSetupCommand",
     "SwitchCoderSignal",
     "Commands",
+    "LoadMcpCommand",
+    "RemoveMcpCommand",
 ]

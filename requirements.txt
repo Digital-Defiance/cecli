@@ -580,6 +580,10 @@ wcwidth==0.2.14
     # via
     #   -c requirements/common-constraints.txt
     #   prompt-toolkit
+xxhash==3.6.0
+    # via
+    #   -c requirements/common-constraints.txt
+    #   -r requirements/requirements.in
 yarl==1.22.0
     # via
     #   -c requirements/common-constraints.txt

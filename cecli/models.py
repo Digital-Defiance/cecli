@@ -6,6 +6,7 @@ import json
 import math
 import os
 import platform
+import random
 import sys
 import time
 from dataclasses import dataclass, fields
@@ -17,6 +18,8 @@ from PIL import Image
 
 from cecli import __version__
 from cecli.dump import dump
+from cecli.exceptions import LiteLLMExceptions
+from cecli.helpers import nested
 from cecli.helpers.file_searcher import handle_core_files
 from cecli.helpers.model_providers import ModelProviderManager
 from cecli.helpers.requests import model_request_parser
@@ -120,6 +123,12 @@ class ModelSettings:
     remove_reasoning: Optional[str] = None
     system_prompt_prefix: Optional[str] = None
     accepts_settings: Optional[list] = None
+    retries: Optional[dict] = None
+    retry_backoff_factor: float = 1.5
+    retry_on_unavailable: bool = True
+    retry_timeout: float = 30
+    request_timeout: int = request_timeout
+    debug: bool = False
 
 
 MODEL_SETTINGS = []
@@ -309,6 +318,8 @@ class Model(ModelSettings):
         verbose=False,
         io=None,
         override_kwargs=None,
+        retries=None,
+        debug=False,
     ):
         provided_model = model or ""
         if isinstance(provided_model, Model):
@@ -343,6 +354,9 @@ class Model(ModelSettings):
         self.configure_model_settings(model)
         self._apply_provider_defaults()
         self.get_weak_model(weak_model)
+        self.retries = retries
+        self.debug = debug
+
         if editor_model is False:
             self.editor_model_name = None
         else:
@@ -406,7 +420,6 @@ class Model(ModelSettings):
             self.edit_format = "diff"
             self.use_repo_map = True
             self.use_temperature = False
-            self.system_prompt_prefix = "Formatting re-enabled. "
             self.system_prompt_prefix = "Formatting re-enabled. "
             if "reasoning_effort" not in self.accepts_settings:
                 self.accepts_settings.append("reasoning_effort")
@@ -890,7 +903,15 @@ class Model(ModelSettings):
         return self.name.startswith("ollama/") or self.name.startswith("ollama_chat/")
 
     async def send_completion(
-        self, messages, functions, stream, temperature=None, tools=None, max_tokens=None
+        self,
+        messages,
+        functions,
+        stream,
+        temperature=None,
+        tools=None,
+        max_tokens=None,
+        min_wait=0,
+        max_wait=2,
     ):
         if os.environ.get("CECLI_SANITY_CHECK_TURNS"):
             sanity_check_messages(messages)
@@ -904,6 +925,10 @@ class Model(ModelSettings):
                     msg_trunc = message.get("content")[:30]
                 print(f"{msg_role} ({len(msg_content)}): {msg_trunc}")
         kwargs = dict(model=self.name, stream=stream)
+
+        if kwargs["stream"]:
+            kwargs["stream_options"] = {"include_usage": True}
+
         if self.use_temperature is not False:
             if temperature is None:
                 if isinstance(self.use_temperature, bool):
@@ -937,28 +962,89 @@ class Model(ModelSettings):
             kwargs["timeout"] = request_timeout
         if self.verbose:
             dump(kwargs)
+
+        if self.debug:
+            self._log_messages(messages)
+            kwargs["logger_fn"] = self._log_request
+
         kwargs["messages"] = messages
-        if not self.is_anthropic():
+
+        if not self.is_anthropic() and not self.caches_by_default:
             kwargs["cache_control_injection_points"] = [
                 {"location": "message", "role": "system"},
                 {"location": "message", "index": -1},
                 {"location": "message", "index": -2},
             ]
+
         if "GITHUB_COPILOT_TOKEN" in os.environ or self.name.startswith("github_copilot/"):
             if "extra_headers" not in kwargs:
                 kwargs["extra_headers"] = {
                     "Editor-Version": f"cecli/{__version__}",
                     "Copilot-Integration-Id": "vscode-chat",
                 }
-        try:
-            res = await litellm.acompletion(**kwargs)
-        except Exception as err:
-            print(f"LiteLLM API Error: {str(err)}")
-            res = self.model_error_response()
-            if self.verbose:
-                print(f"LiteLLM API Error: {str(err)}")
-                raise
-        return hash_object, res
+
+        litellm_ex = LiteLLMExceptions()
+        retry_delay = 0.125
+
+        if self.retries:
+            retry_config = dict()
+            try:
+                retry_config = json.loads(self.retries)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                retry_config = dict()
+                pass
+
+            self.retry_on_unavailable = bool(
+                nested.getter(retry_config, "retry-on-unavailable", True)
+            )
+            self.retry_backoff_factor = float(
+                nested.getter(retry_config, "retry-backoff-factor", 1.5)
+            )
+            self.retry_timeout = float(nested.getter(retry_config, "retry-timeout", 30))
+
+        while True:
+            try:
+                # Add randomized random sleep so improve model provider caching
+                # Caches take time to generate, so let them do it
+                if self.caches_by_default:
+                    if random.random() < 0.25:
+                        await asyncio.sleep(random.uniform(min_wait, max_wait))
+
+                res = await litellm.acompletion(**kwargs)
+                return hash_object, res
+            except litellm.ContextWindowExceededError as err:
+                raise err
+            except litellm_ex.exceptions_tuple() as err:
+                ex_info = litellm_ex.get_ex_info(err)
+                should_retry = ex_info.retry
+                if ex_info.name == "ServiceUnavailableError":
+                    should_retry = should_retry or self.retry_on_unavailable
+
+                if should_retry:
+                    retry_delay *= self.retry_backoff_factor
+                    if retry_delay > self.retry_timeout:
+                        should_retry = False
+
+                # Check for non-retryable RateLimitError within ServiceUnavailableError
+                if (
+                    isinstance(err, litellm.ServiceUnavailableError)
+                    and "RateLimitError" in str(err)
+                    and 'status_code: 429, message: "Resource has been exhausted' in str(err)
+                ):
+                    should_retry = False
+
+                if not should_retry:
+                    print(f"LiteLLM API Error: {str(err)}")
+                    if ex_info.description:
+                        print(ex_info.description)
+                    if stream:
+                        return hash_object, self.model_error_response_stream()
+                    else:
+                        return hash_object, self.model_error_response()
+
+                print(f"Retrying in {retry_delay:.1f} seconds...")
+                await asyncio.sleep(retry_delay)
+                continue
 
     async def simple_send_with_retries(self, messages, max_tokens=None):
         from cecli.exceptions import LiteLLMExceptions
@@ -973,7 +1059,13 @@ class Model(ModelSettings):
                 _hash, response = await self.send_completion(
                     messages=messages, functions=None, stream=False, max_tokens=max_tokens
                 )
-                if not response or not hasattr(response, "choices") or not response.choices:
+                if (
+                    not response
+                    or not hasattr(response, "choices")
+                    or not response.choices
+                    or nested.getter(response, "choices.0.message.content")
+                    == nested.getter(self.model_error_response(), "choices.0.message.content")
+                ):
                     return None
                 res = response.choices[0].message.content
                 from cecli.reasoning_tags import remove_reasoning_content
@@ -997,21 +1089,41 @@ class Model(ModelSettings):
             except AttributeError:
                 return None
 
-    async def model_error_response(self):
-        for i in range(1):
-            await asyncio.sleep(0.1)
-            yield litellm.ModelResponse(
-                choices=[
-                    litellm.Choices(
-                        finish_reason="stop",
-                        index=0,
-                        message=litellm.Message(
-                            content="Model API Response Error. Please retry the previous request"
-                        ),
-                    )
-                ],
-                model=self.name,
-            )
+    def model_error_response(self):
+        return litellm.ModelResponse(
+            choices=[
+                litellm.Choices(
+                    finish_reason="stop",
+                    index=0,
+                    message=litellm.Message(
+                        content="Model API Response Error. Please retry the previous request"
+                    ),
+                )
+            ],
+            model=self.name,
+        )
+
+    async def model_error_response_stream(self):
+        yield self.model_error_response()
+
+    def _log_messages(self, messages, name="message"):
+        """
+        Log conversation messages to a JSON file.
+        """
+        os.makedirs(".cecli/logs/messages", exist_ok=True)
+        with open(f".cecli/logs/messages/{name}-{time.time()}.log", "w") as f:
+            json.dump(messages, f, indent=4, default=lambda o: "<not serializable>")
+
+    def _log_request(self, model_call_dict):
+        """
+        Log model call details to a JSON file.
+        """
+        os.makedirs(".cecli/logs/litellm", exist_ok=True)
+        log_file_path = f".cecli/logs/litellm/request-{time.time()}.log"
+
+        with open(log_file_path, "a", encoding="utf-8") as f:
+            json.dump(model_call_dict, f, indent=4, default=lambda o: "<not serializable>")
+            f.write(",\n")
 
 
 def register_models(model_settings_fnames):

@@ -1,0 +1,743 @@
+import json
+from typing import Any, Dict, List
+
+import xxhash
+
+from cecli.utils import is_image_file
+
+from .files import ConversationFiles
+from .manager import ConversationManager
+from .tags import MessageTag
+
+
+class ConversationChunks:
+    """
+    Collection of conversation management functions as class methods.
+
+    This class provides a namespace for conversation-related functions
+    to reduce module exports and improve organization.
+    """
+
+    @classmethod
+    def initialize_conversation_system(cls, coder) -> None:
+        """
+        Initialize the conversation system with a coder instance.
+
+        Args:
+            coder: The coder instance to reference
+        """
+        ConversationManager.initialize(coder)
+        ConversationFiles.initialize(coder)
+
+    @classmethod
+    def add_system_messages(cls, coder) -> None:
+        """
+        Add system messages to conversation.
+
+        Args:
+            coder: The coder instance
+        """
+        # Add system prompt
+        system_prompt = coder.gpt_prompts.main_system
+        if system_prompt:
+            # Apply system_prompt_prefix if set on the model
+            if coder.main_model.system_prompt_prefix:
+                system_prompt = coder.main_model.system_prompt_prefix + "\n" + system_prompt
+
+            ConversationManager.add_message(
+                message_dict={"role": "system", "content": system_prompt},
+                tag=MessageTag.SYSTEM,
+            )
+
+        # Add examples if available
+        if hasattr(coder.gpt_prompts, "example_messages"):
+            example_messages = coder.gpt_prompts.example_messages
+            for i, msg in enumerate(example_messages):
+                ConversationManager.add_message(
+                    message_dict=msg,
+                    tag=MessageTag.EXAMPLES,
+                    priority=75 + i,  # Slight offset for ordering within examples
+                )
+
+        # Add reminder if available
+        if coder.gpt_prompts.system_reminder:
+            msg = dict(
+                role="user",
+                content=coder.fmt_system_prompt(coder.gpt_prompts.system_reminder),
+            )
+            ConversationManager.add_message(
+                message_dict=msg,
+                tag=MessageTag.REMINDER,
+            )
+
+    @classmethod
+    def cleanup_files(cls, coder) -> None:
+        """
+        Clean up ConversationFiles and remove corresponding messages from ConversationManager
+        for files that are no longer in the coder's read-only or chat file sets.
+
+        Args:
+            coder: The coder instance
+        """
+        # Get all tracked files (both regular and image files)
+        tracked_files = ConversationFiles.get_all_tracked_files()
+
+        # Get joint set of files that should be tracked
+        # Read-only files (absolute paths) - include both regular and stub files
+        read_only_files = set()
+        if hasattr(coder, "abs_read_only_fnames"):
+            read_only_files = set(coder.abs_read_only_fnames)
+        if hasattr(coder, "abs_read_only_stubs_fnames"):
+            read_only_files = read_only_files.union(set(coder.abs_read_only_stubs_fnames))
+
+        # Chat files (absolute paths)
+        chat_files = set()
+        if hasattr(coder, "abs_fnames"):
+            chat_files = set(coder.abs_fnames)
+
+        # Joint set of files that should be tracked
+        should_be_tracked = read_only_files.union(chat_files)
+
+        # Remove files from tracking that are not in the joint set
+        for tracked_file in tracked_files:
+            if tracked_file not in should_be_tracked:
+                # Remove file from ConversationFiles cache
+                ConversationFiles.clear_file_cache(tracked_file)
+
+                # Remove corresponding messages from ConversationManager
+                # Try to remove regular file messages
+                user_hash_key = ("file_user", tracked_file)
+                assistant_hash_key = ("file_assistant", tracked_file)
+                ConversationManager.remove_message_by_hash_key(user_hash_key)
+                ConversationManager.remove_message_by_hash_key(assistant_hash_key)
+
+                # Try to remove image file messages
+                image_user_hash_key = ("image_user", tracked_file)
+                image_assistant_hash_key = ("image_assistant", tracked_file)
+                ConversationManager.remove_message_by_hash_key(image_user_hash_key)
+                ConversationManager.remove_message_by_hash_key(image_assistant_hash_key)
+
+    @classmethod
+    def add_file_list_reminder(cls, coder) -> None:
+        """
+        Add a reminder message with list of readonly and editable files.
+        The reminder lasts for exactly one turn (mark_for_delete=0).
+
+        Args:
+            coder: The coder instance
+        """
+        # Get relative paths for display
+        readonly_rel_files = []
+        if hasattr(coder, "abs_read_only_fnames"):
+            readonly_rel_files = sorted(
+                [coder.get_rel_fname(f) for f in coder.abs_read_only_fnames]
+            )
+
+        editable_rel_files = []
+        if hasattr(coder, "abs_fnames"):
+            editable_rel_files = sorted([coder.get_rel_fname(f) for f in coder.abs_fnames])
+
+        # Format reminder content
+        reminder_lines = ['<context name="file_list">']
+        if readonly_rel_files:
+            reminder_lines.append("Read-only files:")
+            for f in readonly_rel_files:
+                reminder_lines.append(f"  - {f}")
+
+        if editable_rel_files:
+            if reminder_lines:  # Add separator if we already have readonly files
+                reminder_lines.append("")
+            reminder_lines.append("Editable files:")
+            for f in editable_rel_files:
+                reminder_lines.append(f"  - {f}")
+
+        if reminder_lines:  # Only add reminder if there are files
+            reminder_lines.append("</context>\n")
+            reminder_content = "\n".join(reminder_lines)
+            ConversationManager.add_message(
+                message_dict={
+                    "role": "user",
+                    "content": reminder_content,
+                },
+                tag=MessageTag.REMINDER,
+                priority=275,  # Between post_message blocks and final reminders
+                hash_key=("file_list_reminder",),  # Unique hash_key to avoid conflicts
+                mark_for_delete=0,  # Lasts for exactly one turn
+            )
+
+    @classmethod
+    def get_repo_map_string(cls, repo_data: Dict[str, Any]) -> str:
+        """
+        Convert repository map data dict to formatted string representation.
+
+        Args:
+            repo_data: Repository map data dict from get_repo_map()
+
+        Returns:
+            Formatted string representation of repository map
+        """
+
+        # Get the combined and new dicts
+        combined_dict = repo_data.get("combined_dict", {})
+        new_dict = repo_data.get("new_dict", {})
+
+        # If we don't have the new structure, fall back to old structure
+        if not combined_dict and not new_dict:
+            files_dict = repo_data.get("files", {})
+            if files_dict:
+                combined_dict = files_dict
+                new_dict = files_dict
+
+        # Use new_dict for the message (it contains only new elements)
+        files_dict = new_dict
+
+        # Format the dict into text
+        formatted_lines = []
+
+        # Add prefix if present
+        if repo_data.get("prefix"):
+            formatted_lines.append(repo_data["prefix"])
+            formatted_lines.append("")
+
+        for rel_fname in sorted(files_dict.keys()):
+            tags_info = files_dict[rel_fname]
+
+            if not tags_info:
+                # Special file without tags
+                formatted_lines.append(f"### {rel_fname}")
+                formatted_lines.append("")
+            else:
+                formatted_lines.append(f"### {rel_fname}")
+
+                # Sort tags by line
+                sorted_tags = sorted(tags_info.items(), key=lambda x: x[1].get("line", 0))
+
+                for tag_name, tag_info in sorted_tags:
+                    kind = tag_info.get("kind", "")
+                    start_line = tag_info.get("start_line", 0)
+                    end_line = tag_info.get("end_line", 0)
+
+                    # Convert to 1-based line numbers for display
+                    display_start = start_line + 1 if start_line >= 0 else "?"
+                    display_end = end_line + 1 if end_line >= 0 else "?"
+
+                    if display_start == display_end:
+                        formatted_lines.append(f"- {tag_name} ({kind}, line {display_start})")
+                    else:
+                        formatted_lines.append(
+                            f"- {tag_name} ({kind}, lines {display_start}-{display_end})"
+                        )
+
+                formatted_lines.append("")
+
+        # Remove trailing empty line if present
+        if formatted_lines and formatted_lines[-1] == "":
+            formatted_lines.pop()
+
+        if formatted_lines:
+            return "\n".join(formatted_lines)
+        else:
+            return ""
+
+    @classmethod
+    def add_repo_map_messages(cls, coder) -> List[Dict[str, Any]]:
+        """
+        Get repository map messages using new system.
+
+        Args:
+            coder: The coder instance
+
+        Returns:
+            List of repository map messages
+        """
+        from .manager import ConversationManager
+        from .tags import MessageTag
+
+        ConversationManager.initialize(coder)
+
+        # Check if we have too many REPO tagged messages (20 or more)
+        repo_messages = ConversationManager.get_messages_dict(MessageTag.REPO)
+        if len(repo_messages) >= 20:
+            # Clear all REPO tagged messages
+            ConversationManager.clear_tag(MessageTag.REPO)
+            # Clear the combined repomap dict to force fresh regeneration
+            if (
+                hasattr(coder, "repo_map")
+                and coder.repo_map is not None
+                and hasattr(coder.repo_map, "combined_map_dict")
+            ):
+                coder.repo_map.combined_map_dict = {}
+
+        # Get repository map content
+        if hasattr(coder, "get_repo_map"):
+            repo_data = coder.get_repo_map()
+        else:
+            return []
+
+        if not repo_data:
+            return []
+
+        # Get the combined and new dicts
+        combined_dict = repo_data.get("combined_dict", {})
+        new_dict = repo_data.get("new_dict", {})
+
+        # If we don't have the new structure, fall back to old structure
+        if not combined_dict and not new_dict:
+            files_dict = repo_data.get("files", {})
+            if files_dict:
+                combined_dict = files_dict
+                new_dict = files_dict
+
+        repo_messages = []
+
+        # Determine which dict to use based on whether they're the same
+        # If combined_dict and new_dict are the same (first run), use new_dict with normal priority
+        # If they're different (subsequent runs), use new_dict with priority 200
+
+        # Check if dicts are the same (deep comparison)
+        combined_json = xxhash.xxh3_128_hexdigest(
+            json.dumps(combined_dict, sort_keys=True).encode("utf-8")
+        )
+        new_json = xxhash.xxh3_128_hexdigest(json.dumps(new_dict, sort_keys=True).encode("utf-8"))
+        dicts_are_same = combined_json == new_json
+
+        # Get formatted repository content using the new helper function
+        repo_content = cls.get_repo_map_string(repo_data)
+
+        if repo_content:  # Only add messages if there's content
+            # Create repository map messages
+            dict_repo_messages = [
+                dict(role="user", content=repo_content),
+                dict(
+                    role="assistant",
+                    content="Ok, I won't try and edit those files without asking first.",
+                ),
+            ]
+
+            # Add messages to conversation manager with appropriate priority
+            for i, msg in enumerate(dict_repo_messages):
+                priority = None if dicts_are_same else 200
+                content_hash = xxhash.xxh3_128_hexdigest(repo_content.encode("utf-8"))
+
+                ConversationManager.add_message(
+                    message_dict=msg,
+                    tag=MessageTag.REPO,
+                    priority=priority,
+                    hash_key=("repo", msg["role"], content_hash),
+                )
+
+            repo_messages.extend(dict_repo_messages)
+
+        return repo_messages
+
+    @classmethod
+    def add_readonly_files_messages(cls, coder) -> List[Dict[str, Any]]:
+        """
+        Get read-only file messages using new system.
+
+        Args:
+            coder: The coder instance
+
+        Returns:
+            List of read-only file messages
+        """
+        messages = []
+
+        # Separate image files from regular files
+        regular_files = []
+        image_files = []
+
+        # Collect all read-only files (including stubs)
+        all_readonly_files = []
+        if hasattr(coder, "abs_read_only_fnames"):
+            all_readonly_files.extend(coder.abs_read_only_fnames)
+        if hasattr(coder, "abs_read_only_stubs_fnames"):
+            all_readonly_files.extend(coder.abs_read_only_stubs_fnames)
+
+        for fname in all_readonly_files:
+            if is_image_file(fname):
+                image_files.append(fname)
+            else:
+                regular_files.append(fname)
+
+        # Process regular files
+        for fname in regular_files:
+            # First, add file to cache and check for changes
+            ConversationFiles.add_file(fname)
+
+            # Check if file has changed and add diff message if needed
+            if ConversationFiles.has_file_changed(fname):
+                ConversationFiles.update_file_diff(fname)
+
+            # Get file content (with proper caching and stub generation)
+            content = ConversationFiles.get_file_stub(fname)
+            if content:
+                # Add user message with file path as hash_key
+                user_msg = {
+                    "role": "user",
+                    "content": f"File Contents {fname}:\n\n{content}",
+                }
+                ConversationManager.add_message(
+                    message_dict=user_msg,
+                    tag=MessageTag.READONLY_FILES,
+                    hash_key=("file_user", fname),  # Use file path as part of hash_key
+                )
+                messages.append(user_msg)
+
+                # Add assistant message with file path as hash_key
+                assistant_msg = {
+                    "role": "assistant",
+                    "content": "Ok, I will view and/or modify this file as is necessary.",
+                }
+                ConversationManager.add_message(
+                    message_dict=assistant_msg,
+                    tag=MessageTag.READONLY_FILES,
+                    hash_key=("file_assistant", fname),  # Use file path as part of hash_key
+                )
+                messages.append(assistant_msg)
+
+        # Handle image files using coder.get_images_message()
+        if image_files:
+            image_messages = coder.get_images_message(image_files)
+            for img_msg in image_messages:
+                # Add individual image message to result
+                messages.append(img_msg)
+
+                # Add individual assistant acknowledgment for each image
+                assistant_msg = {
+                    "role": "assistant",
+                    "content": "Ok, I will use this image as a reference.",
+                }
+                messages.append(assistant_msg)
+
+                # Get the file name from the message (stored in image_file key)
+                fname = img_msg.get("image_file")
+                if fname:
+                    # Add to ConversationManager with individual file hash key
+                    ConversationManager.add_message(
+                        message_dict=img_msg,
+                        tag=MessageTag.READONLY_FILES,
+                        hash_key=("image_user", fname),
+                    )
+                    ConversationManager.add_message(
+                        message_dict=assistant_msg,
+                        tag=MessageTag.READONLY_FILES,
+                        hash_key=("image_assistant", fname),
+                        force=True,
+                    )
+
+        return messages
+
+    @classmethod
+    def add_chat_files_messages(cls, coder) -> Dict[str, Any]:
+        """
+        Get chat file messages using new system.
+
+        Args:
+            coder: The coder instance
+
+        Returns:
+            Dictionary with chat_files and edit_files lists
+        """
+        result = {"chat_files": [], "edit_files": []}
+
+        if not hasattr(coder, "abs_fnames"):
+            return result
+
+        # First, handle regular (non-image) files
+        regular_files = []
+        image_files = []
+
+        # Separate image files from regular files
+        for fname in coder.abs_fnames:
+            if is_image_file(fname):
+                image_files.append(fname)
+            else:
+                regular_files.append(fname)
+
+        # Process regular files
+        for fname in regular_files:
+            # First, add file to cache and check for changes
+            ConversationFiles.add_file(fname)
+
+            # Check if file has changed and add diff message if needed
+            if ConversationFiles.has_file_changed(fname):
+                ConversationFiles.update_file_diff(fname)
+
+            # Get file content (with proper caching and stub generation)
+            content = ConversationFiles.get_file_stub(fname)
+            if not content:
+                continue
+
+            # Create user message
+            user_msg = {
+                "role": "user",
+                "content": f"File Contents {fname}:\n\n{content}",
+            }
+
+            # Create assistant message
+            assistant_msg = {
+                "role": "assistant",
+                "content": "Ok, I will view and/or modify this file as is necessary.",
+            }
+
+            # Determine tag based on editability
+            tag = MessageTag.CHAT_FILES
+            result["chat_files"].extend([user_msg, assistant_msg])
+
+            # Add user message to ConversationManager with file path as hash_key
+            ConversationManager.add_message(
+                message_dict=user_msg,
+                tag=tag,
+                hash_key=("file_user", fname),  # Use file path as part of hash_key
+            )
+
+            # Add assistant message to ConversationManager with file path as hash_key
+            ConversationManager.add_message(
+                message_dict=assistant_msg,
+                tag=tag,
+                hash_key=("file_assistant", fname),  # Use file path as part of hash_key
+            )
+
+        # Handle image files using coder.get_images_message()
+        if image_files:
+            image_messages = coder.get_images_message(image_files)
+            for img_msg in image_messages:
+                # Add individual image message to result
+                result["chat_files"].append(img_msg)
+
+                # Add individual assistant acknowledgment for each image
+                assistant_msg = {
+                    "role": "assistant",
+                    "content": "Ok, I will use this image as a reference.",
+                }
+                result["chat_files"].append(assistant_msg)
+
+                # Get the file name from the message (stored in image_file key)
+                fname = img_msg.get("image_file")
+                if fname:
+                    # Add to ConversationManager with individual file hash key
+                    ConversationManager.add_message(
+                        message_dict=img_msg,
+                        tag=MessageTag.CHAT_FILES,
+                        hash_key=("image_user", fname),
+                    )
+                    ConversationManager.add_message(
+                        message_dict=assistant_msg,
+                        tag=MessageTag.CHAT_FILES,
+                        hash_key=("image_assistant", fname),
+                        force=True,
+                    )
+
+        return result
+
+    @classmethod
+    def add_assistant_reply(cls, coder, partial_response_chunks) -> None:
+        """
+        Add assistant's reply to current conversation messages.
+
+        Args:
+            coder: The coder instance
+            partial_response_chunks: Response chunks from LLM
+        """
+        # Extract response from chunks
+        # This is a simplified version - actual extraction would be more complex
+        response_content = ""
+        tool_calls = None
+
+        for chunk in partial_response_chunks:
+            if hasattr(chunk, "choices") and chunk.choices:
+                delta = chunk.choices[0].delta
+                if hasattr(delta, "content") and delta.content:
+                    response_content += delta.content
+                if hasattr(delta, "tool_calls") and delta.tool_calls:
+                    if tool_calls is None:
+                        tool_calls = []
+                    tool_calls.extend(delta.tool_calls)
+
+        # Create message dictionary
+        message_dict = {"role": "assistant"}
+        if response_content:
+            message_dict["content"] = response_content
+        if tool_calls:
+            message_dict["tool_calls"] = tool_calls
+
+        # Add to conversation
+        ConversationManager.add_message(
+            message_dict=message_dict,
+            tag=MessageTag.CUR,
+        )
+
+    @classmethod
+    def clear_conversation(cls, coder) -> None:
+        """
+        Clear all user and assistant messages from conversation.
+
+        Args:
+            coder: The coder instance
+        """
+        # Clear CUR and DONE messages
+        ConversationManager.clear_tag(MessageTag.CUR)
+        ConversationManager.clear_tag(MessageTag.DONE)
+
+    @classmethod
+    def reset(cls) -> None:
+        """
+        Reset the entire conversation system to initial state.
+        """
+        ConversationManager.reset()
+        ConversationFiles.reset()
+
+    @classmethod
+    def add_static_context_blocks(cls, coder) -> None:
+        """
+        Add static context blocks to conversation (priority 50).
+
+        Static blocks include: environment_info, directory_structure, skills
+
+        Args:
+            coder: The coder instance
+        """
+        if not hasattr(coder, "use_enhanced_context") or not coder.use_enhanced_context:
+            return
+
+        # Ensure tokens are calculated
+        if hasattr(coder, "_calculate_context_block_tokens"):
+            coder._calculate_context_block_tokens()
+
+        # Add static blocks as dict with block type as key
+        message_blocks = {}
+        if hasattr(coder, "allowed_context_blocks"):
+            if "environment_info" in coder.allowed_context_blocks:
+                block = coder.get_cached_context_block("environment_info")
+                if block:
+                    message_blocks["environment_info"] = block
+            if "directory_structure" in coder.allowed_context_blocks:
+                block = coder.get_cached_context_block("directory_structure")
+                if block:
+                    message_blocks["directory_structure"] = block
+            if "skills" in coder.allowed_context_blocks:
+                block = coder._generate_context_block("skills")
+                if block:
+                    message_blocks["skills"] = block
+
+        # Add static blocks to conversation manager with stable hash keys
+        for block_type, block_content in message_blocks.items():
+            ConversationManager.add_message(
+                message_dict={"role": "user", "content": block_content},
+                tag=MessageTag.STATIC,
+                hash_key=("static", block_type),
+            )
+
+    @classmethod
+    def add_pre_message_context_blocks(cls, coder) -> None:
+        """
+        Add pre-message context blocks to conversation (priority 125).
+
+        Pre-message blocks include: symbol_outline, git_status, todo_list,
+        loaded_skills, context_summary
+
+        Args:
+            coder: The coder instance
+        """
+        if not hasattr(coder, "use_enhanced_context") or not coder.use_enhanced_context:
+            return
+
+        # Ensure tokens are calculated
+        if hasattr(coder, "_calculate_context_block_tokens"):
+            coder._calculate_context_block_tokens()
+
+        # Add pre-message blocks as dict with block type as key
+        message_blocks = {}
+        if hasattr(coder, "allowed_context_blocks"):
+            if "symbol_outline" in coder.allowed_context_blocks:
+                block = coder.get_cached_context_block("symbol_outline")
+                if block:
+                    message_blocks["symbol_outline"] = block
+            if "git_status" in coder.allowed_context_blocks:
+                block = coder.get_cached_context_block("git_status")
+                if block:
+                    message_blocks["git_status"] = block
+            if "skills" in coder.allowed_context_blocks:
+                block = coder._generate_context_block("loaded_skills")
+                if block:
+                    message_blocks["loaded_skills"] = block
+
+        # Process other blocks
+        for block_type, block_content in message_blocks.items():
+            ConversationManager.add_message(
+                message_dict={"role": "user", "content": block_content},
+                tag=MessageTag.STATIC,  # Use STATIC tag but with different priority
+                priority=125,  # Between REPO (100) and READONLY_FILES (200)
+                hash_key=("pre_message", block_type),
+            )
+
+    @classmethod
+    def add_post_message_context_blocks(cls, coder) -> None:
+        """
+        Add post-message context blocks to conversation (priority 250).
+
+        Post-message blocks include: tool_context/write_context, background_command_output
+
+        Args:
+            coder: The coder instance
+        """
+        if not hasattr(coder, "use_enhanced_context") or not coder.use_enhanced_context:
+            return
+
+        # Add post-message blocks as dict with block type as key
+        message_blocks = {}
+
+        if hasattr(coder, "allowed_context_blocks"):
+            if "todo_list" in coder.allowed_context_blocks:
+                block = coder.get_todo_list()
+                if block:
+                    message_blocks["todo_list"] = block
+
+            if "context_summary" in coder.allowed_context_blocks:
+                block = coder.get_context_summary()
+                if block:
+                    # Store context_summary separately since it goes first
+                    message_blocks["context_summary"] = block
+
+        # Add tool context or write context
+        if hasattr(coder, "tool_usage_history") and coder.tool_usage_history:
+            if hasattr(coder, "_get_repetitive_tools"):
+                repetitive_tools = coder._get_repetitive_tools()
+                if repetitive_tools:
+                    if hasattr(coder, "_generate_tool_context"):
+                        tool_context = coder._generate_tool_context(repetitive_tools)
+                        if tool_context:
+                            message_blocks["tool_context"] = tool_context
+                else:
+                    if hasattr(coder, "_generate_write_context"):
+                        write_context = coder._generate_write_context()
+                        if write_context:
+                            message_blocks["write_context"] = write_context
+
+        # Add background command output if any
+        if hasattr(coder, "get_background_command_output"):
+            bg_output = coder.get_background_command_output()
+            if bg_output:
+                message_blocks["background_command_output"] = bg_output
+
+        # Add post-message blocks to conversation manager with stable hash keys
+        for block_type, block_content in message_blocks.items():
+            ConversationManager.add_message(
+                message_dict={"role": "user", "content": block_content},
+                tag=MessageTag.STATIC,  # Use STATIC tag but with different priority
+                priority=250,  # Between CUR (200) and REMINDER (300)
+                mark_for_delete=0,
+                hash_key=("post_message", block_type),
+                force=True,
+            )
+
+    @classmethod
+    def debug_print_conversation_state(cls) -> None:
+        """
+        Print debug information about conversation state.
+        """
+        print("=== Conversation Manager State ===")
+        ConversationManager.debug_print_stream()
+        print("\n=== Conversation Files State ===")
+        ConversationFiles.debug_print_cache()

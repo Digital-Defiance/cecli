@@ -39,12 +39,16 @@ class McpServer:
         """
         self.config = server_config
         self.name = server_config.get("name", "unnamed-server")
-        self.is_enabled = server_config.get("enabled", True)
         self.io = io
         self.verbose = verbose
         self.session = None
         self._cleanup_lock: asyncio.Lock = asyncio.Lock()
         self.exit_stack = AsyncExitStack()
+
+    @property
+    def is_connected(self) -> bool:
+        """Check if this server is currently connected."""
+        return self.session is not None
 
     async def connect(self):
         """Connect to the MCP server and return the session.
@@ -55,11 +59,6 @@ class McpServer:
         Returns:
             ClientSession: The active session if mcp is not disabled
         """
-        if not self.is_enabled:
-            if self.verbose and self.io:
-                self.io.tool_output(f"Enabled option is set to false for MCP server: {self.name}")
-            return None
-
         if self.session is not None:
             if self.verbose and self.io:
                 self.io.tool_output(f"Using existing session for MCP server: {self.name}")
@@ -194,11 +193,6 @@ class HttpBasedMcpServer(McpServer):
         raise NotImplementedError("Subclasses must implement _create_transport")
 
     async def connect(self):
-        if not self.is_enabled:
-            if self.verbose and self.io:
-                self.io.tool_output(f"Enabled option is set to false for MCP server: {self.name}")
-            return None
-
         if self.session is not None:
             if self.verbose and self.io:
                 self.io.tool_output(f"Using existing session for {self.name}")

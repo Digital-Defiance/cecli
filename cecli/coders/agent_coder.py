@@ -17,6 +17,12 @@ from litellm import experimental_mcp_client
 from cecli import urls, utils
 from cecli.change_tracker import ChangeTracker
 from cecli.helpers import nested
+from cecli.helpers.background_commands import BackgroundCommandManager
+from cecli.helpers.conversation import ConversationChunks
+
+# All conversation functions are now available via ConversationChunks class
+from cecli.helpers.conversation.manager import ConversationManager
+from cecli.helpers.conversation.tags import MessageTag
 from cecli.helpers.similarity import (
     cosine_similarity,
     create_bigram_vector,
@@ -27,7 +33,7 @@ from cecli.mcp import LocalServer, McpServerManager
 from cecli.repo import ANY_GIT_ERROR
 from cecli.tools.utils.registry import ToolRegistry
 
-from .base_coder import ChatChunks, Coder
+from .base_coder import Coder
 from .editblock_coder import do_replace, find_original_update_blocks, find_similar_lines
 
 
@@ -65,7 +71,7 @@ class AgentCoder(Coder):
             "undochange",
         }
         self.max_tool_calls = 10000
-        self.large_file_token_threshold = 25000
+        self.large_file_token_threshold = 8192
         self.context_management_enabled = True
         self.skills_manager = None
         self.change_tracker = ChangeTracker()
@@ -107,7 +113,7 @@ class AgentCoder(Coder):
                 return {}
 
         config["large_file_token_threshold"] = nested.getter(
-            config, "large_file_token_threshold", 25000
+            config, "large_file_token_threshold", 8192
         )
         config["skip_cli_confirmations"] = nested.getter(
             config, "skip_cli_confirmations", nested.getter(config, "yolo", [])
@@ -127,10 +133,10 @@ class AgentCoder(Coder):
                 "include_context_blocks",
                 {
                     "context_summary",
-                    "directory_structure",
+                    # "directory_structure",
                     "environment_info",
                     "git_status",
-                    "symbol_outline",
+                    # "symbol_outline",
                     "todo_list",
                     "skills",
                 },
@@ -203,25 +209,29 @@ class AgentCoder(Coder):
         return schemas
 
     async def initialize_mcp_tools(self):
-        await super().initialize_mcp_tools()
-        server_name = "Local"
-        if server_name not in [name for name, _ in self.mcp_tools]:
-            local_tools = self.get_local_tool_schemas()
-            if not local_tools:
-                return
+        if not self.mcp_manager:
+            self.mcp_manager = McpServerManager()
 
+        server_name = "Local"
+        server = self.mcp_manager.get_server(server_name)
+
+        # We have already initialized local server and its connected
+        # then no need to duplicate work
+        if server is not None and server.is_connected:
+            return
+
+        # If we dont have any tools for local server to use, no point in creating it then
+        local_tools = self.get_local_tool_schemas()
+        if not local_tools:
+            return
+
+        if server is None:
             local_server_config = {"name": server_name}
             local_server = LocalServer(local_server_config)
 
-            if not self.mcp_manager:
-                self.mcp_manager = McpServerManager()
-            if not self.mcp_manager.get_server(server_name):
-                await self.mcp_manager.add_server(local_server)
-            if not self.mcp_tools:
-                self.mcp_tools = []
-
-            if server_name not in [name for name, _ in self.mcp_tools]:
-                self.mcp_tools.append((local_server.name, local_tools))
+            await self.mcp_manager.add_server(local_server, connect=True)
+        else:
+            await self.mcp_manager.connect_server(server_name)
 
     async def _execute_local_tool_calls(self, tool_calls_list):
         tool_responses = []
@@ -413,7 +423,7 @@ class AgentCoder(Coder):
         if not self.use_enhanced_context or not self.repo_map:
             return None
         try:
-            result = '<context name="symbol_outline">\n'
+            result = '<context name="symbol_outline" from="agent">\n'
             result += "## Symbol Outline (Current Context)\n\n"
             result += """Code definitions (classes, functions, methods, etc.) found in files currently in chat context.
 
@@ -453,7 +463,11 @@ class AgentCoder(Coder):
                     if definition_tags:
                         result += f"### {rel_fname}\n"
                         for tag in definition_tags:
-                            line_info = f", line {tag.line + 1}" if tag.line >= 0 else ""
+                            line_info = (
+                                f", lines {tag.start_line + 1} - {tag.end_line + 1}"
+                                if tag.line >= 0
+                                else ""
+                            )
                             kind_to_check = tag.specific_kind or tag.kind
                             result += f"- {tag.name} ({kind_to_check}{line_info})\n"
                         result += "\n"
@@ -475,195 +489,63 @@ class AgentCoder(Coder):
         This approach preserves prefix caching while providing fresh context information.
         """
         if not self.use_enhanced_context:
+            # Use parent's implementation which may use conversation system if flag is enabled
             return super().format_chat_chunks()
-        self.choose_fence()
-        main_sys = self.fmt_system_prompt(self.gpt_prompts.main_system)
-        example_messages = []
-        if self.main_model.examples_as_sys_msg:
-            if self.gpt_prompts.example_messages:
-                main_sys += "\n# Example conversations:\n\n"
-            for msg in self.gpt_prompts.example_messages:
-                role = msg["role"]
-                content = self.fmt_system_prompt(msg["content"])
-                main_sys += f"## {role.upper()}: {content}\n\n"
-            main_sys = main_sys.strip()
-        else:
-            for msg in self.gpt_prompts.example_messages:
-                example_messages.append(
-                    dict(role=msg["role"], content=self.fmt_system_prompt(msg["content"]))
-                )
-            if self.gpt_prompts.example_messages:
-                example_messages += [
-                    dict(
-                        role="user",
-                        content=(
-                            "I switched to a new code base. Please don't consider the above files"
-                            " or try to edit them any longer."
-                        ),
-                    ),
-                    dict(role="assistant", content="Ok."),
-                ]
-        if self.gpt_prompts.system_reminder:
-            main_sys += "\n" + self.fmt_system_prompt(self.gpt_prompts.system_reminder)
-        chunks = ChatChunks(
-            chunk_ordering=[
-                "system",
-                "static",
-                "examples",
-                "readonly_files",
-                "repo",
-                "chat_files",
-                "pre_message",
-                "done",
-                "edit_files",
-                "cur",
-                "post_message",
-                "reminder",
-            ]
-        )
-        if self.main_model.use_system_prompt:
-            chunks.system = [dict(role="system", content=main_sys)]
-        else:
-            chunks.system = [
-                dict(role="user", content=main_sys),
-                dict(role="assistant", content="Ok."),
-            ]
-        chunks.examples = example_messages
-        self.summarize_end()
-        cur_messages_list = list(self.cur_messages)
-        cur_messages_pre = []
-        cur_messages_post = cur_messages_list
-        chunks.readonly_files = self.get_readonly_files_messages()
-        chat_files_result = self.get_chat_files_messages()
-        chunks.chat_files = chat_files_result.get("chat_files", [])
-        chunks.edit_files = chat_files_result.get("edit_files", [])
-        edit_file_names = chat_files_result.get("edit_file_names", set())
-        divider = self._update_edit_file_tracking(edit_file_names)
-        if divider is not None:
-            if divider > 0 and divider < len(cur_messages_list):
-                cur_messages_pre = cur_messages_list[:divider]
-                cur_messages_post = cur_messages_list[divider:]
-        chunks.repo = self.get_repo_messages()
-        chunks.done = list(self.done_messages) + cur_messages_pre
-        if self.gpt_prompts.system_reminder:
-            reminder_message = [
-                dict(
-                    role="system", content=self.fmt_system_prompt(self.gpt_prompts.system_reminder)
-                )
-            ]
-        else:
-            reminder_message = []
-        chunks.cur = cur_messages_post
-        chunks.reminder = []
-        self._calculate_context_block_tokens()
-        chunks.static = []
-        chunks.pre_message = []
-        chunks.post_message = []
-        static_blocks = []
-        pre_message_blocks = []
-        post_message_blocks = []
-        if "environment_info" in self.allowed_context_blocks:
-            block = self.get_cached_context_block("environment_info")
-            static_blocks.append(block)
-        if "directory_structure" in self.allowed_context_blocks:
-            block = self.get_cached_context_block("directory_structure")
-            static_blocks.append(block)
-        if "skills" in self.allowed_context_blocks:
-            block = self._generate_context_block("skills")
-            static_blocks.append(block)
-        if "symbol_outline" in self.allowed_context_blocks:
-            block = self.get_cached_context_block("symbol_outline")
-            pre_message_blocks.append(block)
-        if "git_status" in self.allowed_context_blocks:
-            block = self.get_cached_context_block("git_status")
-            pre_message_blocks.append(block)
-        if "todo_list" in self.allowed_context_blocks:
-            block = self.get_cached_context_block("todo_list")
-            pre_message_blocks.append(block)
-        if "skills" in self.allowed_context_blocks:
-            block = self._generate_context_block("loaded_skills")
-            pre_message_blocks.append(block)
-        if "context_summary" in self.allowed_context_blocks:
-            block = self.get_context_summary()
-            pre_message_blocks.insert(0, block)
-        if hasattr(self, "tool_usage_history") and self.tool_usage_history:
-            repetitive_tools = self._get_repetitive_tools()
-            if repetitive_tools:
-                tool_context = self._generate_tool_context(repetitive_tools)
-                if tool_context:
-                    post_message_blocks.append(tool_context)
-            else:
-                write_context = self._generate_write_context()
-                if write_context:
-                    post_message_blocks.append(write_context)
-        if static_blocks:
-            for block in static_blocks:
-                if block:
-                    chunks.static.append(dict(role="system", content=block))
-        if pre_message_blocks:
-            for block in pre_message_blocks:
-                if block:
-                    chunks.pre_message.append(dict(role="system", content=block))
-        if post_message_blocks:
-            for block in post_message_blocks:
-                if block:
-                    chunks.post_message.append(dict(role="system", content=block))
-        base_messages = chunks.all_messages()
-        messages_tokens = self.main_model.token_count(base_messages)
-        reminder_tokens = self.main_model.token_count(reminder_message)
-        cur_tokens = self.main_model.token_count(chunks.cur)
-        if None not in (messages_tokens, reminder_tokens, cur_tokens):
-            total_tokens = messages_tokens
-            if not chunks.reminder:
-                total_tokens += reminder_tokens
-            if not chunks.cur:
-                total_tokens += cur_tokens
-        else:
-            total_tokens = 0
-        if chunks.cur:
-            final = chunks.cur[-1]
-        else:
-            final = None
-        max_input_tokens = self.main_model.info.get("max_input_tokens") or 0
-        if (
-            not max_input_tokens
-            or total_tokens < max_input_tokens
-            and self.gpt_prompts.system_reminder
+
+        ConversationChunks.initialize_conversation_system(self)
+        # Decrement mark_for_delete values before adding new messages
+        ConversationManager.decrement_mark_for_delete()
+
+        # Clean up ConversationFiles and remove corresponding messages
+        ConversationChunks.cleanup_files(self)
+
+        # Add reminder message with list of readonly and editable files
+        ConversationChunks.add_file_list_reminder(self)
+
+        # Add system messages (including examples and reminder)
+        ConversationChunks.add_system_messages(self)
+
+        # Add static context blocks (priority 50 - between SYSTEM and EXAMPLES)
+        ConversationChunks.add_static_context_blocks(self)
+
+        # Handle file messages using conversation module helper methods
+        # These methods will add messages to ConversationManager
+        ConversationChunks.add_repo_map_messages(self)
+
+        # Add pre-message context blocks (priority 125 - between REPO and READONLY_FILES)
+        ConversationChunks.add_pre_message_context_blocks(self)
+
+        ConversationChunks.add_readonly_files_messages(self)
+        ConversationChunks.add_chat_files_messages(self)
+
+        # Add post-message context blocks (priority 250 - between CUR and REMINDER)
+        ConversationChunks.add_post_message_context_blocks(self)
+
+        # Handle reminder logic
+        # Only add reminder if it wasn't already added to main_sys (when examples_as_sys_msg is True)
+        if self.gpt_prompts.system_reminder and not (
+            self.main_model.examples_as_sys_msg and self.main_model.reminder == "sys"
         ):
-            if self.main_model.reminder == "sys":
-                chunks.reminder = reminder_message
-            elif self.main_model.reminder == "user" and final and final["role"] == "user":
-                new_content = (
-                    final["content"]
-                    + "\n\n"
-                    + self.fmt_system_prompt(self.gpt_prompts.system_reminder)
-                )
-                chunks.cur[-1] = dict(role=final["role"], content=new_content)
-        if self.verbose:
-            self._log_chunks(chunks)
-        return chunks
+            reminder_content = self.fmt_system_prompt(self.gpt_prompts.system_reminder)
 
-    def _update_edit_file_tracking(self, edit_file_names):
-        """
-        Update tracking for last edited file and message divider for caching efficiency.
+            # Calculate token counts to decide whether to add reminder
+            messages = ConversationManager.get_messages_dict()
+            messages_tokens = self.main_model.token_count(messages)
 
-        When the last edited file changes, we store the current message index minus 4
-        as a divider to split cur_messages, moving older messages to done_messages
-        for better caching.
-        """
-        kept_messages = 8
-        if not edit_file_names:
-            self._cur_message_divider = 0
-        sorted_edit_files = sorted(edit_file_names)
-        current_edited_file = sorted_edit_files[0] if sorted_edit_files else None
-        if current_edited_file != self._last_edited_file:
-            self._last_edited_file = current_edited_file
-            cur_messages_list = list(self.cur_messages)
-            if len(cur_messages_list) > kept_messages:
-                self._cur_message_divider = len(cur_messages_list) - kept_messages
-            else:
-                self._cur_message_divider = 0
-        return self._cur_message_divider
+            if messages_tokens is not None:
+                max_input_tokens = self.main_model.info.get("max_input_tokens") or 0
+
+                if not max_input_tokens or messages_tokens < max_input_tokens:
+                    ConversationManager.add_message(
+                        message_dict={
+                            "role": "user",
+                            "content": reminder_content,
+                        },
+                        tag=MessageTag.REMINDER,
+                        mark_for_delete=0,
+                    )
+
+        return ConversationManager.get_messages_dict()
 
     def get_context_summary(self):
         """
@@ -677,7 +559,7 @@ class AgentCoder(Coder):
         try:
             if not hasattr(self, "context_block_tokens") or not self.context_block_tokens:
                 self._calculate_context_block_tokens()
-            result = '<context name="context_summary">\n'
+            result = '<context name="context_summary" from="agent">\n'
             result += "## Current Context Overview\n\n"
             max_input_tokens = self.main_model.info.get("max_input_tokens") or 0
             if max_input_tokens:
@@ -767,7 +649,7 @@ class AgentCoder(Coder):
             current_date = datetime.now().strftime("%Y-%m-%d")
             platform_info = platform.platform()
             language = self.chat_language or locale.getlocale()[0] or "en-US"
-            result = '<context name="environment_info">\n'
+            result = '<context name="environment_info" from="agent">\n'
             result += "## Environment Information\n\n"
             result += f"- Working directory: {self.root}\n"
             result += f"- Current date: {current_date}\n"
@@ -782,13 +664,6 @@ class AgentCoder(Coder):
                     result += "- Git repository: active but details unavailable\n"
             else:
                 result += "- Git repository: none\n"
-            features = []
-            if self.context_management_enabled:
-                features.append("context management")
-            if self.use_enhanced_context:
-                features.append("enhanced context blocks")
-            if features:
-                result += f"- Enabled features: {', '.join(features)}\n"
             result += "</context>"
             return result
         except Exception as e:
@@ -871,8 +746,9 @@ class AgentCoder(Coder):
             if self.reflected_message:
                 return False
             if edited_files and self.num_reflections < self.max_reflections:
-                if self.cur_messages and len(self.cur_messages) >= 1:
-                    for msg in reversed(self.cur_messages):
+                cur_messages = ConversationManager.get_messages_dict(MessageTag.CUR)
+                if cur_messages and len(cur_messages) >= 1:
+                    for msg in reversed(cur_messages):
                         if msg["role"] == "user":
                             original_question = msg["content"]
                             break
@@ -890,8 +766,9 @@ Your original question was: {original_question}"""
         if tool_calls_found and self.num_reflections < self.max_reflections:
             self.tool_call_count = 0
             self.files_added_in_exploration = set()
-            if self.cur_messages and len(self.cur_messages) >= 1:
-                for msg in reversed(self.cur_messages):
+            cur_messages = ConversationManager.get_messages_dict(MessageTag.CUR)
+            if cur_messages and len(cur_messages) >= 1:
+                for msg in reversed(cur_messages):
                     if msg["role"] == "user":
                         original_question = msg["content"]
                         break
@@ -1277,16 +1154,29 @@ Error: {e}
             )
             if last_round_has_write:
                 self.tool_usage_history = []
-                return similarity_repetitive_tools if len(similarity_repetitive_tools) else set()
+                # Filter similarity_repetitive_tools to only include tools in read_tools or write_tools
+                filtered_similarity_tools = {
+                    tool
+                    for tool in similarity_repetitive_tools
+                    if tool.lower() in self.read_tools or tool.lower() in self.write_tools
+                }
+                return filtered_similarity_tools if len(filtered_similarity_tools) else set()
         if all(tool.lower() in self.read_tools for tool in all_tools):
-            return set(all_tools)
+            # Only return tools that are in read_tools
+            return {tool for tool in all_tools if tool.lower() in self.read_tools}
         tool_counts = Counter(all_tools)
         count_repetitive_tools = {
             tool
             for tool, count in tool_counts.items()
             if count >= 5 and tool.lower() in self.read_tools
         }
-        repetitive_tools = count_repetitive_tools.union(similarity_repetitive_tools)
+        # Filter similarity_repetitive_tools to only include tools in read_tools or write_tools
+        filtered_similarity_tools = {
+            tool
+            for tool in similarity_repetitive_tools
+            if tool.lower() in self.read_tools or tool.lower() in self.write_tools
+        }
+        repetitive_tools = count_repetitive_tools.union(filtered_similarity_tools)
         if repetitive_tools:
             return repetitive_tools
         return set()
@@ -1308,7 +1198,13 @@ Error: {e}
             similarity = cosine_similarity(latest_vector, historical_vector)
             if similarity >= self.tool_similarity_threshold:
                 if i < len(self.tool_usage_history):
-                    return {self.tool_usage_history[i]}
+                    tool_name = self.tool_usage_history[i]
+                    # Only return tools that are in read_tools or write_tools
+                    if (
+                        tool_name.lower() in self.read_tools
+                        or tool_name.lower() in self.write_tools
+                    ):
+                        return {tool_name}
         return set()
 
     def _generate_tool_context(self, repetitive_tools):
@@ -1317,7 +1213,7 @@ Error: {e}
         """
         if not self.tool_usage_history:
             return ""
-        context_parts = ['<context name="tool_usage_history">']
+        context_parts = ['<context name="tool_usage_history" from="agent">']
         context_parts.append("## Turn and Tool Call Statistics")
         context_parts.append(f"- Current turn: {self.num_reflections + 1}")
         context_parts.append(f"- Total tool calls this turn: {self.num_tool_calls}")
@@ -1373,13 +1269,11 @@ You have used the following tool(s) repeatedly:""")
             )
             if last_round_has_write:
                 context_parts = [
-                    '<context name="tool_usage_history">',
+                    '<context name="tool_usage_history" from="agent">',
                     "A file was just edited.",
-                    (
-                        " Do not just modify comments and/or logging statements with placeholder"
-                        " information."
-                    ),
-                    "Make sure that something of value was done.</context>",
+                    "Make sure that something of value was done.",
+                    "Do not just leave placeholder or sub content.",
+                    "</context>",
                 ]
                 return "\n".join(context_parts)
         return ""
@@ -1596,8 +1490,8 @@ Just reply with fixed versions of the {blocks} above that failed to match.
         This clearly delineates user input from other sections in the context window.
         """
         inp = await super().preproc_user_input(inp)
-        if inp and not inp.startswith('<context name="user_input">'):
-            inp = f'<context name="user_input">\n{inp}\n</context>'
+        if inp and not inp.startswith('<context name="user_input" from="agent">'):
+            inp = f'<context name="user_input" from="agent">\n{inp}\n</context>'
         return inp
 
     def get_directory_structure(self):
@@ -1608,7 +1502,7 @@ Just reply with fixed versions of the {blocks} above that failed to match.
         if not self.use_enhanced_context:
             return None
         try:
-            result = '<context name="directoryStructure">\n'
+            result = '<context name="directoryStructure" from="agent">\n'
             result += "## Project File Structure\n\n"
             result += (
                 "Below is a snapshot of this project's file structure at the current time. "
@@ -1676,21 +1570,21 @@ Just reply with fixed versions of the {blocks} above that failed to match.
 
     def get_todo_list(self):
         """
-        Generate a todo list context block from the .cecli.todo.txt file.
+        Generate a todo list context block from the .cecli/todo.txt file.
         Returns formatted string with the current todo list or None if empty/not present.
         """
         try:
-            todo_file_path = ".cecli.todo.txt"
+            todo_file_path = ".cecli/todo.txt"
             abs_path = self.abs_root_path(todo_file_path)
             import os
 
             if not os.path.isfile(abs_path):
-                return """<context name="todo_list">
-Todo list does not exist. Please update it with the `UpdataTodoList` tool.</context>"""
+                return """<context name="todo_list" from="agent">
+Todo list does not exist. Please update it with the `UpdateTodoList` tool.</context>"""
             content = self.io.read_text(abs_path)
             if content is None or not content.strip():
                 return None
-            result = '<context name="todo_list">\n'
+            result = '<context name="todo_list" from="agent">\n'
             result += "## Current Todo List\n\n"
             result += "Below is the current todo list managed via the `UpdateTodoList` tool:\n\n"
             result += f"```\n{content}\n```\n"
@@ -1730,6 +1624,32 @@ Todo list does not exist. Please update it with the `UpdataTodoList` tool.</cont
             self.io.tool_error(f"Error generating skills content context: {str(e)}")
             return None
 
+    def get_background_command_output(self):
+        """
+        Get background command output to append after the main message.
+
+        Returns:
+            String containing formatted background command output, or empty string if none
+        """
+        # Get output from all running background commands
+        bg_outputs = BackgroundCommandManager.get_all_command_outputs(clear=True)
+
+        if not bg_outputs:
+            return ""
+
+        # Get command info to show actual command strings
+        command_info = BackgroundCommandManager.list_background_commands()
+
+        # Create formatted output for background commands
+        output = "--- Background Commands Output ---\n"
+        for command_key, cmd_output in bg_outputs.items():
+            if cmd_output.strip():  # Only add if there's output
+                # Get the actual command string if available
+                command_str = command_info.get(command_key, {}).get("command", command_key)
+                output += f"\n[bg: {command_str}]\n{cmd_output}\n"
+
+        return output
+
     def get_git_status(self):
         """
         Generate a git status context block for repository information.
@@ -1738,7 +1658,7 @@ Todo list does not exist. Please update it with the `UpdataTodoList` tool.</cont
         if not self.use_enhanced_context or not self.repo:
             return None
         try:
-            result = '<context name="gitStatus">\n'
+            result = '<context name="gitStatus" from="agent">\n'
             result += "## Git Repository Status\n\n"
             result += "This is a snapshot of the git status at the current time.\n"
             try:
@@ -1844,42 +1764,3 @@ Todo list does not exist. Please update it with the `UpdataTodoList` tool.</cont
             self.context_blocks_cache = {}
             self.tokens_calculated = False
         return True
-
-    def _log_chunks(self, chunks):
-        try:
-            import hashlib
-            import json
-
-            if not hasattr(self, "_message_hashes"):
-                self._message_hashes = {
-                    "system": None,
-                    "static": None,
-                    "examples": None,
-                    "readonly_files": None,
-                    "repo": None,
-                    "chat_files": None,
-                    "pre_message": None,
-                    "done": None,
-                    "edit_files": None,
-                    "cur": None,
-                    "post_message": None,
-                    "reminder": None,
-                }
-            changes = []
-            for key, value in self._message_hashes.items():
-                json_obj = json.dumps(
-                    getattr(chunks, key, ""), sort_keys=True, separators=(",", ":")
-                )
-                new_hash = hashlib.sha256(json_obj.encode("utf-8")).hexdigest()
-                if self._message_hashes[key] != new_hash:
-                    changes.append(key)
-                self._message_hashes[key] = new_hash
-            print("")
-            print("MESSAGE CHUNK HASHES")
-            print(self._message_hashes)
-            print("")
-            print(changes)
-            print("")
-        except Exception as e:
-            print(e)
-            pass

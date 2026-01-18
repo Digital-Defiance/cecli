@@ -170,7 +170,6 @@ class TextualInputOutput(InputOutput):
             pretty: Whether to use pretty formatting (unused in TUI, kept for compatibility)
         """
         if not message:
-            self.tool_warning("Empty response received from LLM. Check your provider account?")
             return
 
         # Use the streaming path so markdown rendering is applied
@@ -454,25 +453,18 @@ class TextualInputOutput(InputOutput):
                 allow_never = True
 
             valid_responses = ["yes", "no", "skip", "all"]
-            options = " (Y)es/(N)o"
 
             if allow_tweak:
                 valid_responses.append("tweak")
-                options += "/(T)weak"
-            if group or group_response:
-                if not explicit_yes_required or group_response:
-                    options += "/(A)ll"
-                options += "/(S)kip all"
             if allow_never:
-                options += "/(D)on't ask again"
                 valid_responses.append("don't")
 
             if default.lower().startswith("y"):
-                question += options + " [Yes]: "
+                question += " [Yes]: "
             elif default.lower().startswith("n"):
-                question += options + " [No]: "
+                question += " [No]: "
             else:
-                question += options + f" [{default}]: "
+                question += f" [{default}]: "
 
             # Handle self.yes parameter (auto-yes for non-explicit confirmations)
             if self.yes is True and not explicit_yes_required:

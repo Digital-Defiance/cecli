@@ -3,7 +3,6 @@ from cecli.tools.utils.helpers import (
     ToolError,
     apply_change,
     format_tool_result,
-    generate_unified_diff_snippet,
     handle_tool_error,
     validate_file_for_edit,
 )
@@ -72,9 +71,6 @@ class Tool(BaseTool):
                     f"Warning: No changes made (deleting line {line_num_int} would not change file)"
                 )
 
-            # Generate diff snippet
-            diff_snippet = generate_unified_diff_snippet(original_content, new_content, rel_path)
-
             # Handle dry run
             if dry_run:
                 dry_run_message = f"Dry run: Would delete line {line_num_int} in {file_path}"
@@ -84,7 +80,6 @@ class Tool(BaseTool):
                     "",
                     dry_run=True,
                     dry_run_message=dry_run_message,
-                    diff_snippet=diff_snippet,
                 )
 
             # --- Apply Change (Not dry run) ---
@@ -109,7 +104,6 @@ class Tool(BaseTool):
                 tool_name,
                 success_message,
                 change_id=final_change_id,
-                diff_snippet=diff_snippet,
             )
 
         except ToolError as e:

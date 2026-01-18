@@ -3,6 +3,7 @@ from typing import List
 import cecli.models as models
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
+from cecli.helpers.conversation import ConversationManager, MessageTag
 
 
 class WeakModelCommand(BaseCommand):
@@ -11,7 +12,7 @@ class WeakModelCommand(BaseCommand):
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
-        """Execute the weak_model command with given parameters."""
+        """Execute the weak-model command with given parameters."""
         arg_split = args.split(" ", 1)
         model_name = arg_split[0].strip()
         if not model_name:
@@ -28,6 +29,8 @@ class WeakModelCommand(BaseCommand):
             editor_model=coder.main_model.editor_model.name,
             weak_model=model_name,
             io=io,
+            retries=coder.main_model.retries,
+            debug=coder.main_model.debug,
         )
         await models.sanity_check_models(io, model)
 
@@ -53,9 +56,18 @@ class WeakModelCommand(BaseCommand):
             new_kwargs = dict(io=io, from_coder=coder)
             new_kwargs.update(kwargs)
 
+            # Save current conversation state
+            original_all_messages = ConversationManager.get_messages()
+            original_coder = coder
+
             temp_coder = await Coder.create(**new_kwargs)
-            temp_coder.cur_messages = []
-            temp_coder.done_messages = []
+
+            # Clear ALL messages for temp coder (start fresh)
+            ConversationManager.reset()
+
+            # Re-initialize ConversationManager with temp coder
+            ConversationManager.initialize(temp_coder)
+            ConversationManager.clear_cache()
 
             verbose = kwargs.get("verbose", False)
             if verbose:
@@ -63,11 +75,43 @@ class WeakModelCommand(BaseCommand):
 
             try:
                 await temp_coder.generate(user_message=message, preproc=False)
+                coder.total_cost = temp_coder.total_cost
+                coder.coder_commit_hashes = temp_coder.coder_commit_hashes
+
+                # Save temp coder's ALL messages
+                temp_all_messages = ConversationManager.get_messages()
+
+                # Clear manager and restore original state
+                ConversationManager.reset()
+                ConversationManager.initialize(original_coder)
+
+                # Restore original messages with all metadata
+                for msg in original_all_messages:
+                    ConversationManager.add_message(
+                        msg.to_dict(),
+                        MessageTag(msg.tag),
+                        priority=msg.priority,
+                        timestamp=msg.timestamp,
+                        mark_for_delete=msg.mark_for_delete,
+                        hash_key=msg.hash_key,
+                    )
+
+                # Append temp coder's DONE and CUR messages (but not other tags like SYSTEM)
+                for msg in temp_all_messages:
+                    if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
+                        ConversationManager.add_message(
+                            msg.to_dict(),
+                            MessageTag(msg.tag),
+                            priority=msg.priority,
+                            timestamp=msg.timestamp,
+                            mark_for_delete=msg.mark_for_delete,
+                            hash_key=msg.hash_key,
+                        )
+
+                # Move back cur messages with appropriate message
                 coder.move_back_cur_messages(
                     f"Weak model {model_name} made those changes to the files."
                 )
-                coder.total_cost = temp_coder.total_cost
-                coder.coder_commit_hashes = temp_coder.coder_commit_hashes
 
                 # Restore the original model configuration
                 from cecli.commands import SwitchCoderSignal
@@ -92,27 +136,27 @@ class WeakModelCommand(BaseCommand):
 
     @classmethod
     def get_completions(cls, io, coder, args) -> List[str]:
-        """Get completion options for weak_model command."""
+        """Get completion options for weak-model command."""
         return models.get_chat_model_names()
 
     @classmethod
     def get_help(cls) -> str:
-        """Get help text for the weak_model command."""
+        """Get help text for the weak-model command."""
         help_text = super().get_help()
         help_text += "\nUsage:\n"
-        help_text += "  /weak_model <model-name>              # Switch to a new weak model\n"
+        help_text += "  /weak-model <model-name>              # Switch to a new weak model\n"
         help_text += (
-            "  /weak_model <model-name> <prompt>     # Use a specific weak model for a single"
+            "  /weak-model <model-name> <prompt>     # Use a specific weak model for a single"
             " prompt\n"
         )
         help_text += "\nExamples:\n"
         help_text += (
-            "  /weak_model gpt-4o-mini               # Switch to GPT-4o Mini as weak model\n"
+            "  /weak-model gpt-4o-mini               # Switch to GPT-4o Mini as weak model\n"
         )
         help_text += (
-            "  /weak_model claude-3-haiku            # Switch to Claude 3 Haiku as weak model\n"
+            "  /weak-model claude-3-haiku            # Switch to Claude 3 Haiku as weak model\n"
         )
-        help_text += '  /weak_model o1-mini "review this code" # Use o1-mini to review code\n'
+        help_text += '  /weak-model o1-mini "review this code" # Use o1-mini to review code\n'
         help_text += (
             "\nWhen switching weak models, the main model and editor model remain unchanged.\n"
         )

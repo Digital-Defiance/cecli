@@ -37,11 +37,12 @@ from prompt_toolkit.enums import EditingMode
 
 from cecli import __version__, models, urls, utils
 from cecli.args import get_parser
-from cecli.coders import Coder
+from cecli.coders import AgentCoder, Coder
 from cecli.coders.base_coder import UnknownEditFormat
 from cecli.commands import Commands, SwitchCoderSignal
 from cecli.deprecated_args import handle_deprecated_model_args
 from cecli.format_settings import format_settings, scrub_sensitive_info
+from cecli.helpers.conversation import ConversationChunks
 from cecli.helpers.copypaste import ClipboardWatcher
 from cecli.helpers.file_searcher import generate_search_path_list
 from cecli.history import ChatSummary
@@ -556,6 +557,8 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         args.mcp_servers = convert_yaml_to_json_string(args.mcp_servers)
     if hasattr(args, "custom") and args.custom is not None:
         args.custom = convert_yaml_to_json_string(args.custom)
+    if hasattr(args, "retries") and args.retries is not None:
+        args.retries = convert_yaml_to_json_string(args.retries)
     if args.debug:
         global log_file
         os.makedirs(".cecli/logs/", exist_ok=True)
@@ -823,6 +826,8 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             verbose=args.verbose,
             io=io,
             override_kwargs=weak_model_overrides,
+            retries=args.retries,
+            debug=args.debug,
         )
     editor_model_obj = None
     if editor_model_name:
@@ -832,6 +837,8 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             verbose=args.verbose,
             io=io,
             override_kwargs=editor_model_overrides,
+            retries=args.retries,
+            debug=args.debug,
         )
     if main_model_name.startswith("openrouter/") and not os.environ.get("OPENROUTER_API_KEY"):
         io.tool_warning(
@@ -862,6 +869,8 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         verbose=args.verbose,
         io=io,
         override_kwargs=main_model_overrides,
+        retries=args.retries,
+        debug=args.debug,
     )
     if args.copy_paste and main_model.copy_paste_transport == "api":
         main_model.enable_copy_paste_mode()
@@ -983,7 +992,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         mcp_servers = load_mcp_servers(
             args.mcp_servers, args.mcp_servers_file, io, args.verbose, args.mcp_transport
         )
-        mcp_manager = McpServerManager(mcp_servers, io, args.verbose)
+        mcp_manager = await McpServerManager.from_servers(mcp_servers, io, args.verbose)
 
         coder = await Coder.create(
             main_model=main_model,
@@ -1002,7 +1011,6 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             verbose=args.verbose,
             stream=args.stream,
             use_git=args.git,
-            restore_chat_history=args.restore_chat_history,
             auto_lint=args.auto_lint,
             auto_test=args.auto_test,
             lint_cmds=lint_cmds,
@@ -1101,7 +1109,8 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     if args.show_repo_map:
         repo_map = coder.get_repo_map()
         if repo_map:
-            pre_init_io.tool_output(repo_map)
+            repo_string = ConversationChunks.get_repo_map_string(repo_map)
+            pre_init_io.tool_output(repo_string)
         return await graceful_exit(coder)
     if args.apply:
         content = pre_init_io.read_text(args.apply)
@@ -1189,17 +1198,28 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             return await graceful_exit(coder)
         except SwitchCoderSignal as switch:
             coder.ok_to_warm_cache = False
+
             if hasattr(switch, "placeholder") and switch.placeholder is not None:
                 io.placeholder = switch.placeholder
             kwargs = dict(io=io, from_coder=coder)
             kwargs.update(switch.kwargs)
+
             if "show_announcements" in kwargs:
                 del kwargs["show_announcements"]
             kwargs["num_cache_warming_pings"] = 0
             kwargs["args"] = coder.args
+
+            if kwargs["edit_format"] != AgentCoder.edit_format and (
+                coder := kwargs.get("from_coder")
+            ):
+                if coder.mcp_manager.get_server("Local"):
+                    await coder.mcp_manager.disconnect_server("Local")
+
             coder = await Coder.create(**kwargs)
+
             if switch.kwargs.get("show_announcements") is False:
                 coder.suppress_announcements_for_next_prompt = True
+
         except SystemExit:
             sys.settrace(None)
             return await graceful_exit(coder)

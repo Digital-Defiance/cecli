@@ -1,4 +1,5 @@
 from cecli import diffs
+from cecli.helpers.conversation import ConversationManager, MessageTag
 
 from ..dump import dump  # noqa: F401
 from .base_coder import Coder
@@ -39,11 +40,17 @@ class SingleWholeFileFunctionCoder(Coder):
 
     def add_assistant_reply_to_cur_messages(self, edited):
         if edited:
-            self.cur_messages += [
-                dict(role="assistant", content=self.gpt_prompts.redacted_edit_message)
-            ]
+            # Always add to conversation manager
+            ConversationManager.add_message(
+                message_dict=dict(role="assistant", content=self.gpt_prompts.redacted_edit_message),
+                tag=MessageTag.CUR,
+            )
         else:
-            self.cur_messages += [dict(role="assistant", content=self.partial_response_content)]
+            # Always add to conversation manager
+            ConversationManager.add_message(
+                message_dict=dict(role="assistant", content=self.partial_response_content),
+                tag=MessageTag.CUR,
+            )
 
     def render_incremental_response(self, final=False):
         res = ""

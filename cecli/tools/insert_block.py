@@ -7,7 +7,6 @@ from cecli.tools.utils.helpers import (
     apply_change,
     find_pattern_indices,
     format_tool_result,
-    generate_unified_diff_snippet,
     handle_tool_error,
     is_provided,
     select_occurrence_index,
@@ -80,9 +79,15 @@ class Tool(BaseTool):
         try:
             # 1. Validate parameters
             if sum(is_provided(x) for x in [after_pattern, before_pattern, position]) != 1:
-                raise ToolError(
-                    "Must specify exactly one of: after_pattern, before_pattern, or position"
-                )
+                # Check if file is empty or contains only whitespace
+                abs_path, rel_path, original_content = validate_file_for_edit(coder, file_path)
+                if not original_content.strip():
+                    # File is empty or contains only whitespace, default to inserting at beginning
+                    position = "top"
+                else:
+                    raise ToolError(
+                        "Must specify exactly one of: after_pattern, before_pattern, or position"
+                    )
 
             # 2. Validate file and get content
             abs_path, rel_path, original_content = validate_file_for_edit(coder, file_path)
@@ -184,10 +189,7 @@ class Tool(BaseTool):
                 coder.io.tool_warning("No changes made: insertion would not change file")
                 return "Warning: No changes made (insertion would not change file)"
 
-            # 6. Generate diff for feedback
-            diff_snippet = generate_unified_diff_snippet(original_content, new_content, rel_path)
-
-            # 7. Handle dry run
+            # 6. Handle dry run
             if dry_run:
                 if position:
                     dry_run_message = f"Dry run: Would insert block {pattern_type} {file_path}."
@@ -202,10 +204,9 @@ class Tool(BaseTool):
                     "",
                     dry_run=True,
                     dry_run_message=dry_run_message,
-                    diff_snippet=diff_snippet,
                 )
 
-            # 8. Apply Change (Not dry run)
+            # 7. Apply Change (Not dry run)
             metadata = {
                 "insertion_line_idx": insertion_line_idx,
                 "after_pattern": after_pattern,
@@ -229,7 +230,7 @@ class Tool(BaseTool):
 
             coder.files_edited_by_tools.add(rel_path)
 
-            # 9. Format and return result
+            # 8. Format and return result
             if position:
                 success_message = f"Inserted block {pattern_type} {file_path}"
             else:
@@ -243,7 +244,6 @@ class Tool(BaseTool):
                 tool_name,
                 success_message,
                 change_id=final_change_id,
-                diff_snippet=diff_snippet,
             )
 
         except ToolError as e:

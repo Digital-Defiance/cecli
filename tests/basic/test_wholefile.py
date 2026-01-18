@@ -9,6 +9,7 @@ import pytest
 from cecli.coders import Coder
 from cecli.coders.wholefile_coder import WholeFileCoder
 from cecli.dump import dump  # noqa: F401
+from cecli.helpers.conversation import ConversationChunks
 from cecli.io import InputOutput
 
 
@@ -19,11 +20,15 @@ class TestWholeFileCoder:
         self.tempdir = tempfile.mkdtemp()
         os.chdir(self.tempdir)
         self.GPT35 = gpt35_model
+        # Reset conversation system before each test
+        ConversationChunks.reset()
 
         yield
 
         os.chdir(self.original_cwd)
         shutil.rmtree(self.tempdir, ignore_errors=True)
+        # Reset conversation system after each test
+        ConversationChunks.reset()
 
     async def test_no_files(self):
         # Initialize WholeFileCoder with the temporary directory
@@ -350,6 +355,11 @@ Do this:
 
             # Create a mock response object that looks like a LiteLLM response
             mock_response = MagicMock()
+            # Mock model_dump() to return the expected structure
+            mock_response.model_dump = lambda: {
+                "choices": [{"message": {"content": content, "role": "assistant"}}]
+            }
+            # Also mock __getitem__ for backward compatibility
             mock_response.__getitem__ = lambda self, key: (
                 [{"message": {"content": content, "role": "assistant"}}] if key == "choices" else {}
             )

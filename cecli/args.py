@@ -150,6 +150,12 @@ def get_parser(default_config_files, git_root):
         ),
     )
     group.add_argument(
+        "--show-thinking",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Show reasoning content in the response (default: True)",
+    )
+    group.add_argument(
         "--verify-ssl",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -240,6 +246,12 @@ def get_parser(default_config_files, git_root):
             "Soft limit on tokens for chat history, after which summarization begins."
             " If unspecified, defaults to the model's max_chat_history_tokens."
         ),
+    )
+    group.add_argument(
+        "--retries",
+        metavar="RETRIES_JSON",
+        help="Specify LLM retry configuration as a JSON string",
+        default=None,
     )
 
     #######
@@ -450,12 +462,6 @@ def get_parser(default_config_files, git_root):
         default=default_chat_history_file,
         help=f"Specify the chat history file (default: {default_chat_history_file})",
     ).complete = shtab.FILE
-    group.add_argument(
-        "--restore-chat-history",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Restore the previous chat history messages (default: False)",
-    )
     #########
     group = parser.add_argument_group("Input settings")
     group.add_argument(

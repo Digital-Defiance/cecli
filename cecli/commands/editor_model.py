@@ -6,23 +6,27 @@ from cecli.commands.utils.helpers import format_command_result
 from cecli.helpers.conversation import ConversationManager, MessageTag
 
 
-class ModelCommand(BaseCommand):
-    NORM_NAME = "model"
-    DESCRIPTION = "Switch the Main Model to a new LLM"
+class EditorModelCommand(BaseCommand):
+    NORM_NAME = "editor-model"
+    DESCRIPTION = "Switch the Editor Model to a new LLM"
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
-        """Execute the model command with given parameters."""
+        """Execute the editor-model command with given parameters."""
         arg_split = args.split(" ", 1)
         model_name = arg_split[0].strip()
         if not model_name:
-            announcements = "\n".join(coder.get_announcements())
-            io.tool_output(announcements)
-            return format_command_result(io, "model", "Displayed announcements")
+            # If no model name provided, show current editor model
+            current_editor_model = coder.main_model.editor_model.name
+            io.tool_output(f"Current editor model: {current_editor_model}")
+            return format_command_result(
+                io, "editor-model", f"Displayed current editor model: {current_editor_model}"
+            )
 
+        # Create a new model with the same main model and editor model, but updated editor model
         model = models.Model(
-            model_name,
-            editor_model=coder.main_model.editor_model.name,
+            coder.main_model.name,
+            editor_model=model_name,
             weak_model=coder.main_model.weak_model.name,
             io=io,
             retries=coder.main_model.retries,
@@ -30,17 +34,8 @@ class ModelCommand(BaseCommand):
         )
         await models.sanity_check_models(io, model)
 
-        # Check if the current edit format is the default for the old model
-        old_model_edit_format = coder.main_model.edit_format
-        current_edit_format = coder.edit_format
-
-        new_edit_format = current_edit_format
-        if current_edit_format == old_model_edit_format:
-            # If the user was using the old model's default, switch to the new model's default
-            new_edit_format = model.edit_format
-
         if len(arg_split) > 1:
-            # implement architect coder-like generation call for model
+            # implement architect coder-like generation call for editor model
             message = arg_split[1].strip()
 
             # Store the original model configuration
@@ -52,7 +47,7 @@ class ModelCommand(BaseCommand):
 
             kwargs = dict()
             kwargs["main_model"] = model
-            kwargs["edit_format"] = new_edit_format
+            kwargs["edit_format"] = coder.edit_format  # Keep the same edit format
             kwargs["suggest_shell_commands"] = False
             kwargs["total_cost"] = coder.total_cost
             kwargs["num_cache_warming_pings"] = 0
@@ -114,7 +109,9 @@ class ModelCommand(BaseCommand):
                         )
 
                 # Move back cur messages with appropriate message
-                coder.move_back_cur_messages(f"Model {model_name} made those changes to the files.")
+                coder.move_back_cur_messages(
+                    f"Editor model {model_name} made those changes to the files."
+                )
 
                 # Restore the original model configuration
                 from cecli.commands import SwitchCoderSignal
@@ -135,28 +132,36 @@ class ModelCommand(BaseCommand):
         else:
             from cecli.commands import SwitchCoderSignal
 
-            raise SwitchCoderSignal(main_model=model, edit_format=new_edit_format)
+            raise SwitchCoderSignal(main_model=model, edit_format=coder.edit_format)
 
     @classmethod
     def get_completions(cls, io, coder, args) -> List[str]:
-        """Get completion options for model command."""
+        """Get completion options for editor-model command."""
         return models.get_chat_model_names()
 
     @classmethod
     def get_help(cls) -> str:
-        """Get help text for the model command."""
+        """Get help text for the editor-model command."""
         help_text = super().get_help()
         help_text += "\nUsage:\n"
-        help_text += "  /model <model-name>              # Switch to a new model\n"
+        help_text += "  /editor-model <model-name>              # Switch to a new editor model\n"
         help_text += (
-            "  /model <model-name> <prompt>     # Use a specific model for a single prompt\n"
+            "  /editor-model <model-name> <prompt>     # Use a specific editor model for a single"
+            " prompt\n"
         )
         help_text += "\nExamples:\n"
-        help_text += "  /model gpt-4o                    # Switch to GPT-4o\n"
-        help_text += "  /model claude-3-opus             # Switch to Claude 3 Opus\n"
-        help_text += '  /model o1-preview "fix this bug" # Use o1-preview to fix a bug\n'
-        help_text += "\nWhen switching models, the edit format may also change if you were using\n"
-        help_text += "the previous model's default edit format.\n"
-        help_text += "\nIf you provide a prompt after the model name, that model will be used\n"
-        help_text += "just for that prompt, then you'll return to your original model.\n"
+        help_text += (
+            "  /editor-model gpt-4o-mini               # Switch to GPT-4o Mini as editor model\n"
+        )
+        help_text += (
+            "  /editor-model claude-3-haiku            # Switch to Claude 3 Haiku as editor model\n"
+        )
+        help_text += '  /editor-model o1-mini "review this code" # Use o1-mini to review code\n'
+        help_text += (
+            "\nWhen switching editor models, the main model and editor model remain unchanged.\n"
+        )
+        help_text += (
+            "\nIf you provide a prompt after the model name, that editor model will be used\n"
+        )
+        help_text += "just for that prompt, then you'll return to your original editor model.\n"
         return help_text
