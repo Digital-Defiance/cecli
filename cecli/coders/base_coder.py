@@ -2793,50 +2793,75 @@ class Coder:
             )
 
     def get_file_mentions(self, content, ignore_current=False):
-        words = set(word for word in content.split())
+        # Get file-like words from content (contiguous strings containing slashes or periods)
+        words = set()
+        for word in content.split():
+            # Strip quotes and punctuation
+            word = word.strip("\"'`*_,.!;:?")
+            if re.search(r"[\\\/._-]", word):
+                words.add(word)
 
-        # drop sentence punctuation from the end
-        words = set(word.rstrip(",.!;:?") for word in words)
+        # Also check basenames of file-like words
+        basename_words = set()
+        for word in words:
+            basename = os.path.basename(word)
+            if basename and basename != word:  # Only add if basename is different
+                basename_words.add(basename)
 
-        # strip away all kinds of quotes
-        quotes = "\"'`*_"
-        words = set(word.strip(quotes) for word in words)
+        # Combine all words to check
+        all_words = words | basename_words
 
         if ignore_current:
-            addable_rel_fnames = self.get_all_relative_files()
-            existing_basenames = {}
+            files_to_check = self.get_all_relative_files()
+            existing_basenames = set()
         else:
-            addable_rel_fnames = self.get_addable_relative_files()
-
+            files_to_check = self.get_addable_relative_files()
             # Get basenames of files already in chat or read-only
             existing_basenames = {os.path.basename(f) for f in self.get_inchat_relative_files()} | {
                 os.path.basename(self.get_rel_fname(f))
                 for f in self.abs_read_only_fnames | self.abs_read_only_stubs_fnames
             }
 
-        mentioned_rel_fnames = set()
-        fname_to_rel_fnames = {}
-        for rel_fname in addable_rel_fnames:
-            normalized_rel_fname = rel_fname.replace("\\", "/")
-            normalized_words = set(word.replace("\\", "/") for word in words)
-            if normalized_rel_fname in normalized_words:
-                mentioned_rel_fnames.add(rel_fname)
-
-            fname = os.path.basename(rel_fname)
-
-            # Don't add basenames that could be plain words like "run" or "make"
-            if "/" in fname or "\\" in fname or "." in fname or "_" in fname or "-" in fname:
-                if fname not in fname_to_rel_fnames:
-                    fname_to_rel_fnames[fname] = []
-                fname_to_rel_fnames[fname].append(rel_fname)
-
-        for fname, rel_fnames in fname_to_rel_fnames.items():
-            # If the basename is already in chat, don't add based on a basename mention
-            if fname in existing_basenames:
+        # Build map of basenames to files for uniqueness check
+        # Only consider basenames that look like filenames (contain /, \, ., _, or -)
+        # to avoid false matches on common words like "run" or "make"
+        basename_to_files = {}
+        for rel_fname in files_to_check:
+            # Skip git-ignored files
+            if self.repo and self.repo.git_ignored_file(rel_fname):
                 continue
-            # If the basename mention is unique among addable files and present in the text
-            if len(rel_fnames) == 1 and fname in words:
-                mentioned_rel_fnames.add(rel_fnames[0])
+
+            basename = os.path.basename(rel_fname)
+            # Only include basenames that look like filenames
+            if re.search(r"[\\\/._-]", basename):
+                if basename not in basename_to_files:
+                    basename_to_files[basename] = []
+                basename_to_files[basename].append(rel_fname)
+
+        mentioned_rel_fnames = set()
+
+        for rel_fname in files_to_check:
+            # Skip git-ignored files
+            if self.repo and self.repo.git_ignored_file(rel_fname):
+                continue
+
+            # Check if full path matches
+            normalized_fname = rel_fname.replace("\\", "/")
+            normalized_words = {w.replace("\\", "/") for w in all_words}
+
+            if normalized_fname in normalized_words:
+                mentioned_rel_fnames.add(rel_fname)
+                continue
+
+            # Check basename - only add if unique among addable files and not already in chat
+            basename = os.path.basename(rel_fname)
+            if (
+                basename in all_words
+                and basename not in existing_basenames
+                and len(basename_to_files.get(basename, [])) == 1
+                and basename_to_files[basename][0] == rel_fname
+            ):
+                mentioned_rel_fnames.add(rel_fname)
 
         return mentioned_rel_fnames
 
@@ -2851,12 +2876,11 @@ class Coder:
         added_fnames = []
         group = ConfirmGroup(new_mentions)
         for rel_fname in sorted(new_mentions):
+            message = "Add file to the chat?"
             if self.args.tui:
-                self.io.tool_output(rel_fname)
+                message = f"Add file to the chat? ({rel_fname})"
 
-            if await self.io.confirm_ask(
-                "Add file to the chat?", subject=rel_fname, group=group, allow_never=True
-            ):
+            if await self.io.confirm_ask(message, subject=rel_fname, group=group, allow_never=True):
                 self.add_rel_fname(rel_fname)
                 added_fnames.append(rel_fname)
             else:

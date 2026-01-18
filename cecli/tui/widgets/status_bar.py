@@ -166,7 +166,7 @@ class StatusBar(Widget, can_focus=True):
             if self._allow_tweak:
                 hints.mount(Static("\\[t]weak", classes="hint hint-tweak"))
             if self._allow_never:
-                hints.mount(Static("\\[d]on't ask", classes="hint hint-never"))
+                hints.mount(Static("\\[d]on't ask again", classes="hint hint-never"))
 
     def show_notification(
         self, text: str, severity: str = "info", timeout: float | None = 3.0
