@@ -62,7 +62,7 @@ class ConversationChunks:
         # Add reminder if available
         if coder.gpt_prompts.system_reminder:
             msg = dict(
-                role="system",
+                role="user",
                 content=coder.fmt_system_prompt(coder.gpt_prompts.system_reminder),
             )
             ConversationManager.add_message(
@@ -156,7 +156,7 @@ class ConversationChunks:
             reminder_content = "\n".join(reminder_lines)
             ConversationManager.add_message(
                 message_dict={
-                    "role": "user" if coder.main_model.reminder == "user" else "system",
+                    "role": "user",
                     "content": reminder_content,
                 },
                 tag=MessageTag.REMINDER,
@@ -624,7 +624,7 @@ class ConversationChunks:
         # Add static blocks to conversation manager with stable hash keys
         for block_type, block_content in message_blocks.items():
             ConversationManager.add_message(
-                message_dict={"role": "system", "content": block_content},
+                message_dict={"role": "user", "content": block_content},
                 tag=MessageTag.STATIC,
                 hash_key=("static", block_type),
             )
@@ -666,7 +666,7 @@ class ConversationChunks:
         # Process other blocks
         for block_type, block_content in message_blocks.items():
             ConversationManager.add_message(
-                message_dict={"role": "system", "content": block_content},
+                message_dict={"role": "user", "content": block_content},
                 tag=MessageTag.STATIC,  # Use STATIC tag but with different priority
                 priority=125,  # Between REPO (100) and READONLY_FILES (200)
                 hash_key=("pre_message", block_type),
@@ -724,7 +724,7 @@ class ConversationChunks:
         # Add post-message blocks to conversation manager with stable hash keys
         for block_type, block_content in message_blocks.items():
             ConversationManager.add_message(
-                message_dict={"role": "system", "content": block_content},
+                message_dict={"role": "user", "content": block_content},
                 tag=MessageTag.STATIC,  # Use STATIC tag but with different priority
                 priority=250,  # Between CUR (200) and REMINDER (300)
                 mark_for_delete=0,

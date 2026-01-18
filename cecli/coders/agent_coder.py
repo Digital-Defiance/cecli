@@ -423,7 +423,7 @@ class AgentCoder(Coder):
         if not self.use_enhanced_context or not self.repo_map:
             return None
         try:
-            result = '<context name="symbol_outline">\n'
+            result = '<context name="symbol_outline" from="agent">\n'
             result += "## Symbol Outline (Current Context)\n\n"
             result += """Code definitions (classes, functions, methods, etc.) found in files currently in chat context.
 
@@ -538,7 +538,7 @@ class AgentCoder(Coder):
                 if not max_input_tokens or messages_tokens < max_input_tokens:
                     ConversationManager.add_message(
                         message_dict={
-                            "role": "user" if self.main_model.reminder == "user" else "system",
+                            "role": "user",
                             "content": reminder_content,
                         },
                         tag=MessageTag.REMINDER,
@@ -559,7 +559,7 @@ class AgentCoder(Coder):
         try:
             if not hasattr(self, "context_block_tokens") or not self.context_block_tokens:
                 self._calculate_context_block_tokens()
-            result = '<context name="context_summary">\n'
+            result = '<context name="context_summary" from="agent">\n'
             result += "## Current Context Overview\n\n"
             max_input_tokens = self.main_model.info.get("max_input_tokens") or 0
             if max_input_tokens:
@@ -649,7 +649,7 @@ class AgentCoder(Coder):
             current_date = datetime.now().strftime("%Y-%m-%d")
             platform_info = platform.platform()
             language = self.chat_language or locale.getlocale()[0] or "en-US"
-            result = '<context name="environment_info">\n'
+            result = '<context name="environment_info" from="agent">\n'
             result += "## Environment Information\n\n"
             result += f"- Working directory: {self.root}\n"
             result += f"- Current date: {current_date}\n"
@@ -664,13 +664,6 @@ class AgentCoder(Coder):
                     result += "- Git repository: active but details unavailable\n"
             else:
                 result += "- Git repository: none\n"
-            features = []
-            if self.context_management_enabled:
-                features.append("context management")
-            if self.use_enhanced_context:
-                features.append("enhanced context blocks")
-            if features:
-                result += f"- Enabled features: {', '.join(features)}\n"
             result += "</context>"
             return result
         except Exception as e:
@@ -1220,7 +1213,7 @@ Error: {e}
         """
         if not self.tool_usage_history:
             return ""
-        context_parts = ['<context name="tool_usage_history">']
+        context_parts = ['<context name="tool_usage_history" from="agent">']
         context_parts.append("## Turn and Tool Call Statistics")
         context_parts.append(f"- Current turn: {self.num_reflections + 1}")
         context_parts.append(f"- Total tool calls this turn: {self.num_tool_calls}")
@@ -1276,7 +1269,7 @@ You have used the following tool(s) repeatedly:""")
             )
             if last_round_has_write:
                 context_parts = [
-                    '<context name="tool_usage_history">',
+                    '<context name="tool_usage_history" from="agent">',
                     "A file was just edited.",
                     "Make sure that something of value was done.",
                     "Do not just leave placeholder or sub content.",
@@ -1497,8 +1490,8 @@ Just reply with fixed versions of the {blocks} above that failed to match.
         This clearly delineates user input from other sections in the context window.
         """
         inp = await super().preproc_user_input(inp)
-        if inp and not inp.startswith('<context name="user_input">'):
-            inp = f'<context name="user_input">\n{inp}\n</context>'
+        if inp and not inp.startswith('<context name="user_input" from="agent">'):
+            inp = f'<context name="user_input" from="agent">\n{inp}\n</context>'
         return inp
 
     def get_directory_structure(self):
@@ -1509,7 +1502,7 @@ Just reply with fixed versions of the {blocks} above that failed to match.
         if not self.use_enhanced_context:
             return None
         try:
-            result = '<context name="directoryStructure">\n'
+            result = '<context name="directoryStructure" from="agent">\n'
             result += "## Project File Structure\n\n"
             result += (
                 "Below is a snapshot of this project's file structure at the current time. "
@@ -1586,12 +1579,12 @@ Just reply with fixed versions of the {blocks} above that failed to match.
             import os
 
             if not os.path.isfile(abs_path):
-                return """<context name="todo_list">
+                return """<context name="todo_list" from="agent">
 Todo list does not exist. Please update it with the `UpdateTodoList` tool.</context>"""
             content = self.io.read_text(abs_path)
             if content is None or not content.strip():
                 return None
-            result = '<context name="todo_list">\n'
+            result = '<context name="todo_list" from="agent">\n'
             result += "## Current Todo List\n\n"
             result += "Below is the current todo list managed via the `UpdateTodoList` tool:\n\n"
             result += f"```\n{content}\n```\n"
@@ -1665,7 +1658,7 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
         if not self.use_enhanced_context or not self.repo:
             return None
         try:
-            result = '<context name="gitStatus">\n'
+            result = '<context name="gitStatus" from="agent">\n'
             result += "## Git Repository Status\n\n"
             result += "This is a snapshot of the git status at the current time.\n"
             try:

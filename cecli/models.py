@@ -910,8 +910,8 @@ class Model(ModelSettings):
         temperature=None,
         tools=None,
         max_tokens=None,
-        min_wait=4,
-        max_wait=8,
+        min_wait=0,
+        max_wait=2,
     ):
         if os.environ.get("CECLI_SANITY_CHECK_TURNS"):
             sanity_check_messages(messages)

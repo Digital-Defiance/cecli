@@ -538,7 +538,7 @@ class ConversationManager:
                 continue
 
             if isinstance(content, str) and content.strip().startswith("<context"):
-                if not content.strip().startswith('<context name="user_input">'):
+                if not content.strip().startswith('<context name="user_input" from="agent">'):
                     continue
 
             if role not in ["system"]:
@@ -559,7 +559,7 @@ class ConversationManager:
                     continue
 
                 if isinstance(content, str) and content.strip().startswith("<context"):
-                    if not content.strip().startswith('<context name="user_input">'):
+                    if not content.strip().startswith('<context name="user_input" from="agent">'):
                         continue
 
                 if role not in ["system"]:
