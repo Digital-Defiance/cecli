@@ -42,6 +42,13 @@ class InputArea(TextArea):
 
         pass
 
+    class TextChanged(Message):
+        """Text in the input area has changed."""
+
+        def __init__(self, text: str):
+            self.text = text
+            super().__init__()
+
     def __init__(self, history_file: str = None, **kwargs):
         """Initialize input area.
 
@@ -307,6 +314,9 @@ class InputArea(TextArea):
             return
 
         self._completion_prefix = self.text
+
+        # Post TextChanged message for parent to handle
+        self.post_message(self.TextChanged(self.text))
 
         if not self.disabled:
             val = self.text

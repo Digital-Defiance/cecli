@@ -20,8 +20,6 @@ from .copy import CopyCommand
 from .copy_context import CopyContextCommand
 from .core import Commands, SwitchCoderSignal
 from .diff import DiffCommand
-
-# Import and register commands
 from .drop import DropCommand
 from .editor import EditCommand, EditorCommand
 from .editor_model import EditorModelCommand
@@ -76,129 +74,129 @@ from .weak_model import WeakModelCommand
 from .web import WebCommand
 
 # Register commands
-CommandRegistry.register(DropCommand)
+CommandRegistry.register(AddCommand)
+CommandRegistry.register(AgentCommand)
+CommandRegistry.register(ArchitectCommand)
+CommandRegistry.register(AskCommand)
 CommandRegistry.register(ClearCommand)
-CommandRegistry.register(LsCommand)
-CommandRegistry.register(DiffCommand)
-CommandRegistry.register(ResetCommand)
-CommandRegistry.register(CopyCommand)
-CommandRegistry.register(PasteCommand)
-CommandRegistry.register(SettingsCommand)
-CommandRegistry.register(ReportCommand)
-CommandRegistry.register(TokensCommand)
-CommandRegistry.register(UndoCommand)
-CommandRegistry.register(GitCommand)
-CommandRegistry.register(RunCommand)
-CommandRegistry.register(HelpCommand)
+CommandRegistry.register(CodeCommand)
+CommandRegistry.register(CommandPrefixCommand)
 CommandRegistry.register(CommitCommand)
-CommandRegistry.register(ModelsCommand)
+CommandRegistry.register(ContextBlocksCommand)
+CommandRegistry.register(ContextCommand)
+CommandRegistry.register(ContextManagementCommand)
+CommandRegistry.register(CopyCommand)
+CommandRegistry.register(CopyContextCommand)
+CommandRegistry.register(DiffCommand)
+CommandRegistry.register(DropCommand)
+CommandRegistry.register(EditCommand)
+CommandRegistry.register(EditorCommand)
+CommandRegistry.register(EditorModelCommand)
 CommandRegistry.register(ExitCommand)
-CommandRegistry.register(QuitCommand)
-CommandRegistry.register(VoiceCommand)
+CommandRegistry.register(GitCommand)
+CommandRegistry.register(HelpCommand)
+CommandRegistry.register(HistorySearchCommand)
+CommandRegistry.register(LintCommand)
+CommandRegistry.register(ListSessionsCommand)
+CommandRegistry.register(LoadCommand)
+CommandRegistry.register(LoadMcpCommand)
+CommandRegistry.register(LoadSessionCommand)
+CommandRegistry.register(LoadSkillCommand)
+CommandRegistry.register(LsCommand)
 CommandRegistry.register(MapCommand)
 CommandRegistry.register(MapRefreshCommand)
+CommandRegistry.register(ModelCommand)
+CommandRegistry.register(ModelsCommand)
 CommandRegistry.register(MultilineModeCommand)
-CommandRegistry.register(EditorCommand)
-CommandRegistry.register(EditCommand)
-CommandRegistry.register(HistorySearchCommand)
-CommandRegistry.register(ThinkTokensCommand)
-CommandRegistry.register(LoadCommand)
-CommandRegistry.register(SaveCommand)
-CommandRegistry.register(ReasoningEffortCommand)
-CommandRegistry.register(SaveSessionCommand)
-CommandRegistry.register(ListSessionsCommand)
-CommandRegistry.register(LoadSessionCommand)
+CommandRegistry.register(PasteCommand)
+CommandRegistry.register(QuitCommand)
 CommandRegistry.register(ReadOnlyCommand)
 CommandRegistry.register(ReadOnlyStubCommand)
-CommandRegistry.register(AddCommand)
-CommandRegistry.register(ModelCommand)
-CommandRegistry.register(WeakModelCommand)
-CommandRegistry.register(EditorModelCommand)
-CommandRegistry.register(WebCommand)
-CommandRegistry.register(LintCommand)
-CommandRegistry.register(TestCommand)
-CommandRegistry.register(ContextManagementCommand)
-CommandRegistry.register(ContextBlocksCommand)
-CommandRegistry.register(AskCommand)
-CommandRegistry.register(CodeCommand)
-CommandRegistry.register(ArchitectCommand)
-CommandRegistry.register(ContextCommand)
-CommandRegistry.register(AgentCommand)
-CommandRegistry.register(CopyContextCommand)
-CommandRegistry.register(CommandPrefixCommand)
-CommandRegistry.register(LoadSkillCommand)
-CommandRegistry.register(RemoveSkillCommand)
-CommandRegistry.register(TerminalSetupCommand)
-CommandRegistry.register(LoadMcpCommand)
+CommandRegistry.register(ReasoningEffortCommand)
 CommandRegistry.register(RemoveMcpCommand)
+CommandRegistry.register(RemoveSkillCommand)
+CommandRegistry.register(ReportCommand)
+CommandRegistry.register(ResetCommand)
+CommandRegistry.register(RunCommand)
+CommandRegistry.register(SaveCommand)
+CommandRegistry.register(SaveSessionCommand)
+CommandRegistry.register(SettingsCommand)
+CommandRegistry.register(TerminalSetupCommand)
+CommandRegistry.register(TestCommand)
+CommandRegistry.register(ThinkTokensCommand)
+CommandRegistry.register(TokensCommand)
+CommandRegistry.register(UndoCommand)
+CommandRegistry.register(VoiceCommand)
+CommandRegistry.register(WeakModelCommand)
+CommandRegistry.register(WebCommand)
 
 
 __all__ = [
+    "AddCommand",
+    "AgentCommand",
+    "ArchitectCommand",
+    "AskCommand",
     "BaseCommand",
-    "CommandRegistry",
+    "ClearCommand",
+    "CodeCommand",
     "CommandError",
-    "quote_filename",
-    "parse_quoted_filenames",
-    "glob_filtered_to_repo",
-    "validate_file_access",
+    "CommandPrefixCommand",
+    "CommandRegistry",
+    "Commands",
+    "CommitCommand",
+    "ContextBlocksCommand",
+    "ContextCommand",
+    "ContextManagementCommand",
+    "CopyCommand",
+    "CopyContextCommand",
+    "DiffCommand",
+    "DropCommand",
+    "EditCommand",
+    "EditorCommand",
+    "EditorModelCommand",
+    "ExitCommand",
+    "expand_subdir",
     "format_command_result",
     "get_available_files",
-    "expand_subdir",
-    "DropCommand",
-    "ClearCommand",
-    "LsCommand",
-    "DiffCommand",
-    "ResetCommand",
-    "CopyCommand",
-    "PasteCommand",
-    "SettingsCommand",
-    "ReportCommand",
-    "TokensCommand",
-    "UndoCommand",
     "GitCommand",
-    "RunCommand",
+    "glob_filtered_to_repo",
     "HelpCommand",
-    "CommitCommand",
-    "ModelsCommand",
-    "ExitCommand",
-    "QuitCommand",
-    "VoiceCommand",
+    "HistorySearchCommand",
+    "LintCommand",
+    "ListSessionsCommand",
+    "LoadCommand",
+    "LoadMcpCommand",
+    "LoadSessionCommand",
+    "LoadSkillCommand",
+    "LsCommand",
     "MapCommand",
     "MapRefreshCommand",
+    "ModelCommand",
+    "ModelsCommand",
     "MultilineModeCommand",
-    "EditorCommand",
-    "EditCommand",
-    "HistorySearchCommand",
-    "ThinkTokensCommand",
-    "LoadCommand",
-    "SaveCommand",
-    "ReasoningEffortCommand",
-    "SaveSessionCommand",
-    "ListSessionsCommand",
-    "LoadSessionCommand",
+    "parse_quoted_filenames",
+    "PasteCommand",
+    "quote_filename",
+    "QuitCommand",
     "ReadOnlyCommand",
     "ReadOnlyStubCommand",
-    "AddCommand",
-    "ModelCommand",
-    "WeakModelCommand",
-    "EditorModelCommand",
-    "WebCommand",
-    "LintCommand",
-    "TestCommand",
-    "ContextManagementCommand",
-    "ContextBlocksCommand",
-    "AskCommand",
-    "CodeCommand",
-    "ArchitectCommand",
-    "ContextCommand",
-    "AgentCommand",
-    "CopyContextCommand",
-    "CommandPrefixCommand",
-    "LoadSkillCommand",
-    "RemoveSkillCommand",
-    "TerminalSetupCommand",
-    "SwitchCoderSignal",
-    "Commands",
-    "LoadMcpCommand",
+    "ReasoningEffortCommand",
     "RemoveMcpCommand",
+    "RemoveSkillCommand",
+    "ReportCommand",
+    "ResetCommand",
+    "RunCommand",
+    "SaveCommand",
+    "SaveSessionCommand",
+    "SettingsCommand",
+    "SwitchCoderSignal",
+    "TerminalSetupCommand",
+    "TestCommand",
+    "ThinkTokensCommand",
+    "TokensCommand",
+    "UndoCommand",
+    "validate_file_access",
+    "VoiceCommand",
+    "WeakModelCommand",
+    "WebCommand",
 ]
