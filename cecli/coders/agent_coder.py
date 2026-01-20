@@ -729,7 +729,6 @@ class AgentCoder(Coder):
                 _ = await self.auto_commit(self.files_edited_by_tools)
             return False
         self.partial_response_content = processed_content.strip()
-        self._process_file_mentions(processed_content)
         has_search = "<<<<<<< SEARCH" in self.partial_response_content
         has_divider = "=======" in self.partial_response_content
         has_replace = ">>>>>>> REPLACE" in self.partial_response_content
@@ -1462,17 +1461,6 @@ Just reply with fixed versions of the {blocks} above that failed to match.
         except Exception as e:
             self.io.tool_error(f"Error adding file '{file_path}' for viewing: {str(e)}")
             return f"Error adding file for viewing: {str(e)}"
-
-    def _process_file_mentions(self, content):
-        """
-        Process implicit file mentions in the content, adding files if they're not already in context.
-
-        This handles the case where the LLM mentions file paths without using explicit tool commands.
-        """
-        mentioned_files = set(self.get_file_mentions(content, ignore_current=False))
-        current_files = set(self.get_inchat_relative_files())
-        mentioned_files - current_files
-        pass
 
     async def check_for_file_mentions(self, content):
         """
