@@ -161,6 +161,9 @@ class TUI(App):
                 # Continue with empty config, will apply defaults below
 
         # Ensure config has a colors entry with nested structure matching BASE_THEME
+        if "banner" not in config:
+            config["banner"] = True
+
         if "colors" not in config:
             config["colors"] = {}
 
@@ -296,7 +299,13 @@ class TUI(App):
         """Called when app starts."""
         # Show startup banner
         output_container = self.query_one("#output", OutputContainer)
-        output_container.add_output(self.BANNER, dim=False)
+        if self.tui_config["banner"]:
+            output_container.add_output(self.BANNER, dim=False)
+        else:
+            output_container.add_output(
+                f"[bold {self.BANNER_COLORS[0]}] [/bold {self.BANNER_COLORS[0]}]", dim=False
+            )
+
         self.begin_capture_print(output_container, stdout=True, stderr=True)
 
         self.set_interval(0.05, self.check_output_queue)
@@ -535,7 +544,13 @@ class TUI(App):
         """Clear all output."""
         output_container = self.query_one("#output", OutputContainer)
         output_container.clear_output()
-        output_container.add_output(self.BANNER, dim=False)
+        if self.tui_config["banner"]:
+            output_container.add_output(self.BANNER, dim=False)
+        else:
+            output_container.add_output(
+                f"[bold {self.BANNER_COLORS[0]}] [/bold {self.BANNER_COLORS[0]}]", dim=False
+            )
+
         self.worker.coder.show_announcements()
 
     def action_interrupt(self):
