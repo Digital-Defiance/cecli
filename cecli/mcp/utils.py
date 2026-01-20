@@ -75,7 +75,7 @@ def _resolve_mcp_config_path(file_path, io, verbose=False):
         return None
 
     # If the path is absolute or already exists, use it as-is
-    path = Path(file_path)
+    path = Path(file_path).expanduser()
     if path.is_absolute() or path.exists():
         return str(path.resolve())
 
