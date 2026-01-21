@@ -328,7 +328,7 @@ class TUI(App):
                 hints.update_right(f"{stop} to cancel")
             else:
                 submit = self.app.get_keys_for("submit")
-                hints.update_right(f"{submit} to submit")
+                hints.update_right(f"shift+drag to select • {submit} to submit")
         except Exception:
             pass
 
