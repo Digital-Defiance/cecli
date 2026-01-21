@@ -57,12 +57,15 @@ class TerminalSetupCommand(BaseCommand):
         paths = {}
 
         # Check for WSL specifically
-        is_wsl_env = "microsoft" in platform.uname().release.lower()
+        is_wsl_env = "microsoft" in platform.uname().release.lower() and os.environ.get(
+            "WSL_DISTRO_NAME"
+        )
 
         if system == "Linux":
             # Standard Linux paths (applies to WSL instances of Kitty/Alacritty too)
             paths["alacritty"] = home / ".config" / "alacritty" / "alacritty.toml"
             paths["kitty"] = home / ".config" / "kitty" / "kitty.conf"
+            paths["konsole"] = home / ".local" / "share" / "konsole" / "linux.keytab"
             paths["vscode"] = home / ".config" / "Code" / "User" / "keybindings.json"
 
             if is_wsl_env:
@@ -155,6 +158,9 @@ class TerminalSetupCommand(BaseCommand):
     @classmethod
     def _update_alacritty(cls, path, io, dry_run=False):
         """Updates Alacritty TOML configuration with shift+enter binding."""
+        if os.environ.get("TERM") != "alacritty":
+            return False
+
         if not path.exists():
             io.tool_output(f"Skipping Alacritty: File not found at {path}")
             return False
@@ -280,6 +286,70 @@ class TerminalSetupCommand(BaseCommand):
             f.write(cls.KITTY_BINDING)
         io.tool_output("Updated Kitty config.")
         return True
+
+    @classmethod
+    def _update_konsole(cls, path, io, dry_run=False):
+        """Updates Konsole keytab configuration with shift+enter binding."""
+        if not os.environ.get("KONSOLE_VERSION"):
+            return False
+
+        default_keytab_path = Path(__file__).parent / "terminal_data" / "linux.keytab"
+
+        if not path.exists():
+            if dry_run:
+                io.tool_output(f"DRY-RUN: Would create Konsole keytab at {path}")
+                return True
+
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(default_keytab_path, path)
+                io.tool_output(f"Created Konsole keytab at {path}")
+                return True
+            except Exception as e:
+                io.tool_output(f"Error creating Konsole keytab: {e}")
+                return False
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            import re
+
+            # Pattern to find Return+Shift rule
+            pattern = r"^\s*key\s+Return\s*\+\s*Shift\s*:\s*(.*)$"
+            match = re.search(pattern, content, re.MULTILINE)
+
+            new_rule = 'key Return+Shift : "\\n"'
+
+            if match:
+                current_val = match.group(1).strip()
+                if current_val == '"\\n"':
+                    io.tool_output("Konsole already configured.")
+                    return False
+
+                if dry_run:
+                    io.tool_output(f"DRY-RUN: Would update Konsole Return+Shift rule in {path}")
+                    return True
+
+                cls._backup_file(path, io)
+                new_content = re.sub(pattern, new_rule, content, flags=re.MULTILINE)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(new_content)
+                io.tool_output("Updated Konsole keytab rule.")
+                return True
+            else:
+                if dry_run:
+                    io.tool_output(f"DRY-RUN: Would add Konsole Return+Shift rule to {path}")
+                    return True
+
+                cls._backup_file(path, io)
+                with open(path, "a", encoding="utf-8") as f:
+                    f.write(f"\n{new_rule}\n")
+                io.tool_output("Added Konsole Return+Shift rule.")
+                return True
+        except Exception as e:
+            io.tool_output(f"Error updating Konsole keytab: {e}")
+            return False
 
     @classmethod
     def _update_windows_terminal(cls, path, io, dry_run=False):
@@ -688,6 +758,10 @@ class TerminalSetupCommand(BaseCommand):
             if cls._update_kitty(paths["kitty"], io, dry_run=dry_run):
                 updated = True
 
+        if "konsole" in paths:
+            if cls._update_konsole(paths["konsole"], io, dry_run=dry_run):
+                updated = True
+
         if "windows_terminal" in paths:
             if cls._update_windows_terminal(paths["windows_terminal"], io, dry_run=dry_run):
                 updated = True
@@ -748,8 +822,8 @@ class TerminalSetupCommand(BaseCommand):
             "  /terminal-setup --dry-run  # Show what would be changed without modifying files\n"
         )
         help_text += (
-            "\nNote: This command modifies terminal configuration files (Alacritty, Kitty, Windows"
-            " Terminal, VS Code)\n"
+            "\nNote: This command modifies terminal configuration files (Alacritty, Kitty, Konsole,"
+            " Windows Terminal, VS Code)\n"
         )
         help_text += (
             "to add a key binding that sends a newline character when shift+enter is pressed.\n"
