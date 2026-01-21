@@ -61,7 +61,8 @@ class LazyLiteLLM:
         # See: https://github.com/BerriAI/litellm/issues/16518
         # See: https://github.com/BerriAI/litellm/issues/14521
         try:
-            from litellm.litellm_core_utils import logging_worker
+            # Use importlib for lazy loading
+            logging_worker = importlib.import_module("litellm.litellm_core_utils.logging_worker")
         except ImportError:
             # Module didn't exist before litellm 1.76.0
             # https://github.com/BerriAI/litellm/pull/13905

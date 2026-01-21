@@ -2,11 +2,10 @@ import json
 import textwrap
 from unittest.mock import MagicMock, patch
 
-import litellm
-
 from cecli.coders.base_coder import Coder
 from cecli.dump import dump  # noqa
 from cecli.io import InputOutput
+from cecli.llm import litellm
 from cecli.models import Model
 from cecli.reasoning_tags import (
     REASONING_END,
