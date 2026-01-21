@@ -13,6 +13,7 @@ from .clear import ClearCommand
 from .code import CodeCommand
 from .command_prefix import CommandPrefixCommand
 from .commit import CommitCommand
+from .compact import CompactCommand
 from .context import ContextCommand
 from .context_blocks import ContextBlocksCommand
 from .context_management import ContextManagementCommand
@@ -82,6 +83,7 @@ CommandRegistry.register(ClearCommand)
 CommandRegistry.register(CodeCommand)
 CommandRegistry.register(CommandPrefixCommand)
 CommandRegistry.register(CommitCommand)
+CommandRegistry.register(CompactCommand)
 CommandRegistry.register(ContextBlocksCommand)
 CommandRegistry.register(ContextCommand)
 CommandRegistry.register(ContextManagementCommand)
@@ -144,6 +146,7 @@ __all__ = [
     "CommandRegistry",
     "Commands",
     "CommitCommand",
+    "CompactCommand",
     "ContextBlocksCommand",
     "ContextCommand",
     "ContextManagementCommand",
