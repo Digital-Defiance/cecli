@@ -236,7 +236,7 @@ linkify-it-py==2.0.3
     # via
     #   -c requirements/common-constraints.txt
     #   markdown-it-py
-litellm==1.80.11
+litellm==1.81.1
     # via
     #   -c requirements/common-constraints.txt
     #   -r requirements/requirements.in
