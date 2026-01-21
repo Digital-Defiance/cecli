@@ -90,7 +90,7 @@ class TestInputOutput:
             " ".join(inp.strip().split()[1:]),
         )
         commands.get_raw_completions.return_value = None
-        commands.get_completions.side_effect = lambda cmd: (
+        commands.get_completions.side_effect = lambda cmd, partial: (
             ["file1.txt", "file2.txt"] if cmd == "/add" else None
         )
 
