@@ -48,6 +48,7 @@ class TUI(App):
         self._symbols_cache = None
         self._symbols_files_hash = None
         self._mouse_hold_timer = None
+        self._currently_generating = False
 
         self.tui_config = self._get_config()
 
@@ -332,7 +333,7 @@ class TUI(App):
         if self._mouse_hold_timer:
             self._mouse_hold_timer.stop()
             self._mouse_hold_timer = None
-        self.update_key_hints()
+        self.update_key_hints(generating=self._currently_generating)
 
     def _show_select_hint(self) -> None:
         """Show the shift+drag to select hint."""
@@ -350,9 +351,11 @@ class TUI(App):
         try:
             hints = self.query_one(KeyHints)
             if generating:
+                self._currently_generating = True
                 stop = self.app.get_keys_for("stop")
                 hints.update_right(f"{stop} to cancel")
             else:
+                self._currently_generating = False
                 submit = self.app.get_keys_for("submit")
                 hints.update_right(f"{submit} to submit")
         except Exception:
