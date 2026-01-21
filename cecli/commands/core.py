@@ -165,12 +165,12 @@ class Commands:
         raw_completer = getattr(self, f"completions_raw_{cmd}", None)
         return raw_completer
 
-    def get_completions(self, cmd):
+    def get_completions(self, cmd, args=""):
         assert cmd.startswith("/")
         cmd = cmd[1:]
         command_class = CommandRegistry.get_command(cmd)
         if command_class:
-            return command_class.get_completions(self.io, self.coder, "")
+            return command_class.get_completions(self.io, self.coder, args)
         return []
 
     def get_commands(self):
