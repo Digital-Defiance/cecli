@@ -4,6 +4,7 @@ import concurrent.futures
 import json
 import queue
 
+from textual import events
 from textual.app import App, ComposeResult
 
 # from textual.binding import Binding
@@ -46,6 +47,7 @@ class TUI(App):
         # Cache for code symbols (functions, classes, variables)
         self._symbols_cache = None
         self._symbols_files_hash = None
+        self._mouse_hold_timer = None
 
         self.tui_config = self._get_config()
 
@@ -319,8 +321,32 @@ class TUI(App):
         # Load git info in background to avoid blocking startup
         self.call_later(self._load_git_info)
 
+    def on_mouse_down(self, event: events.MouseDown) -> None:
+        """Handle mouse down events to start the selection hint timer."""
+        if self._mouse_hold_timer:
+            self._mouse_hold_timer.stop()
+        self._mouse_hold_timer = self.set_timer(0.25, self._show_select_hint)
+
+    def on_mouse_up(self, event: events.MouseUp) -> None:
+        """Handle mouse up events to clear the selection hint timer."""
+        if self._mouse_hold_timer:
+            self._mouse_hold_timer.stop()
+            self._mouse_hold_timer = None
+        self.update_key_hints()
+
+    def _show_select_hint(self) -> None:
+        """Show the shift+drag to select hint."""
+        try:
+            hints = self.query_one(KeyHints)
+            hints.update_right("shift+drag to select")
+        except Exception:
+            pass
+
     def update_key_hints(self, generating=False):
         """Update the key hints below the input area."""
+        if self._mouse_hold_timer:
+            self._mouse_hold_timer.stop()
+            self._mouse_hold_timer = None
         try:
             hints = self.query_one(KeyHints)
             if generating:
@@ -328,7 +354,7 @@ class TUI(App):
                 hints.update_right(f"{stop} to cancel")
             else:
                 submit = self.app.get_keys_for("submit")
-                hints.update_right(f"shift+drag to select • {submit} to submit")
+                hints.update_right(f"{submit} to submit")
         except Exception:
             pass
 
