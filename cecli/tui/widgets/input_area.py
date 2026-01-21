@@ -66,12 +66,10 @@ class InputArea(TextArea):
         # Let's assume kwargs might handle it or we set it.
         # Actually, let's just set the default if it's empty.
         if not self.placeholder:
-            submit = self.app.get_keys_for("submit")
+            # submit = self.app.get_keys_for("submit")
             newline = self.app.get_keys_for("newline")
 
-            self.placeholder = (
-                f"> Type your message... ({submit} to submit, {newline} for new line)"
-            )
+            self.placeholder = f"> Type your message... ({newline} for new line)"
 
         self.files = []
         self.commands = []
