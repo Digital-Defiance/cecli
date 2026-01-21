@@ -30,6 +30,22 @@ class CommandRegistry:
         return await command_class.process_command(io, coder, args, **kwargs)
 
     @classmethod
+    def get_command_description(cls, name: str) -> str:
+        """
+        Get description for a specific command.
+
+        Args:
+            name: Command name
+
+        Returns:
+            Command description string or empty string if command not found
+        """
+        command_class = cls.get_command(name)
+        if not command_class:
+            return ""
+        return command_class.DESCRIPTION or ""
+
+    @classmethod
     def get_command_help(cls, name: str = None) -> str:
         """
         Get help text for a specific command or all commands.

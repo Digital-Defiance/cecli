@@ -57,7 +57,11 @@ class PasteCommand(BaseCommand):
             # If not an image, try to get text
             text = pyperclip.paste()
             if text:
-                io.tool_output(text)
+                if coder.tui and coder.tui():
+                    coder.tui().set_input_value(text)
+                else:
+                    coder.io.set_placeholder(text)
+
                 return format_command_result(io, "paste", "Pasted text from clipboard")
 
             io.tool_error("No image or text content found in clipboard.")

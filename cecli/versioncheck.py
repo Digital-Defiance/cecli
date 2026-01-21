@@ -21,7 +21,7 @@ async def install_from_main_branch(io):
         io,
         None,
         "Install the development version of cecli from the main branch?",
-        ["git+https://github.com/dwash96/aider-ce.git"],
+        ["git+https://github.com/dwash96/cecli.git"],
         self_update=True,
     )
 
@@ -40,7 +40,7 @@ async def install_upgrade(io, latest_version=None):
         io.tool_warning(text)
         return True
     success = await utils.check_pip_install_extra(
-        io, None, new_ver_text, ["cecli"], self_update=True
+        io, None, new_ver_text, ["cecli-dev"], self_update=True
     )
     if success:
         io.tool_output("Re-run cecli to use new version.")

@@ -100,13 +100,24 @@ TextArea > .text-area--selection {
 
 /* Key hints below input */
 #key-hints {
+    color: $secondary;
     height: 1;
     width: 100%;
+    padding: 0 2 0 2;
+    margin: 0 0 1 0;    
+}
+
+#key-hints > .key-hints-left {
+    color: $secondary;
+    width: auto;
+}
+
+#key-hints > .key-hints-right {
     text-align: right;
     color: $secondary;
-    padding: 0 2 0 0;
-    margin: 0 0 1 0;
+    width: 1fr;
 }
+
 /* Footer - same background as everything else */
 #footer {
     height: 1;

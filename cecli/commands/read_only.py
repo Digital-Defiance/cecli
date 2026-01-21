@@ -215,9 +215,14 @@ class ReadOnlyCommand(BaseCommand):
         if "/" in args:
             # Has directory component
             dir_part, file_part = args.rsplit("/", 1)
-            search_dir = root / dir_part
+            if dir_part == "":
+                search_dir = Path("/")
+                path_prefix = "/"
+            else:
+                # Use os.path.expanduser for ~ support if needed, but Path handles it mostly
+                search_dir = (root / dir_part).resolve()
+                path_prefix = dir_part + "/"
             search_prefix = file_part.lower()
-            path_prefix = dir_part + "/"
         else:
             search_dir = root
             search_prefix = args.lower()
@@ -228,8 +233,9 @@ class ReadOnlyCommand(BaseCommand):
             if search_dir.exists() and search_dir.is_dir():
                 for entry in search_dir.iterdir():
                     name = entry.name
-                    if search_prefix and search_prefix not in name.lower():
+                    if search_prefix and not name.lower().startswith(search_prefix):
                         continue
+
                     # Add trailing slash for directories
                     if entry.is_dir():
                         completions.append(path_prefix + name + "/")
@@ -238,6 +244,7 @@ class ReadOnlyCommand(BaseCommand):
         except (PermissionError, OSError):
             pass
 
+        # Also include files already in the chat that match
         add_completions = coder.commands.get_completions("/add")
         for c in add_completions:
             if args.lower() in str(c).lower() and str(c) not in completions:

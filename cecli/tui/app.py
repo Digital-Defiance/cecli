@@ -4,6 +4,7 @@ import concurrent.futures
 import json
 import queue
 
+from textual import events
 from textual.app import App, ComposeResult
 
 # from textual.binding import Binding
@@ -11,6 +12,7 @@ from textual.containers import Vertical
 from textual.theme import Theme
 
 from cecli.editor import pipe_editor
+from cecli.io import CommandCompletionException
 
 from .widgets import (
     CompletionBar,
@@ -45,6 +47,7 @@ class TUI(App):
         # Cache for code symbols (functions, classes, variables)
         self._symbols_cache = None
         self._symbols_files_hash = None
+        self._mouse_hold_timer = None
 
         self.tui_config = self._get_config()
 
@@ -161,6 +164,9 @@ class TUI(App):
                 # Continue with empty config, will apply defaults below
 
         # Ensure config has a colors entry with nested structure matching BASE_THEME
+        if "banner" not in config:
+            config["banner"] = True
+
         if "colors" not in config:
             config["colors"] = {}
 
@@ -296,7 +302,13 @@ class TUI(App):
         """Called when app starts."""
         # Show startup banner
         output_container = self.query_one("#output", OutputContainer)
-        output_container.add_output(self.BANNER, dim=False)
+        if self.tui_config["banner"]:
+            output_container.add_output(self.BANNER, dim=False)
+        else:
+            output_container.add_output(
+                f"[bold {self.BANNER_COLORS[0]}] [/bold {self.BANNER_COLORS[0]}]", dim=False
+            )
+
         self.begin_capture_print(output_container, stdout=True, stderr=True)
 
         self.set_interval(0.05, self.check_output_queue)
@@ -309,18 +321,88 @@ class TUI(App):
         # Load git info in background to avoid blocking startup
         self.call_later(self._load_git_info)
 
+    def on_mouse_down(self, event: events.MouseDown) -> None:
+        """Handle mouse down events to start the selection hint timer."""
+        if self._mouse_hold_timer:
+            self._mouse_hold_timer.stop()
+        self._mouse_hold_timer = self.set_timer(0.25, self._show_select_hint)
+
+    def on_mouse_up(self, event: events.MouseUp) -> None:
+        """Handle mouse up events to clear the selection hint timer."""
+        if self._mouse_hold_timer:
+            self._mouse_hold_timer.stop()
+            self._mouse_hold_timer = None
+        self.update_key_hints()
+
+    def _show_select_hint(self) -> None:
+        """Show the shift+drag to select hint."""
+        try:
+            hints = self.query_one(KeyHints)
+            hints.update_right("shift+drag to select")
+        except Exception:
+            pass
+
     def update_key_hints(self, generating=False):
         """Update the key hints below the input area."""
+        if self._mouse_hold_timer:
+            self._mouse_hold_timer.stop()
+            self._mouse_hold_timer = None
         try:
             hints = self.query_one(KeyHints)
             if generating:
                 stop = self.app.get_keys_for("stop")
-                hints.update(f"{stop} to cancel")
+                hints.update_right(f"{stop} to cancel")
             else:
                 submit = self.app.get_keys_for("submit")
-                hints.update(f"{submit} to submit")
+                hints.update_right(f"{submit} to submit")
         except Exception:
             pass
+
+    def update_key_hints_left(self, text: str):
+        """Update the left sub-panel message."""
+        try:
+            hints = self.query_one(KeyHints)
+            hints.update_left(text)
+        except Exception:
+            pass
+
+    def _update_key_hints_for_commands(self, text: str, is_completion: bool = False):
+        """
+        Update key hints left area with command description.
+
+        Handles both regular input text and completion suggestions.
+
+        Args:
+            text: The text to analyze (input text or completion suggestion)
+            is_completion: Whether this is a completion suggestion (default: False)
+        """
+        # Check if text starts with slash
+        if text.startswith("/"):
+            # Extract command name
+            # For completions, we just need to remove the leading slash
+            # For regular input, we need to extract the first word after slash
+            if is_completion:
+                # Completion suggestion like "/help" - just remove leading slash
+                cmd_name = text[1:].strip()
+            else:
+                # Regular input like "/help arg1 arg2" - extract first word
+                parts = text[1:].strip().split()
+                cmd_name = parts[0] if parts else ""
+
+            # Get command description if we have a command name
+            if cmd_name:
+                try:
+                    from cecli.commands.utils.registry import CommandRegistry
+
+                    description = CommandRegistry.get_command_description(cmd_name)
+                    if description:
+                        self.update_key_hints_left(f"{description}")
+                        return
+                except Exception:
+                    pass
+
+        # If not a valid slash command, show default text
+        self.update_key_hints_left(KeyHints.DEFAULT_LEFT_TEXT)
 
     def _load_git_info(self):
         """Load git branch and dirty count (deferred to avoid blocking startup)."""
@@ -476,6 +558,10 @@ class TUI(App):
         status_bar = self.query_one("#status-bar", StatusBar)
         status_bar.show_notification(f"Error: {message}", severity="error", timeout=10)
 
+    def on_input_area_text_changed(self, message: InputArea.TextChanged):
+        """Handle text changes in input area."""
+        self._update_key_hints_for_commands(message.text, is_completion=False)
+
     def on_input_area_submit(self, message: InputArea.Submit):
         """Handle input submission."""
         user_input = message.value
@@ -535,7 +621,13 @@ class TUI(App):
         """Clear all output."""
         output_container = self.query_one("#output", OutputContainer)
         output_container.clear_output()
-        output_container.add_output(self.BANNER, dim=False)
+        if self.tui_config["banner"]:
+            output_container.add_output(self.BANNER, dim=False)
+        else:
+            output_container.add_output(
+                f"[bold {self.BANNER_COLORS[0]}] [/bold {self.BANNER_COLORS[0]}]", dim=False
+            )
+
         self.worker.coder.show_announcements()
 
     def action_interrupt(self):
@@ -852,7 +944,19 @@ class TUI(App):
                 # Replace entire command
                 # Only add space if command takes arguments
                 commands = self.worker.coder.commands
-                has_completions = commands.get_completions(completion) is not None
+                try:
+                    cmd_completions = commands.get_completions(completion)
+                    has_completions = cmd_completions is not None
+                except Exception as e:
+                    # Check if it's a CommandCompletionException
+                    if isinstance(e, CommandCompletionException):
+                        # For CommandCompletionException, treat it as having completions
+                        # so we add a space after the command
+                        has_completions = True
+                    else:
+                        # For other exceptions, assume no completions
+                        has_completions = False
+
                 if has_completions:
                     return completion + " "
                 else:
@@ -896,6 +1000,11 @@ class TUI(App):
                     suggestions=suggestions, prefix=text, id="completion-bar"
                 )
                 self.mount(completion_bar, before=input_area)
+
+            # Update key hints with description for first suggestion
+            if suggestions:
+                first_suggestion = suggestions[0]
+                self._update_key_hints_for_commands(first_suggestion, is_completion=True)
         else:
             # No suggestions - dismiss if active
             input_area.completion_active = False
@@ -914,6 +1023,8 @@ class TUI(App):
                 base_text = input_area.completion_prefix
                 new_text = self._get_completed_text(base_text, selected)
                 input_area.set_completion_preview(new_text)
+                # Update key hints with command description for selected completion
+                self._update_key_hints_for_commands(selected, is_completion=True)
         except Exception:
             pass
 
@@ -929,6 +1040,8 @@ class TUI(App):
                 base_text = input_area.completion_prefix
                 new_text = self._get_completed_text(base_text, selected)
                 input_area.set_completion_preview(new_text)
+                # Update key hints with command description for selected completion
+                self._update_key_hints_for_commands(selected, is_completion=True)
         except Exception:
             pass
 
@@ -939,6 +1052,9 @@ class TUI(App):
             completion_bar.select_current()
         except Exception:
             pass
+        # Update key hints based on accepted completion
+        input_area = self.query_one("#input", InputArea)
+        self._update_key_hints_for_commands(input_area.text, is_completion=False)
 
     def on_input_area_completion_dismiss(self, message: InputArea.CompletionDismiss):
         """Handle Escape to dismiss completions."""
@@ -949,6 +1065,8 @@ class TUI(App):
             completion_bar.dismiss()
         except Exception:
             pass
+        # Update key hints back to normal based on current input
+        self._update_key_hints_for_commands(input_area.text, is_completion=False)
 
     def on_completion_bar_selected(self, message: CompletionBar.Selected):
         """Handle completion selection."""

@@ -15,7 +15,11 @@ warnings.simplefilter("ignore", category=FutureWarning)
 
 
 async def install_help_extra(io):
-    pip_install_cmd = ["cecli[help]", "--extra-index-url", "https://download.pytorch.org/whl/cpu"]
+    pip_install_cmd = [
+        "cecli-dev[help]",
+        "--extra-index-url",
+        "https://download.pytorch.org/whl/cpu",
+    ]
     res = await utils.check_pip_install_extra(
         io,
         "llama_index.embeddings.huggingface",

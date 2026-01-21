@@ -30,6 +30,7 @@ class ConversationManager:
 
     # Caching for tagged message dict queries
     _tag_cache: Dict[str, List[Dict[str, Any]]] = {}
+    _ALL_MESSAGES_CACHE_KEY = "__all__"  # Special key for caching all messages (tag=None)
 
     @classmethod
     def initialize(cls, coder) -> None:
@@ -122,8 +123,9 @@ class ConversationManager:
                 existing_message.priority = priority
                 existing_message.timestamp = timestamp
                 existing_message.mark_for_delete = mark_for_delete
-                # Clear cache for this tag since message was updated
+                # Clear cache for this tag and all messages cache since message was updated
                 cls._tag_cache.pop(tag.value, None)
+                cls._tag_cache.pop(cls._ALL_MESSAGES_CACHE_KEY, None)
                 return existing_message
             else:
                 # Return existing message without updating
@@ -132,8 +134,9 @@ class ConversationManager:
             # Add new message
             cls._messages.append(message)
             cls._message_index[message.message_id] = message
-            # Clear cache for this tag since new message was added
+            # Clear cache for this tag and all messages cache since new message was added
             cls._tag_cache.pop(tag.value, None)
+            cls._tag_cache.pop(cls._ALL_MESSAGES_CACHE_KEY, None)
             return message
 
     @classmethod
@@ -172,18 +175,21 @@ class ConversationManager:
         """
         coder = cls.get_coder()
 
-        # Check cache for tagged queries (not for None tag which gets all messages)
-        if tag is not None and not reload:
-            if not isinstance(tag, MessageTag):
-                try:
-                    tag = MessageTag(tag)
-                except ValueError:
-                    raise ValueError(f"Invalid tag: {tag}")
-            tag_str = tag.value
+        # Check cache for all queries (including tag=None)
+        if not reload:
+            if tag is not None:
+                if not isinstance(tag, MessageTag):
+                    try:
+                        tag = MessageTag(tag)
+                    except ValueError:
+                        raise ValueError(f"Invalid tag: {tag}")
+                cache_key = tag.value
+            else:
+                cache_key = cls._ALL_MESSAGES_CACHE_KEY
 
             # Return cached result if available
-            if tag_str in cls._tag_cache:
-                return cls._tag_cache[tag_str]
+            if cache_key in cls._tag_cache:
+                return cls._tag_cache[cache_key]
 
         messages = cls.get_messages()
 
@@ -199,15 +205,18 @@ class ConversationManager:
 
         messages_dict = [msg.to_dict() for msg in messages]
 
-        # Cache the result for tagged queries
+        # Cache the result for all queries (including tag=None)
         if tag is not None:
             if not isinstance(tag, MessageTag):
                 try:
                     tag = MessageTag(tag)
                 except ValueError:
                     raise ValueError(f"Invalid tag: {tag}")
-            tag_str = tag.value
-            cls._tag_cache[tag_str] = messages_dict
+            cache_key = tag.value
+        else:
+            cache_key = cls._ALL_MESSAGES_CACHE_KEY
+
+        cls._tag_cache[cache_key] = messages_dict
 
         # Debug: Compare with previous messages if debug is enabled
         # We need to compare the full unfiltered message stream, not just filtered views
@@ -263,11 +272,11 @@ class ConversationManager:
         for message in messages_to_remove:
             cls._messages.remove(message)
             del cls._message_index[message.message_id]
-            # Clear cache for this tag since message was removed
-            cls._tag_cache.pop(message.tag, None)
 
-        # Clear cache for this tag since messages were removed
-        cls._tag_cache.pop(tag_str, None)
+        # Clear cache for this tag and all messages cache since messages were removed
+        if messages_to_remove:
+            cls._tag_cache.pop(tag_str, None)
+            cls._tag_cache.pop(cls._ALL_MESSAGES_CACHE_KEY, None)
 
     @classmethod
     def remove_messages_by_hash_key_pattern(cls, pattern_checker) -> None:
@@ -284,11 +293,18 @@ class ConversationManager:
             if message.hash_key and pattern_checker(message.hash_key):
                 messages_to_remove.append(message)
 
+        # Remove messages and track affected tags
+        tags_to_clear = set()
         for message in messages_to_remove:
             cls._messages.remove(message)
             del cls._message_index[message.message_id]
-            # Clear cache for this tag since message was removed
-            cls._tag_cache.pop(message.tag, None)
+            tags_to_clear.add(message.tag)
+
+        # Clear cache for affected tags and all messages cache if any messages were removed
+        if messages_to_remove:
+            for tag in tags_to_clear:
+                cls._tag_cache.pop(tag, None)
+            cls._tag_cache.pop(cls._ALL_MESSAGES_CACHE_KEY, None)
 
     @classmethod
     def remove_message_by_hash_key(cls, hash_key: Tuple[str, ...]) -> bool:
@@ -305,8 +321,9 @@ class ConversationManager:
             if message.hash_key == hash_key:
                 cls._messages.remove(message)
                 del cls._message_index[message.message_id]
-                # Clear cache for this tag since message was removed
+                # Clear cache for this tag and all messages cache since message was removed
                 cls._tag_cache.pop(message.tag, None)
+                cls._tag_cache.pop(cls._ALL_MESSAGES_CACHE_KEY, None)
                 return True
         return False
 
@@ -334,12 +351,18 @@ class ConversationManager:
                 if message.is_expired():
                     messages_to_remove.append(message)
 
-        # Remove expired messages
+        # Remove expired messages and clear cache for each tag
+        tags_to_clear = set()
         for message in messages_to_remove:
             cls._messages.remove(message)
             del cls._message_index[message.message_id]
-            # Clear cache for this tag since message was removed
-            cls._tag_cache.pop(message.tag, None)
+            tags_to_clear.add(message.tag)
+
+        # Clear cache for affected tags and all messages cache if any messages were removed
+        if messages_to_remove:
+            for tag in tags_to_clear:
+                cls._tag_cache.pop(tag, None)
+            cls._tag_cache.pop(cls._ALL_MESSAGES_CACHE_KEY, None)
 
     @classmethod
     def get_coder(cls):

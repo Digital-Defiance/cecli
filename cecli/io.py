@@ -236,16 +236,10 @@ class AutoCompleter(Completer):
             yield from raw_completer(document, complete_event)
             return
 
-        if cmd not in self.command_completions:
-            candidates = self.commands.get_completions(cmd)
-            self.command_completions[cmd] = candidates
-        else:
-            candidates = self.command_completions[cmd]
+        candidates = self.commands.get_completions(cmd, partial)
 
         if candidates is None:
             return
-
-        candidates = [word for word in candidates if partial in word.lower()]
         for candidate in sorted(candidates):
             yield Completion(candidate, start_position=-len(words[-1]))
 

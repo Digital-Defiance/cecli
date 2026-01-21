@@ -48,9 +48,18 @@ def thought_signature(model, messages):
                         if "provider_specific_fields" not in call:
                             call["provider_specific_fields"] = {}
                         if "thought_signature" not in call["provider_specific_fields"]:
-                            call["provider_specific_fields"][
-                                "thought_signature"
-                            ] = "skip_thought_signature_validator"
+                            if "thought_signatures" in call["provider_specific_fields"] and len(
+                                call["provider_specific_fields"]["thought_signatures"]
+                            ):
+                                call["provider_specific_fields"]["thought_signature"] = call[
+                                    "provider_specific_fields"
+                                ]["thought_signatures"][0]
+
+                                call["provider_specific_fields"].pop("thought_signatures", None)
+                            else:
+                                call["provider_specific_fields"][
+                                    "thought_signature"
+                                ] = "skip_thought_signature_validator"
 
             if "function_call" in msg:
                 call = msg["function_call"]
