@@ -32,48 +32,44 @@ def remove_empty_tool_calls(messages):
     ]
 
 
+def _process_thought_signature(container):
+    if "provider_specific_fields" not in container:
+        container["provider_specific_fields"] = {}
+
+    psf = container["provider_specific_fields"]
+
+    if "thought_signature" not in psf:
+        if "thought_signatures" in psf:
+            sigs = psf["thought_signatures"]
+            if isinstance(sigs, list) and len(sigs) > 0:
+                psf["thought_signature"] = sigs[0]
+            elif isinstance(sigs, str):
+                psf["thought_signature"] = sigs
+            psf.pop("thought_signatures", None)
+
+    if "thought_signature" not in psf:
+        psf["thought_signature"] = "skip_thought_signature_validator"
+
+
 def thought_signature(model, messages):
     # Add thought signatures for Vertex AI and Gemini models
     if model.name.startswith("vertex_ai/") or model.name.startswith("gemini/"):
         for msg in messages:
+            # Handle top-level provider_specific_fields
+            if "provider_specific_fields" in msg or msg.get("role") == "assistant":
+                _process_thought_signature(msg)
+
             if "tool_calls" in msg:
                 tool_calls = msg["tool_calls"]
-
                 if tool_calls:
                     for call in tool_calls:
-                        if not call:
-                            continue
-
-                        # Check if thought signature is missing in extra_content.google.thought_signature
-                        if "provider_specific_fields" not in call:
-                            call["provider_specific_fields"] = {}
-                        if "thought_signature" not in call["provider_specific_fields"]:
-                            if "thought_signatures" in call["provider_specific_fields"] and len(
-                                call["provider_specific_fields"]["thought_signatures"]
-                            ):
-                                call["provider_specific_fields"]["thought_signature"] = call[
-                                    "provider_specific_fields"
-                                ]["thought_signatures"][0]
-
-                                call["provider_specific_fields"].pop("thought_signatures", None)
-                            else:
-                                call["provider_specific_fields"][
-                                    "thought_signature"
-                                ] = "skip_thought_signature_validator"
+                        if call:
+                            _process_thought_signature(call)
 
             if "function_call" in msg:
                 call = msg["function_call"]
-
-                if not call:
-                    continue
-
-                # Check if thought signature is missing in extra_content.google.thought_signature
-                if "provider_specific_fields" not in call:
-                    call["provider_specific_fields"] = {}
-                if "thought_signature" not in call["provider_specific_fields"]:
-                    call["provider_specific_fields"][
-                        "thought_signature"
-                    ] = "skip_thought_signature_validator"
+                if call:
+                    _process_thought_signature(call)
 
     return messages
 

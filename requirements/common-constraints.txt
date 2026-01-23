@@ -115,36 +115,21 @@ gitdb==4.0.12
     # via gitpython
 gitpython==3.1.45
     # via -r requirements/requirements.in
-google-ai-generativelanguage==0.6.15
-    # via google-generativeai
 google-api-core[grpc]==2.28.1
     # via
-    #   google-ai-generativelanguage
-    #   google-api-python-client
     #   google-cloud-bigquery
     #   google-cloud-core
-    #   google-generativeai
-google-api-python-client==2.187.0
-    # via google-generativeai
 google-auth==2.43.0
     # via
-    #   google-ai-generativelanguage
     #   google-api-core
-    #   google-api-python-client
-    #   google-auth-httplib2
     #   google-cloud-bigquery
     #   google-cloud-core
-    #   google-generativeai
-google-auth-httplib2==0.2.1
-    # via google-api-python-client
 google-cloud-bigquery==3.38.0
     # via -r requirements/requirements-dev.in
 google-cloud-core==2.5.0
     # via google-cloud-bigquery
 google-crc32c==1.7.1
     # via google-resumable-media
-google-generativeai==0.8.5
-    # via -r requirements/requirements.in
 google-resumable-media==2.8.0
     # via google-cloud-bigquery
 googleapis-common-protos==1.72.0
@@ -174,10 +159,6 @@ hf-xet==1.2.0
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
-httplib2==0.31.0
-    # via
-    #   google-api-python-client
-    #   google-auth-httplib2
 httpx==0.28.1
     # via
     #   litellm
@@ -387,14 +368,10 @@ propcache==0.4.1
     #   aiohttp
     #   yarl
 proto-plus==1.26.1
-    # via
-    #   google-ai-generativelanguage
-    #   google-api-core
+    # via google-api-core
 protobuf==5.29.5
     # via
-    #   google-ai-generativelanguage
     #   google-api-core
-    #   google-generativeai
     #   googleapis-common-protos
     #   grpcio-status
     #   proto-plus
@@ -415,7 +392,6 @@ pycparser==2.23
 pydantic==2.12.4
     # via
     #   banks
-    #   google-generativeai
     #   litellm
     #   llama-index-core
     #   llama-index-instrumentation
@@ -443,9 +419,7 @@ pyjwt[crypto]==2.10.1
 pypandoc==1.16.2
     # via -r requirements/requirements.in
 pyparsing==3.2.5
-    # via
-    #   httplib2
-    #   matplotlib
+    # via matplotlib
 pyperclip==1.11.0
     # via -r requirements/requirements.in
 pyproject-hooks==1.2.0
@@ -578,7 +552,6 @@ torch==2.9.1
     # via sentence-transformers
 tqdm==4.67.1
     # via
-    #   google-generativeai
     #   huggingface-hub
     #   llama-index-core
     #   nltk
@@ -611,7 +584,6 @@ typing-extensions==4.15.0
     #   aiosqlite
     #   anyio
     #   beautifulsoup4
-    #   google-generativeai
     #   huggingface-hub
     #   llama-index-core
     #   llama-index-workflows
@@ -643,8 +615,6 @@ tzdata==2025.2
     # via pandas
 uc-micro-py==1.0.3
     # via linkify-it-py
-uritemplate==4.2.0
-    # via google-api-python-client
 urllib3==2.5.0
     # via requests
 uv==0.9.11

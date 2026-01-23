@@ -17,24 +17,15 @@ import re
 import time
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import requests
 
 from cecli.helpers.file_searcher import handle_core_files
 
-try:
-    from litellm.llms.custom_httpx.http_handler import HTTPHandler
-    from litellm.llms.custom_llm import CustomLLM, CustomLLMError
-    from litellm.llms.openai_like.chat.handler import OpenAILikeChatHandler
-except Exception:
-    CustomLLM = None
-    CustomLLMError = Exception
-    OpenAILikeChatHandler = None
-    HTTPHandler = None
 RESOURCE_FILE = "providers.json"
 _PROVIDERS_REGISTERED = False
-_CUSTOM_HANDLERS: Dict[str, "_JSONOpenAIProvider"] = {}
+_CUSTOM_HANDLERS: Dict[str, "Any"] = {}
 
 
 def _coerce_str(value):
@@ -61,146 +52,166 @@ def _first_env_value(names):
     return None
 
 
-class _JSONOpenAIProvider(OpenAILikeChatHandler):
-    """CustomLLM wrapper that routes OpenAI-compatible providers through LiteLLM."""
+def _get_json_openai_handler(slug: str, config: Dict) -> Any:
+    """Create a custom handler for OpenAI-compatible providers, lazily importing litellm."""
+    try:
+        from litellm.llms.openai_like.chat.handler import OpenAILikeChatHandler
+    except Exception:
+        return None
 
-    def __init__(self, slug: str, config: Dict):
-        if CustomLLM is None or OpenAILikeChatHandler is None:
-            raise RuntimeError("litellm custom handler support unavailable")
-        super().__init__()
-        self.slug = slug
-        self.config = config
+    class _JSONOpenAIProvider(OpenAILikeChatHandler):
+        """CustomLLM wrapper that routes OpenAI-compatible providers through LiteLLM."""
 
-    def _resolve_api_base(self, api_base: Optional[str]) -> str:
-        base = (
-            api_base
-            or _first_env_value(self.config.get("base_url_env"))
-            or self.config.get("api_base")
-        )
-        if not base:
-            raise CustomLLMError(500, f"{self.slug} missing base URL")
-        return base.rstrip("/")
+        def __init__(self, slug: str, config: Dict):
+            try:
+                from litellm.llms.custom_llm import CustomLLM
+            except Exception:
+                CustomLLM = None
 
-    def _resolve_api_key(self, api_key: Optional[str]) -> Optional[str]:
-        if api_key:
-            return api_key
-        env_val = _first_env_value(self.config.get("api_key_env"))
-        return env_val
+            if CustomLLM is None:
+                raise RuntimeError("litellm custom handler support unavailable")
 
-    def _apply_special_handling(self, messages):
-        special = self.config.get("special_handling") or {}
-        if special.get("convert_content_list_to_string"):
-            from litellm.litellm_core_utils.prompt_templates.common_utils import (
-                handle_messages_with_content_list_to_str_conversion,
+            super().__init__()
+            self.slug = slug
+            self.config = config
+
+        def _resolve_api_base(self, api_base: Optional[str]) -> str:
+            base = (
+                api_base
+                or _first_env_value(self.config.get("base_url_env"))
+                or self.config.get("api_base")
             )
+            if not base:
+                try:
+                    from litellm.llms.custom_llm import CustomLLMError
+                except Exception:
+                    CustomLLMError = Exception
 
-            return handle_messages_with_content_list_to_str_conversion(messages)
-        return messages
+                raise CustomLLMError(500, f"{self.slug} missing base URL")
+            return base.rstrip("/")
 
-    def _inject_headers(self, headers):
-        defaults = self.config.get("default_headers") or {}
-        combined = dict(defaults)
-        combined.update(headers or {})
-        return combined
+        def _resolve_api_key(self, api_key: Optional[str]) -> Optional[str]:
+            if api_key:
+                return api_key
+            env_val = _first_env_value(self.config.get("api_key_env"))
+            return env_val
 
-    def _normalize_model_name(self, model: str) -> str:
-        if not isinstance(model, str):
-            return model
-        trimmed = model
-        if trimmed.startswith(f"{self.slug}/"):
-            trimmed = trimmed.split("/", 1)[1]
-        hf_namespace = self.config.get("hf_namespace")
-        if hf_namespace and not trimmed.startswith("hf:"):
-            trimmed = f"hf:{trimmed}"
-        return trimmed
+        def _apply_special_handling(self, messages):
+            special = self.config.get("special_handling") or {}
+            if special.get("convert_content_list_to_string"):
+                from litellm.litellm_core_utils.prompt_templates.common_utils import (
+                    handle_messages_with_content_list_to_str_conversion,
+                )
 
-    def _build_request_params(self, optional_params, stream: bool):
-        params = dict(optional_params or {})
-        default_headers = dict(self.config.get("default_headers") or {})
-        headers = params.setdefault("extra_headers", default_headers)
-        if headers is default_headers and default_headers:
-            params["extra_headers"] = dict(default_headers)
-        if stream:
-            params["stream"] = True
-        return params
+                return handle_messages_with_content_list_to_str_conversion(messages)
+            return messages
 
-    def completion(self, *args, **kwargs):
-        kwargs["api_base"] = self._resolve_api_base(kwargs.get("api_base", None))
-        kwargs["api_key"] = self._resolve_api_key(kwargs.get("api_key", None))
-        kwargs["headers"] = self._inject_headers(kwargs.get("headers", None))
-        kwargs["optional_params"] = self._build_request_params(
-            kwargs.get("optional_params", None), False
-        )
-        kwargs["messages"] = self._apply_special_handling(kwargs.get("messages", []))
-        kwargs["model"] = self._normalize_model_name(kwargs.get("model", None))
-        kwargs["custom_llm_provider"] = "openai"
-        return super().completion(*args, **kwargs)
+        def _inject_headers(self, headers):
+            defaults = self.config.get("default_headers") or {}
+            combined = dict(defaults)
+            combined.update(headers or {})
+            return combined
 
-    async def acompletion(self, *args, **kwargs):
-        kwargs["api_base"] = self._resolve_api_base(kwargs.get("api_base", None))
-        kwargs["api_key"] = self._resolve_api_key(kwargs.get("api_key", None))
-        kwargs["headers"] = self._inject_headers(kwargs.get("headers", None))
-        kwargs["optional_params"] = self._build_request_params(
-            kwargs.get("optional_params", None), False
-        )
-        kwargs["messages"] = self._apply_special_handling(kwargs.get("messages", []))
-        kwargs["model"] = self._normalize_model_name(kwargs.get("model", None))
-        kwargs["custom_llm_provider"] = "openai"
-        kwargs["acompletion"] = True
-        return await super().completion(*args, **kwargs)
+        def _normalize_model_name(self, model: str) -> str:
+            if not isinstance(model, str):
+                return model
+            trimmed = model
+            if trimmed.startswith(f"{self.slug}/"):
+                trimmed = trimmed.split("/", 1)[1]
+            hf_namespace = self.config.get("hf_namespace")
+            if hf_namespace and not trimmed.startswith("hf:"):
+                trimmed = f"hf:{trimmed}"
+            return trimmed
 
-    def streaming(self, *args, **kwargs):
-        kwargs["api_base"] = self._resolve_api_base(kwargs.get("api_base", None))
-        kwargs["api_key"] = self._resolve_api_key(kwargs.get("api_key", None))
-        kwargs["headers"] = self._inject_headers(kwargs.get("headers", None))
-        kwargs["optional_params"] = self._build_request_params(
-            kwargs.get("optional_params", None), True
-        )
-        kwargs["messages"] = self._apply_special_handling(kwargs.get("messages", []))
-        kwargs["model"] = self._normalize_model_name(kwargs.get("model", None))
-        kwargs["custom_llm_provider"] = "openai"
-        response = super().completion(*args, **kwargs)
-        for chunk in response:
-            yield self.get_generic_chunk(chunk)
+        def _build_request_params(self, optional_params, stream: bool):
+            params = dict(optional_params or {})
+            default_headers = dict(self.config.get("default_headers") or {})
+            headers = params.setdefault("extra_headers", default_headers)
+            if headers is default_headers and default_headers:
+                params["extra_headers"] = dict(default_headers)
+            if stream:
+                params["stream"] = True
+            return params
 
-    async def astreaming(self, *args, **kwargs):
-        kwargs["api_base"] = self._resolve_api_base(kwargs.get("api_base", None))
-        kwargs["api_key"] = self._resolve_api_key(kwargs.get("api_key", None))
-        kwargs["headers"] = self._inject_headers(kwargs.get("headers", None))
-        kwargs["optional_params"] = self._build_request_params(
-            kwargs.get("optional_params", None), True
-        )
-        kwargs["messages"] = self._apply_special_handling(kwargs.get("messages", []))
-        kwargs["model"] = self._normalize_model_name(kwargs.get("model", None))
-        kwargs["custom_llm_provider"] = "openai"
-        kwargs["acompletion"] = True
-        response = await super().completion(*args, **kwargs)
-        async for chunk in response:
-            yield self.get_generic_chunk(chunk)
+        def completion(self, *args, **kwargs):
+            kwargs["api_base"] = self._resolve_api_base(kwargs.get("api_base", None))
+            kwargs["api_key"] = self._resolve_api_key(kwargs.get("api_key", None))
+            kwargs["headers"] = self._inject_headers(kwargs.get("headers", None))
+            kwargs["optional_params"] = self._build_request_params(
+                kwargs.get("optional_params", None), False
+            )
+            kwargs["messages"] = self._apply_special_handling(kwargs.get("messages", []))
+            kwargs["model"] = self._normalize_model_name(kwargs.get("model", None))
+            kwargs["custom_llm_provider"] = "openai"
+            return super().completion(*args, **kwargs)
 
-    def get_generic_chunk(self, chunk):
-        choice = chunk.choices[0] if chunk.choices else None
-        delta = choice.delta if choice else None
-        text_content = delta.content if delta and delta.content else ""
-        tool_calls = delta.tool_calls if delta and delta.tool_calls else None
-        if tool_calls and len(tool_calls):
-            tool_calls = tool_calls[0]
-        usage_data = getattr(chunk, "usage", None)
-        if hasattr(usage_data, "model_dump"):
-            usage_dict = usage_data.model_dump()
-        elif isinstance(usage_data, dict):
-            usage_dict = usage_data
-        else:
-            usage_dict = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
-        generic_chunk = {
-            "finish_reason": choice.finish_reason if choice else None,
-            "index": choice.index if choice else 0,
-            "is_finished": bool(choice.finish_reason) if choice else False,
-            "text": text_content,
-            "tool_use": tool_calls,
-            "usage": usage_dict,
-        }
-        return generic_chunk
+        async def acompletion(self, *args, **kwargs):
+            kwargs["api_base"] = self._resolve_api_base(kwargs.get("api_base", None))
+            kwargs["api_key"] = self._resolve_api_key(kwargs.get("api_key", None))
+            kwargs["headers"] = self._inject_headers(kwargs.get("headers", None))
+            kwargs["optional_params"] = self._build_request_params(
+                kwargs.get("optional_params", None), False
+            )
+            kwargs["messages"] = self._apply_special_handling(kwargs.get("messages", []))
+            kwargs["model"] = self._normalize_model_name(kwargs.get("model", None))
+            kwargs["custom_llm_provider"] = "openai"
+            kwargs["acompletion"] = True
+            return await super().completion(*args, **kwargs)
+
+        def streaming(self, *args, **kwargs):
+            kwargs["api_base"] = self._resolve_api_base(kwargs.get("api_base", None))
+            kwargs["api_key"] = self._resolve_api_key(kwargs.get("api_key", None))
+            kwargs["headers"] = self._inject_headers(kwargs.get("headers", None))
+            kwargs["optional_params"] = self._build_request_params(
+                kwargs.get("optional_params", None), True
+            )
+            kwargs["messages"] = self._apply_special_handling(kwargs.get("messages", []))
+            kwargs["model"] = self._normalize_model_name(kwargs.get("model", None))
+            kwargs["custom_llm_provider"] = "openai"
+            response = super().completion(*args, **kwargs)
+            for chunk in response:
+                yield self.get_generic_chunk(chunk)
+
+        async def astreaming(self, *args, **kwargs):
+            kwargs["api_base"] = self._resolve_api_base(kwargs.get("api_base", None))
+            kwargs["api_key"] = self._resolve_api_key(kwargs.get("api_key", None))
+            kwargs["headers"] = self._inject_headers(kwargs.get("headers", None))
+            kwargs["optional_params"] = self._build_request_params(
+                kwargs.get("optional_params", None), True
+            )
+            kwargs["messages"] = self._apply_special_handling(kwargs.get("messages", []))
+            kwargs["model"] = self._normalize_model_name(kwargs.get("model", None))
+            kwargs["custom_llm_provider"] = "openai"
+            kwargs["acompletion"] = True
+            response = await super().completion(*args, **kwargs)
+            async for chunk in response:
+                yield self.get_generic_chunk(chunk)
+
+        def get_generic_chunk(self, chunk):
+            choice = chunk.choices[0] if chunk.choices else None
+            delta = choice.delta if choice else None
+            text_content = delta.content if delta and delta.content else ""
+            tool_calls = delta.tool_calls if delta and delta.tool_calls else None
+            if tool_calls and len(tool_calls):
+                tool_calls = tool_calls[0]
+            usage_data = getattr(chunk, "usage", None)
+            if hasattr(usage_data, "model_dump"):
+                usage_dict = usage_data.model_dump()
+            elif isinstance(usage_data, dict):
+                usage_dict = usage_data
+            else:
+                usage_dict = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
+            generic_chunk = {
+                "finish_reason": choice.finish_reason if choice else None,
+                "index": choice.index if choice else 0,
+                "is_finished": bool(choice.finish_reason) if choice else False,
+                "text": text_content,
+                "tool_use": tool_calls,
+                "usage": usage_dict,
+            }
+            return generic_chunk
+
+    return _JSONOpenAIProvider(slug, config)
 
 
 def _register_provider_with_litellm(slug: str, config: Dict) -> None:
@@ -220,7 +231,7 @@ def _register_provider_with_litellm(slug: str, config: Dict) -> None:
         return
     handler = _CUSTOM_HANDLERS.get(slug)
     if handler is None:
-        handler = _JSONOpenAIProvider(slug, config)
+        handler = _get_json_openai_handler(slug, config)
         _CUSTOM_HANDLERS[slug] = handler
     if handler is None:
         return

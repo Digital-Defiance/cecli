@@ -1,3 +1,4 @@
+import json
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -54,6 +55,9 @@ class BaseMessage:
                 tool_calls_list.append(tool_call)
         return tool_calls_list
 
+    def _serialize_default(self, content):
+        return "<not serializable>"
+
     def generate_id(self) -> str:
         """
         Creates deterministic hash from hash_key or (role, content).
@@ -81,7 +85,7 @@ class BaseMessage:
             if tool_calls:
                 # For tool calls, include them in the hash
                 transformed_tool_calls = self._transform_message(tool_calls)
-                tool_calls_str = str(transformed_tool_calls)
+                tool_calls_str = json.dumps(transformed_tool_calls, default=self._serialize_default)
                 key_data = f"{role}:{content}:{tool_calls_str}"
             else:
                 key_data = f"{role}:{content}"

@@ -12,8 +12,6 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 
-from litellm import experimental_mcp_client
-
 from cecli import urls, utils
 from cecli.change_tracker import ChangeTracker
 from cecli.helpers import nested
@@ -29,6 +27,7 @@ from cecli.helpers.similarity import (
     normalize_vector,
 )
 from cecli.helpers.skills import SkillsManager
+from cecli.llm import litellm
 from cecli.mcp import LocalServer, McpServerManager
 from cecli.repo import ANY_GIT_ERROR
 from cecli.tools.utils.registry import ToolRegistry
@@ -306,7 +305,7 @@ class AgentCoder(Coder):
             }
             try:
                 session = await server.connect()
-                call_result = await experimental_mcp_client.call_openai_tool(
+                call_result = await litellm.experimental_mcp_client.call_openai_tool(
                     session=session, openai_tool=tool_call_dict
                 )
                 content_parts = []
