@@ -7,7 +7,9 @@ class CompactCommand(BaseCommand):
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
-        await coder.compact_context_if_needed(force=True)
+        # Pass args as message parameter if it's not empty
+        message = args.strip() if args else ""
+        await coder.compact_context_if_needed(force=True, message=message)
 
     @classmethod
     def get_help(cls) -> str:

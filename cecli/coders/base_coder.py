@@ -1659,7 +1659,7 @@ class Coder:
 
     # Old summarization system removed - using context compaction logic instead
 
-    async def compact_context_if_needed(self, force=False):
+    async def compact_context_if_needed(self, force=False, message=""):
         if not self.enable_context_compaction:
             return
 
@@ -1687,9 +1687,14 @@ class Coder:
             # Check if done_messages alone exceed the limit
             if done_tokens > self.context_compaction_max_tokens or done_tokens > cur_tokens:
                 # Create a summary of the done_messages
+                # Append custom message to compaction prompt if provided
+                compaction_prompt = self.gpt_prompts.compaction_prompt
+                if message:
+                    compaction_prompt = f"{compaction_prompt}\n\n{message}"
+
                 summary_text = await self.summarizer.summarize_all_as_text(
                     done_messages,
-                    self.gpt_prompts.compaction_prompt,
+                    compaction_prompt,
                     self.context_compaction_summary_tokens,
                 )
 
@@ -1719,9 +1724,14 @@ class Coder:
             # Check if cur_messages alone exceed the limit (after potentially compacting done_messages)
             if cur_tokens > self.context_compaction_max_tokens or cur_tokens > done_tokens:
                 # Create a summary of the cur_messages
+                # Append custom message to compaction prompt if provided
+                compaction_prompt = self.gpt_prompts.compaction_prompt
+                if message:
+                    compaction_prompt = f"{compaction_prompt}\n\n{message}"
+
                 cur_summary_text = await self.summarizer.summarize_all_as_text(
                     cur_messages,
-                    self.gpt_prompts.compaction_prompt,
+                    compaction_prompt,
                     self.context_compaction_summary_tokens,
                 )
 
