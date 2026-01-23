@@ -186,7 +186,8 @@ class McpServerManager:
         """
         existing_server = self.get_server(server.name)
         if existing_server:
-            self._log_warning(f"MCP server with name '{server.name}' already exists")
+            if server.name not in ["unnamed-server", "Local"]:
+                self._log_warning(f"MCP server with name '{server.name}' already exists")
             return False
 
         self._servers.append(server)
