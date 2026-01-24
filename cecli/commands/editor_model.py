@@ -62,12 +62,8 @@ class EditorModelCommand(BaseCommand):
 
             temp_coder = await Coder.create(**new_kwargs)
 
-            # Clear ALL messages for temp coder (start fresh)
-            ConversationManager.reset()
-
             # Re-initialize ConversationManager with temp coder
-            ConversationManager.initialize(temp_coder)
-            ConversationManager.clear_cache()
+            ConversationManager.initialize(temp_coder, reset=True, reformat=True)
 
             verbose = kwargs.get("verbose", False)
             if verbose:
@@ -82,8 +78,7 @@ class EditorModelCommand(BaseCommand):
                 temp_all_messages = ConversationManager.get_messages()
 
                 # Clear manager and restore original state
-                ConversationManager.reset()
-                ConversationManager.initialize(original_coder)
+                ConversationManager.initialize(original_coder, reset=True, reformat=True)
 
                 # Restore original messages with all metadata
                 for msg in original_all_messages:

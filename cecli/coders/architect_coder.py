@@ -52,12 +52,8 @@ class ArchitectCoder(AskCoder):
 
         editor_coder = await Coder.create(**new_kwargs)
 
-        # Clear ALL messages for editor coder (start fresh)
-        ConversationManager.reset()
-
         # Re-initialize ConversationManager with editor coder
-        ConversationManager.initialize(editor_coder)
-        ConversationManager.clear_cache()
+        ConversationManager.initialize(editor_coder, reset=True, reformat=True)
 
         if self.verbose:
             editor_coder.show_announcements()
@@ -69,8 +65,7 @@ class ArchitectCoder(AskCoder):
             editor_all_messages = ConversationManager.get_messages()
 
             # Clear manager and restore original state
-            ConversationManager.reset()
-            ConversationManager.initialize(original_coder or self)
+            ConversationManager.initialize(original_coder or self, reset=True, reformat=True)
 
             # Restore original messages with all metadata
             for msg in original_all_messages:
@@ -101,8 +96,8 @@ class ArchitectCoder(AskCoder):
         except Exception as e:
             self.io.tool_error(e)
             # Restore original state on error
-            ConversationManager.reset()
-            ConversationManager.initialize(original_coder or self)
+            ConversationManager.initialize(original_coder or self, reset=True, reformat=True)
+
             for msg in original_all_messages:
                 ConversationManager.add_message(
                     msg.to_dict(),
