@@ -164,14 +164,14 @@ class BaseCommand(ABC, metaclass=CommandMeta):
 
         # Restore original messages with all metadata
         for msg in original_all_messages:
-            ConversationManager.add_message(
-                message_dict=msg.message_dict,
-                tag=MessageTag(msg.tag),
-                priority=msg.priority,
-                timestamp=msg.timestamp,
-                mark_for_delete=msg.mark_for_delete,
-                hash_key=msg.hash_key,
-            )
+            if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
+                ConversationManager.add_message(
+                    message_dict=msg.message_dict,
+                    tag=MessageTag(msg.tag),
+                    priority=msg.priority,
+                    mark_for_delete=msg.mark_for_delete,
+                    force=True,
+                )
 
         # Append new coder's DONE and CUR messages (but not other tags like SYSTEM)
         for msg in new_all_messages:
@@ -180,9 +180,8 @@ class BaseCommand(ABC, metaclass=CommandMeta):
                     message_dict=msg.message_dict,
                     tag=MessageTag(msg.tag),
                     priority=msg.priority,
-                    timestamp=msg.timestamp,
                     mark_for_delete=msg.mark_for_delete,
-                    hash_key=msg.hash_key,
+                    force=True,
                 )
 
         from cecli.commands import SwitchCoderSignal

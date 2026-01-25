@@ -69,28 +69,26 @@ class ArchitectCoder(AskCoder):
 
             # Restore original messages with all metadata
             for msg in original_all_messages:
-                ConversationManager.add_message(
-                    msg.to_dict(),
-                    MessageTag(msg.tag),
-                    priority=msg.priority,
-                    timestamp=msg.timestamp,
-                    mark_for_delete=msg.mark_for_delete,
-                    hash_key=msg.hash_key,
-                )
+                if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
+                    ConversationManager.add_message(
+                        message_dict=msg.message_dict,
+                        tag=MessageTag(msg.tag),
+                        priority=msg.priority,
+                        mark_for_delete=msg.mark_for_delete,
+                        force=True,
+                    )
 
             # Append editor's DONE and CUR messages (but not other tags like SYSTEM)
             for msg in editor_all_messages:
                 if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
                     ConversationManager.add_message(
-                        msg.to_dict(),
-                        MessageTag(msg.tag),
+                        message_dict=msg.message_dict,
+                        tag=MessageTag(msg.tag),
                         priority=msg.priority,
-                        timestamp=msg.timestamp,
                         mark_for_delete=msg.mark_for_delete,
-                        hash_key=msg.hash_key,
+                        force=True,
                     )
 
-            self.move_back_cur_messages("I made those changes to the files.")
             self.total_cost = editor_coder.total_cost
             self.coder_commit_hashes = editor_coder.coder_commit_hashes
         except Exception as e:
@@ -99,13 +97,13 @@ class ArchitectCoder(AskCoder):
             ConversationManager.initialize(original_coder or self, reset=True, reformat=True)
 
             for msg in original_all_messages:
-                ConversationManager.add_message(
-                    msg.to_dict(),
-                    MessageTag(msg.tag),
-                    priority=msg.priority,
-                    timestamp=msg.timestamp,
-                    mark_for_delete=msg.mark_for_delete,
-                    hash_key=msg.hash_key,
-                )
+                if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
+                    ConversationManager.add_message(
+                        message_dict=msg.message_dict,
+                        tag=MessageTag(msg.tag),
+                        priority=msg.priority,
+                        mark_for_delete=msg.mark_for_delete,
+                        force=True,
+                    )
 
         raise SwitchCoderSignal(main_model=self.main_model, edit_format="architect")

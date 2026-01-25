@@ -605,6 +605,11 @@ class TUI(App):
         footer = self.query_one(MainFooter)
         footer.start_spinner("Processing...")
 
+        coder = self.worker.coder
+
+        if coder:
+            coder.io.start_spinner("Processing...")
+
         self.update_key_hints(generating=True)
 
         self.input_queue.put({"text": user_input})

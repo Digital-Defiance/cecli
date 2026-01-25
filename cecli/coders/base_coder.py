@@ -1784,32 +1784,6 @@ class Coder:
             self.io.tool_warning("Proceeding with full history for now.")
             return
 
-    def move_back_cur_messages(self, message):
-        # Move CUR messages to DONE in ConversationManager
-        # Get current CUR messages
-        cur_messages = ConversationManager.get_messages_dict(MessageTag.CUR)
-
-        # Clear CUR messages from ConversationManager
-        ConversationManager.clear_tag(MessageTag.CUR)
-
-        # Add them back as DONE messages
-        for msg in cur_messages:
-            ConversationManager.add_message(
-                message_dict=msg,
-                tag=MessageTag.DONE,
-            )
-
-        # TODO check for impact on image messages
-        if message:
-            ConversationManager.add_message(
-                message_dict=dict(role="user", content=message),
-                tag=MessageTag.DONE,
-            )
-            ConversationManager.add_message(
-                message_dict=dict(role="assistant", content="Ok."),
-                tag=MessageTag.DONE,
-            )
-
     def normalize_language(self, lang_code):
         """
         Convert a locale code such as ``en_US`` or ``fr`` into a readable
@@ -2286,8 +2260,6 @@ class Coder:
 
             if not saved_message and hasattr(self.gpt_prompts, "files_content_gpt_edits_no_repo"):
                 saved_message = self.gpt_prompts.files_content_gpt_edits_no_repo
-
-            self.move_back_cur_messages(saved_message)
 
         if not interrupted:
             add_rel_files_message = await self.check_for_file_mentions(content)
@@ -3793,8 +3765,6 @@ class Coder:
 
         await self.repo.commit(fnames=self.need_commit_before_edits, coder=self)
 
-        # files changed, move cur messages back behind the files messages
-        # self.move_back_cur_messages(self.gpt_prompts.files_content_local_edits)
         return True
 
     def get_edits(self, mode="update"):
