@@ -20,7 +20,7 @@ class ResetCommand(BaseCommand):
             ConversationFiles.reset()  # Clear all file caches
 
             # Re-initialize ConversationManager with current coder
-            ConversationManager.initialize(coder)
+            ConversationManager.initialize(coder, reformat=True)
             ConversationFiles.initialize(coder)
 
             # Clear TUI output if available

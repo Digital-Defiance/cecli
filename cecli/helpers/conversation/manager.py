@@ -33,15 +33,25 @@ class ConversationManager:
     _ALL_MESSAGES_CACHE_KEY = "__all__"  # Special key for caching all messages (tag=None)
 
     @classmethod
-    def initialize(cls, coder) -> None:
+    def initialize(cls, coder, reset: bool = False, reformat: bool = False) -> None:
         """
         Set up singleton with weak reference to coder.
 
         Args:
             coder: The coder instance to reference
+            reset: Whether to re-initialize the conversation history itself
+            reformat: Whether to format chat history
+                      (useful for initialization outside of coder class)
         """
         cls._coder_ref = weakref.ref(coder)
         cls._initialized = True
+
+        if reset:
+            cls.reset()
+
+        if reformat:
+            if hasattr(coder, "format_chat_chunks"):
+                coder.format_chat_chunks()
 
         # Enable debug mode if coder has verbose attribute and it's True
         if hasattr(coder, "verbose") and coder.verbose:

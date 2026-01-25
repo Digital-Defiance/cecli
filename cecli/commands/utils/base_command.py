@@ -150,12 +150,8 @@ class BaseCommand(ABC, metaclass=CommandMeta):
 
         new_coder = await Coder.create(**kwargs)
 
-        # Clear ALL messages for new coder (start fresh)
-        ConversationManager.reset()
-
         # Re-initialize ConversationManager with new coder
-        ConversationManager.initialize(new_coder)
-        ConversationManager.clear_cache()
+        ConversationManager.initialize(new_coder, reset=True, reformat=True)
 
         await new_coder.generate(user_message=user_msg, preproc=False)
         coder.coder_commit_hashes = new_coder.coder_commit_hashes
@@ -164,30 +160,28 @@ class BaseCommand(ABC, metaclass=CommandMeta):
         new_all_messages = ConversationManager.get_messages()
 
         # Clear manager and restore original state
-        ConversationManager.reset()
-        ConversationManager.initialize(original_coder)
+        ConversationManager.initialize(original_coder, reset=True, reformat=True)
 
         # Restore original messages with all metadata
         for msg in original_all_messages:
-            ConversationManager.add_message(
-                msg.to_dict(),
-                MessageTag(msg.tag),
-                priority=msg.priority,
-                timestamp=msg.timestamp,
-                mark_for_delete=msg.mark_for_delete,
-                hash_key=msg.hash_key,
-            )
+            if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
+                ConversationManager.add_message(
+                    message_dict=msg.message_dict,
+                    tag=MessageTag(msg.tag),
+                    priority=msg.priority,
+                    mark_for_delete=msg.mark_for_delete,
+                    force=True,
+                )
 
         # Append new coder's DONE and CUR messages (but not other tags like SYSTEM)
         for msg in new_all_messages:
             if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
                 ConversationManager.add_message(
-                    msg.to_dict(),
-                    MessageTag(msg.tag),
+                    message_dict=msg.message_dict,
+                    tag=MessageTag(msg.tag),
                     priority=msg.priority,
-                    timestamp=msg.timestamp,
                     mark_for_delete=msg.mark_for_delete,
-                    hash_key=msg.hash_key,
+                    force=True,
                 )
 
         from cecli.commands import SwitchCoderSignal

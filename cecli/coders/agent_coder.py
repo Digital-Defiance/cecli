@@ -799,11 +799,9 @@ I will proceed based on the current context.""")
             saved_message = await self.auto_commit(self.files_edited_by_tools)
             if not saved_message and hasattr(self.gpt_prompts, "files_content_gpt_edits_no_repo"):
                 saved_message = self.gpt_prompts.files_content_gpt_edits_no_repo
-            self.move_back_cur_messages(saved_message)
         self.tool_call_count = 0
         self.files_added_in_exploration = set()
         self.files_edited_by_tools = set()
-        self.move_back_cur_messages(None)
         return False
 
     async def _execute_tool_with_registry(self, norm_tool_name, params):

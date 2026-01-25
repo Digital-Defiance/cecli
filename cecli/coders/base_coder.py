@@ -1659,7 +1659,7 @@ class Coder:
 
     # Old summarization system removed - using context compaction logic instead
 
-    async def compact_context_if_needed(self, force=False):
+    async def compact_context_if_needed(self, force=False, message=""):
         if not self.enable_context_compaction:
             return
 
@@ -1687,9 +1687,14 @@ class Coder:
             # Check if done_messages alone exceed the limit
             if done_tokens > self.context_compaction_max_tokens or done_tokens > cur_tokens:
                 # Create a summary of the done_messages
+                # Append custom message to compaction prompt if provided
+                compaction_prompt = self.gpt_prompts.compaction_prompt
+                if message:
+                    compaction_prompt = f"{compaction_prompt}\n\n{message}"
+
                 summary_text = await self.summarizer.summarize_all_as_text(
                     done_messages,
-                    self.gpt_prompts.compaction_prompt,
+                    compaction_prompt,
                     self.context_compaction_summary_tokens,
                 )
 
@@ -1719,9 +1724,14 @@ class Coder:
             # Check if cur_messages alone exceed the limit (after potentially compacting done_messages)
             if cur_tokens > self.context_compaction_max_tokens or cur_tokens > done_tokens:
                 # Create a summary of the cur_messages
+                # Append custom message to compaction prompt if provided
+                compaction_prompt = self.gpt_prompts.compaction_prompt
+                if message:
+                    compaction_prompt = f"{compaction_prompt}\n\n{message}"
+
                 cur_summary_text = await self.summarizer.summarize_all_as_text(
                     cur_messages,
-                    self.gpt_prompts.compaction_prompt,
+                    compaction_prompt,
                     self.context_compaction_summary_tokens,
                 )
 
@@ -1773,32 +1783,6 @@ class Coder:
             self.io.tool_warning(f"Context compaction failed: {e}")
             self.io.tool_warning("Proceeding with full history for now.")
             return
-
-    def move_back_cur_messages(self, message):
-        # Move CUR messages to DONE in ConversationManager
-        # Get current CUR messages
-        cur_messages = ConversationManager.get_messages_dict(MessageTag.CUR)
-
-        # Clear CUR messages from ConversationManager
-        ConversationManager.clear_tag(MessageTag.CUR)
-
-        # Add them back as DONE messages
-        for msg in cur_messages:
-            ConversationManager.add_message(
-                message_dict=msg,
-                tag=MessageTag.DONE,
-            )
-
-        # TODO check for impact on image messages
-        if message:
-            ConversationManager.add_message(
-                message_dict=dict(role="user", content=message),
-                tag=MessageTag.DONE,
-            )
-            ConversationManager.add_message(
-                message_dict=dict(role="assistant", content="Ok."),
-                tag=MessageTag.DONE,
-            )
 
     def normalize_language(self, lang_code):
         """
@@ -2276,8 +2260,6 @@ class Coder:
 
             if not saved_message and hasattr(self.gpt_prompts, "files_content_gpt_edits_no_repo"):
                 saved_message = self.gpt_prompts.files_content_gpt_edits_no_repo
-
-            self.move_back_cur_messages(saved_message)
 
         if not interrupted:
             add_rel_files_message = await self.check_for_file_mentions(content)
@@ -3783,8 +3765,6 @@ class Coder:
 
         await self.repo.commit(fnames=self.need_commit_before_edits, coder=self)
 
-        # files changed, move cur messages back behind the files messages
-        # self.move_back_cur_messages(self.gpt_prompts.files_content_local_edits)
         return True
 
     def get_edits(self, mode="update"):
