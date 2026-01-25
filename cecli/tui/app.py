@@ -8,7 +8,6 @@ from textual import events
 from textual.app import App, ComposeResult
 
 # from textual.binding import Binding
-from textual.containers import Vertical
 from textual.theme import Theme
 
 from cecli.editor import pipe_editor
@@ -18,6 +17,7 @@ from .widgets import (
     CompletionBar,
     FileList,
     InputArea,
+    InputContainer,
     KeyHints,
     MainFooter,
     OutputContainer,
@@ -256,7 +256,7 @@ class TUI(App):
                 else str(coder.repo.root).split("/")[-1]
             )
         else:
-            project_name = "No repo"
+            project_name = "No Repo"
 
         # Get history file path from coder's io
         history_file = getattr(coder.io, "input_history_file", None)
@@ -265,15 +265,16 @@ class TUI(App):
         # Git info loaded in on_mount to avoid blocking startup
         yield OutputContainer(id="output")
         yield StatusBar(id="status-bar")
-        yield Vertical(
+        yield InputContainer(
             InputArea(history_file=history_file, id="input"),
             FileList(id="file-list", classes="empty"),
             id="input-container",
+            coder_mode=coder_mode,
         )
         yield KeyHints(id="key-hints")
         yield MainFooter(
             model_name=model_name,
-            project_name=project_name,
+            project_name=str(coder.repo.root) if len(str(coder.repo.root)) <= 64 else project_name,
             git_branch="",  # Loaded async in on_mount
             coder_mode=coder_mode,
             id="footer",
@@ -412,11 +413,14 @@ class TUI(App):
         footer = self.query_one(MainFooter)
         if self.worker.coder.repo:
             try:
-                branch = self.worker.coder.repo.get_head_branch_name() or "main"
+                branch = self.worker.coder.repo.repo.active_branch.name or "main"
                 dirty = self.worker.coder.repo.get_dirty_files()
                 footer.update_git(branch, len(dirty) if dirty else 0)
             except Exception:
-                footer.update_git("main", 0)
+                if self.worker.coder.repo:
+                    footer.update_git("main", 0)
+                else:
+                    footer.update_git("No Repo", 0)
 
     def check_output_queue(self):
         """Process messages from coder worker."""
@@ -470,6 +474,9 @@ class TUI(App):
             self.action_quit()
         elif msg_type == "mode_change":
             # Update footer with new chat mode
+            container = footer = self.query_one(InputContainer)
+            container.update_mode(msg.get("mode", "code"))
+
             footer = self.query_one(MainFooter)
             footer.update_mode(msg.get("mode", "code"))
 
