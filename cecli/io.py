@@ -148,6 +148,7 @@ class AutoCompleter(Completer):
         self.rel_fnames = rel_fnames
         self.encoding = encoding
         self.abs_read_only_fnames = abs_read_only_fnames or []
+        self.post_filter_commands = ["/add"]
 
         fname_to_rel_fnames = defaultdict(list)
         for rel_fname in addable_rel_fnames:
@@ -240,6 +241,10 @@ class AutoCompleter(Completer):
 
         if candidates is None:
             return
+
+        if cmd in self.post_filter_commands:
+            candidates = [word for word in candidates if partial in word.lower()]
+
         for candidate in sorted(candidates):
             yield Completion(candidate, start_position=-len(words[-1]))
 
