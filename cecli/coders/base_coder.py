@@ -2096,7 +2096,7 @@ class Coder:
             ConversationManager.add_message(
                 message_dict=dict(role="user", content=inp),
                 tag=MessageTag.CUR,
-                hash_key=("user_message", inp, str(time.time_ns())),
+                hash_key=("user_message", inp, str(time.monotonic_ns())),
             )
 
         loop = asyncio.get_running_loop()
