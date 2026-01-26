@@ -96,9 +96,9 @@ class MainFooter(Static):
         # Build right side: mode + model + project + git
         right = Text()
 
-        if self.coder_mode:
-            right.append(f"{self.coder_mode}")
-            right.append(" • ")
+        # if self.coder_mode:
+        #     right.append(f"{self.coder_mode}")
+        #     right.append(" • ")
 
         # model_display = self._get_display_model()
         # if model_display:
@@ -111,8 +111,8 @@ class MainFooter(Static):
 
         if self.git_branch:
             right.append(self.git_branch)
-            if self.git_dirty:
-                right.append(f" +{self.git_dirty}")
+            # if self.git_dirty:
+            #    right.append(f" +{self.git_dirty}")
             # right.append("  ")
 
         # Always show cost

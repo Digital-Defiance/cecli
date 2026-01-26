@@ -33,7 +33,13 @@ class ConversationManager:
     _ALL_MESSAGES_CACHE_KEY = "__all__"  # Special key for caching all messages (tag=None)
 
     @classmethod
-    def initialize(cls, coder, reset: bool = False, reformat: bool = False) -> None:
+    def initialize(
+        cls,
+        coder,
+        reset: bool = False,
+        reformat: bool = False,
+        preserve_tags: Optional[List[str]] = None,
+    ) -> None:
         """
         Set up singleton with weak reference to coder.
 
@@ -42,16 +48,48 @@ class ConversationManager:
             reset: Whether to re-initialize the conversation history itself
             reformat: Whether to format chat history
                       (useful for initialization outside of coder class)
+            preserve_tags: Optional list of tag strings to preserve during reset.
+                          If provided, messages with these tags will be preserved
+                          when reset=True and re-added AFTER the reformat block.
         """
         cls._coder_ref = weakref.ref(coder)
         cls._initialized = True
 
-        if reset:
+        preserved_messages = []
+        if reset and preserve_tags:
+            # New approach: loop over every single tag type and only clear tags NOT in preserve_tags
+            # Get all MessageTag values
+            all_tag_types = list(MessageTag)
+
+            # Clear tags that are NOT in preserve_tags
+            for tag_type in all_tag_types:
+                if tag_type.value not in preserve_tags:
+                    cls.clear_tag(tag_type)
+
+            # Get all remaining messages left over after preservation
+            preserved_messages = cls.get_messages()
+        elif reset:
+            # Original behavior: clear everything
             cls.reset()
 
         if reformat:
             if hasattr(coder, "format_chat_chunks"):
                 coder.format_chat_chunks()
+
+        # If preserve_tags is truthy, re-add preserved messages with updated timestamps after reformat block
+        if preserve_tags and preserved_messages:
+            for tag_type in preserve_tags:
+                cls.clear_tag(tag_type)
+
+            for msg in preserved_messages:
+                cls.add_message(
+                    message_dict=msg.message_dict,
+                    tag=MessageTag(msg.tag),
+                    priority=msg.priority,
+                    timestamp=time.monotonic_ns(),  # Updated timestamp
+                    mark_for_delete=msg.mark_for_delete,
+                    force=True,
+                )
 
         # Enable debug mode if coder has verbose attribute and it's True
         if hasattr(coder, "verbose") and coder.verbose:
@@ -110,7 +148,7 @@ class ConversationManager:
             priority = get_default_priority(tag)
 
         if timestamp is None:
-            timestamp = time.time_ns() + get_default_timestamp_offset(tag)
+            timestamp = time.monotonic_ns() + get_default_timestamp_offset(tag)
 
         # Create message instance
         message = BaseMessage(
@@ -152,7 +190,7 @@ class ConversationManager:
     @classmethod
     def get_messages(cls) -> List[BaseMessage]:
         """
-        Returns messages sorted by priority (lowest first), then timestamp (earliest first).
+        Returns messages sorted by priority (lowest first), then raw order in list.
 
         Returns:
             List of BaseMessage instances in sorted order

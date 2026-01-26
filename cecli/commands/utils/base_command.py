@@ -142,47 +142,30 @@ class BaseCommand(ABC, metaclass=CommandMeta):
             "num_cache_warming_pings": 0,
             "coder_commit_hashes": coder.coder_commit_hashes,
             "args": coder.args,
+            "done_messages": [],
+            "cur_messages": [],
         }
 
         # Save current conversation state
-        original_all_messages = ConversationManager.get_messages()
         original_coder = coder
 
         new_coder = await Coder.create(**kwargs)
 
         # Re-initialize ConversationManager with new coder
-        ConversationManager.initialize(new_coder, reset=True, reformat=True)
+        ConversationManager.initialize(
+            new_coder, reset=True, reformat=True, preserve_tags=[MessageTag.DONE, MessageTag.CUR]
+        )
 
         await new_coder.generate(user_message=user_msg, preproc=False)
         coder.coder_commit_hashes = new_coder.coder_commit_hashes
 
-        # Save new coder's ALL messages
-        new_all_messages = ConversationManager.get_messages()
-
         # Clear manager and restore original state
-        ConversationManager.initialize(original_coder, reset=True, reformat=True)
-
-        # Restore original messages with all metadata
-        for msg in original_all_messages:
-            if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
-                ConversationManager.add_message(
-                    message_dict=msg.message_dict,
-                    tag=MessageTag(msg.tag),
-                    priority=msg.priority,
-                    mark_for_delete=msg.mark_for_delete,
-                    force=True,
-                )
-
-        # Append new coder's DONE and CUR messages (but not other tags like SYSTEM)
-        for msg in new_all_messages:
-            if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
-                ConversationManager.add_message(
-                    message_dict=msg.message_dict,
-                    tag=MessageTag(msg.tag),
-                    priority=msg.priority,
-                    mark_for_delete=msg.mark_for_delete,
-                    force=True,
-                )
+        ConversationManager.initialize(
+            original_coder,
+            reset=True,
+            reformat=True,
+            preserve_tags=[MessageTag.DONE, MessageTag.CUR],
+        )
 
         from cecli.commands import SwitchCoderSignal
 

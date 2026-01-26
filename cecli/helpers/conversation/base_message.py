@@ -26,7 +26,7 @@ class BaseMessage:
     message_dict: Dict[str, Any]
     tag: str
     priority: int = field(default=0)
-    timestamp: int = field(default_factory=lambda: time.time_ns())
+    timestamp: int = field(default_factory=lambda: time.monotonic_ns())
     mark_for_delete: Optional[int] = field(default=None)
     hash_key: Optional[Tuple[str, ...]] = field(default=None)
     message_id: str = field(init=False)
@@ -136,6 +136,6 @@ class BaseMessage:
         content_preview = str(self.message_dict.get("content", ""))[:50]
         return (
             f"BaseMessage(id={self.message_id[:8]}..., "
-            f"tag={self.tag}, priority={self.priority}, "
-            f"role={role}, content='{content_preview}...')"
+            f"tag={self.tag}, priority={self.priority}, timestamp={self.timestamp}, "
+            f"role={role}, content='{content_preview}...', )"
         )

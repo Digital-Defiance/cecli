@@ -6,7 +6,11 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from cecli import models
-from cecli.helpers.conversation import ConversationManager, MessageTag
+from cecli.helpers.conversation import (
+    ConversationFiles,
+    ConversationManager,
+    MessageTag,
+)
 
 
 class SessionManager:
@@ -199,29 +203,6 @@ class SessionManager:
             self.coder.abs_read_only_fnames = set()
             self.coder.abs_read_only_stubs_fnames = set()
 
-            # Clear CUR and DONE messages from ConversationManager
-            ConversationManager.clear_tag(MessageTag.CUR)
-            ConversationManager.clear_tag(MessageTag.DONE)
-
-            # Load chat history
-            chat_history = session_data.get("chat_history", {})
-            done_messages = chat_history.get("done_messages", [])
-            cur_messages = chat_history.get("cur_messages", [])
-
-            # Add messages to ConversationManager (source of truth)
-            # Add done messages
-            for msg in done_messages:
-                ConversationManager.add_message(
-                    message_dict=msg,
-                    tag=MessageTag.DONE,
-                )
-            # Add current messages
-            for msg in cur_messages:
-                ConversationManager.add_message(
-                    message_dict=msg,
-                    tag=MessageTag.CUR,
-                )
-
             # Load files
             files = session_data.get("files", {})
             for rel_fname in files.get("editable", []):
@@ -277,6 +258,30 @@ class SessionManager:
                         self.io.write_text(todo_path, todo_content)
                 except Exception as e:
                     self.io.tool_warning(f"Could not restore todo list: {e}")
+
+            # Clear CUR and DONE messages from ConversationManager
+            ConversationManager.reset()
+            ConversationFiles.reset()
+            self.coder.format_chat_chunks()
+
+            # Load chat history
+            chat_history = session_data.get("chat_history", {})
+            done_messages = chat_history.get("done_messages", [])
+            cur_messages = chat_history.get("cur_messages", [])
+
+            # Add messages to ConversationManager (source of truth)
+            # Add done messages
+            for msg in done_messages:
+                ConversationManager.add_message(
+                    message_dict=msg,
+                    tag=MessageTag.DONE,
+                )
+            # Add current messages
+            for msg in cur_messages:
+                ConversationManager.add_message(
+                    message_dict=msg,
+                    tag=MessageTag.CUR,
+                )
 
             self.io.tool_output(
                 f"Session loaded: {session_data.get('session_name', session_file.stem)}"

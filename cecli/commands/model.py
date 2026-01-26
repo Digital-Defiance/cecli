@@ -57,18 +57,24 @@ class ModelCommand(BaseCommand):
             kwargs["total_cost"] = coder.total_cost
             kwargs["num_cache_warming_pings"] = 0
             kwargs["summarize_from_coder"] = False
+            kwargs["done_messages"] = []
+            kwargs["cur_messages"] = []
 
             new_kwargs = dict(io=io, from_coder=coder)
             new_kwargs.update(kwargs)
 
             # Save current conversation state
-            original_all_messages = ConversationManager.get_messages()
             original_coder = coder
 
             temp_coder = await Coder.create(**new_kwargs)
 
             # Re-initialize ConversationManager with temp coder
-            ConversationManager.initialize(temp_coder, reset=True, reformat=True)
+            ConversationManager.initialize(
+                temp_coder,
+                reset=True,
+                reformat=True,
+                preserve_tags=[MessageTag.DONE, MessageTag.CUR],
+            )
 
             verbose = kwargs.get("verbose", False)
             if verbose:
@@ -79,33 +85,13 @@ class ModelCommand(BaseCommand):
                 coder.total_cost = temp_coder.total_cost
                 coder.coder_commit_hashes = temp_coder.coder_commit_hashes
 
-                # Save temp coder's ALL messages
-                temp_all_messages = ConversationManager.get_messages()
-
                 # Clear manager and restore original state
-                ConversationManager.initialize(original_coder, reset=True, reformat=True)
-
-                # Restore original messages with all metadata
-                for msg in original_all_messages:
-                    if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
-                        ConversationManager.add_message(
-                            message_dict=msg.message_dict,
-                            tag=MessageTag(msg.tag),
-                            priority=msg.priority,
-                            mark_for_delete=msg.mark_for_delete,
-                            force=True,
-                        )
-
-                # Append temp coder's DONE and CUR messages (but not other tags like SYSTEM)
-                for msg in temp_all_messages:
-                    if msg.tag in [MessageTag.DONE.value, MessageTag.CUR.value]:
-                        ConversationManager.add_message(
-                            message_dict=msg.message_dict,
-                            tag=MessageTag(msg.tag),
-                            priority=msg.priority,
-                            mark_for_delete=msg.mark_for_delete,
-                            force=True,
-                        )
+                ConversationManager.initialize(
+                    original_coder,
+                    reset=True,
+                    reformat=True,
+                    preserve_tags=[MessageTag.DONE, MessageTag.CUR],
+                )
 
                 # Restore the original model configuration
                 from cecli.commands import SwitchCoderSignal
