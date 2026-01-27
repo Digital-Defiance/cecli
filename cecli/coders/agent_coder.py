@@ -724,6 +724,7 @@ class AgentCoder(Coder):
         ) = await self._process_tool_commands(content)
         if self.agent_finished:
             self.tool_usage_history = []
+            self.reflected_message = None
             if self.files_edited_by_tools:
                 _ = await self.auto_commit(self.files_edited_by_tools)
             return False
