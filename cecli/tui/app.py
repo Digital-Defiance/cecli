@@ -884,7 +884,9 @@ class TUI(App):
         suggestions = []
         commands = self.worker.coder.commands
 
-        if len(text) and text[-1] == " ":
+        # Only return early for non-commands ending with space
+        # For commands, we want to allow completion with empty string partial
+        if len(text) and text[-1] == " " and not text.startswith("/"):
             return
 
         if "@" in text:
@@ -905,12 +907,21 @@ class TUI(App):
                     suggestions = all_commands
                 else:
                     suggestions = [c for c in all_commands if c.startswith(cmd_part)]
-            elif len(parts) > 1:
+            else:
                 # Complete command argument
+                # This handles both:
+                # 1. len(parts) > 1: command with arguments
+                # 2. len(parts) == 1 and text.endswith(" "): command with trailing space
                 cmd_name = cmd_part
-                end_lookup = text.rsplit(maxsplit=1)
 
-                arg_prefix = end_lookup[-1]
+                if text.endswith(" "):
+                    # Command with trailing space, empty argument prefix
+                    arg_prefix = ""
+                else:
+                    # Get the last word as argument prefix
+                    end_lookup = text.rsplit(maxsplit=1)
+                    arg_prefix = end_lookup[-1]
+
                 arg_prefix_lower = arg_prefix.lower()
 
                 # Check if this command needs path-based completion
@@ -955,8 +966,14 @@ class TUI(App):
         """Calculate the new text after applying completion."""
         if current_text.startswith("/"):
             parts = current_text.rsplit(maxsplit=1)
-            if len(parts) == 1:
-                # Replace entire command
+
+            # Check if we have a command with trailing space
+            # This is when we want to insert argument completions after the space
+            if len(parts) == 1 and current_text.endswith(" "):
+                # Command with trailing space, insert completion after space
+                return current_text + completion
+            elif len(parts) == 1:
+                # Replace entire command (command name completion)
                 # Only add space if command takes arguments
                 commands = self.worker.coder.commands
                 try:

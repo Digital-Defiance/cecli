@@ -148,7 +148,6 @@ class AutoCompleter(Completer):
         self.rel_fnames = rel_fnames
         self.encoding = encoding
         self.abs_read_only_fnames = abs_read_only_fnames or []
-        self.post_filter_commands = ["/add"]
 
         fname_to_rel_fnames = defaultdict(list)
         for rel_fname in addable_rel_fnames:
@@ -214,22 +213,47 @@ class AutoCompleter(Completer):
 
     def get_command_completions(self, document, complete_event, text, words):
         if len(words) == 1 and not text[-1].isspace():
+            # Handle command completion (e.g., typing "/ad" should complete to "/add")
             partial = words[0].lower()
+            # Strip leading '/' if present for comparison with command names
+            if partial.startswith("/"):
+                partial = partial[1:]
             candidates = [cmd for cmd in self.command_names if cmd.startswith(partial)]
             for candidate in sorted(candidates):
-                yield Completion(candidate, start_position=-len(words[-1]))
+                # Add back the leading '/' for the completion
+                yield Completion("/" + candidate, start_position=-len(words[-1]))
             return
 
-        if len(words) <= 1 or text[-1].isspace():
+        # Handle command followed by space: trigger auto-completion with empty partial
+        if text[-1].isspace():
+            # We have a command followed by space, trigger auto-completion with empty string
+            if len(words) == 1:
+                # Command with no arguments yet, just a trailing space
+                partial = ""
+                # We need to get the command name without the trailing space
+                # The command is words[0] but might have leading '/'
+                cmd_text = words[0]
+            else:
+                # Command with arguments and trailing space
+                partial = ""
+                cmd_text = text.rstrip()  # Remove trailing space for matching
+        else:
+            # No trailing space
+            if len(words) <= 1:
+                return
+            partial = words[-1].lower()
+            cmd_text = text
+
+        # Pass the text (without trailing space if present) to matching_commands
+        matches, matched_cmd, _ = self.commands.matching_commands(cmd_text.rstrip())
+        if not matches:
             return
 
-        cmd = words[0]
-        partial = words[-1].lower()
-
-        matches, _, _ = self.commands.matching_commands(cmd)
         if len(matches) == 1:
             cmd = matches[0]
-        elif cmd not in matches:
+        elif matched_cmd in matches:
+            cmd = matched_cmd
+        else:
             return
 
         raw_completer = self.commands.get_raw_completions(cmd)
@@ -242,11 +266,14 @@ class AutoCompleter(Completer):
         if candidates is None:
             return
 
-        if cmd in self.post_filter_commands:
-            candidates = [word for word in candidates if partial in word.lower()]
+        candidates = [word for word in candidates if partial in word.lower()]
 
         for candidate in sorted(candidates):
-            yield Completion(candidate, start_position=-len(words[-1]))
+            # Calculate start position based on partial, not words[-1]
+            # When partial is empty (trailing space), start_position should be 0
+            # When partial is not empty, replace that many characters
+            start_position = -len(partial) if partial else 0
+            yield Completion(candidate, start_position=start_position)
 
     def get_completions(self, document, complete_event):
         self.tokenize()
@@ -256,8 +283,9 @@ class AutoCompleter(Completer):
         if not words:
             return
 
-        if text and text[-1].isspace():
-            # don't keep completing after a space
+        if text and text[-1].isspace() and not text.startswith("/"):
+            # don't keep completing after a space for non-commands
+            # For commands, we want to allow completion with empty string partial
             return
 
         if text[0] == "/":
