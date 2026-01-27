@@ -61,6 +61,14 @@ class ArchitectCoder(AskCoder):
         if self.verbose:
             editor_coder.show_announcements()
 
+        postamble = """
+        The above changes are proposed changes.
+        You must repeat SEARCH/REPLACE blocks in order to apply edits.
+        Shell commands must also be duplicated in order to run them.
+        """
+
+        content = f"Please implement all requested changes from:\n{content}\n{postamble}"
+
         try:
             await editor_coder.generate(user_message=content, preproc=False)
 
