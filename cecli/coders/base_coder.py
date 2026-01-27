@@ -3792,7 +3792,13 @@ class Coder:
             self._autosave_future = None
 
         if self._autosave_future and not self._autosave_future.done():
-            return
+            if force:
+                try:
+                    await self._autosave_future
+                except Exception:
+                    pass
+            else:
+                return
 
         # Throttle autosave to run at most once every 15 seconds
         current_time = time.time()
