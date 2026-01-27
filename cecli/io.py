@@ -218,10 +218,11 @@ class AutoCompleter(Completer):
             # Strip leading '/' if present for comparison with command names
             if partial.startswith("/"):
                 partial = partial[1:]
-            candidates = [cmd for cmd in self.command_names if cmd.startswith(partial)]
+            # Compare with command names without leading '/'
+            candidates = [cmd for cmd in self.command_names if cmd[1:].startswith(partial)]
             for candidate in sorted(candidates):
                 # Add back the leading '/' for the completion
-                yield Completion("/" + candidate, start_position=-len(words[-1]))
+                yield Completion(candidate, start_position=-len(words[-1]))
             return
 
         # Handle command followed by space: trigger auto-completion with empty partial
