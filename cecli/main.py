@@ -1202,6 +1202,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             return await graceful_exit(coder)
         except SwitchCoderSignal as switch:
             coder.ok_to_warm_cache = False
+            await coder.auto_save_session(force=True)
 
             if hasattr(switch, "placeholder") and switch.placeholder is not None:
                 io.placeholder = switch.placeholder
@@ -1229,6 +1230,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
 
         except SystemExit:
             sys.settrace(None)
+            await coder.auto_save_session(force=True)
             return await graceful_exit(coder)
 
 
