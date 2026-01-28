@@ -95,6 +95,7 @@ class CoderWorker:
             except SwitchCoderSignal as switch:
                 # Handle chat mode switches (e.g., /chat-mode architect)
                 try:
+                    await self.coder.auto_save_session(force=True)
                     kwargs = dict(io=self.coder.io, from_coder=self.coder)
                     kwargs.update(switch.kwargs)
                     if "show_announcements" in kwargs:

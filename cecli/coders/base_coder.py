@@ -1584,6 +1584,7 @@ class Coder:
                 pass
 
             if not self.reflected_message:
+                await self.auto_save_session(force=True)
                 break
 
             if self.num_reflections >= self.max_reflections:
@@ -1602,6 +1603,8 @@ class Coder:
 
             if self.enable_context_compaction:
                 await self.compact_context_if_needed()
+
+            await self.auto_save_session(force=True)
 
     async def check_and_open_urls(self, exc, friendly_msg=None):
         """Check exception for URLs, offer to open in a browser, with user-friendly error msgs."""
@@ -3776,7 +3779,7 @@ class Coder:
     def apply_edits_dry_run(self, edits):
         return edits
 
-    async def auto_save_session(self):
+    async def auto_save_session(self, force=False):
         """Automatically save the current session to {auto-save-session-name}.json."""
         if not getattr(self.args, "auto_save", False):
             return
@@ -3789,11 +3792,17 @@ class Coder:
             self._autosave_future = None
 
         if self._autosave_future and not self._autosave_future.done():
-            return
+            if force:
+                try:
+                    await self._autosave_future
+                except Exception:
+                    pass
+            else:
+                return
 
         # Throttle autosave to run at most once every 15 seconds
         current_time = time.time()
-        if current_time - self._last_autosave_time >= 15.0:
+        if current_time - self._last_autosave_time >= 15.0 or force:
             try:
                 self._last_autosave_time = current_time
                 session_manager = SessionManager(self, self.io)
