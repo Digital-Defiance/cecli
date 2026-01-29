@@ -199,12 +199,9 @@ class OutputContainer(RichLog):
         if not styles:
             styles = dict()
 
-        style = RichStyle(**styles)
-        with self.app.console.capture() as capture:
-            self.app.console.print(Text(text), style=style)
-        capture_text = capture.get()
-
-        self.output(Padding(capture_text, (0, 0, 0, 2)))
+        # Create styled Text object directly
+        styled_text = Text(text, style=RichStyle(**styles))
+        self.output(Padding(styled_text, (0, 0, 0, 2)))
 
     def add_tool_call(self, lines: list):
         """Add a tool call with themed styling.
@@ -289,23 +286,29 @@ class OutputContainer(RichLog):
             check_duplicates: If True, check for duplicate newlines before writing
             render_markdown: If True and app config allows, render as markdown
         """
+        # Get plain text for duplicate checking BEFORE any markdown conversion
+        plain_text = ""
+        if isinstance(text, str):
+            plain_text = text
+        elif isinstance(text, Text):
+            plain_text = text.plain
+        elif isinstance(text, Markdown):
+            # For Markdown objects, we need to get the source markdown text
+            # Markdown objects have a .markup attribute with the source
+            plain_text = text.markup if hasattr(text, "markup") else str(text)
+        else:
+            # For other types, convert to string
+            plain_text = str(text)
+
         # Check if we should render as markdown
         if render_markdown and hasattr(self.app, "render_markdown") and self.app.render_markdown:
             # Only render string content as markdown
             if isinstance(text, str):
                 text = Markdown(text)
 
-        with self.app.console.capture() as capture:
-            self.app.console.print(text)
-        check = Text(capture.get()).plain
-
-        # self.write(str(self._write_history))
-        # self.write(repr(check))
-
-        # Check for duplicate newlines
-
+        # Check for duplicate newlines using the plain text we extracted
         if check_duplicates and len(self._write_history) >= 2:
-            nl_check = check in ["", "\n", "\\n"]
+            nl_check = plain_text in ["", "\n", "\\n"]
             nl_last = self._write_history[-1] in ["", "\n", "\\n"]
             nl_penultimate = self._write_history[-2] in ["", "\n", "\\n"] or self._write_history[
                 -2
@@ -317,8 +320,8 @@ class OutputContainer(RichLog):
         # Call the actual write method
         self.write(text)
 
-        # Log the write
-        self._write_history.append(check)
+        # Log the write using the plain text
+        self._write_history.append(plain_text)
 
         # Keep history size manageable
         if len(self._write_history) > 5:

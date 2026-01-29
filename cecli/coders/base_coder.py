@@ -38,7 +38,7 @@ import cecli.prompts.utils.system as prompts
 from cecli import __version__, models, urls, utils
 from cecli.commands import Commands, SwitchCoderSignal
 from cecli.exceptions import LiteLLMExceptions
-from cecli.helpers import coroutines, nested
+from cecli.helpers import command_parser, coroutines, nested
 from cecli.helpers.conversation import (
     ConversationChunks,
     ConversationManager,
@@ -2865,7 +2865,13 @@ class Coder:
             if self.args.tui:
                 message = f"Add file to the chat? ({rel_fname})"
 
-            if await self.io.confirm_ask(message, subject=rel_fname, group=group, allow_never=True):
+            if await self.io.confirm_ask(
+                message,
+                subject=rel_fname,
+                group=group,
+                group_response=str(new_mentions),
+                allow_never=True,
+            ):
                 self.add_rel_fname(rel_fname)
                 added_fnames.append(rel_fname)
             else:
@@ -3841,7 +3847,7 @@ class Coder:
             self.commands.cmd_running_event.set()  # Command finished
 
     async def handle_shell_commands(self, commands_str, group):
-        commands = commands_str.strip().split(";")
+        commands = command_parser.split_shell_commands(commands_str)
         command_count = sum(
             1 for cmd in commands if cmd.strip() and not cmd.strip().startswith("#")
         )
