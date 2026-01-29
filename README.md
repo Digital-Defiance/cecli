@@ -47,14 +47,14 @@ or
 uv pip install --native-tls cecli-dev
 ```
 
-The package exports a `cecli` command that accepts all of Aider's configuration options
+The package exports a `cecli` command that accepts all of Aider's configuration options (and a few more!)
 
 ### Tool Installation
 ```bash
 uv tool install --native-tls --python python3.12 cecli-dev
 ```
 
-Use the tool installation so aider doesn't interfere with your development environment
+Use the tool installation so cecli doesn't interfere with your development environment
 
 ## Configuration
 
@@ -71,15 +71,15 @@ cache-prompts: true
 check-update: true
 debug: false
 enable-context-compaction: true
-context-compaction-max-tokens: 64000
-env-file: .aider.env
+context-compaction-max-tokens: 0.8
+env-file: .cecli.env
 show-model-warnings: true
-use-enhanced-map: true
+use-enhanced-map: true.p
 watch-files: false
 tui: true
 
 agent-config:
-  large_file_token_threshold: 12500
+  large_file_token_threshold: 8192
   skip_cli_confirmations: false
 
 mcp-servers:
@@ -89,7 +89,7 @@ mcp-servers:
       url: https://mcp.context7.com/mcp
 ```
 
-Use the adjacent .aider.env file to store model api keys as environment variables, e.g:
+Use the adjacent .cecli.env file to store model api keys as environment variables, e.g:
 
 ```
 ANTHROPIC_API_KEY="..."
@@ -101,7 +101,7 @@ DEEPSEEK_API_KEY="..."
 
 ### Run Program
 
-If you are in the directory with your .aider.conf.yml file, then simply running `cecli` or `aider-ce` will start the agent with your configuration. For best results, since terminal emulators can be finicky, we highly suggest running:
+If you are in the directory with your .cecli.conf.yml file, then simply running `cecli` or `aider-ce` will start the agent with your configuration. For best results, since terminal emulators can be finicky, we highly suggest running:
 
 ```bash
 cecli --terminal-setup
@@ -126,7 +126,7 @@ This command will make sure all commands ran by the coding agent happen in conte
 
 ## Project Roadmap/Goals
 
-The current priorities are to improve core capabilities and user experience of the Aider project
+The current priorities are to improve core capabilities and user experience of the `cecli` project
 
 1. **Base Asynchronicity (cecli coroutine-experiment branch)**
   * [x] Refactor codebase to have the main loop run asynchronously
@@ -139,14 +139,14 @@ The current priorities are to improve core capabilities and user experience of t
 
 3. **Context Discovery** - [Discussion](https://github.com/dwash96/cecli/issues/46)
   * [ ] Develop AST-based search capabilities
-  * [ ] Enhance file search with ripgrep integration
+  * [x] Enhance file search with ripgrep integration
   * [ ] Implement RAG (Retrieval-Augmented Generation) for better code retrieval
   * [ ] Build an explicit workflow and local tooling for internal discovery mechanisms
 
 4. **Context Delivery** - [Discussion](https://github.com/dwash96/cecli/issues/47)
   * [ ] Use workflow for internal discovery to better target file snippets needed for specific tasks
   * [ ] Add support for partial files and code snippets in model completion messages
-  * [ ] Update message request structure for optimal caching
+  * [x] Update message request structure for optimal caching
 
 5. **TUI Experience** - [Discussion](https://github.com/dwash96/cecli/issues/48)
   * [x] Add a full TUI (probably using textual) to have a visual interface competitive with the other coding agent terminal programs
