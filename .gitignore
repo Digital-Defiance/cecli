@@ -38,5 +38,9 @@ aider/_version.py
 .cecli*
 cecli/__version__.py
 cecli/_version.py
+cecli/website/Gemfile.lock
 *.pyc
 env/
+
+# Ignore Folders
+cecli/website/_site/*
