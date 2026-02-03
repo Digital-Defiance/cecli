@@ -1,0 +1,35 @@
+// Reset and global styles for cecli website
+
+// Universal reset
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+// HTML base styles
+html {
+    scroll-behavior: smooth;
+}
+
+// Heading styles
+h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.025em;
+    font-weight: 700;
+}
+
+h1 {
+    font-size: var(--text-4xl);
+    line-height: 1.1;
+    font-weight: 800;
+}
+
+h2 {
+    font-size: var(--text-2xl);
+    line-height: 1.2;
+}
+
+h3 {
+    font-size: var(--text-xl);
+    line-height: 1.3;
+}

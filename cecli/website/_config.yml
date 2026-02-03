@@ -1,11 +1,5 @@
 theme: just-the-docs
-url: "https://aider.chat"
-
-# Analytics configuration
-analytics:
-  enabled: false  # Single switch to control analytics and cookie consent
-  posthog_key: 'phc_99T7muzafUMMZX15H8XePbMSreEUzahHbtWjy3l5Qbv'
-  posthog_host: 'https://us.i.posthog.com'
+url: "https://cecli.dev"
 
 plugins:
   - jekyll-redirect-from
@@ -33,8 +27,6 @@ aux_links:
     - "https://github.com/dwash96/cecli"
   "Discord":
     - "https://discord.gg/AX9ZEA7nJn"
-  "Blog":
-    - "/blog/"
 
 nav_external_links:
   - title: "GitHub"
@@ -58,6 +50,7 @@ kramdown:
     css_class: highlight
     
 sass:
+  sass_dir: _sass
   style: compressed
   
 # Additional CSS

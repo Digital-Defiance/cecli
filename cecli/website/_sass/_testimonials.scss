@@ -1,0 +1,101 @@
+// Testimonial section styles for cecli website
+
+.testimonials {
+    padding: 80px 0;
+}
+
+.testimonial-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+.testimonial-card {
+    background: linear-gradient(135deg, rgba(20, 176, 20, 0.05) 0%, rgba(76, 110, 245, 0.15) 100%);
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.6s, box-shadow 0.3s;
+    transform-style: preserve-3d;
+    perspective: 1000px;
+    backface-visibility: hidden;
+    border-left: 3px solid var(--primary);
+}
+
+.testimonial-text {
+    margin-bottom: 1.5rem;
+    font-style: italic;
+    color: #495057;
+    position: relative;
+    z-index: 1;
+    padding: 0 10px;
+    font-size: 1.1rem;
+    line-height: var(--body-line-height);
+    text-wrap: balance;
+    hanging-punctuation: first;
+}
+
+.testimonial-text::before,
+.testimonial-text::after {
+    font-family: Georgia, serif;
+    font-size: 1.6em;
+    line-height: 0.1;
+    position: relative;
+}
+
+.testimonial-text::before {
+    content: "\201C\00A0"; // Opening fancy quote
+    color: var(--primary);
+    margin-right: 4px;
+    vertical-align: -0.3em;
+}
+
+.testimonial-text::after {
+    content: "\201D"; // Closing fancy quote
+    color: var(--primary);
+    margin-left: 4px;
+    vertical-align: -0.3em;
+}
+
+.testimonial-card:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, rgba(76, 110, 245, 0.12) 0%, rgba(20, 176, 20, 0.08) 50%, rgba(76, 110, 245, 0.2) 100%);
+}
+
+.testimonial-author {
+    font-weight: 600;
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+
+.testimonial-author a {
+    color: var(--primary);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.testimonial-author a:hover {
+    text-decoration: underline;
+}
+
+// Responsive testimonial section adjustments
+// Large tablets and small desktops (992px and below)
+@media (max-width: 992px) {
+    .testimonial-text {
+        font-size: 0.9rem;
+    }
+    
+    .testimonial-author {
+        font-size: 0.8rem;
+    }
+}
+
+// Tablets (768px and below)
+@media (max-width: 768px) {
+    // Optimize testimonial display on mobile
+    .testimonial-text {
+        font-size: 1rem;
+        line-height: 1.6;
+        text-wrap: pretty; // Modern browsers will balance text
+    }
+}

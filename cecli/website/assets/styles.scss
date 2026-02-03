@@ -1,0 +1,16 @@
+---
+---
+
+// Main SCSS entry point for cecli website
+// This file is processed by Jekyll's Sass compiler
+
+// Import all Sass partials
+@import "variables";
+@import "reset";
+@import "typography";
+@import "layout";
+@import "hero";
+@import "features";
+@import "testimonials";
+@import "info";
+@import "footer";
