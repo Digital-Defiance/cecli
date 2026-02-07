@@ -3,6 +3,8 @@ import os
 import re
 import traceback
 
+from cecli.helpers.responses import preprocess_json
+
 
 class ToolError(Exception):
     """Custom exception for tool-specific errors that should be reported to the LLM."""
@@ -258,7 +260,7 @@ def parse_arg_as_list(arg):
         import json
 
         try:
-            parsed = json.loads(arg)
+            parsed = json.loads(preprocess_json(arg))
             if isinstance(parsed, list):
                 return parsed
             else:
