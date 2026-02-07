@@ -377,8 +377,12 @@ class ConversationChunks:
 
                 user_msg = {
                     "role": "user",
-                    "content": f"File Contents {rel_fname}:\n\n{content}",
+                    "content": (
+                        f"Here are the original file contents for {rel_fname}:\n\n{content}"
+                        "\n\nModifications will be communicated as diff messages."
+                    ),
                 }
+
                 ConversationManager.add_message(
                     message_dict=user_msg,
                     tag=MessageTag.READONLY_FILES,
@@ -389,7 +393,7 @@ class ConversationChunks:
                 # Add assistant message with file path as hash_key
                 assistant_msg = {
                     "role": "assistant",
-                    "content": "Ok, I will view and/or modify this file as is necessary.",
+                    "content": "I understand, thank you for sharing the file contents.",
                 }
                 ConversationManager.add_message(
                     message_dict=assistant_msg,
@@ -475,13 +479,16 @@ class ConversationChunks:
             # Create user message
             user_msg = {
                 "role": "user",
-                "content": f"File Contents {rel_fname}:\n\n{content}",
+                "content": (
+                    f"Here are the original file contents for {rel_fname}:\n\n{content}"
+                    "\n\nModifications will be communicated as diff messages."
+                ),
             }
 
             # Create assistant message
             assistant_msg = {
                 "role": "assistant",
-                "content": "Ok, I will modify this file as is necessary.",
+                "content": "I understand, thank you for sharing the file contents.",
             }
 
             # Determine tag based on editability

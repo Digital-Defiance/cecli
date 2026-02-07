@@ -240,7 +240,9 @@ class ConversationFiles:
             # Add diff message to conversation
             diff_message = {
                 "role": "user",
-                "content": f"File {rel_fname} has changed:\n\n{diff}",
+                "content": (
+                    f"File {rel_fname} has changed. Here is a diff of the changes:\n\n{diff}"
+                ),
             }
 
             if coder and hasattr(coder, "abs_fnames"):
