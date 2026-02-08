@@ -58,6 +58,9 @@ class GitRepo:
     subtree_only = False
     ignore_file_cache = {}
     git_repo_error = None
+    gitignore_spec_cache = {}
+    gitignore_file_cache = {}
+    gitignore_last_check = 0
 
     def __init__(
         self,
@@ -525,12 +528,81 @@ class GitRepo:
                 lines,
             )
 
+    def _get_gitignore_spec(self, dir_path):
+        """Get or create a GitIgnoreSpec for a directory, caching for performance."""
+        dir_path = Path(dir_path).resolve()
+
+        # Check cache first
+        if dir_path in self.gitignore_spec_cache:
+            return self.gitignore_spec_cache[dir_path]
+
+        # Read .gitignore from this directory
+        patterns = []
+        gitignore_path = dir_path / ".gitignore"
+        if gitignore_path.is_file():
+            try:
+                with open(gitignore_path, "r") as f:
+                    patterns = [
+                        line.rstrip("\n") for line in f if line.strip() and not line.startswith("#")
+                    ]
+            except (OSError, IOError):
+                pass
+
+        # Create spec for this directory
+        if patterns:
+            spec = pathspec.GitIgnoreSpec.from_lines(patterns)
+        else:
+            spec = pathspec.GitIgnoreSpec.from_lines([])
+
+        self.gitignore_spec_cache[dir_path] = spec
+        return spec
+
+    def _is_gitignored_by_pathspec(self, path):
+        """Check if a file is ignored by any .gitignore file using pathspec."""
+        if not self.repo:
+            return False
+
+        try:
+            file_path = Path(path).resolve()
+            if not file_path.is_relative_to(self.root):
+                return False
+
+            # Walk up from file's directory to root
+            current_dir = file_path.parent
+            relative_path = file_path.relative_to(self.root)
+
+            # Check each directory level
+            while current_dir.is_relative_to(self.root):
+                spec = self._get_gitignore_spec(current_dir)
+
+                # Get path relative to the directory containing the .gitignore
+                if current_dir == Path(self.root).resolve():
+                    path_to_check = str(relative_path)
+                else:
+                    path_to_check = str(
+                        relative_path.relative_to(current_dir.relative_to(self.root))
+                    )
+
+                if spec.match_file(path_to_check):
+                    return True
+
+                # Move up one directory
+                if current_dir == Path(self.root).resolve():
+                    break
+                current_dir = current_dir.parent
+
+            return False
+        except (ValueError, OSError):
+            return False
+
     def git_ignored_file(self, path):
         if not self.repo:
             return
         try:
-            if self.repo.ignored(path):
-                return True
+            if not self.cecli_ignore_file or not self.cecli_ignore_file.is_file():
+                return self._is_gitignored_by_pathspec(path)
+            else:
+                return self.ignored_file(path)
         except ANY_GIT_ERROR:
             return False
 
@@ -568,6 +640,35 @@ class GitRepo:
             return True
 
         return self.cecli_ignore_spec.match_file(fname)
+
+    def get_non_ignored_files_from_root(self):
+        """
+        Return a set of all files in the repository that match the cecli ignore spec.
+
+        Uses pathspec's match_tree_files method to efficiently find all matching files
+        from the project root directory.
+
+        Returns:
+            set: Set of relative file paths that are ignored by the cecli ignore spec.
+        """
+        self.refresh_cecli_ignore()
+
+        if not self.cecli_ignore_file or not self.cecli_ignore_file.is_file():
+            return []
+
+        if not self.cecli_ignore_spec:
+            return []
+
+        try:
+            all_files = self.repo.git.ls_files(
+                "--others", "--cached", f"--exclude-from={str(self.cecli_ignore_file)}"
+            ).splitlines()
+
+            return [f for f in all_files if not self.ignored_file(f)]
+        except Exception as e:
+            # Fall back to empty set if there's an error
+            self.io.tool_warning(f"Error getting ignored files from root: {e}")
+            return []
 
     def path_in_repo(self, path):
         if not self.repo:

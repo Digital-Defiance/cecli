@@ -1550,6 +1550,7 @@ This command will print 'Hello, World!' to the console."""
             tool_call.type = "function"
             tool_call.function = MagicMock()
             tool_call.function.name = "test_tool"
+            tool_call.function.arguments = '{"param": "value"}'
 
             # Create a response with tool calls
             response = MagicMock()
@@ -1592,6 +1593,7 @@ This command will print 'Hello, World!' to the console."""
             tool_call.type = "function"
             tool_call.function = MagicMock()
             tool_call.function.name = "test_tool"
+            tool_call.function.arguments = '{"param": "value"}'
 
             # Create a response with tool calls
             response = MagicMock()

@@ -27,6 +27,7 @@ except ImportError:  # Babel not installed – we will fall back to a small mapp
 from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import List
+from urllib.parse import urlparse
 
 import httpx
 from litellm import experimental_mcp_client
@@ -330,6 +331,7 @@ class Coder:
         map_cache_dir=".",
         repomap_in_memory=False,
         linear_output=False,
+        security_config=None,
     ):
         # initialize from args.map_cache_dir
         self.map_cache_dir = map_cache_dir
@@ -342,6 +344,7 @@ class Coder:
         self.abs_root_path_cache = {}
 
         self.auto_copy_context = auto_copy_context
+        self.security_config = security_config or {}
         self.auto_accept_architect = auto_accept_architect
 
         self.ignore_mentions = ignore_mentions
@@ -1607,6 +1610,22 @@ class Coder:
 
             await self.auto_save_session(force=True)
 
+    def _is_url_allowed(self, url):
+        allowed_domains = self.security_config.get("allowed-domains")
+        if not allowed_domains:
+            return True
+
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc.lower()
+        if not domain:
+            return False
+
+        for allowed in allowed_domains:
+            allowed = allowed.lower()
+            if domain == allowed or domain.endswith("." + allowed):
+                return True
+        return False
+
     async def check_and_open_urls(self, exc, friendly_msg=None):
         """Check exception for URLs, offer to open in a browser, with user-friendly error msgs."""
         text = str(exc)
@@ -1623,7 +1642,8 @@ class Coder:
         urls = list(set(url_pattern.findall(text)))
         for url in urls:
             url = url.rstrip(".',\"}")  # Added } to the characters to strip
-            await self.io.offer_url(url)
+            if self._is_url_allowed(url):
+                await self.io.offer_url(url)
         return urls
 
     async def check_for_urls(self, inp: str) -> List[str]:
@@ -1637,7 +1657,7 @@ class Coder:
         urls = list(set(url_pattern.findall(inp)))
         group = ConfirmGroup(urls)
         for url in urls:
-            if url not in self.rejected_urls:
+            if url not in self.rejected_urls and self._is_url_allowed(url):
                 url = url.rstrip(".',\"")
                 if await self.io.confirm_ask(
                     "Add URL to the chat?",
@@ -2419,12 +2439,17 @@ class Coder:
 
         for server, tool_calls in server_tool_calls.items():
             for tool_call in tool_calls:
-                if ToolRegistry.get_tool(tool_call.function.name.lower()):
-                    ToolRegistry.get_tool(tool_call.function.name.lower()).format_output(
-                        coder=self, mcp_server=server, tool_response=tool_call
-                    )
-                else:
-                    print_tool_response(coder=self, mcp_server=server, tool_response=tool_call)
+                try:
+                    if ToolRegistry.get_tool(tool_call.function.name.lower()):
+                        ToolRegistry.get_tool(tool_call.function.name.lower()).format_output(
+                            coder=self, mcp_server=server, tool_response=tool_call
+                        )
+                    else:
+                        print_tool_response(coder=self, mcp_server=server, tool_response=tool_call)
+                except Exception:
+                    self.io.tool_output(f"Tool Output Error: {tool_call.function.name.lower()}")
+                    self.io.tool_error(traceback.format_exc())
+                    pass
 
     def _gather_server_tool_calls(self, tool_calls):
         """Collect all tool calls grouped by server.
@@ -2784,73 +2809,57 @@ class Coder:
             )
 
     def get_file_mentions(self, content, ignore_current=False):
-        # Get file-like words from content (contiguous strings containing slashes or periods)
+        # 1. Extract words once: O(N)
         words = set()
         for word in content.split():
-            # Strip quotes and punctuation
             word = word.strip("\"'`*_,.!;:?")
             if re.search(r"[\\\/._-]", word):
                 words.add(word)
 
-        # Also check basenames of file-like words
-        basename_words = set()
-        for word in words:
-            basename = os.path.basename(word)
-            if basename and basename != word:  # Only add if basename is different
-                basename_words.add(basename)
-
-        # Combine all words to check
+        basename_words = {os.path.basename(w) for w in words if os.path.basename(w) != w}
         all_words = words | basename_words
 
-        if ignore_current:
-            files_to_check = self.get_all_relative_files()
-            existing_basenames = set()
-        else:
-            files_to_check = self.get_addable_relative_files()
-            # Get basenames of files already in chat or read-only
+        # Pre-normalize for O(1) lookups: O(W)
+        normalized_words = {w.replace("\\", "/") for w in all_words}
+
+        # 2. Get files and filter ignored once: O(F)
+        raw_files = (
+            self.get_all_relative_files() if ignore_current else self.get_addable_relative_files()
+        )
+
+        # Filter ignored files once to avoid repeated expensive calls
+        files_to_check = [f for f in raw_files if not (self.repo and self.repo.git_ignored_file(f))]
+
+        # 3. Existing basenames setup
+        existing_basenames = set()
+
+        if not ignore_current:
             existing_basenames = {os.path.basename(f) for f in self.get_inchat_relative_files()} | {
                 os.path.basename(self.get_rel_fname(f))
                 for f in self.abs_read_only_fnames | self.abs_read_only_stubs_fnames
             }
 
-        # Build map of basenames to files for uniqueness check
-        # Only consider basenames that look like filenames (contain /, \, ., _, or -)
-        # to avoid false matches on common words like "run" or "make"
+        # 4. Build map: O(F)
         basename_to_files = {}
         for rel_fname in files_to_check:
-            # Skip git-ignored files
-            if self.repo and self.repo.git_ignored_file(rel_fname):
-                continue
+            bn = os.path.basename(rel_fname)
+            if re.search(r"[\\\/._-]", bn):
+                basename_to_files.setdefault(bn, []).append(rel_fname)
 
-            basename = os.path.basename(rel_fname)
-            # Only include basenames that look like filenames
-            if re.search(r"[\\\/._-]", basename):
-                if basename not in basename_to_files:
-                    basename_to_files[basename] = []
-                basename_to_files[basename].append(rel_fname)
-
+        # 5. Final selection: O(F)
         mentioned_rel_fnames = set()
-
         for rel_fname in files_to_check:
-            # Skip git-ignored files
-            if self.repo and self.repo.git_ignored_file(rel_fname):
-                continue
-
-            # Check if full path matches
-            normalized_fname = rel_fname.replace("\\", "/")
-            normalized_words = {w.replace("\\", "/") for w in all_words}
-
-            if normalized_fname in normalized_words:
+            # Full path match
+            if rel_fname.replace("\\", "/") in normalized_words:
                 mentioned_rel_fnames.add(rel_fname)
                 continue
 
-            # Check basename - only add if unique among addable files and not already in chat
-            basename = os.path.basename(rel_fname)
+            # Basename match logic
+            bn = os.path.basename(rel_fname)
             if (
-                basename in all_words
-                and basename not in existing_basenames
-                and len(basename_to_files.get(basename, [])) == 1
-                and basename_to_files[basename][0] == rel_fname
+                bn in all_words
+                and bn not in existing_basenames
+                and len(basename_to_files.get(bn, [])) == 1
             ):
                 mentioned_rel_fnames.add(rel_fname)
 
@@ -3010,6 +3019,7 @@ class Coder:
 
     async def show_send_output_stream(self, completion):
         received_content = False
+        chunk_index = 0
 
         async for chunk in completion:
             if self.args.debug:
@@ -3105,6 +3115,8 @@ class Coder:
 
             self.partial_response_content += text
 
+            chunk_index += 1
+            chunk._hidden_params["created_at"] = chunk_index
             self.partial_response_chunks.append(chunk)
 
             if self.show_pretty():
@@ -3475,7 +3487,10 @@ class Coder:
                 # Continue to get tracked files normally
 
         if self.repo:
-            files = self.repo.get_tracked_files()
+            if not self.repo.cecli_ignore_file or not self.repo.cecli_ignore_file.is_file():
+                files = self.repo.get_tracked_files()
+            else:
+                files = self.repo.get_non_ignored_files_from_root()
         else:
             files = self.get_inchat_relative_files()
 
