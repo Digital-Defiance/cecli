@@ -9,12 +9,12 @@ docker run \
   --add-host=host.docker.internal:host-gateway \
   -v $(pwd):/cecli \
   -v $(pwd)/tmp.benchmarks/.:/benchmarks \
-  -e GEMINI_API_KEY=$GEMINI_API_KEY \
+  -e OPENROUTER_API_KEY=$OPENROUTER_API_KEY \
   -e PROMPT_COMMAND='history -a' \
   -e HISTCONTROL=ignoredups \
   -e HISTSIZE=10000 \
   -e HISTFILESIZE=20000 \
-  -e AIDER_DOCKER=1 \
-  -e AIDER_BENCHMARK_DIR=/benchmarks \
+  -e CECLI_DOCKER=1 \
+  -e CECLI_BENCHMARK_DIR=/benchmarks \
   cecli-cat \
   bash

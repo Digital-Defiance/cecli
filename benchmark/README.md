@@ -64,7 +64,7 @@ Launch the docker container and run the benchmark inside it:
 ```
 # Launch the docker container
 # You probably want to tweak this script to import your service keys.
-# It's currently configured to import GEMINI_API_KEY only.
+# It's currently configured to import OPENROUTER_API_KEY.
 # PR's welcome to more effectively grab the keys without causing anxiety.
 ./benchmark/docker.sh
 
@@ -75,6 +75,9 @@ pip install -e .[dev]
 
 # Run the benchmark:
 ./benchmark/benchmark.py a-helpful-name-for-this-run --model gpt-3.5-turbo --edit-format whole --threads 10 --exercises-dir polyglot-benchmark
+
+# Or with OpenRouter models (requires OPENROUTER_API_KEY environment variable):
+./benchmark/benchmark.py openrouter-run --model openrouter/deepseek/deepseek-r1:free --edit-format whole --threads 10 --exercises-dir polyglot-benchmark
 ```
 
 The above will create a folder
