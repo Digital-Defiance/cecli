@@ -2809,73 +2809,57 @@ class Coder:
             )
 
     def get_file_mentions(self, content, ignore_current=False):
-        # Get file-like words from content (contiguous strings containing slashes or periods)
+        # 1. Extract words once: O(N)
         words = set()
         for word in content.split():
-            # Strip quotes and punctuation
             word = word.strip("\"'`*_,.!;:?")
             if re.search(r"[\\\/._-]", word):
                 words.add(word)
 
-        # Also check basenames of file-like words
-        basename_words = set()
-        for word in words:
-            basename = os.path.basename(word)
-            if basename and basename != word:  # Only add if basename is different
-                basename_words.add(basename)
-
-        # Combine all words to check
+        basename_words = {os.path.basename(w) for w in words if os.path.basename(w) != w}
         all_words = words | basename_words
 
-        if ignore_current:
-            files_to_check = self.get_all_relative_files()
-            existing_basenames = set()
-        else:
-            files_to_check = self.get_addable_relative_files()
-            # Get basenames of files already in chat or read-only
+        # Pre-normalize for O(1) lookups: O(W)
+        normalized_words = {w.replace("\\", "/") for w in all_words}
+
+        # 2. Get files and filter ignored once: O(F)
+        raw_files = (
+            self.get_all_relative_files() if ignore_current else self.get_addable_relative_files()
+        )
+
+        # Filter ignored files once to avoid repeated expensive calls
+        files_to_check = [f for f in raw_files if not (self.repo and self.repo.git_ignored_file(f))]
+
+        # 3. Existing basenames setup
+        existing_basenames = set()
+
+        if not ignore_current:
             existing_basenames = {os.path.basename(f) for f in self.get_inchat_relative_files()} | {
                 os.path.basename(self.get_rel_fname(f))
                 for f in self.abs_read_only_fnames | self.abs_read_only_stubs_fnames
             }
 
-        # Build map of basenames to files for uniqueness check
-        # Only consider basenames that look like filenames (contain /, \, ., _, or -)
-        # to avoid false matches on common words like "run" or "make"
+        # 4. Build map: O(F)
         basename_to_files = {}
         for rel_fname in files_to_check:
-            # Skip git-ignored files
-            if self.repo and self.repo.git_ignored_file(rel_fname):
-                continue
+            bn = os.path.basename(rel_fname)
+            if re.search(r"[\\\/._-]", bn):
+                basename_to_files.setdefault(bn, []).append(rel_fname)
 
-            basename = os.path.basename(rel_fname)
-            # Only include basenames that look like filenames
-            if re.search(r"[\\\/._-]", basename):
-                if basename not in basename_to_files:
-                    basename_to_files[basename] = []
-                basename_to_files[basename].append(rel_fname)
-
+        # 5. Final selection: O(F)
         mentioned_rel_fnames = set()
-
         for rel_fname in files_to_check:
-            # Skip git-ignored files
-            if self.repo and self.repo.git_ignored_file(rel_fname):
-                continue
-
-            # Check if full path matches
-            normalized_fname = rel_fname.replace("\\", "/")
-            normalized_words = {w.replace("\\", "/") for w in all_words}
-
-            if normalized_fname in normalized_words:
+            # Full path match
+            if rel_fname.replace("\\", "/") in normalized_words:
                 mentioned_rel_fnames.add(rel_fname)
                 continue
 
-            # Check basename - only add if unique among addable files and not already in chat
-            basename = os.path.basename(rel_fname)
+            # Basename match logic
+            bn = os.path.basename(rel_fname)
             if (
-                basename in all_words
-                and basename not in existing_basenames
-                and len(basename_to_files.get(basename, [])) == 1
-                and basename_to_files[basename][0] == rel_fname
+                bn in all_words
+                and bn not in existing_basenames
+                and len(basename_to_files.get(bn, [])) == 1
             ):
                 mentioned_rel_fnames.add(rel_fname)
 
