@@ -21,7 +21,6 @@ from cecli.helpers.conversation import ConversationChunks
 # All conversation functions are now available via ConversationChunks class
 from cecli.helpers.conversation.manager import ConversationManager
 from cecli.helpers.conversation.tags import MessageTag
-from cecli.helpers.responses import preprocess_json
 from cecli.helpers.similarity import (
     cosine_similarity,
     create_bigram_vector,
@@ -244,7 +243,7 @@ class AgentCoder(Coder):
                     json_chunks = utils.split_concatenated_json(args_string)
                     for chunk in json_chunks:
                         try:
-                            parsed_args_list.append(json.loads(preprocess_json(chunk)))
+                            parsed_args_list.append(json.loads(chunk))
                         except json.JSONDecodeError as e:
                             self.io.tool_warning(
                                 f"Could not parse JSON chunk for tool {tool_name}: {chunk}"

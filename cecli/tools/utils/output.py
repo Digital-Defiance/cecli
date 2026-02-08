@@ -1,8 +1,6 @@
 import json
 import re
 
-from cecli.helpers.responses import preprocess_json
-
 
 def print_tool_response(coder, mcp_server, tool_response):
     """
@@ -67,7 +65,7 @@ def tool_body_unwrapped(coder, tool_response):
     color_start, color_end = color_markers(coder)
 
     try:
-        args_dict = json.loads(preprocess_json(tool_response.function.arguments))
+        args_dict = json.loads(tool_response.function.arguments)
         first_key = True
         for key, value in args_dict.items():
             # Convert explicit \\n sequences to actual newlines using regex

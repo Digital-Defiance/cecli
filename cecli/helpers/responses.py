@@ -2,18 +2,20 @@ import re
 
 
 def preprocess_json(response: str) -> str:
-    response = fix_json_backslashes(response)
-    return response
+    # This pattern matches any sequence of backslashes followed by
+    # a character or a unicode sequence.
+    pattern = r'(\\+)(u[0-9a-fA-F]{4}|["\\\/bfnrt]|.)?'
 
+    def normalize(match):
+        suffix = match.group(2) or ""
 
-def fix_json_backslashes(raw_str: str) -> str:
-    """
-    Finds invalid JSON escape sequences and escapes the backslash
-    so it is treated as a literal character.
-    """
-    # Look for a backslash NOT followed by valid escape characters
-    # We use a capturing group for the backslash to replace it
-    invalid_escape_pattern = r'\\(?!(["\\\/bfnrt]|u[0-9a-fA-F]{4}))'
+        # If it's a valid escape character (like \n or \u0020)
+        # we ensure it has exactly ONE backslash.
+        if re.match(r'^(u[0-9a-fA-F]{4}|["\\\/bfnrt])$', suffix):
+            return "\\" + suffix
 
-    # Replace the single backslash with a double backslash
-    return re.sub(invalid_escape_pattern, r"\\\\", raw_str)
+        # Otherwise, it's a literal backslash (like C:\temp)
+        # We ensure it is escaped for JSON (exactly TWO backslashes).
+        return "\\\\" + suffix
+
+    return re.sub(pattern, normalize, response)

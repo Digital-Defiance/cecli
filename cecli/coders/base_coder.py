@@ -3035,6 +3035,7 @@ class Coder:
 
     async def show_send_output_stream(self, completion):
         received_content = False
+        chunk_index = 0
 
         async for chunk in completion:
             if self.args.debug:
@@ -3130,6 +3131,8 @@ class Coder:
 
             self.partial_response_content += text
 
+            chunk_index += 1
+            chunk._hidden_params["created_at"] = chunk_index
             self.partial_response_chunks.append(chunk)
 
             if self.show_pretty():

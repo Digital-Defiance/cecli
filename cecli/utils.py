@@ -1,4 +1,5 @@
 import glob
+import json
 import os
 import platform
 import shutil
@@ -443,6 +444,12 @@ def split_concatenated_json(s: str) -> list[str]:
     """
     Splits a string containing one or more concatenated JSON objects.
     """
+    try:
+        json.loads(s)
+        return [s]
+    except json.JSONDecodeError:
+        pass
+
     res = []
     i = 0
     s_len = len(s)
