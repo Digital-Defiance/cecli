@@ -171,6 +171,9 @@ def main(
         ),
     ),
     dry: bool = typer.Option(False, "--dry", help="Run in dry mode (no cecli, no tests)"),
+    stats: bool = typer.Option(
+        False, "--stats", help="Generate statistics YAML file from benchmark results"
+    ),
 ):
     # setup logging and verbosity
     if quiet:
@@ -181,6 +184,33 @@ def main(
         log_level = logging.INFO
 
     logging.basicConfig(level=log_level, format="%(message)s")
+
+    # Handle --stats flag: generate statistics YAML file and exit
+    if stats:
+        # Convert SimpleNamespace to dict for YAML serialization
+        def simple_namespace_to_dict(obj):
+            if isinstance(obj, SimpleNamespace):
+                return {k: simple_namespace_to_dict(v) for k, v in vars(obj).items()}
+            elif isinstance(obj, dict):
+                return {k: simple_namespace_to_dict(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [simple_namespace_to_dict(item) for item in obj]
+            else:
+                return obj
+
+        # Get statistics
+        stats_result = summarize_results(results_dir, verbose, stats_languages=languages)
+
+        # Convert to dict
+        stats_dict = simple_namespace_to_dict(stats_result)
+
+        # Write to results.yaml
+        results_yaml_path = Path(results_dir) / "results.yaml"
+        with open(results_yaml_path, "w") as f:
+            yaml.dump(stats_dict, f, default_flow_style=False)
+
+        print(f"Statistics written to: {results_yaml_path}")
+        return 0
 
     from cecli import models
 
@@ -449,10 +479,13 @@ def load_results(results_dir, stats_languages=None):
 
 
 def summarize_results(results_dir, verbose, stats_languages=None):
+    # Convert results_dir to Path object if it's a string
+    results_dir = Path(results_dir)
+
     lang_to_results = load_results(results_dir, stats_languages)
 
     res = SimpleNamespace()
-    res.total_tests = len(list(Path(results_dir).glob("*/.cecli.results.json")))
+    res.total_tests = len(list(results_dir.glob("*/.cecli.results.json")))
 
     try:
         tries = max(
@@ -838,7 +871,6 @@ async def run_test_real(
     # Lazy imports: only needed in the actual benchmark execution path
     import git
 
-    import cecli.prompts.utils.system as prompts
     from cecli import models
     from cecli.coders import Coder
     from cecli.io import InputOutput
@@ -942,7 +974,23 @@ async def run_test_real(
     if instructions_append.exists():
         instructions += instructions_append.read_text()
 
-    instructions += prompts.instructions_addendum.format(file_list=file_list)
+    instructions_addendum = """
+    ####
+
+    Use the above instructions to modify the supplied files: {file_list}
+    Don't change the names of existing functions or classes, as they may be referenced from other code like unit tests, etc.
+    Only use standard libraries, don't suggest installing any packages.
+    """  # noqa: E501
+
+    test_failures = """
+    ####
+
+    See the testing errors above.
+    The tests are correct, don't try and change them.
+    Fix the code in {file_list} to resolve the errors.
+    """  # noqa: E501
+
+    instructions += instructions_addendum.format(file_list=file_list)
 
     io = InputOutput(
         pretty=False,
@@ -1014,7 +1062,14 @@ async def run_test_real(
         # Reduce repo map contention and size for benchmarks
         map_cache_dir=str(testdir),
         repomap_in_memory=repomap_in_memory,
+        args=SimpleNamespace(
+            agent_config='{"skip_cli_confirmations": true}',
+            use_enhanced_map=True,
+            verbose=verbose,
+            yes_always_commands=True,
+        ),
         map_mul_no_files=4,
+        mcp_manager=None,
     )
     if map_tokens is not None:
         coder_kwargs["map_tokens"] = map_tokens
@@ -1091,7 +1146,7 @@ async def run_test_real(
         logger.info(errors[-1])
         errors = "\n".join(errors)
         instructions = errors
-        instructions += prompts.test_failures.format(file_list=file_list)
+        instructions += test_failures.format(file_list=file_list)
 
     if not dry:
         # Clean up build directories after all attempts

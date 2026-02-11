@@ -208,7 +208,7 @@ class AgentCoder(Coder):
 
     async def initialize_mcp_tools(self):
         if not self.mcp_manager:
-            self.mcp_manager = McpServerManager()
+            self.mcp_manager = McpServerManager([], self.io, self.args.verbose)
 
         server_name = "Local"
         server = self.mcp_manager.get_server(server_name)

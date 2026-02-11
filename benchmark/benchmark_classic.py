@@ -870,7 +870,6 @@ def run_test_real(
     # Lazy imports: only needed in the actual benchmark execution path
     import git
 
-    import cecli.prompts.utils.system as prompts
     from cecli import models
     from cecli.coders import Coder
     from cecli.io import InputOutput
@@ -961,7 +960,23 @@ def run_test_real(
     if instructions_append.exists():
         instructions += instructions_append.read_text()
 
-    instructions += prompts.instructions_addendum.format(file_list=file_list)
+    instructions_addendum = """
+    ####
+
+    Use the above instructions to modify the supplied files: {file_list}
+    Don't change the names of existing functions or classes, as they may be referenced from other code like unit tests, etc.
+    Only use standard libraries, don't suggest installing any packages.
+    """  # noqa: E501
+
+    test_failures = """
+    ####
+
+    See the testing errors above.
+    The tests are correct, don't try and change them.
+    Fix the code in {file_list} to resolve the errors.
+    """  # noqa: E501
+
+    instructions += instructions_addendum.format(file_list=file_list)
 
     io = InputOutput(
         pretty=False,
@@ -1108,7 +1123,7 @@ def run_test_real(
         print(errors[-1])
         errors = "\n".join(errors)
         instructions = errors
-        instructions += prompts.test_failures.format(file_list=file_list)
+        instructions += test_failures.format(file_list=file_list)
 
     # Clean up build directories after all attempts
     # Rust target/debug

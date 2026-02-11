@@ -37,11 +37,11 @@ layout: none
         <div class="container">
             <div class="hero-grid">
                 <div class="hero-content">
-                    <h1>AI pair programming in your terminal</h1>
+                    <h1>She speaks fluent terminal</h1>
                     <p>
-                        cecli lets you pair program with LLMs to start
-                        a new project or build on your existing
-                        codebase.
+                        Cecli wears many hats:<br>
+                        A pair programmer, a researcher, a writer,
+                        a general automaton and most fundamentally, an assistant
                     </p>
                     
                     <div class="buttons">
@@ -50,39 +50,6 @@ layout: none
                     </div>
                 </div>
                 
-                <div class="hero-video">
-                    <div class="video-container">
-                        <video autoplay loop muted playsinline preload="metadata">
-                            <source src="/assets/shell-cmds-small.mp4" type="video/mp4">
-                            Your browser does not support the video tag.
-                        </video>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="stats-container">
-<!--[[[cog
-from scripts.homepage import get_badges_html
-text = get_badges_html()
-cog.out(text)
-]]]-->
-<a href="https://github.com/Aider-AI/aider" class="github-badge badge-stars" title="Total number of GitHub stars the Aider project has received">
-    <span class="badge-label">⭐ GitHub Stars</span>
-    <span class="badge-value">39K</span>
-</a>
-<a href="https://pypi.org/project/aider-chat/" class="github-badge badge-installs" title="Total number of installations via pip from PyPI">
-    <span class="badge-label">📦 Installs</span>
-    <span class="badge-value">3.9M</span>
-</a>
-<a href="https://openrouter.ai/#options-menu" class="github-badge badge-router" title="Aider's ranking among applications on the OpenRouter platform">
-    <span class="badge-label">🏆 OpenRouter</span>
-    <span class="badge-value">Top 20</span>
-</a>
-<a href="/HISTORY.html" class="github-badge badge-coded" title="Percentage of the new code in Aider's last release written by Aider itself">
-    <span class="badge-label">🔄 Singularity</span>
-    <span class="badge-value">88%</span>
-</a>
-<!--[[[end]]]-->  
             </div>
         </div>
     </section>
@@ -98,7 +65,7 @@ cog.out(text)
                             Cloud and local LLMs
                         </h3>
                     </div>
-                    <p>cecli works best with Claude 3.7 Sonnet, DeepSeek R1 & Chat V3, OpenAI o1, o3-mini & GPT-4o, but can connect to almost any LLM, including local models.</p>
+                    <p>cecli works best with Claude 4.5 Sonnet, DeepSeek Chat V3, OpenAI GPT-5.2 & Gemini 3, but can connect to almost any LLM, including local models.</p>
                 </a>
                 <a href="/docs/repomap.html" class="feature-card">
                     <div class="feature-card-header">
@@ -197,19 +164,22 @@ cog.out(text)
             <h2 class="section-title">Getting Started</h2>
             <div class="info-content">
                 <div class="code-block">
-                    <pre><code class="language-bash">python -m pip install cecli-dev
+                    <pre><code class="language-bash">uv pip install cecli-dev
 
 # Change directory into your codebase
 cd /to/your/project
+# Claude 4.5 Sonnet
+cecli --model claude-sonnet-4-5 --api-key anthropic=&lt;key&gt;
 
-# DeepSeek
-cecli --model deepseek --api-key deepseek=&lt;key&gt;
+# Gemini 3
+cecli --model gemini/gemini-3-flash-preview --api-key gemini=&lt;key&gt;
 
-# Claude 3.7 Sonnet
-cecli --model sonnet --api-key anthropic=&lt;key&gt;
+# GPT-5.2
+cecli --model openai/gpt-5.2 --api-key openai=&lt;key&gt;
 
-# o3-mini
-cecli --model o3-mini --api-key openai=&lt;key&gt;</code></pre>
+# DeepSeek Chat
+cecli --model deepseek/deepseek-chat --api-key deepseek=&lt;key&gt;
+</code></pre>
                 </div>
                 <div class="cta-container">
                   <p class="cta-text">Want more details?</p>

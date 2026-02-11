@@ -9,5 +9,5 @@ set -e
 
 
 sed -i 's/\bxtest(/test(/g' *.spec.js
-npm run test
+timeout 5m npm run test
 

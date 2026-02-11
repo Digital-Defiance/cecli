@@ -1,3 +1,8 @@
+---
+parent: Configuration
+nav_order: 25
+description: Create and use custom commands to extend cecli's functionality.
+---
 # Custom Commands
 
 Cecli allows you to create and use custom commands to extend its functionality. Custom commands are Python classes that extend the `BaseCommand` class and can be loaded from specified directories or files.

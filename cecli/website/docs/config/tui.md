@@ -1,3 +1,8 @@
+---
+parent: Configuration
+nav_order: 40
+description: TUI (Textual User Interface) Mode provides a modern, visually rich terminal interface for AI pair programming.
+---
 # TUI Mode
 
 TUI (Textual User Interface) Mode provides a modern, visually rich terminal interface for AI pair programming.

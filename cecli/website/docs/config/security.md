@@ -1,3 +1,8 @@
+---
+parent: Configuration
+nav_order: 15
+description: Security configuration for controlling access to external resources and implementing security policies.
+---
 # Security Configuration
 
 Security Configuration in cecli provides a framework for controlling access to external resources and implementing security policies. The initial implementation includes website whitelisting for URL access control, with the architecture designed to support additional security features in the future.

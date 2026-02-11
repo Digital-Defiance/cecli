@@ -1,3 +1,8 @@
+---
+parent: Configuration
+nav_order: 5
+description: Agent Mode enables autonomous codebase exploration and modification using local tools.
+---
 # Agent Mode
 
 Agent Mode is an operational mode in cecli that enables autonomous codebase exploration and modification using local tools. Instead of relying on traditional edit formats, Agent Mode uses a tool-based approach where the LLM can discover, analyze, and modify files through a series of tool calls.

@@ -1,3 +1,8 @@
+---
+parent: Configuration
+nav_order: 30
+description: Create and use custom system prompts to tailor the AI's behavior for specific use cases.
+---
 # Custom System Prompts
 
 Cecli allows you to create and use custom system prompts to tailor the AI's behavior for specific use cases. Custom system prompts are YAML files that can override or extend the default system prompts used by cecli.
