@@ -6,8 +6,12 @@ from textual.widgets import Static
 class FileList(Static):
     """Widget to display the list of files in chat."""
 
+    chat_files = None
+
     def update_files(self, chat_files):
         """Update the file list display."""
+        self.chat_files = chat_files
+
         if not chat_files:
             self.update("")
             return
