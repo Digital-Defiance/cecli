@@ -170,13 +170,13 @@ The current priorities are to improve core capabilities and user experience of t
   * [ ] Add a `spawn` tool that launches a sub agent as a background command that the parent model waits for to finish
   * [ ] Add visibility into active sub agent calls in TUI
 
-8. ** Efficient File Editing **
+8. **Efficient File Editing**
   * [ ] Explore use of hashline file representation for more targeted file editing
   * [ ] Assuming viability, update SEARCH part of SEARCH/REPLACE with hashline identification
   * [ ] Update agent mode edit tools to work with hashline identification
   * [ ] Update internal file diff representation to support hashline propagation
 
-9. ** Dynamic Context Management ** 
+9. **Dynamic Context Management** 
   * [ ] Update compaction to use observational memory sub agent calls to generate decision records that are used as the compaction basis
   * [ ] Persist decision records to disk for sessions with some settings for managing lifetimes of such persistence
   * [ ] Integrate RLM to extract information from decision records on disk and other definable notes
