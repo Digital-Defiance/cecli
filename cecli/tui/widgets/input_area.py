@@ -264,6 +264,14 @@ class InputArea(TextArea):
 
             return
 
+        if self.app.is_key_for("output_up", event.key):
+            self.app.action_output_up()
+            return
+
+        if self.app.is_key_for("output_down", event.key):
+            self.app.action_output_down()
+            return
+
         if self.app.is_key_for("cycle_forward", event.key):
             event.stop()
             event.prevent_default()

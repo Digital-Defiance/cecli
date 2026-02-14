@@ -205,6 +205,8 @@ class TUI(App):
             "cycle_backward": "shift+tab",
             "input_start": "ctrl+home",
             "input_end": "ctrl+end",
+            "output_up": "pageup",
+            "output_down": "pagedown",
             "editor": "ctrl+o",
             "history": "ctrl+r",
             "focus": "ctrl+f",
@@ -654,6 +656,16 @@ class TUI(App):
             )
 
         self.worker.coder.show_announcements()
+
+    def action_output_up(self):
+        """Scroll the output area up one page."""
+        output_container = self.query_one("#output", OutputContainer)
+        output_container.action_page_up()
+
+    def action_output_down(self):
+        """Scroll the output area down one page."""
+        output_container = self.query_one("#output", OutputContainer)
+        output_container.action_page_down()
 
     def action_interrupt(self):
         """Interrupt the current task."""
