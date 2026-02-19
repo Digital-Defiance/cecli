@@ -409,8 +409,23 @@ class Model(ModelSettings):
         if self.override_kwargs:
             if not self.extra_params:
                 self.extra_params = {}
+
+            valid_model_settings_fields = {f.name for f in fields(ModelSettings)}
+
             for key, value in self.override_kwargs.items():
-                if isinstance(value, dict) and isinstance(self.extra_params.get(key), dict):
+                if key == "model_settings":
+                    if not isinstance(value, dict):
+                        raise ValueError(
+                            f"override_kwargs 'model_settings' must be a dict, got {type(value)}"
+                        )
+                    for setting_key, setting_value in value.items():
+                        if setting_key not in valid_model_settings_fields:
+                            raise ValueError(
+                                f"Invalid model_settings key '{setting_key}'. "
+                                f"Must be one of: {sorted(valid_model_settings_fields)}"
+                            )
+                        setattr(self, setting_key, setting_value)
+                elif isinstance(value, dict) and isinstance(self.extra_params.get(key), dict):
                     self.extra_params[key] = {**self.extra_params[key], **value}
                 else:
                     self.extra_params[key] = value
