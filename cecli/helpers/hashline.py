@@ -924,6 +924,28 @@ def apply_hashline_operations(
         except Exception as e:
             failed_ops.append({"index": i, "error": str(e), "operation": op})
 
+    # Deduplicate: if multiple operations start on the same line, keep only the latest one
+    # This handles cases where a model might generate multiple operations for the same line while "thinking"
+    deduplicated_ops = []
+    # Group operations by start_idx
+    start_idx_to_ops = {}
+    for op in resolved_ops:
+        start_idx = op["start_idx"]
+        if start_idx not in start_idx_to_ops:
+            start_idx_to_ops[start_idx] = []
+        start_idx_to_ops[start_idx].append(op)
+
+    # For each start_idx, keep only the operation with the highest original index (latest in the list)
+    for start_idx, ops in start_idx_to_ops.items():
+        # Sort by original index descending and take the first one
+        ops.sort(key=lambda x: x["index"], reverse=True)
+        deduplicated_ops.append(ops[0])
+
+    # Replace resolved_ops with deduplicated version
+    resolved_ops = deduplicated_ops
+
+    # Optimize: discard inner ranges that are completely contained within outer ranges
+
     # Optimize: discard inner ranges that are completely contained within outer ranges
     # This prevents redundant operations and potential errors
     optimized_ops = []
