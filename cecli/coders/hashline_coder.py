@@ -10,7 +10,6 @@ from cecli import utils
 from cecli.coders.base_coder import Coder
 from cecli.helpers.hashline import (
     HashlineError,
-    apply_hashline_operation,
     apply_hashline_operations,
     strip_hashline,
 )
@@ -68,8 +67,8 @@ class HashLineCoder(Coder):
                     # Validate operation
                     if operation in ["replace", "insert", "delete"]:
                         # Validate hashline format
-                        if (isinstance(start_hash, str) and ":" in start_hash) and (
-                            operation == "insert" or (isinstance(end_hash, str) and ":" in end_hash)
+                        if (isinstance(start_hash, str) and "|" in start_hash) and (
+                            operation == "insert" or (isinstance(end_hash, str) and "|" in end_hash)
                         ):
                             if path not in hashline_edits_by_file:
                                 hashline_edits_by_file[path] = []
@@ -193,7 +192,7 @@ class HashLineCoder(Coder):
 
         blocks = "block" if len(failed) == 1 else "blocks"
 
-        res = f"# {len(failed)} SEARCH/REPLACE {blocks} failed to match!\n"
+        res = f"# {len(failed)} LOCATE/CONTENTS {blocks} failed to match!\n"
         for edit in failed:
             path, original, updated = edit
 
@@ -201,10 +200,10 @@ class HashLineCoder(Coder):
             content = self.io.read_text(full_path)
 
             res += f"""
-## SearchReplaceNoExactMatch: This SEARCH block failed to exactly match lines in {path}
-<<<<<<< SEARCH
+## SearchReplaceNoExactMatch: This LOCATE block failed to exactly match lines in {path}
+<<<<<<< LOCATE
 {original}=======
-{updated}>>>>>>> REPLACE
+{updated}>>>>>>> CONTENTS
 
 Please try this operation again using the hashline range that you want to modify
 """
@@ -219,8 +218,8 @@ Please try this operation again using the hashline range that you want to modify
 
 """
                 if updated in content and updated:
-                    res += f"""Are you sure you need this SEARCH/REPLACE block?
-The REPLACE lines are already in {path}!
+                    res += f"""Are you sure you need this LOCATE/CONTENTS block?
+The CONTENTS lines are already in {path}!
 
 """
             did_you_mean = find_similar_lines(original, content)
@@ -234,20 +233,20 @@ The REPLACE lines are already in {path}!
 """
 
             if updated in content and updated:
-                res += f"""Are you sure you need this SEARCH/REPLACE block?
-The REPLACE lines are already in {path}!
+                res += f"""Are you sure you need this LOCATE/CONTENTS block?
+The CONTENTS lines are already in {path}!
 
 """
         res += (
             "The search section must be a valid JSON array in the format:\n"
             '["{start hashline}", "{end hashline}", "{operation}"]\n'
-            "Hashline prefixes must have the structure `{hash_fragment}:{line_num}` (e.g., `Bv:20`)"
+            "Hashline prefixes must have the structure `{line_num}|{hash_fragment}` (e.g., `20|Bv`)"
             " and match one found directly in the file"
         )
         if passed:
             pblocks = "block" if len(passed) == 1 else "blocks"
             res += f"""
-# The other {len(passed)} SEARCH/REPLACE {pblocks} were applied successfully.
+# The other {len(passed)} LOCATE/CONTENTS {pblocks} were applied successfully.
 Don't re-send them.
 Just reply with fixed versions of the {blocks} above that failed to match.
 """
@@ -334,7 +333,7 @@ def try_dotdotdots(whole, part, replace):
     replace_pieces = re.split(dots_re, replace)
 
     if len(part_pieces) != len(replace_pieces):
-        raise ValueError("Unpaired ... in SEARCH/REPLACE block")
+        raise ValueError("Unpaired ... in LOCATE/CONTENTS block")
 
     if len(part_pieces) == 1:
         # no dots in this edit block, just return None
@@ -344,7 +343,7 @@ def try_dotdotdots(whole, part, replace):
     all_dots_match = all(part_pieces[i] == replace_pieces[i] for i in range(1, len(part_pieces), 2))
 
     if not all_dots_match:
-        raise ValueError("Unmatched ... in SEARCH/REPLACE block")
+        raise ValueError("Unmatched ... in LOCATE/CONTENTS block")
 
     part_pieces = [part_pieces[i] for i in range(0, len(part_pieces), 2)]
     replace_pieces = [replace_pieces[i] for i in range(0, len(replace_pieces), 2)]
@@ -494,26 +493,7 @@ def strip_quoted_wrapping(res, fname=None, fence=DEFAULT_FENCE):
 def do_replace(fname, content, before_text, after_text, fence=None):
     # Check if before_text is a hashline JSON block (list with 3 elements)
     if isinstance(before_text, list) and len(before_text) == 3:
-        # Extract hashline parameters
-        start_hash, end_hash, operation = before_text
-
-        # Validate operation
-        if operation not in ["replace", "insert", "delete"]:
-            raise ValueError(f"Invalid hashline operation: {operation}")
-
-        # Use hashline utilities to perform the operation
-        try:
-            new_content = apply_hashline_operation(
-                original_content=strip_hashline(content),
-                start_line_hash=start_hash,
-                end_line_hash=end_hash if operation != "insert" else None,
-                operation=operation,
-                text=after_text if operation in ["replace", "insert"] else None,
-            )
-            return new_content
-        except HashlineError as e:
-            # Convert HashlineError to ValueError for compatibility with existing error handling
-            raise ValueError(f"Hashline operation failed: {e}")
+        pass
 
     # Original logic for regular edit blocks
     before_text = strip_quoted_wrapping(before_text, fname, fence)
@@ -537,13 +517,13 @@ def do_replace(fname, content, before_text, after_text, fence=None):
     return new_content
 
 
-HEAD = r"^<{5,9} SEARCH>?\s*$"
+HEAD = r"^<{5,9} LOCATE>?\s*$"
 DIVIDER = r"^={5,9}\s*$"
-UPDATED = r"^>{5,9} REPLACE\s*$"
+UPDATED = r"^>{5,9} CONTENTS\s*$"
 
-HEAD_ERR = "<<<<<<< SEARCH"
+HEAD_ERR = "<<<<<<< LOCATE"
 DIVIDER_ERR = "======="
-UPDATED_ERR = ">>>>>>> REPLACE"
+UPDATED_ERR = ">>>>>>> CONTENTS"
 
 separators = "|".join([HEAD, DIVIDER, UPDATED])
 
@@ -638,7 +618,7 @@ def find_original_update_blocks(content, fence=DEFAULT_FENCE, valid_fnames=None)
             yield None, "".join(shell_content)
             continue
 
-        # Check for SEARCH/REPLACE blocks
+        # Check for LOCATE/CONTENTS blocks
         if head_pattern.match(line.strip()):
             try:
                 # if next line after HEAD exists and is DIVIDER, it's a new file
@@ -690,8 +670,8 @@ def find_original_update_blocks(content, fence=DEFAULT_FENCE, valid_fnames=None)
                     if isinstance(parsed, list) and len(parsed) == 3:
                         # Validate the format: all strings
                         if all(isinstance(item, str) for item in parsed):
-                            # Check if first two items look like hashline format (e.g., "1:ab")
-                            if all(":" in item for item in parsed[:2]):
+                            # Check if first two items look like hashline format (e.g., "1|ab")
+                            if all("|" in item for item in parsed[:2]):
                                 # Check if operation is valid
                                 if parsed[2] in ["replace", "insert", "delete"]:
                                     # This is a hashline JSON block
@@ -720,7 +700,7 @@ def find_filename(lines, fence, valid_fnames):
     word_count.py
     ```
     ```python
-    <<<<<<< SEARCH
+    <<<<<<< LOCATE
     ...
 
     This is a more flexible search back for filenames.

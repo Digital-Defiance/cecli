@@ -945,7 +945,7 @@ I will proceed based on the tool results and updated context.""")
         for i, tool in enumerate(recent_history, 1):
             context_parts.append(f"{i}. {tool}")
         context_parts.append("\n\n")
-        if repetitive_tools:
+        if repetitive_tools and len(self.tool_usage_history) >= 8:
             context_parts.append("""**Instruction:**
 You have used the following tool(s) repeatedly:""")
             context_parts.append("### DO NOT USE THE FOLLOWING TOOLS/FUNCTIONS")

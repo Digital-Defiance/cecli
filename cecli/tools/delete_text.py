@@ -17,7 +17,7 @@ class Tool(BaseTool):
             "name": "DeleteText",
             "description": (
                 "Delete a block of lines from a file using hashline markers. "
-                'Uses start_line and end_line parameters with format "{hash_fragment}:{line_num}" '
+                'Uses start_line and end_line parameters with format "{line_num}|{hash_fragment}" '
                 "to specify the range to delete."
             ),
             "parameters": {
@@ -27,12 +27,12 @@ class Tool(BaseTool):
                     "start_line": {
                         "type": "string",
                         "description": (
-                            'Hashline format for start line: "{hash_fragment}:{line_num}"'
+                            'Hashline format for start line: "{line_num}|{hash_fragment}"'
                         ),
                     },
                     "end_line": {
                         "type": "string",
-                        "description": 'Hashline format for end line: "{hash_fragment}:{line_num}"',
+                        "description": 'Hashline format for end line: "{line_num}|{hash_fragment}"',
                     },
                     "change_id": {"type": "string"},
                     "dry_run": {"type": "boolean", "default": False},

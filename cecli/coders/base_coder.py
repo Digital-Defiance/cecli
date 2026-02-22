@@ -1616,6 +1616,10 @@ class Coder:
             if self.enable_context_compaction:
                 await self.compact_context_if_needed()
 
+            if nested.getter(self, "agent_finished", False):
+                await self.auto_save_session(force=True)
+                break
+
             await self.auto_save_session(force=True)
 
     def _is_url_allowed(self, url):

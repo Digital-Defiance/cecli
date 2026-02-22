@@ -20,9 +20,9 @@ class Tool(BaseTool):
             "name": "InsertText",
             "description": (
                 "Insert content into a file using hashline markers. "
-                'Uses start_line parameter with format "{hash_fragment}:{line_num}" '
+                'Uses start_line parameter with format "{line_num}|{hash_fragment}" '
                 "to specify where to insert content. For empty files, "
-                'use "aa:0" as the hashline reference.'
+                'use "0|aa" as the hashline reference.'
             ),
             "parameters": {
                 "type": "object",
@@ -32,7 +32,7 @@ class Tool(BaseTool):
                     "start_line": {
                         "type": "string",
                         "description": (
-                            'Hashline format for insertion point: "{hash_fragment}:{line_num}"'
+                            'Hashline format for insertion point: "{line_num}|{hash_fragment}"'
                         ),
                     },
                     "change_id": {"type": "string"},
@@ -61,7 +61,7 @@ class Tool(BaseTool):
             coder: The coder instance
             file_path: Path to the file to modify
             content: The content to insert
-            start_line: Hashline format for insertion point: "{hash_fragment}:{line_num}"
+            start_line: Hashline format for insertion point: "{line_num}|{hash_fragment}"
             change_id: Optional ID for tracking changes
             dry_run: If True, only simulate the change
         """

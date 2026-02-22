@@ -26,7 +26,7 @@ class Tool(BaseTool):
                 "Replace text in one or more files. Can handle an array of up to 10 edits across"
                 " multiple files. Each edit must include its own file_path. Use hashline ranges"
                 " with the start_line and end_line parameters with format"
-                ' "{hash_fragment}:{line_num}". For empty files, use "aa:0" as the hashline'
+                ' "{line_num}|{hash_fragment}". For empty files, use "0|aa" as the hashline'
                 " reference."
             ),
             "parameters": {
@@ -46,13 +46,13 @@ class Tool(BaseTool):
                                     "type": "string",
                                     "description": (
                                         "Hashline format for start line:"
-                                        ' "{hash_fragment}:{line_num}"'
+                                        ' "{line_num}|{hash_fragment}"'
                                     ),
                                 },
                                 "end_line": {
                                     "type": "string",
                                     "description": (
-                                        'Hashline format for end line: "{hash_fragment}:{line_num}"'
+                                        'Hashline format for end line: "{line_num}|{hash_fragment}"'
                                     ),
                                 },
                             },

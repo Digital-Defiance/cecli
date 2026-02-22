@@ -3,6 +3,14 @@ import re
 
 import xxhash
 
+# Regex patterns for hashline parsing
+# Format: {line_number}|{hash_fragment}|
+HASHLINE_PREFIX_RE = re.compile(r"^(-?\d+)\|([a-zA-Z]{2})\|")
+# Format: {line_number}|{hash_fragment}
+PARSE_NEW_FORMAT_RE = re.compile(r"^(-?\d+)\|([a-zA-Z]{2})$")
+# Format: {hash_fragment}|{line_number}
+PARSE_OLD_FORMAT_RE = re.compile(r"^([a-zA-Z]{2})\|(-?\d+)$")
+
 
 class HashlineError(Exception):
     """Custom exception for hashline-specific errors."""
@@ -15,7 +23,7 @@ def hashline(text: str, start_line: int = 1) -> str:
     Add a hash scheme to each line of text.
 
     For each line in the input text, returns a string where each line is prefixed with:
-    "{2-digit base52 of xxhash mod 52^2}:{line number}|{line contents}"
+    "{line number}|{2-digit base52 of xxhash mod 52^2}|{line contents}"
 
     Args:
         text: Input text (most likely representing a file's text)
@@ -38,7 +46,7 @@ def hashline(text: str, start_line: int = 1) -> str:
         last_two_str = int_to_2digit_52(mod_value)
 
         # Format the line
-        formatted_line = f"{last_two_str}:{i}|{line}"
+        formatted_line = f"{i}|{last_two_str}|{line}"
         result_lines.append(formatted_line)
 
     return "".join(result_lines)
@@ -85,7 +93,7 @@ def strip_hashline(text: str) -> str:
     """
     Remove hashline-like sequences from the start of every line.
 
-    Removes prefixes that match the pattern: "{2-digit base52}:{line number}|"
+    Removes prefixes that match the pattern: "{line number}|{2-digit base52}|"
     where line number can be any integer (positive, negative, or zero) and
     the 2-digit base52 is exactly 2 characters from the set [a-zA-Z].
 
@@ -95,19 +103,11 @@ def strip_hashline(text: str) -> str:
     Returns:
         String with hashline prefixes removed from each line
     """
-    import re
-
-    # Pattern to match: {2 base52 chars}:{optional minus sign}{digits}|
-    # The hash is exactly 2 characters from [a-zA-Z]
-    # The line number can be any integer (positive, negative, or zero)
-    pattern = r"^[a-zA-Z]{2}:-?\d+\|"
-
     lines = text.splitlines(keepends=True)
     result_lines = []
-
     for line in lines:
         # Remove the hashline prefix if present
-        stripped_line = re.sub(pattern, "", line, count=1)
+        stripped_line = HASHLINE_PREFIX_RE.sub("", line, count=1)
         result_lines.append(stripped_line)
 
     return "".join(result_lines)
@@ -118,7 +118,7 @@ def parse_hashline(hashline_str: str):
     Parse a hashline string into hash fragment and line number.
 
     Args:
-        hashline_str: Hashline format string: "{hash_fragment}:{line_num}"
+        hashline_str: Hashline format string: "{line_num}|{hash_fragment}"
 
     Returns:
         tuple: (hash_fragment, line_num_str, line_num)
@@ -131,25 +131,36 @@ def parse_hashline(hashline_str: str):
 
     try:
         hashline_str = hashline_str.rstrip("|")
-        hash_fragment, line_num_str = hashline_str.split(":", 1)
-        line_num = int(line_num_str)
-        return hash_fragment, line_num_str, line_num
-    except ValueError as e:
+
+        # Try new format first: {line_num}|{hash_fragment}
+        match = PARSE_NEW_FORMAT_RE.match(hashline_str)
+        if match:
+            line_num_str, hash_fragment = match.groups()
+            return hash_fragment, line_num_str, int(line_num_str)
+
+        # Try old order with new separator: {hash_fragment}|{line_num}
+        match = PARSE_OLD_FORMAT_RE.match(hashline_str)
+        if match:
+            hash_fragment, line_num_str = match.groups()
+            return hash_fragment, line_num_str, int(line_num_str)
+
+        raise HashlineError(f"Invalid hashline format '{hashline_str}'")
+    except (ValueError, AttributeError) as e:
         raise HashlineError(f"Invalid hashline format '{hashline_str}': {e}")
 
 
 def normalize_hashline(hashline_str: str) -> str:
     """
-    Normalize a hashline string to the proper "{hash_fragment}:{line_num}" format.
+    Normalize a hashline string to the proper "{line_num}|{hash_fragment}" format.
 
-    Accepts hashline strings in either "{hash_fragment}:{line_num}" format or
-    "{line_num}:{hash_fragment}" format and returns it in the proper format.
+    Accepts hashline strings in either "{hash_fragment}|{line_num}" format or
+    "{line_num}|{hash_fragment}" format and returns it in the proper format.
 
     Args:
         hashline_str: Hashline string in either format
 
     Returns:
-        str: Hashline string in "{hash_fragment}:{line_num}" format
+        str: Hashline string in "{line_num}|{hash_fragment}" format
 
     Raises:
         HashlineError: If format is invalid
@@ -157,34 +168,28 @@ def normalize_hashline(hashline_str: str) -> str:
     if hashline_str is None:
         raise HashlineError("Hashline string cannot be None")
 
-    # Remove trailing pipe if present
-    hashline_str = hashline_str.rstrip("|")
-
-    # Try to parse as "{hash_fragment}:{line_num}" first
-    pattern1 = r"^([a-zA-Z]{2}):(\d+)$"
-    match1 = re.match(pattern1, hashline_str)
+    # Try to parse as "{line_num}|{hash_fragment}" first (preferred)
+    match1 = PARSE_NEW_FORMAT_RE.match(hashline_str)
     if match1:
-        # Already in correct format
         return hashline_str
 
-    # Try to parse as "{line_num}:{hash_fragment}"
-    pattern2 = r"^(\d+):([a-zA-Z]{2})$"
-    match2 = re.match(pattern2, hashline_str)
+    # Try to parse as "{hash_fragment}|{line_num}"
+    match2 = PARSE_OLD_FORMAT_RE.match(hashline_str)
     if match2:
-        line_num_str, hash_fragment = match2.groups()
-        return f"{hash_fragment}:{line_num_str}"
+        hash_fragment, line_num_str = match2.groups()
+        return f"{line_num_str}|{hash_fragment}"
 
     # If neither pattern matches, raise error
     raise HashlineError(
         f"Invalid hashline format '{hashline_str}'. "
-        "Expected either '{hash_fragment}:{line_num}' or '{line_num}:{hash_fragment}' "
-        "where hash_fragment is exactly 2 letters and line_num is a positive integer."
+        "Expected either '{line_num}|{hash_fragment}' or '{hash_fragment}|{line_num}' "
+        "where hash_fragment is exactly 2 letters and line_num is an integer."
     )
 
 
 def find_hashline_by_exact_match(hashed_lines, hash_fragment, line_num_str):
     """
-    Find a hashline by exact hash_fragment:line_num match.
+    Find a hashline by exact line_num|hash_fragment match.
 
     Args:
         hashed_lines: List of hashed lines
@@ -195,7 +200,7 @@ def find_hashline_by_exact_match(hashed_lines, hash_fragment, line_num_str):
         int: Index of matching line, or None if not found
     """
     for i, line in enumerate(hashed_lines):
-        if line.startswith(f"{hash_fragment}:{line_num_str}|"):
+        if line.startswith(f"{line_num_str}|{hash_fragment}|"):
             return i
     return None
 
@@ -216,16 +221,16 @@ def find_hashline_by_fragment(hashed_lines, hash_fragment, target_line_num=None)
     """
     matches = []
     for i, line in enumerate(hashed_lines):
-        parts = line.split(":", 1)
-        if len(parts) < 2:
+        parts = line.split("|", 2)
+        if len(parts) < 3:
             continue
-        line_hash_fragment = parts[0]
+        line_hash_fragment = parts[1]
         if line_hash_fragment == hash_fragment:
             if target_line_num is None:
                 return i  # Return first match for backward compatibility
 
             # Extract line number from hashline
-            line_num_part = parts[1].split("|", 1)[0]
+            line_num_part = parts[0]
             try:
                 line_num = int(line_num_part)
                 distance = abs(line_num - target_line_num)
@@ -241,8 +246,8 @@ def find_hashline_by_fragment(hashed_lines, hash_fragment, target_line_num=None)
         # Should not reach here if target_line_num is None (returned above)
         return matches[0][1] if matches else None
 
-    # Return the match with smallest distance
-    matches.sort(key=lambda x: x[0])
+    # Return the match with smallest distance, preferring later instances when distances are equal
+    matches.sort(key=lambda x: (x[0], -x[2]))
     return matches[0][1]
 
 
@@ -369,11 +374,6 @@ def apply_hashline_operation(
     Raises:
         HashlineError: If hashline verification fails or operation is invalid
     """
-    # Normalize hashline inputs
-    start_line_hash = normalize_hashline(start_line_hash)
-    if end_line_hash is not None:
-        end_line_hash = normalize_hashline(end_line_hash)
-
     # Handle empty content as a special case
     if original_content == "" or original_content is None:
         if operation == "insert" or operation == "replace":
@@ -401,100 +401,28 @@ def apply_hashline_operation(
     if operation in {"replace", "insert"} and text is None:
         raise HashlineError(f"Text parameter is required for '{operation}' operation")
 
-    # Apply hashline to original content
-    hashed_original = hashline(original_content)
-    hashed_lines = hashed_original.splitlines(keepends=True)
+    # Build operation dictionary for apply_hashline_operations
+    op_dict = {
+        "start_line_hash": start_line_hash,
+        "operation": operation,
+    }
 
-    # Parse start_line_hash to get hash fragment for insert operations
-    start_hash_fragment, start_line_num_str, start_line_num = parse_hashline(start_line_hash)
+    if end_line_hash is not None:
+        op_dict["end_line_hash"] = end_line_hash
 
-    # Special case: 0:00 means insert at the beginning of the file for both insert and replace operations
-    if start_line_num == 0 and operation in {"insert", "replace"}:
-        found_start_line = -1  # Insert before line 0 (i.e., at the beginning)
-    elif operation == "insert":
-        # Try exact match first, then fragment match
-        found_start_line = find_hashline_by_exact_match(
-            hashed_lines, start_hash_fragment, start_line_num_str
-        )
-        if found_start_line is None:
-            found_start_line = find_hashline_by_fragment(
-                hashed_lines, start_hash_fragment, start_line_num
-            )
+    if text is not None:
+        op_dict["text"] = text
 
-        if found_start_line is None:
-            raise HashlineError(
-                f"Start line hash fragment '{start_hash_fragment}' not found in file"
-            )
-
-    # Handle insert operations and replace operations with 0:00
-    if operation == "insert" or (operation == "replace" and start_line_num == 0):
-        # For insert operations, we only need the start line
-        # Insert after the start line
-        text_to_insert = text
-        if text_to_insert and not text_to_insert.endswith("\n"):
-            text_to_insert += "\n"
-
-        # Check if the line we're inserting after ends with a newline
-        # If it doesn't, we need to add a newline to separate the inserted text
-        target_line = hashed_lines[found_start_line]
-        if not target_line.endswith("\n"):
-            # Add a newline to the target line before inserting
-            hashed_lines[found_start_line] = target_line + "\n"
-
-        # Insert the text after the start line
-        new_hashed_lines = (
-            hashed_lines[: found_start_line + 1]
-            + [text_to_insert]
-            + hashed_lines[found_start_line + 1 :]
-        )
-
-        # Reconstruct hashed content
-        new_hashed_content = "".join(new_hashed_lines)
-
-        # Strip hashline prefixes to get back to original format
-        new_content = strip_hashline(new_hashed_content)
-
-        return new_content
-
-    # For replace and delete operations, use find_hashline_range
-    found_start_line, found_end_line = find_hashline_range(
-        hashed_lines,
-        start_line_hash,
-        end_line_hash,
-        allow_exact_match=True,
+    # Call apply_hashline_operations with single operation
+    modified_content, successful_ops, failed_ops = apply_hashline_operations(
+        original_content, [op_dict]
     )
 
-    # Now we have the exact range in the hashed content
-    # Apply the operation based on the type
+    # Check if operation failed
+    if failed_ops:
+        raise HashlineError(failed_ops[0]["error"])
 
-    if operation == "delete":
-        # Delete the range from start to end (inclusive)
-        new_hashed_lines = hashed_lines[:found_start_line] + hashed_lines[found_end_line + 1 :]
-
-    elif operation == "replace":
-        # Replace the range with new text
-        # First, apply hashline to the replacement text
-        replacement_text = text
-        if not replacement_text.endswith("\n"):
-            replacement_text += "\n"
-
-        # Replace the range
-        new_hashed_lines = (
-            hashed_lines[:found_start_line]
-            + [replacement_text]
-            + hashed_lines[found_end_line + 1 :]
-        )
-    else:
-        # This should not happen since we already handled insert operations
-        raise HashlineError(f"Unexpected operation '{operation}' in replace/delete section")
-
-    # Reconstruct hashed content
-    new_hashed_content = "".join(new_hashed_lines)
-
-    # Strip hashline prefixes to get back to original format
-    new_content = strip_hashline(new_hashed_content)
-
-    return new_content
+    return modified_content
 
 
 def extract_hashline_range(
@@ -843,6 +771,239 @@ def get_hashline_content_diff(
     return diff_text if diff_text.strip() else ""
 
 
+def _apply_start_stitching(
+    hashed_lines,
+    start_idx,
+    end_idx,
+    replacement_lines,
+    resolved_ops,
+    current_resolved,
+    max_overlap_check=3,
+):
+    """
+    Check for overlapping lines BEFORE the replacement range and adjust start_idx and replacement_lines.
+
+    This handles cases where the replacement text contains lines that already exist before the target range.
+    It "stitches" the replacement at the matching line to prevent duplicate code structures.
+
+    Args:
+        hashed_lines: List of hashed lines from the file
+        start_idx: Current start index of the replacement range
+        end_idx: Current end index of the replacement range
+        replacement_lines: List of replacement lines to insert
+        resolved_ops: List of all resolved operations
+        current_resolved: The current operation being processed
+        max_overlap_check: Maximum number of lines to check for overlap (default: 3)
+
+    Returns:
+        tuple: (new_start_idx, new_replacement_lines) - adjusted start index and replacement lines
+    """
+    if start_idx > 0:
+        # Get the lines before the replacement range (up to max_overlap_check lines)
+        lines_before_range = hashed_lines[max(0, start_idx - max_overlap_check) : start_idx]
+
+        # Strip hashlines from lines_before_range for comparison
+        lines_before_range_stripped = [strip_hashline(line) for line in lines_before_range]
+
+        # Normalize newlines for comparison
+        lines_before_range_normalized = []
+        for line in lines_before_range_stripped:
+            if line.endswith("\n"):
+                lines_before_range_normalized.append(line)
+            else:
+                lines_before_range_normalized.append(line + "\n")
+
+        # Check for overlapping lines from the beginning of replacement_lines
+        # We check each line from the beginning of replacement_lines to see if it exists
+        # in lines_before_range, starting from the END (closest to replacement range)
+        for i in range(min(max_overlap_check, len(replacement_lines))):
+            # Check line from the beginning of replacement_lines
+            line_idx = i
+
+            # Get the line and strip hashline
+            replacement_line = replacement_lines[line_idx]
+            replacement_line_stripped = strip_hashline(replacement_line)
+
+            # Normalize newline for comparison
+            if not replacement_line_stripped.endswith("\n"):
+                replacement_line_stripped += "\n"
+
+            # Skip stitching for empty lines only
+            # Empty lines are too common and don't indicate meaningful duplication
+            trimmed_line = replacement_line_stripped.strip()
+            if not trimmed_line:
+                continue
+
+            # Check if this line exists in lines_before_range_normalized
+            # We need to find the LAST occurrence (closest to replacement range)
+            # by searching from the end of the list
+            match_index = -1
+            for j in range(len(lines_before_range_normalized) - 1, -1, -1):
+                if lines_before_range_normalized[j] == replacement_line_stripped:
+                    match_index = j
+                    break
+            if match_index != -1:
+                # Check if the replacement line also matches the line at start_idx
+                # If it does, we shouldn't stitch to a line in lines_before_range
+                # because we're replacing that line, not inserting before it
+                line_at_start_idx = hashed_lines[start_idx] if start_idx < len(hashed_lines) else ""
+                line_at_start_idx_stripped = strip_hashline(line_at_start_idx)
+                if not line_at_start_idx_stripped.endswith("\n"):
+                    line_at_start_idx_stripped += "\n"
+
+                if replacement_line_stripped == line_at_start_idx_stripped:
+                    # The replacement line matches the line being replaced
+                    # Don't stitch to a line in lines_before_range
+                    continue
+                # Found a line that already exists before the range!
+                # This is a non-contiguous match - we need to "stitch" the replacement
+                # at this exact content match to prevent duplicate code structures
+
+                # Truncate replacement_lines to exclude this line and any lines before it
+                new_replacement_lines = replacement_lines[line_idx + 1 :]
+
+                # Move the start_idx backward to include lines AFTER the matching line
+                # match_index is 0-based in lines_before_range_normalized
+                # lines_before_range ends at start_idx - 1
+                # We want to include lines from (match_index + 1) onward
+                # So we need to move start_idx back by (lines_before_count - match_index - 1)
+                # This includes lines AFTER the matching line, not including the matching line itself
+                lines_before_count = len(lines_before_range)
+                backward_extension = lines_before_count - match_index - 1
+
+                # If backward_extension is negative (shouldn't happen), set to 0
+                if backward_extension < 0:
+                    backward_extension = 0
+
+                new_start_idx = start_idx - backward_extension
+
+                # Check if extending backward would overlap with any other operation's range
+                # We need to check all other resolved operations
+                would_overlap = False
+                for other_resolved in resolved_ops:
+                    # Skip ourselves
+                    if other_resolved["index"] == current_resolved["index"]:
+                        continue
+
+                    other_start = other_resolved["start_idx"]
+                    other_end = other_resolved["end_idx"]
+
+                    # Check if our new range would overlap with this other operation's range
+                    # Overlap occurs if: new_start_idx <= other_end AND end_idx >= other_start
+                    if new_start_idx <= other_end and end_idx >= other_start:
+                        would_overlap = True
+                        break
+
+                # Only extend if it wouldn't create an overlap
+                if not would_overlap:
+                    start_idx = new_start_idx
+                    replacement_lines = new_replacement_lines
+                else:
+                    # Can't extend backward due to overlap, but we can still truncate
+                    # the replacement text to avoid duplication
+                    replacement_lines = new_replacement_lines
+
+                # We've found our stitching point, break out of the loop
+                break
+            # If no match found for this line, continue checking next line
+            # (implicit continue - no else block needed)
+
+    return start_idx, replacement_lines
+
+
+def _apply_end_stitching(
+    hashed_lines,
+    start_idx,
+    end_idx,
+    replacement_lines,
+    max_overlap_check=3,
+):
+    """
+    Check for overlapping lines AFTER the replacement range and adjust end_idx and replacement_lines.
+
+    This handles cases where the replacement text contains lines that already exist after the target range.
+    It "stitches" the replacement at the matching line to prevent duplicate code structures.
+
+    Args:
+        hashed_lines: List of hashed lines from the file
+        start_idx: Current start index of the replacement range
+        end_idx: Current end index of the replacement range
+        replacement_lines: List of replacement lines to insert
+        max_overlap_check: Maximum number of lines to check for overlap (default: 3)
+
+    Returns:
+        tuple: (new_end_idx, new_replacement_lines) - adjusted end index and replacement lines
+    """
+    if end_idx + 1 < len(hashed_lines):
+        # Get the lines after the replacement range (up to max_overlap_check lines)
+        lines_after_range = hashed_lines[end_idx + 1 : end_idx + 1 + max_overlap_check]
+
+        # Strip hashlines from lines_after_range for comparison
+        lines_after_range_stripped = [strip_hashline(line) for line in lines_after_range]
+
+        # Normalize newlines for comparison
+        # Some lines might not have newlines (e.g., last line of file)
+        lines_after_range_normalized = []
+        for line in lines_after_range_stripped:
+            if line.endswith("\n"):
+                lines_after_range_normalized.append(line)
+            else:
+                lines_after_range_normalized.append(line + "\n")
+
+        # Check for non-contiguous overlap from the end of replacement_lines
+        # We check each line from the end of replacement_lines to see if it exists
+        # anywhere in lines_after_range (not just at the beginning)
+        # This prevents duplication of lines that already exist after the range
+        for i in range(min(max_overlap_check, len(replacement_lines))):
+            # Check line from the end of replacement_lines
+            line_idx = len(replacement_lines) - 1 - i
+            if line_idx < 0:
+                break
+
+            # Get the line and strip hashline
+            replacement_line = replacement_lines[line_idx]
+            replacement_line_stripped = strip_hashline(replacement_line)
+
+            # Normalize newline for comparison
+            if not replacement_line_stripped.endswith("\n"):
+                replacement_line_stripped += "\n"
+
+            # Skip stitching for empty lines only
+            # Empty lines are too common and don't indicate meaningful duplication
+            trimmed_line = replacement_line_stripped.strip()
+            if not trimmed_line:
+                continue
+
+            # Check if this line exists anywhere in lines_after_range_normalized
+            try:
+                match_index = lines_after_range_normalized.index(replacement_line_stripped)
+                # Found a line that already exists after the range!
+                # This is a non-contiguous match - we need to "stitch" the replacement
+                # at this exact content match to prevent duplicate code structures
+
+                # Truncate replacement_lines to exclude this line and any lines after it
+                new_replacement_lines = replacement_lines[:line_idx]
+
+                # Extend the replacement range to include the matching line
+                # match_index is 0-based in lines_after_range_normalized
+                # lines_after_range starts at end_idx + 1
+                # So we need to extend end_idx by match_index to include
+                # all lines up to but NOT including the matching line
+                # (we stitch AT the matching line, not THROUGH it)
+                extension = match_index
+                end_idx = end_idx + extension
+
+                replacement_lines = new_replacement_lines
+
+                # We've found our stitching point, break out of the loop
+                break
+            except ValueError:
+                # Line not found in lines_after_range_normalized, continue checking
+                pass
+
+    return end_idx, replacement_lines
+
+
 def apply_hashline_operations(
     original_content: str,
     operations: list,
@@ -1024,6 +1185,28 @@ def apply_hashline_operations(
                         text += "\n"
                     # Split into lines and replace the range
                     replacement_lines = text.splitlines(keepends=True)
+
+                    # Check for overlapping lines to prevent duplication
+                    # This handles cases where the model underspecifies the range and
+                    # the replacement text includes lines that already exist after the range
+                    max_overlap_check = 2  # Check up to 2 lines for overlap
+
+                    # Check for overlapping lines BEFORE the range (bidirectional stitching)
+                    start_idx, replacement_lines = _apply_start_stitching(
+                        hashed_lines,
+                        start_idx,
+                        end_idx,
+                        replacement_lines,
+                        resolved_ops,
+                        resolved,
+                        max_overlap_check,
+                    )
+
+                    # Now check for overlapping lines AFTER the range
+                    end_idx, replacement_lines = _apply_end_stitching(
+                        hashed_lines, start_idx, end_idx, replacement_lines, max_overlap_check
+                    )
+
                     hashed_lines[start_idx : end_idx + 1] = replacement_lines
                 else:
                     # Empty text - replace with nothing (delete)

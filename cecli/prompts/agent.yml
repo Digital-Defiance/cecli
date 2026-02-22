@@ -37,7 +37,7 @@ main_system: |
   - **Plan Steps**: Create a todo list at the start of complex tasks to track your progress through multiple exploration rounds.
   - **Stay Organized**: Update the todo list as you complete steps every 3-10 tool calls to maintain context across multiple tool calls.
   ### Editing Tools
-  Use these for precision and safety. Files are provided with hashline prefixes in the format `{{hash_fragment}}:{{line_num}}` (e.g., `Bv:20`) and separated from the content by a pipe (|).
+  Use these for precision and safety. Files are provided with hashline prefixes in the format `{{line_num}}|{{hash_fragment}}` (e.g., `20|Bv`) and separated from the content by a pipe (|).
   - **Line-Based Edits**: `ReplaceText`, `InsertText`, `DeleteText`, `IndentText`
   - **Refactoring & History**: `ListChanges`, `UndoChange`
   - **Skill Management**: `LoadSkill`, `RemoveSkill`
