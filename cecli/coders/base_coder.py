@@ -3987,8 +3987,11 @@ class Coder:
             exit_status, output = await asyncio.to_thread(
                 run_cmd, command, error_print=self.io.tool_error, cwd=self.root
             )
+
             if output:
                 accumulated_output += f"Output from {command}\n{output}\n"
+
+        print(accumulated_output)
 
         if accumulated_output.strip() and await self.io.confirm_ask(
             "Add command output to the chat?", allow_never=True
