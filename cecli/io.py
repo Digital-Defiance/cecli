@@ -775,7 +775,7 @@ class InputOutput:
                 # Give the user some feedback (this happens on Windows
                 # until someone extends InterruptibleInput to work
                 # there)
-                print("Warning: Interrupting input does not work in dumb termnal mode (yet!).")
+                print("Warning: Interrupting input does not work in dumb terminal mode (yet!).")
 
     def reject_outstanding_confirmations(self):
         """Reject all outstanding confirmation dialogs."""
