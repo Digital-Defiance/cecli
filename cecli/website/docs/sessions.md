@@ -42,7 +42,7 @@ When `--auto-save` is enabled, cecli will automatically save your session as 'au
 - All files in the chat (editable, read-only, and read-only stubs)
 - Current model and edit format settings
 - Auto-commit, auto-lint, and auto-test settings
-- Todo list content from `.cecli.todo.txt`
+- Todo list content from `.cecli/run/{date}/{agent id}/todo.txt`
 - Session metadata (timestamp, version)
 
 ### `/load-session <name>`
@@ -148,7 +148,6 @@ Sessions are stored as JSON files in the `.cecli/sessions/` directory within you
 - Session files include all file paths, so they work best when project structure is stable
 - External files (outside the project root) are stored with absolute paths
 - Missing files are skipped with warnings during loading
-- The todo list file (`.cecli.todo.txt`) is cleared on startup; it is restored when you load a session or when you update it during a run
 
 ### Version Control
 - Consider adding `.cecli/sessions/` to your `.gitignore` if sessions contain sensitive information
@@ -166,7 +165,6 @@ If files are reported as missing during loading:
 - The files may have been moved or deleted
 - Session files store relative paths, so directory structure changes can affect this
 - External files must exist at their original locations
-- The todo list (`.cecli.todo.txt`) is cleared on startup unless restored from a loaded session
 
 ### Corrupted Sessions
 If a session fails to load:

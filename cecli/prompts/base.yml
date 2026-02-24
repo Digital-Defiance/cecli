@@ -84,14 +84,30 @@ rename_with_shell: ""
 go_ahead_tip: ""
 
 compaction_prompt: |
-  The user is going to provide you with a conversation.
-  This conversation is getting too long to fit in the context window of a large language model.
-  You need to summarize the conversation to reduce its length, while retaining all the important information.
-  Prioritize the latest instructions and don't include conflicting information from earlier instructions.
-  The summary should contain four parts:
-  - Overall Goal: What is the user trying to achieve with this conversation?
-  - Event Log: Keep information most important to prevent having to search for it again
-    This should be quite specific (e/g. the list of actions taken so far in a bulleted list so the next round maintains history)
-  - Next Steps: What are the next steps for the language model to take to help the user?
-    Describe the current investigation path and intention.
-  Here is the conversation so far:
+  # Instruction: Context Compaction & State Preservation
+  The following conversation is exceeding the context limit. Transform this history into a "Mission Briefing" that allows a new LLM instance to resume with zero loss of technical momentum. 
+  
+  ## Required Output Format:
+
+  ### 1. Core Objective
+  A concise statement of the final goal and the specific success criteria.
+
+  ### 2. Narrative Event Log (Up to 50 Outcomes)
+  Provide a bulleted list documenting the sequence of **outcomes and milestones** reached. Do not describe tool syntax; describe what was learned or changed in one sentence per bullet:
+  - (e.g., "Mapped the project structure and identified `core/logic.py` as the primary target.")
+  - (e.g., "Discovered that the connection timeout error is triggered by the `RetryPolicy` class.")
+  - (e.g., "Successfully refactored the `validate_input` function to handle null bytes.")
+  - (e.g., "Reverted changes to `db.py` after determining the issue was in the environment config instead.")
+  - (e.g., "Verified that the fix works in isolation using a temporary script in `.cecli/workspace`.")
+
+  ### 3. Current Technical Context
+  - **Files In-Scope**: List paths currently being edited or actively referenced.
+  - **Verified Facts**: List specific findings about the code logic that are now "known truths."
+  - **Discarded Hypotheses**: List paths or theories that were tested and proven incorrect to avoid repetition.
+
+  ### 4. Strategic Pivot & Next Steps
+  - **Current Intent**: What is the model currently trying to prove or implement?
+  - **Immediate Next Steps**: The prioritized next tool calls and logic steps.
+
+  ---
+  ## Conversation History to Compact:

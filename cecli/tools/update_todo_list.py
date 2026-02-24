@@ -62,13 +62,13 @@ class Tool(BaseTool):
     @classmethod
     def execute(cls, coder, tasks, append=False, change_id=None, dry_run=False, **kwargs):
         """
-        Update the todo list file (.cecli/todo.txt) with formatted task items.
+        Update the todo list file (todo.txt) with formatted task items.
         Can either replace the entire content or append to it.
         """
         tool_name = "UpdateTodoList"
         try:
             # Define the todo file path
-            todo_file_path = ".cecli/todo.txt"
+            todo_file_path = coder.local_agent_folder("todo.txt")
             abs_path = coder.abs_root_path(todo_file_path)
 
             # Format tasks into string
@@ -161,7 +161,7 @@ class Tool(BaseTool):
 
             # Format and return result
             action = "appended to" if append else "updated"
-            success_message = f"Successfully {action} todo list in {todo_file_path}"
+            success_message = f"Successfully {action} todo list"
             return format_tool_result(
                 coder,
                 tool_name,

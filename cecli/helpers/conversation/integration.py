@@ -85,7 +85,6 @@ class ConversationChunks:
             coder: The coder instance
         """
 
-        """
         # Check diff message ratio and clear if too many diffs
         diff_messages = ConversationManager.get_messages_dict(MessageTag.DIFFS)
         read_only_messages = ConversationManager.get_messages_dict(MessageTag.READONLY_FILES)
@@ -126,7 +125,6 @@ class ConversationChunks:
             ConversationManager.clear_tag(MessageTag.DIFFS)
             # Clear ConversationFiles caches to force regeneration
             ConversationFiles.clear_file_cache()
-        """
 
         # Get all tracked files (both regular and image files)
         tracked_files = ConversationFiles.get_all_tracked_files()

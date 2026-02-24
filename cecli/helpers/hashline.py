@@ -326,7 +326,7 @@ def find_hashline_range(
         # Check if end hash fragment matches at the expected position
         # If not, use find_hashline_by_fragment() to find the closest match
         actual_end_hashed_line = hashed_lines[expected_found_end_line]
-        actual_end_hash_fragment = actual_end_hashed_line.split(":", 1)[0]
+        actual_end_hash_fragment = actual_end_hashed_line.split("|", 1)[1]
 
         if actual_end_hash_fragment != end_hash_fragment:
             # Instead of raising an error, try to find the closest matching hash fragment

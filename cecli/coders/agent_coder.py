@@ -4,6 +4,7 @@ import json
 import locale
 import os
 import platform
+import random
 import time
 import traceback
 from collections import Counter, defaultdict
@@ -50,6 +51,8 @@ class AgentCoder(Coder):
         self.tool_similarity_threshold = 0.99
         self.max_tool_vector_history = 10
         self.read_tools = {
+            "command",
+            "commandinteractive",
             "viewfilesatglob",
             "viewfilesmatching",
             "ls",
@@ -60,8 +63,6 @@ class AgentCoder(Coder):
             "thinking",
         }
         self.write_tools = {
-            "command",
-            "commandinteractive",
             "deletetext",
             "indenttext",
             "inserttext",
@@ -75,6 +76,7 @@ class AgentCoder(Coder):
         self.args = kwargs.get("args")
         self.files_added_in_exploration = set()
         self.tool_call_count = 0
+        self.turn_count = 0
         self.max_reflections = 15
         self.use_enhanced_context = True
         self._last_edited_file = None
@@ -687,6 +689,8 @@ class AgentCoder(Coder):
 
         await self.auto_save_session()
         self.last_round_tools = []
+        self.turn_count += 1
+
         if self.partial_response_tool_calls:
             for tool_call in self.partial_response_tool_calls:
                 tool_name = getattr(tool_call.function, "name", None)
@@ -931,12 +935,18 @@ I will proceed based on the tool results and updated context.""")
         """
         if not self.tool_usage_history:
             return ""
+
+        if not hasattr(self, "_last_repetitive_warning_turn"):
+            self._last_repetitive_warning_turn = 0
+            self._last_repetitive_warning_severity = 0
+
         context_parts = ['<context name="tool_usage_history" from="agent">']
         context_parts.append("## Turn and Tool Call Statistics")
-        context_parts.append(f"- Current turn: {self.num_reflections + 1}")
+        context_parts.append(f"- Current turn: {self.turn_count + 1}")
         context_parts.append(f"- Total tool calls this turn: {self.num_tool_calls}")
         context_parts.append("\n\n")
         context_parts.append("## Recent Tool Usage History")
+
         if len(self.tool_usage_history) > 10:
             recent_history = self.tool_usage_history[-10:]
             context_parts.append("(Showing last 10 tools)")
@@ -944,39 +954,75 @@ I will proceed based on the tool results and updated context.""")
             recent_history = self.tool_usage_history
         for i, tool in enumerate(recent_history, 1):
             context_parts.append(f"{i}. {tool}")
+
         context_parts.append("\n\n")
-        if repetitive_tools and len(self.tool_usage_history) >= 8:
-            context_parts.append("""**Instruction:**
-You have used the following tool(s) repeatedly:""")
-            context_parts.append("### DO NOT USE THE FOLLOWING TOOLS/FUNCTIONS")
-            for tool in repetitive_tools:
-                context_parts.append(f"- `{tool}`")
-            context_parts.append(
-                "Your exploration appears to be stuck in a loop. Please try a different approach."
-                " Use the `Thinking` tool to clarify your intentions and new approach to what you"
-                " are currently attempting to accomplish."
-            )
-            context_parts.append("\n")
-            context_parts.append("**Suggestions for alternative approaches:**")
-            context_parts.append(
-                "- If you've been searching for files, try working with the files already in"
-                " context"
-            )
-            context_parts.append(
-                "- If you've been viewing files, try making actual edits to move forward"
-            )
-            context_parts.append("- Consider using different tools that you haven't used recently")
-            context_parts.append(
-                "- Focus on making concrete progress rather than gathering more information"
-            )
-            context_parts.append(
-                "- Use the files you've already discovered to implement the requested changes"
-            )
-            context_parts.append("\n")
-            context_parts.append(
-                "You most likely have enough context for a subset of the necessary changes."
-            )
-            context_parts.append("Please prioritize file editing over further exploration.")
+        if repetitive_tools:
+            if self.turn_count - self._last_repetitive_warning_turn > 2:
+                self._last_repetitive_warning_turn = self.turn_count
+                self._last_repetitive_warning_severity += 1
+
+            repetition_warning = f"""
+## Repetition Detected: Strategy Adjustment Required
+I have detected repetitive usage of the following tools: {', '.join([f'`{t}`' for t in repetitive_tools])}.
+**Constraint:** Do not repeat the exact same parameters for these tools in your next turn.
+            """
+
+            if self._last_repetitive_warning_severity > 2:
+                self._last_repetitive_warning_severity = 0
+
+                fruit = random.choice(
+                    [
+                        "an apple",
+                        "a banana",
+                        "a cantaloupe",
+                        "a cherry",
+                        "a honeydew",
+                        "an orange",
+                        "a mango",
+                        "a pomegranate",
+                        "a watermelon",
+                    ]
+                )
+                animal = random.choice(
+                    [
+                        "a bird",
+                        "a bear",
+                        "a cat",
+                        "a deer",
+                        "a dog",
+                        "an elephant",
+                        "a fish",
+                        "a fox",
+                        "a monkey",
+                        "a rabbit",
+                    ]
+                )
+                verb = random.choice(
+                    [
+                        "absorbing",
+                        "becoming",
+                        "creating",
+                        "dreaming of",
+                        "eating",
+                        "fighting with",
+                        "playing with",
+                        "painting",
+                        "smashing",
+                        "writing a song about",
+                    ]
+                )
+
+                repetition_warning += f"""
+### CRITICAL: Execution Loop Detected
+You are currently "spinning." To break the logic trap, you must:
+1. **Analyze**: Use the `Thinking` tool to summarize exactly what you have found so far and why you were stuck.
+2. **Pivot**: Abandon or modify your current exploration strategy. Try focusing on different files or running tests.
+3. **Reframe**: To ensure your logic reset, include a 2-sentence story about {animal} {verb} {fruit} in your thoughts.
+
+Prioritize editing or verification over further exploration.
+                """
+
+            context_parts.append(repetition_warning)
         context_parts.append("</context>")
         return "\n".join(context_parts)
 
@@ -1061,6 +1107,7 @@ You have used the following tool(s) repeatedly:""")
             inp = f'<context name="user_input" from="agent">\n{inp}\n</context>'
 
         self.agent_finished = False
+        self.turn_count = 0
         return inp
 
     def get_directory_structure(self):
@@ -1139,11 +1186,11 @@ You have used the following tool(s) repeatedly:""")
 
     def get_todo_list(self):
         """
-        Generate a todo list context block from the .cecli/todo.txt file.
+        Generate a todo list context block from the todo.txt file.
         Returns formatted string with the current todo list or None if empty/not present.
         """
         try:
-            todo_file_path = ".cecli/todo.txt"
+            todo_file_path = self.local_agent_folder("todo.txt")
             abs_path = self.abs_root_path(todo_file_path)
             import os
 

@@ -16,7 +16,7 @@ import time
 import traceback
 import weakref
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 
 # Optional dependency: used to convert locale codes (eg ``en_US``)
 # into human-readable language names (eg ``English``).
@@ -28,6 +28,7 @@ from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import List
 from urllib.parse import urlparse
+from uuid import uuid4 as generate_unique_id
 
 import httpx
 from litellm import experimental_mcp_client
@@ -68,6 +69,8 @@ from cecli.utils import copy_tool_call, format_tokens, is_image_file
 
 from ..dump import dump  # noqa: F401
 from ..prompts.utils.registry import PromptObject, PromptRegistry
+
+GLOBAL_DATE = date.today().isoformat()
 
 
 class UnknownEditFormat(ValueError):
@@ -150,6 +153,9 @@ class Coder:
     compact_context_completed = True
     suppress_announcements_for_next_prompt = False
     tool_reflection = False
+    last_user_message = ""
+    uuid = ""
+
     # Task coordination state variables
     input_running = False
     output_running = False
@@ -239,6 +245,7 @@ class Coder:
                 total_tokens_received=from_coder.total_tokens_received,
                 file_watcher=from_coder.file_watcher,
                 mcp_manager=from_coder.mcp_manager,
+                uuid=from_coder.uuid,
             )
             use_kwargs.update(update)  # override to complete the switch
             use_kwargs.update(kwargs)  # override passed kwargs
@@ -334,8 +341,13 @@ class Coder:
         repomap_in_memory=False,
         linear_output=False,
         security_config=None,
+        uuid="",
     ):
         # initialize from args.map_cache_dir
+        self.uuid = generate_unique_id()
+        if uuid:
+            self.uuid = uuid
+
         self.map_cache_dir = map_cache_dir
 
         self.chat_language = chat_language
@@ -569,7 +581,7 @@ class Coder:
         self.test_cmd = test_cmd
 
         # Clean up todo list file on startup; sessions will restore it when needed
-        todo_file_path = ".cecli/todo.txt"
+        todo_file_path = self.local_agent_folder("todo.txt")
         abs_path = self.abs_root_path(todo_file_path)
         if os.path.isfile(abs_path):
             try:
@@ -1517,7 +1529,7 @@ class Coder:
         await asyncio.sleep(0.1)
 
         try:
-            if not self.enable_context_compaction:
+            if self.enable_context_compaction:
                 self.compact_context_completed = False
                 await self.compact_context_if_needed()
                 self.compact_context_completed = True
@@ -1587,6 +1599,9 @@ class Coder:
             user_message
         ):
             return
+
+        if not self.commands.is_command(user_message):
+            self.last_user_message = user_message
 
         while True:
             self.reflected_message = None
@@ -1781,9 +1796,12 @@ class Coder:
                 ConversationManager.clear_tag(MessageTag.CUR)
 
                 # Keep the first message (user's initial input) if it exists
-                if cur_messages:
+                if self.last_user_message:
                     ConversationManager.add_message(
-                        message_dict=cur_messages[0],
+                        message_dict={
+                            "role": "user",
+                            "content": self.last_user_message,
+                        },
                         tag=MessageTag.CUR,
                     )
 
@@ -3891,6 +3909,12 @@ class Coder:
 
     def apply_edits_dry_run(self, edits):
         return edits
+
+    def local_agent_folder(self, path):
+        os.makedirs(f".cecli/agents/{GLOBAL_DATE}/{self.uuid}", exist_ok=True)
+
+        stripped = path.lstrip("/")
+        return f".cecli/agents/{GLOBAL_DATE}/{self.uuid}/{stripped}"
 
     async def auto_save_session(self, force=False):
         """Automatically save the current session to {auto-save-session-name}.json."""

@@ -134,7 +134,7 @@ class SessionManager:
         # Capture todo list content so it can be restored with the session
         todo_content = None
         try:
-            todo_path = self.coder.abs_root_path(".cecli/todo.txt")
+            todo_path = self.coder.abs_root_path(self.coder.local_agent_folder("todo.txt"))
             if os.path.isfile(todo_path):
                 todo_content = self.io.read_text(todo_path)
                 if todo_content is None:
@@ -249,7 +249,7 @@ class SessionManager:
 
             # Restore todo list content if present in the session
             if "todo_list" in session_data:
-                todo_path = self.coder.abs_root_path(".cecli/todo.txt")
+                todo_path = self.coder.abs_root_path(self.coder.local_agent_folder("todo.txt"))
                 todo_content = session_data.get("todo_list")
                 try:
                     if todo_content is None:
