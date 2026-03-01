@@ -491,7 +491,7 @@ class Coder:
                 self.io.tool_warning(f"Skipping {fname} that matches gitignore spec.")
                 continue
 
-            if self.repo and self.repo.ignored_file(fname):
+            if self.repo and self.repo.ignored_file(fname) and not self.add_gitignore_files:
                 self.io.tool_warning(f"Skipping {fname} that matches cecli.ignore spec.")
                 continue
 
