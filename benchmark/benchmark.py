@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import time
 import traceback
 from collections import defaultdict
@@ -174,6 +175,12 @@ def main(
     stats: bool = typer.Option(
         False, "--stats", help="Generate statistics YAML file from benchmark results"
     ),
+    aggregate: Optional[str] = typer.Option(
+        None, "--aggregate", help="Aggregate results from directories matching this pattern"
+    ),
+    tar: Optional[str] = typer.Option(
+        None, "--tar", help="Create a tar.gz of directories matching this pattern"
+    ),
 ):
     # setup logging and verbosity
     if quiet:
@@ -185,19 +192,19 @@ def main(
 
     logging.basicConfig(level=log_level, format="%(message)s")
 
+    # Convert SimpleNamespace to dict for YAML serialization
+    def simple_namespace_to_dict(obj):
+        if isinstance(obj, SimpleNamespace):
+            return {k: simple_namespace_to_dict(v) for k, v in vars(obj).items()}
+        elif isinstance(obj, dict):
+            return {k: simple_namespace_to_dict(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [simple_namespace_to_dict(item) for item in obj]
+        else:
+            return obj
+
     # Handle --stats flag: generate statistics YAML file and exit
     if stats:
-        # Convert SimpleNamespace to dict for YAML serialization
-        def simple_namespace_to_dict(obj):
-            if isinstance(obj, SimpleNamespace):
-                return {k: simple_namespace_to_dict(v) for k, v in vars(obj).items()}
-            elif isinstance(obj, dict):
-                return {k: simple_namespace_to_dict(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [simple_namespace_to_dict(item) for item in obj]
-            else:
-                return obj
-
         # Get statistics
         stats_result = summarize_results(results_dir, verbose, stats_languages=languages)
 
@@ -210,6 +217,50 @@ def main(
             yaml.dump(stats_dict, f, default_flow_style=False)
 
         print(f"Statistics written to: {results_yaml_path}")
+        return 0
+
+    if aggregate:
+        # Find matching directories
+        matching_dirs = [d for d in BENCHMARK_DNAME.iterdir() if d.is_dir() and aggregate in d.name]
+
+        if not matching_dirs:
+            print(f"No directories matching '{aggregate}' found in {BENCHMARK_DNAME}")
+            return 1
+
+        all_results = {}
+        for d in matching_dirs:
+            stats_result = summarize_results(d, verbose, stats_languages=languages)
+            if stats_result:
+                # Remove timestamp from directory name for the key
+                key = re.sub(r"^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}--", "", d.name)
+                all_results[key] = simple_namespace_to_dict(stats_result)
+
+        # Sort the results by the keys (directory names without timestamps)
+        all_results = dict(sorted(all_results.items()))
+
+        output_path = BENCHMARK_DNAME / f"all_results_{aggregate}.yml"
+        with open(output_path, "w") as f:
+            yaml.dump(all_results, f, default_flow_style=False)
+
+        print(f"Aggregated results written to: {output_path}")
+        return 0
+
+    if tar:
+        # Find matching directories
+        matching_dirs = [d for d in BENCHMARK_DNAME.iterdir() if d.is_dir() and tar in d.name]
+
+        if not matching_dirs:
+            print(f"No directories matching '{tar}' found in {BENCHMARK_DNAME}")
+            return 1
+
+        output_path = BENCHMARK_DNAME / f"benchmarks_{tar}.tar.gz"
+        print(f"Creating tarball: {output_path}")
+        with tarfile.open(output_path, "w:gz") as tar_handle:
+            for d in matching_dirs:
+                print(f"  Adding {d.name}...")
+                tar_handle.add(d, arcname=d.name)
+
+        print(f"Tarball created at: {output_path}")
         return 0
 
     from cecli import models
@@ -424,7 +475,7 @@ def main(
         all_results = run_test_threaded.gather(tqdm=True)
     else:
         all_results = []
-        for test_path in test_dnames:
+        for test_path in sorted(test_dnames):
             results = run_test(original_dname, results_dir / test_path, **test_args)
             all_results.append(results)
             summarize_results(results_dir, verbose)
@@ -453,6 +504,21 @@ def load_results(results_dir, stats_languages=None):
             results = json.loads(fname.read_text())
             # BUG20251223
             logger.debug(f"Processing result file: {fname}")
+
+            # Check if test case counts are missing and compute them if needed
+            test_dir = fname.parent
+
+            logger.debug(f"Computing test case counts for {test_dir}")
+            total_cases, passed_cases = get_test_case_counts_from_directory(test_dir)
+
+            if total_cases is not None:
+                results["test_cases_total"] = total_cases
+            if passed_cases is not None:
+                results["test_cases_passed"] = passed_cases
+
+            # Update the JSON file immediately to keep data fresh
+            fname.write_text(json.dumps(results, indent=4))
+            logger.debug(f"Updated {fname} with test case counts")
 
             # Try to get language from cat.yaml if it exists in the same dir
             lang = "unknown"
@@ -515,6 +581,8 @@ def summarize_results(results_dir, verbose, stats_languages=None):
     res.lazy_comments = 0
     res.prompt_tokens = 0
     res.completion_tokens = 0
+    res.test_cases_total = 0
+    res.test_cases_passed = 0
 
     res.reasoning_effort = None
     res.thinking_tokens = None
@@ -551,6 +619,8 @@ def summarize_results(results_dir, verbose, stats_languages=None):
         lang_stats.lazy_comments = 0
         lang_stats.prompt_tokens = 0
         lang_stats.completion_tokens = 0
+        lang_stats.test_cases_total = 0
+        lang_stats.test_cases_passed = 0
         lang_to_stats[lang] = lang_stats
         lang_to_passed_tests[lang] = [0] * tries
 
@@ -603,6 +673,14 @@ def summarize_results(results_dir, verbose, stats_languages=None):
                 res,
                 lang_stats,
             )
+
+            # Collect test case statistics from pre-computed results
+            total_cases = results.get("test_cases_total")
+            passed_cases = results.get("test_cases_passed")
+            if total_cases is not None:
+                add("test_cases_total", total_cases, res, lang_stats)
+            if passed_cases is not None:
+                add("test_cases_passed", passed_cases, res, lang_stats)
 
             res.reasoning_effort = results.get("reasoning_effort")
             res.thinking_tokens = results.get("thinking_tokens")
@@ -678,6 +756,13 @@ def summarize_results(results_dir, verbose, stats_languages=None):
     show("completion_tokens", red=None)
     show("test_timeouts")
     print(f"  total_tests: {res.total_tests}")
+
+    # Add test case statistics and percentage
+    if res.test_cases_total > 0:
+        print(f"  test_cases_total: {res.test_cases_total}")
+        print(f"  test_cases_passed: {res.test_cases_passed}")
+        res.test_cases_percentage = 100 * res.test_cases_passed / res.test_cases_total
+        print(f"  test_cases_percentage: {res.test_cases_percentage:.1f}")
 
     if variants["model"]:
         a_model = set(variants["model"]).pop()
@@ -1315,6 +1400,268 @@ def cleanup_test_output(output, testdir):
     res = re.sub(r"\bin \d+\.\d+s\b", "", output)
     res = res.replace(str(testdir), str(testdir.name))
     return res
+
+
+def parse_test_results_from_history(history_file_path, total_cases=None, test_dir=None):
+    """
+    Parse .cecli.dev.history.md file to extract test results.
+    Returns a tuple of (test_cases_total, test_cases_passed) or (None, None) if not found.
+    """
+    try:
+        # First, check if we can get test results from .cecli.results.json
+        if test_dir:
+            results_json_path = Path(test_dir) / ".cecli.results.json"
+            if results_json_path.exists():
+                try:
+                    import json
+
+                    with open(results_json_path, "r") as f:
+                        results_data = json.load(f)
+
+                    # Check if tests_outcomes contains true (indicating all tests passed)
+                    tests_outcomes = results_data.get("tests_outcomes", [])
+                    if True in tests_outcomes:
+                        # All tests passed at some point
+                        # Try to get test_cases_total from results or use provided total_cases
+                        total_from_results = results_data.get("test_cases_total")
+                        if total_from_results is not None:
+                            logger.debug(
+                                "All tests passed according to results.json, returning"
+                                f" total_cases={total_from_results}"
+                            )
+                            return total_from_results, total_from_results
+                        elif total_cases is not None:
+                            logger.debug(
+                                "All tests passed according to results.json, using provided"
+                                f" total_cases={total_cases}"
+                            )
+                            return total_cases, total_cases
+                        else:
+                            logger.debug("All tests passed but no total cases available")
+                except Exception as e:
+                    logger.debug(f"Failed to parse .cecli.results.json: {e}")
+
+        # Determine language from cat.yaml if test_dir is provided
+        language = None
+        if test_dir:
+            cat_yaml_path = Path(test_dir) / "cat.yaml"
+            if cat_yaml_path.exists():
+                try:
+                    import yaml
+
+                    with open(cat_yaml_path, "r") as f:
+                        metadata = yaml.safe_load(f)
+                        language = metadata.get("language")
+                        logger.debug(f"Detected language from cat.yaml: {language}")
+                except Exception as e:
+                    logger.debug(f"Failed to read cat.yaml: {e}")
+        with open(history_file_path, "r") as f:
+            content = f.read()
+        # Find test output after the last "Tokens:" line
+        # Token lines look like: "Tokens: 4.6k sent, 5.8k received. Cost: $0.07 message, $0.07 session."
+        # Everything after the last token line is test output
+        import re
+
+        lines = content.split("\n")
+        token_line_index = -1
+
+        # Find the last "Tokens:" line
+        for i, line in enumerate(lines):
+            if "Tokens:" in line:
+                token_line_index = i
+
+        if token_line_index != -1 and token_line_index < len(lines) - 1:
+            # Capture everything after the last token line
+            test_output = "\n".join(lines[token_line_index + 1 :])
+        else:
+            # No token line found, try to find test output in the last code block as fallback
+            test_output = ""
+            in_test_output = False
+
+            for line in reversed(lines):
+                if line.strip().startswith("```") and not in_test_output:
+                    # Found the end of a code block, start capturing
+                    in_test_output = True
+                    continue
+                elif line.strip().startswith("```") and in_test_output:
+                    # Found the start of the code block, stop capturing
+                    break
+                elif in_test_output:
+                    test_output = line + "\n" + test_output
+
+            if not test_output:
+                return None, None
+        # Parse test output based on detected language or fallback to pattern matching
+        passed_cases = 0
+
+        # Use language-specific parsing if language is known
+        if language:
+            language_lower = language.lower()
+
+            # Python (pytest) format
+            if language_lower == "python":
+                # Example: "25 passed" or "24 passed, 1 failed"
+                python_match = re.search(r"(\d+)\s+passed", test_output)
+                if python_match:
+                    passed_cases = int(python_match.group(1))
+                    # Try to get total from "collected X items" or "X passed; Y failed"
+                    collected_match = re.search(r"collected\s+(\d+)\s+items", test_output)
+                    if collected_match:
+                        total_cases = int(collected_match.group(1))
+                    else:
+                        # Try to get total from "X passed; Y failed"
+                        failed_match = re.search(r"(\d+)\s+failed", test_output)
+                        if failed_match:
+                            total_cases = passed_cases + int(failed_match.group(1))
+                        else:
+                            total_cases = passed_cases  # Assume all passed if no failures mentioned
+
+            # Go format
+            elif language_lower == "go":
+                # Example: "ok\t{test name}\t0.003s" for success
+                # Example: "--- FAIL:" for failures
+                if total_cases is not None:
+                    # Check if test suite passed (has "ok" line)
+                    if re.search(r"^[\t ]*ok", test_output, re.MULTILINE):
+                        # Test suite passed - all tests passed
+                        passed_cases = total_cases
+                    else:
+                        # Test suite failed - count failures and subtract from total
+                        failed_count = test_output.count("--- FAIL:")
+                        passed_cases = total_cases - failed_count
+                        if passed_cases < 0:
+                            passed_cases = 0  # Ensure non-negative
+                    # Use the provided total_cases
+                    total_cases = total_cases
+                else:
+                    # Fallback to counting lines (legacy behavior)
+                    # Count lines with "ok" (starting with any whitespace) as passed tests
+                    passed_cases = len(re.findall(r"^[\t ]*ok", test_output, re.MULTILINE))
+                    # Count lines with "--- FAIL:" as failed tests
+                    failed_count = test_output.count("--- FAIL:")
+                    total_cases = passed_cases + failed_count
+
+            # Rust format
+            elif language_lower == "rust":
+                # Example: "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out"
+                # Need to match the LAST instance of the pattern in the output
+                # Use findall to get all matches, then take the last one
+                rust_matches = re.findall(
+                    r"test result:.*?(\d+)\s+passed.*?(\d+)\s+failed", test_output, re.DOTALL
+                )
+                if rust_matches:
+                    # Get the last match (most recent test result)
+                    last_match = rust_matches[-1]
+                    # last_match is a tuple like ("15", "2") from the example
+                    passed_cases = int(last_match[0])
+                    failed_cases = int(last_match[1])
+                    total_cases = passed_cases + failed_cases
+
+            # JavaScript format
+            elif language_lower in ["javascript", "typescript"]:
+                # Example: "Tests:       11 failed, 4 passed, 15 total"
+                js_match = re.search(
+                    r"Tests:\s*(\d+)\s+failed,\s*(\d+)\s+passed,\s*(\d+)\s+total", test_output
+                )
+                if js_match:
+                    failed_cases = int(js_match.group(1))
+                    passed_cases = int(js_match.group(2))
+                    total_cases = int(js_match.group(3))
+
+            # Java format
+            elif language_lower == "java":
+                # Look for "BUILD SUCCESSFUL" and count "PASSED" lines
+                if "BUILD SUCCESSFUL" in test_output:
+                    passed_cases = test_output.count("PASSED")
+                    failed_cases = test_output.count("FAILED")
+                    total_cases = passed_cases + failed_cases
+                elif "FAILURE:" in test_output:
+                    # Also look for "X tests completed, Y failed" pattern
+                    java_match = re.search(
+                        r"(\d+)\s+tests\s+completed,\s*(\d+)\s+failed", test_output
+                    )
+
+                    if java_match:
+                        total_cases = int(java_match.group(1))
+                        failed_cases = int(java_match.group(2))
+                        passed_cases = total_cases - failed_cases
+
+                # Check for build failures
+                if "[build failed]" in test_output:
+                    # Build failure means 0 passed tests
+                    return total_cases if total_cases else 0, 0
+
+            # C/C++ format
+            elif language_lower in ["c", "cpp", "c++"]:
+                # Look for test summary patterns
+                # Example: "[  PASSED  ] 25 tests."
+                cpp_match = re.search(r"\[\s*PASSED\s*\]\s*(\d+)\s+tests", test_output)
+                if cpp_match:
+                    passed_cases = int(cpp_match.group(1))
+                    # Try to get total from "[  FAILED  ] X tests."
+                    cpp_failed_match = re.search(r"\[\s*FAILED\s*\]\s*(\d+)\s+tests", test_output)
+                    if cpp_failed_match:
+                        failed_cases = int(cpp_failed_match.group(1))
+                        total_cases = passed_cases + failed_cases
+                    else:
+                        total_cases = passed_cases
+
+        # If we found any test results, return them
+        if total_cases is not None and total_cases > 0:
+            return total_cases, passed_cases
+        elif passed_cases > 0:
+            return passed_cases, passed_cases  # Assume all passed if total not found
+
+        return None, None
+
+    except Exception as e:
+        logger.debug(f"Failed to parse test results from {history_file_path}: {e}")
+        return None, None
+
+
+def get_test_case_counts_from_directory(test_dir):
+    """
+    Extract test case counts from a benchmark test directory.
+    Returns a tuple of (test_cases_total, test_cases_passed) or (None, None) if not found.
+    """
+    test_dir = Path(test_dir)
+
+    # Check for tests.toml file
+    tests_toml_path = test_dir / ".meta" / "tests.toml"
+    if not tests_toml_path.exists():
+        return None, None
+
+    # Parse tests.toml to get total test cases
+    total_cases = 0
+    try:
+        with open(tests_toml_path, "r") as f:
+            content = f.read()
+
+        # Count test entries by looking for UUID patterns in brackets
+        import re
+
+        uuid_pattern = r"\[[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\]"
+        test_entries = re.findall(uuid_pattern, content)
+
+        # Count include = false entries to exclude them
+        include_false = content.count("include = false")
+
+        total_cases = len(test_entries) - include_false
+    except Exception as e:
+        logger.debug(f"Failed to parse tests.toml from {tests_toml_path}: {e}")
+        return None, None
+
+    # Check for .cecli.dev.history.md file to get passed test counts
+    history_file_path = test_dir / ".cecli.dev.history.md"
+    if not history_file_path.exists():
+        return total_cases, None
+
+    # Parse test results from history file
+    total_cases, passed_cases = parse_test_results_from_history(
+        history_file_path, total_cases, test_dir
+    )
+
+    return total_cases, passed_cases
 
 
 if __name__ == "__main__":
