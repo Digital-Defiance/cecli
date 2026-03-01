@@ -46,18 +46,30 @@ def test_hashline_basic():
     lines = result.splitlines()
     assert len(lines) == 3
 
-    # Check each line has the format "line_number|hash|content" (new format)
+    # Check each line has the format "|line_numberhash|content" (correct format)
     for i, line in enumerate(lines, start=1):
         assert "|" in line
+        # Format should be "|{line_num}{hash_fragment}|{content}"
+        # So splitting by "|" should give 3 parts: empty string, line_num+hash, content
         parts = line.split("|", 2)
         assert len(parts) == 3
-        # Check line number matches expected
-        assert parts[0] == str(i)
-        # Check hash is 2 characters
-        hash_part = parts[1]
-        assert len(hash_part) == 2
+        # First part should be empty (leading pipe)
+        assert parts[0] == ""
+        # Second part should be line number + hash fragment
+        line_num_hash = parts[1]
+        # Extract line number (all digits at the beginning)
+        line_num_str = ""
+        for char in line_num_hash:
+            if char.isdigit():
+                line_num_str += char
+            else:
+                break
+        assert line_num_str == str(i)
+        # Check hash fragment is 2 characters
+        hash_fragment = line_num_hash[len(line_num_str) :]
+        assert len(hash_fragment) == 2
         # Check all hash characters are valid base52
-        for char in hash_part:
+        for char in hash_fragment:
             assert char in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
@@ -68,15 +80,19 @@ def test_hashline_with_start_line():
 
     lines = result.splitlines()
     assert len(lines) == 2
-    # Check format is line_number|hash|content (new format)
-    assert "10|" in lines[0]
-    assert "11|" in lines[1]
+    # Check format is |line_numberhash|content (correct format)
+    assert "|10" in lines[0]
+    assert "|11" in lines[1]
     # Extract hash fragments to verify they're valid
+    # Format is |line_numhash|content, so split by "|" gives ["", "line_numhash", "content"]
     hash1 = lines[0].split("|")[1]
     hash2 = lines[1].split("|")[1]
-    assert len(hash1) == 2
-    assert len(hash2) == 2
-    for char in hash1 + hash2:
+    # Remove line number from hash to get just the hash fragment
+    hash_fragment1 = hash1[2:]  # Skip "10"
+    hash_fragment2 = hash2[2:]  # Skip "11"
+    assert len(hash_fragment1) == 2
+    assert len(hash_fragment2) == 2
+    for char in hash_fragment1 + hash_fragment2:
         assert char in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
@@ -92,12 +108,15 @@ def test_hashline_single_line():
     result = hashline(text)
     lines = result.splitlines()
     assert len(lines) == 1
-    # Check format is line_number|hash|content (new format)
-    assert "1|" in lines[0]
+    # Check format is |line_numberhash|content (correct format)
+    assert "|1" in lines[0]
     assert lines[0].endswith("|Single line")
     # Extract hash fragment to verify it's valid
-    hash_part = lines[0].split("|")[1]
-    for char in hash_part:
+    # Format is |line_numhash|content, so split by "|" gives ["", "line_numhash", "content"]
+    line_num_hash = lines[0].split("|")[1]
+    # Remove line number from hash to get just the hash fragment
+    hash_fragment = line_num_hash[1:]  # Skip "1"
+    for char in hash_fragment:
         assert char in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
@@ -117,8 +136,8 @@ def test_hashline_preserves_newlines():
 
 def test_strip_hashline_basic():
     """Test basic strip_hashline functionality."""
-    # Create a hashline-formatted text with correct format: line_number|hash|content
-    text = "1|ab|Hello\n2|cd|World\n3|ef|Test"
+    # Create a hashline-formatted text with correct format: |line_numberhash|content
+    text = "|1ab|Hello\n|2cd|World\n|3ef|Test"
     stripped = strip_hashline(text)
     assert stripped == "Hello\nWorld\nTest"
 
@@ -127,21 +146,21 @@ def test_strip_hashline_with_negative_line_numbers():
     """Test strip_hashline with negative line numbers."""
     # Note: Negative line numbers are no longer supported since line numbers in files are always positive
     # But the regex still handles them if they appear
-    text = "-1|ab|Hello\n0|cd|World\n1|ef|Test"
+    text = "|-1ab|Hello\n|0cd|World\n|1ef|Test"
     stripped = strip_hashline(text)
     assert stripped == "Hello\nWorld\nTest"
 
 
 def test_strip_hashline_mixed_lines():
     """Test strip_hashline with mixed hashline and non-hashline lines."""
-    text = "1|ab|Hello\nPlain line\n3|cd|World"
+    text = "|1ab|Hello\nPlain line\n|3cd|World"
     stripped = strip_hashline(text)
     assert stripped == "Hello\nPlain line\nWorld"
 
 
 def test_strip_hashline_preserves_newlines():
     """Test that strip_hashline preserves newline characters."""
-    text = "1|ab|Line 1\n2|cd|Line 2\n"
+    text = "|1ab|Line 1\n|2cd|Line 2\n"
     stripped = strip_hashline(text)
     assert stripped == "Line 1\nLine 2\n"
 
@@ -184,14 +203,14 @@ def test_hashline_different_inputs():
 
 def test_parse_hashline():
     """Test parse_hashline function."""
-    # Test basic parsing (new format: line_num|hash)
-    hash_fragment, line_num_str, line_num = parse_hashline("10|ab")
+    # Test basic parsing (new format: |line_numhash|)
+    hash_fragment, line_num_str, line_num = parse_hashline("|10ab|")
     assert hash_fragment == "ab"
     assert line_num_str == "10"
     assert line_num == 10
 
     # Test with trailing pipe
-    hash_fragment, line_num_str, line_num = parse_hashline("5|cd|")
+    hash_fragment, line_num_str, line_num = parse_hashline("|5cd|")
     assert hash_fragment == "cd"
     assert line_num_str == "5"
     assert line_num == 5
@@ -217,10 +236,10 @@ def test_parse_hashline():
 def test_normalize_hashline():
     """Test normalize_hashline function."""
     # Test new format (should return unchanged)
-    assert normalize_hashline("10|ab") == "10|ab"
+    assert normalize_hashline("|10ab|") == "|10ab|"
 
     # Test old order with new separator (should normalize to new order)
-    assert normalize_hashline("ab|10") == "10|ab"
+    assert normalize_hashline("ab|10") == "|10ab|"
 
     # Test that colons are no longer supported
     with pytest.raises(HashlineError, match="Invalid hashline format"):
@@ -230,9 +249,9 @@ def test_normalize_hashline():
 def test_find_hashline_by_exact_match():
     """Test find_hashline_by_exact_match function."""
     hashed_lines = [
-        "1|ab|Hello",
-        "2|cd|World",
-        "3|ef|Test",
+        "|1ab|Hello",
+        "|2cd|World",
+        "|3ef|Test",
     ]
 
     # Test exact match found
@@ -251,10 +270,10 @@ def test_find_hashline_by_exact_match():
 def test_find_hashline_by_fragment():
     """Test find_hashline_by_fragment function."""
     hashed_lines = [
-        "1|ab|Hello",
-        "2|cd|World",
-        "3|ab|Test",  # Same hash fragment as line 1
-        "4|ef|Another",
+        "|1ab|Hello",
+        "|2cd|World",
+        "|3ab|Test",  # Same hash fragment as line 1
+        "|4ef|Another",
     ]
 
     # Test fragment found
@@ -277,37 +296,48 @@ def test_find_hashline_range():
     hashed = hashline(original)
     hashed_lines = hashed.splitlines(keepends=True)
 
-    # Get hash fragments for testing (hash is first part before colon)
-    # Get hash fragments for testing (hash is second part in new format)
+    # Get hash fragments for testing
+    # Format is |line_numhash|content, so split by "|" gives ["", "line_numhash", "content"]
+    # The hash fragment is part of the second element
     line1_hash = hashed_lines[0].split("|")[1]
     line3_hash = hashed_lines[2].split("|")[1]
     line5_hash = hashed_lines[4].split("|")[1]
 
     # Test exact match
+    # Extract just the hash fragments (last 2 characters)
+    hash_fragment1 = line1_hash[-2:]  # This gives "vm"
+    hash_fragment3 = line3_hash[-2:]  # This gives "Cx"
     start_idx, end_idx = find_hashline_range(
         hashed_lines,
-        f"1|{line1_hash}",
-        f"3|{line3_hash}",
+        f"|1{hash_fragment1}|",
+        f"|3{hash_fragment3}|",
         allow_exact_match=True,
     )
     assert start_idx == 0
     assert end_idx == 2
 
     # Test fragment match (no exact match)
+    # Extract just the hash fragments (last 2 characters)
+    hash_fragment1 = line1_hash[-2:]  # This gives "vm"
+    hash_fragment3 = line3_hash[-2:]  # This gives "Cx"
     start_idx, end_idx = find_hashline_range(
         hashed_lines,
-        f"99|{line1_hash}",  # Wrong line number
-        f"101|{line3_hash}",  # Wrong line number
+        f"|99{hash_fragment1}|",  # Wrong line number
+        f"|101{hash_fragment3}|",  # Wrong line number
         allow_exact_match=True,
     )
     assert start_idx == 0  # Should find by fragment
     assert end_idx == 2  # Should calculate distance
 
     # Test with allow_exact_match=False
+    # Use parse_hashline to extract hash fragments from the hashline strings
+    # line1_hash is "1vm" (line number + hash fragment), we need to parse it
+    hash_fragment1, line_num_str1, line_num1 = parse_hashline(f"|{line1_hash}|")
+    hash_fragment5, line_num_str5, line_num5 = parse_hashline(f"|{line5_hash}|")
     start_idx, end_idx = find_hashline_range(
         hashed_lines,
-        f"1|{line1_hash}",
-        f"5|{line5_hash}",
+        f"|1{hash_fragment1}|",
+        f"|5{hash_fragment5}|",
         allow_exact_match=False,
     )
     assert start_idx == 0
@@ -315,7 +345,23 @@ def test_find_hashline_range():
 
     # Test error cases
     with pytest.raises(HashlineError, match="Start line hash fragment 'zz' not found in file"):
-        find_hashline_range(hashed_lines, "1|zz", "3|zz")
+        find_hashline_range(hashed_lines, "|1zz|", "|3zz|")
+    # Test with allow_exact_match=False
+    # Extract just the hash fragments (last 2 characters)
+    hash_fragment1 = line1_hash[-2:]  # This gives "vm"
+    hash_fragment5 = line5_hash[-2:]  # This gives "BG"
+    start_idx, end_idx = find_hashline_range(
+        hashed_lines,
+        f"|1{hash_fragment1}|",
+        f"|5{hash_fragment5}|",
+        allow_exact_match=False,
+    )
+    assert start_idx == 0
+    assert end_idx == 4
+
+    # Test error cases
+    with pytest.raises(HashlineError, match="Start line hash fragment 'zz' not found in file"):
+        find_hashline_range(hashed_lines, "|1zz|", "|3zz|")
 
 
 def test_apply_hashline_operation_insert():
@@ -323,14 +369,18 @@ def test_apply_hashline_operation_insert():
     original = "Line 1\nLine 2\nLine 3"
     hashed = hashline(original)
 
-    # Get hash fragment for line 2 (hash is second part in new format)
+    # Get hash fragment for line 2
+    # Format is |line_numhash|content, so split by "|" gives ["", "line_numhash", "content"]
     hashed_lines = hashed.splitlines()
-    line2_hash = hashed_lines[1].split("|")[1]
+    line2_hash = hashed_lines[1].split("|")[1]  # This gives "2Fy" (line number + hash fragment)
+    # Extract just the hash fragment (last 2 characters)
+    hash_fragment = line2_hash[-2:]  # This gives "Fy"
 
     # Insert after line 2
+    # Construct hashline string in correct format: |line_numhash_fragment|
     new_content = apply_hashline_operation(
         original,
-        f"2|{line2_hash}",
+        f"|2{hash_fragment}|",
         operation="insert",
         text="Inserted line",
     )
@@ -344,16 +394,21 @@ def test_apply_hashline_operation_delete():
     original = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
     hashed = hashline(original)
 
-    # Get hash fragments (hash is second part in new format)
+    # Get hash fragments
+    # Format is |line_numhash|content, so split by "|" gives ["", "line_numhash", "content"]
     hashed_lines = hashed.splitlines()
-    line2_hash = hashed_lines[1].split("|")[1]
-    line4_hash = hashed_lines[3].split("|")[1]
+    line2_hash = hashed_lines[1].split("|")[1]  # This gives "2Fy" (line number + hash fragment)
+    line4_hash = hashed_lines[3].split("|")[1]  # This gives "4Xj" (line number + hash fragment)
+    # Extract just the hash fragments (last 2 characters)
+    hash_fragment2 = line2_hash[-2:]  # This gives "Fy"
+    hash_fragment4 = line4_hash[-2:]  # This gives "Xj"
 
     # Delete lines 2-4
+    # Construct hashline strings in correct format: |line_numhash_fragment|
     new_content = apply_hashline_operation(
         original,
-        f"2|{line2_hash}",
-        f"4|{line4_hash}",
+        f"|2{hash_fragment2}|",
+        f"|4{hash_fragment4}|",
         operation="delete",
     )
 
@@ -366,16 +421,21 @@ def test_extract_hashline_range():
     original = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
     hashed = hashline(original)
 
-    # Get hash fragments (hash is second part in new format)
+    # Get hash fragments
+    # Format is |line_numhash|content, so split by "|" gives ["", "line_numhash", "content"]
     hashed_lines = hashed.splitlines()
-    line2_hash = hashed_lines[1].split("|")[1]
-    line4_hash = hashed_lines[3].split("|")[1]
+    line2_hash = hashed_lines[1].split("|")[1]  # This gives "2Fy" (line number + hash fragment)
+    line4_hash = hashed_lines[3].split("|")[1]  # This gives "4Xj" (line number + hash fragment)
+    # Extract just the hash fragments (last 2 characters)
+    hash_fragment2 = line2_hash[-2:]  # This gives "Fy"
+    hash_fragment4 = line4_hash[-2:]  # This gives "Xj"
 
     # Extract lines 2-4
+    # Construct hashline strings in correct format: |line_numhash_fragment|
     extracted = extract_hashline_range(
         original,
-        f"2|{line2_hash}",
-        f"4|{line4_hash}",
+        f"|2{hash_fragment2}|",
+        f"|4{hash_fragment4}|",
     )
 
     # Extract should return hashed content
@@ -388,16 +448,21 @@ def test_get_hashline_diff():
     original = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
     hashed = hashline(original)
 
-    # Get hash fragments (hash is second part in new format)
+    # Get hash fragments
+    # Format is |line_numhash|content, so split by "|" gives ["", "line_numhash", "content"]
     hashed_lines = hashed.splitlines()
-    line2_hash = hashed_lines[1].split("|")[1]
-    line4_hash = hashed_lines[3].split("|")[1]
+    line2_hash = hashed_lines[1].split("|")[1]  # This gives "2Fy" (line number + hash fragment)
+    line4_hash = hashed_lines[3].split("|")[1]  # This gives "4Xj" (line number + hash fragment)
+    # Extract just the hash fragments (last 2 characters)
+    hash_fragment2 = line2_hash[-2:]  # This gives "Fy"
+    hash_fragment4 = line4_hash[-2:]  # This gives "Xj"
 
     # Get diff for replace operation
+    # Construct hashline strings in correct format: |line_numhash_fragment|
     diff = get_hashline_diff(
         original,
-        f"2|{line2_hash}",
-        f"4|{line4_hash}",
+        f"|2{hash_fragment2}|",
+        f"|4{hash_fragment4}|",
         operation="replace",
         text="New line 2\nNew line 3\nNew line 4",
     )
@@ -444,19 +509,31 @@ def test_apply_hashline_operations_complex_sequence():
     ops = [
         {
             "operation": "replace",
-            "start_line_hash": f"2|{h2}",
-            "end_line_hash": f"2|{h2}",
+            "start_line_hash": f"|2{parse_hashline(f'|{h2}|')[0]}|",
+            "end_line_hash": f"|2{parse_hashline(f'|{h2}|')[0]}|",
             "text": "New Line 2",
         },
-        {"operation": "insert", "start_line_hash": f"5|{h5}", "text": "Inserted after 5"},
-        {"operation": "delete", "start_line_hash": f"10|{h10}", "end_line_hash": f"10|{h10}"},
+        {
+            "operation": "insert",
+            "start_line_hash": f"|5{parse_hashline(f'|{h5}|')[0]}|",
+            "text": "Inserted after 5",
+        },
+        {
+            "operation": "delete",
+            "start_line_hash": f"|10{parse_hashline(f'|{h10}|')[0]}|",
+            "end_line_hash": f"|10{parse_hashline(f'|{h10}|')[0]}|",
+        },
         {
             "operation": "replace",
-            "start_line_hash": f"15|{h15}",
-            "end_line_hash": f"15|{h15}",
+            "start_line_hash": f"|15{parse_hashline(f'|{h15}|')[0]}|",
+            "end_line_hash": f"|15{parse_hashline(f'|{h15}|')[0]}|",
             "text": "New Line 15",
         },
-        {"operation": "insert", "start_line_hash": f"20|{h20}", "text": "Inserted after 20"},
+        {
+            "operation": "insert",
+            "start_line_hash": f"|20{parse_hashline(f'|{h20}|')[0]}|",
+            "text": "Inserted after 20",
+        },
     ]
 
     print(f"Operations: {ops}")
@@ -497,14 +574,14 @@ def test_apply_hashline_operations_overlapping():
     ops = [
         {
             "operation": "replace",
-            "start_line_hash": f"5|{h5}",
-            "end_line_hash": f"15|{h15}",
+            "start_line_hash": f"|5{parse_hashline(f'|{h5}|')[0]}|",
+            "end_line_hash": f"|15{parse_hashline(f'|{h15}|')[0]}|",
             "text": "Big Replace",
         },
         {
             "operation": "replace",
-            "start_line_hash": f"10|{h10}",
-            "end_line_hash": f"10|{h10}",
+            "start_line_hash": f"|10{parse_hashline(f'|{h10}|')[0]}|",
+            "end_line_hash": f"|10{parse_hashline(f'|{h10}|')[0]}|",
             "text": "Small Replace",
         },
     ]
@@ -545,14 +622,14 @@ def test_apply_hashline_operations_duplicate_hashes():
     ops = [
         {
             "operation": "replace",
-            "start_line_hash": f"4|{h_val_2}",
-            "end_line_hash": f"4|{h_val_2}",
+            "start_line_hash": f"|4{parse_hashline(f'|{h_val_2}|')[0]}|",
+            "end_line_hash": f"|4{parse_hashline(f'|{h_val_2}|')[0]}|",
             "text": "Changed 2",
         },
         {
             "operation": "replace",
-            "start_line_hash": f"10|{h_val_4}",
-            "end_line_hash": f"10|{h_val_4}",
+            "start_line_hash": f"|10{parse_hashline(f'|{h_val_4}|')[0]}|",
+            "end_line_hash": f"|10{parse_hashline(f'|{h_val_4}|')[0]}|",
             "text": "Changed 4",
         },
     ]
@@ -591,19 +668,19 @@ def test_apply_hashline_operations_empty_lines_duplicates():
     ops = [
         {
             "operation": "replace",
-            "start_line_hash": f"2|{empty_hash}",
-            "end_line_hash": f"2|{empty_hash}",
+            "start_line_hash": f"|2{parse_hashline(f'|{empty_hash}|')[0]}|",
+            "end_line_hash": f"|2{parse_hashline(f'|{empty_hash}|')[0]}|",
             "text": "# Comment 1",
         },
         {
             "operation": "replace",
-            "start_line_hash": f"6|{empty_hash}",
-            "end_line_hash": f"6|{empty_hash}",
+            "start_line_hash": f"|6{parse_hashline(f'|{empty_hash}|')[0]}|",
+            "end_line_hash": f"|6{parse_hashline(f'|{empty_hash}|')[0]}|",
             "text": "# Comment 2",
         },
         {
             "operation": "insert",
-            "start_line_hash": f"8|{empty_hash}",
+            "start_line_hash": f"|8{parse_hashline(f'|{empty_hash}|')[0]}|",
             "text": "# Inserted after empty line 8",
         },
     ]
@@ -663,20 +740,20 @@ def test_apply_hashline_operations_multiline_non_contiguous():
     ops = [
         {
             "operation": "replace",
-            "start_line_hash": f"5|{get_h(5)}",
-            "end_line_hash": f"8|{get_h(8)}",
+            "start_line_hash": f"|5{parse_hashline(f'|{get_h(5)}|')[0]}|",
+            "end_line_hash": f"|8{parse_hashline(f'|{get_h(8)}|')[0]}|",
             "text": "Replacement Alpha",
         },
         {
             "operation": "replace",
-            "start_line_hash": f"16|{get_h(16)}",
-            "end_line_hash": f"22|{get_h(22)}",
+            "start_line_hash": f"|16{parse_hashline(f'|{get_h(16)}|')[0]}|",
+            "end_line_hash": f"|22{parse_hashline(f'|{get_h(22)}|')[0]}|",
             "text": "Replacement Beta\nMore Beta",
         },
         {
             "operation": "replace",
-            "start_line_hash": f"35|{get_h(35)}",
-            "end_line_hash": f"42|{get_h(42)}",
+            "start_line_hash": f"|35{parse_hashline(f'|{get_h(35)}|')[0]}|",
+            "end_line_hash": f"|42{parse_hashline(f'|{get_h(42)}|')[0]}|",
             "text": "Replacement Gamma",
         },
     ]
@@ -724,8 +801,16 @@ def test_apply_hashline_operations_multiline_non_contiguous():
     h_last = h_lines[2].split("|")[1]
 
     ops = [
-        {"operation": "insert", "start_line_hash": f"1|{h_first}", "text": "Before First"},
-        {"operation": "insert", "start_line_hash": f"3|{h_last}", "text": "After Last"},
+        {
+            "operation": "insert",
+            "start_line_hash": f"|1{parse_hashline(f'|{h_first}|')[0]}|",
+            "text": "Before First",
+        },
+        {
+            "operation": "insert",
+            "start_line_hash": f"|3{parse_hashline(f'|{h_last}|')[0]}|",
+            "text": "After Last",
+        },
     ]
 
     modified, success, failed = apply_hashline_operations(original, ops)
@@ -750,14 +835,14 @@ def test_apply_hashline_operations_mixed_success():
     ops = [
         {
             "operation": "replace",
-            "start_line_hash": f"1|{h1}",
-            "end_line_hash": f"1|{h1}",
+            "start_line_hash": f"|1{parse_hashline(f'|{h1}|')[0]}|",
+            "end_line_hash": f"|1{parse_hashline(f'|{h1}|')[0]}|",
             "text": "New 1",
         },
         {
             "operation": "replace",
-            "start_line_hash": "99|zz",
-            "end_line_hash": "99|zz",
+            "start_line_hash": "|99zz|",
+            "end_line_hash": "|99zz|",
             "text": "Fail",
         },
     ]
@@ -875,8 +960,12 @@ I"""
 
     operations = [
         {
-            "start_line_hash": f"7|{line_7_hash}",  # Line 7 (1-indexed) - D
-            "end_line_hash": f"10|{line_10_hash}",  # Line 10 (1-indexed) - F
+            "start_line_hash": (
+                f"|7{parse_hashline(f'|{line_7_hash}|')[0]}|"
+            ),  # Line 7 (1-indexed) - D
+            "end_line_hash": (
+                f"|10{parse_hashline(f'|{line_10_hash}|')[0]}|"
+            ),  # Line 10 (1-indexed) - F
             "operation": "replace",
             "text": replacement_text,
         }
