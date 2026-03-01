@@ -67,8 +67,8 @@ class HashLineCoder(Coder):
                     # Validate operation
                     if operation in ["replace", "insert", "delete"]:
                         # Validate hashline format
-                        if (isinstance(start_hash, str) and "|" in start_hash) and (
-                            operation == "insert" or (isinstance(end_hash, str) and "|" in end_hash)
+                        if isinstance(start_hash, str) and (
+                            operation == "insert" or isinstance(end_hash, str)
                         ):
                             if path not in hashline_edits_by_file:
                                 hashline_edits_by_file[path] = []
@@ -223,9 +223,9 @@ The CONTENTS lines are already in {path}!
 
 """
         res += (
-            "The search section must be a valid JSON array in the format:\n"
+            "The LOCATE section must be a valid JSON array in the format:\n"
             '["{start hashline}", "{end hashline}", "{operation}"]\n'
-            "Hashline prefixes must have the structure `{line_num}|{hash_fragment}` (e.g., `20|Bv`)"
+            "Hashline prefixes must have the structure `{line_num}{hash_fragment}` (e.g., `20Bv`)"
             " and match one found directly in the file"
         )
         if passed:
@@ -655,13 +655,12 @@ def find_original_update_blocks(content, fence=DEFAULT_FENCE, valid_fnames=None)
                     if isinstance(parsed, list) and len(parsed) == 3:
                         # Validate the format: all strings
                         if all(isinstance(item, str) for item in parsed):
-                            # Check if first two items look like hashline format (e.g., "1|ab")
-                            if all("|" in item for item in parsed[:2]):
-                                # Check if operation is valid
-                                if parsed[2] in ["replace", "insert", "delete"]:
-                                    # This is a hashline JSON block
-                                    yield filename, parsed, updated_text_str
-                                    continue
+                            # Check if first two items look like hashline format (e.g., "1ab")
+
+                            if parsed[2] in ["replace", "insert", "delete"]:
+                                # This is a hashline JSON block
+                                yield filename, parsed, updated_text_str
+                                continue
                 except (json.JSONDecodeError, ValueError):
                     # Not a valid JSON, treat as regular edit block
                     pass
