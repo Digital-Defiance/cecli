@@ -529,6 +529,7 @@ class AgentCoder(Coder):
 
         ConversationChunks.add_readonly_files_messages(self)
         ConversationChunks.add_chat_files_messages(self)
+        ConversationChunks.add_file_context_messages(self)
 
         # Add post-message context blocks (priority 250 - between CUR and REMINDER)
         ConversationChunks.add_post_message_context_blocks(self)

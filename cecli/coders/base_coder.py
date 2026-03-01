@@ -1837,8 +1837,10 @@ class Coder:
             self.io.tool_output("...chat history compacted.")
             self.io.update_spinner(self.io.last_spinner_text)
 
-            # Clear all diff messages
+            # Clear all diff and file context messages
             ConversationManager.clear_tag(MessageTag.DIFFS)
+            ConversationManager.clear_tag(MessageTag.FILE_CONTEXTS)
+
             # Reset ConversationFiles cache entirely
             from cecli.helpers.conversation.files import ConversationFiles
 

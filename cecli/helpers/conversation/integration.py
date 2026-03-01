@@ -123,6 +123,7 @@ class ConversationChunks:
         if should_clear:
             # Clear all diff messages
             ConversationManager.clear_tag(MessageTag.DIFFS)
+            ConversationManager.clear_tag(MessageTag.FILE_CONTEXTS)
             # Clear ConversationFiles caches to force regeneration
             ConversationFiles.clear_file_cache()
 
@@ -606,6 +607,52 @@ class ConversationChunks:
                     )
 
         return result
+
+    @classmethod
+    def add_file_context_messages(cls, coder) -> None:
+        """
+        Create and insert FILE_CONTEXTS messages based on cached contexts.
+
+        Args:
+            coder: The coder instance
+        """
+        # Get numbered contexts
+        numbered_contexts = ConversationFiles._get_numbered_contexts()
+
+        for file_path, ranges in numbered_contexts.items():
+            if not ranges:
+                continue
+
+            # Generate context content
+            context_content = ConversationFiles.get_file_context(file_path)
+            if not context_content:
+                continue
+
+            # Get relative file name
+            rel_fname = coder.get_rel_fname(file_path)
+
+            user_msg = {
+                "role": "user",
+                "content": f"Numbered Context For:\n{rel_fname}\n\n{context_content}",
+            }
+
+            assistant_msg = {
+                "role": "assistant",
+                "content": "I understand, thank you for sharing the file contents.",
+            }
+
+            # Add to conversation manager
+            ConversationManager.add_message(
+                message_dict=user_msg,
+                tag=MessageTag.FILE_CONTEXTS,
+                hash_key=("file_context_user", file_path),
+            )
+
+            ConversationManager.add_message(
+                message_dict=assistant_msg,
+                tag=MessageTag.FILE_CONTEXTS,
+                hash_key=("file_context_assistant", file_path),
+            )
 
     @classmethod
     def add_assistant_reply(cls, coder, partial_response_chunks) -> None:

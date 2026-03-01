@@ -21,6 +21,7 @@ class UndoCommand(BaseCommand):
             )
 
             ConversationManager.clear_tag(MessageTag.DIFFS)
+            ConversationManager.clear_tag(MessageTag.FILE_CONTEXTS)
             ConversationFiles.reset()
 
             return await cls._raw_cmd_undo(io, coder, args)

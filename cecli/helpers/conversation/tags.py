@@ -18,6 +18,7 @@ class MessageTag(str, Enum):
     CHAT_FILES = "chat_files"
     EDIT_FILES = "edit_files"
     DIFFS = "diffs"
+    FILE_CONTEXTS = "file_contexts"
     CUR = "cur"
     DONE = "done"
     REMINDER = "reminder"
@@ -34,6 +35,7 @@ DEFAULT_TAG_PRIORITY: Dict[MessageTag, int] = {
     MessageTag.CHAT_FILES: 200,
     MessageTag.EDIT_FILES: 200,
     MessageTag.DIFFS: 200,
+    MessageTag.FILE_CONTEXTS: 200,
     MessageTag.DONE: 200,
     MessageTag.CUR: 200,
     MessageTag.REMINDER: 300,
@@ -51,6 +53,7 @@ DEFAULT_TAG_TIMESTAMP_OFFSET: Dict[MessageTag, int] = {
     MessageTag.CHAT_FILES: 0,
     MessageTag.EDIT_FILES: 0,
     MessageTag.DIFFS: 0,
+    MessageTag.FILE_CONTEXTS: 0,
     MessageTag.DONE: 0,
     MessageTag.CUR: 0,
     MessageTag.REMINDER: 0,

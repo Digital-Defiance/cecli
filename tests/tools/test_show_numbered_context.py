@@ -4,7 +4,6 @@ from unittest.mock import Mock
 
 import pytest
 
-from cecli.helpers.hashline import hashline
 from cecli.tools import show_numbered_context
 
 
@@ -60,23 +59,13 @@ def test_pattern_with_zero_line_number_is_allowed(coder_with_file):
         ],
     )
 
-    assert "beta" in result
-    assert "line 2" in result or "2 | beta" in result
+    # show_numbered_context now returns a static success message
+    assert "Successfully retrieved context" in result
     coder.io.tool_error.assert_not_called()
 
 
 def test_empty_pattern_uses_line_number(coder_with_file):
     coder, file_path = coder_with_file
-
-    # Calculate expected hashline for line 2
-    content = file_path.read_text()
-    hashed_content = hashline(content)
-    # Extract hashline for line 2
-    lines = hashed_content.splitlines()
-    line2_hashline = lines[1]  # Index 1 is line 2 (0-indexed)
-    # hashline format is "{hash_fragment}:{line_num}|{line_content}"
-    # We need the full hashline (e.g., "BP:2|beta")
-    expected_hashline = line2_hashline
 
     result = show_numbered_context.Tool.execute(
         coder,
@@ -90,7 +79,8 @@ def test_empty_pattern_uses_line_number(coder_with_file):
         ],
     )
 
-    assert expected_hashline in result
+    # show_numbered_context now returns a static success message
+    assert "Successfully retrieved context" in result
     coder.io.tool_error.assert_not_called()
 
 
