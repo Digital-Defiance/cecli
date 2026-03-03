@@ -26,6 +26,7 @@ from cecli.helpers.similarity import (
     normalize_vector,
 )
 from cecli.helpers.skills import SkillsManager
+from cecli.hooks import HookIntegration
 from cecli.llm import litellm
 from cecli.mcp import LocalServer, McpServerManager
 from cecli.tools.utils.registry import ToolRegistry
@@ -241,6 +242,17 @@ class AgentCoder(Coder):
             try:
                 args_string = tool_call.function.arguments.strip()
                 parsed_args_list = []
+
+                if not await HookIntegration.call_pre_tool_hooks(self, tool_name, args_string):
+                    tool_responses.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": "Tool Request Aborted.",
+                        }
+                    )
+                    continue
+
                 if args_string:
                     json_chunks = utils.split_concatenated_json(args_string)
                     for chunk in json_chunks:
@@ -293,6 +305,19 @@ class AgentCoder(Coder):
                 if tasks:
                     task_results = await asyncio.gather(*tasks)
                     all_results_content.extend(str(res) for res in task_results)
+
+                if not await HookIntegration.call_post_tool_hooks(
+                    self, tool_name, args_string, "\n\n".join(all_results_content)
+                ):
+                    tool_responses.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": "Tool Response Redacted.",
+                        }
+                    )
+                    continue
+
                 result_message = "\n\n".join(all_results_content)
             except Exception as e:
                 result_message = f"Error executing {tool_name}: {e}"

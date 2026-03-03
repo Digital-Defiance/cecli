@@ -21,6 +21,7 @@ LLMs are a part of our lives from here on out so join us in learning about and c
 * [TUI Configuration](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/tui.md)
 * [Skills](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/skills.md)
 * [Session Management](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/sessions.md)
+* [Hooks](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/hooks.md)
 * [Custom Commands](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/custom-commands.md)
 * [Custom System Prompts](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/custom-system-prompts.md)
 * [Custom Tools](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/agent-mode.md#creating-custom-tools)

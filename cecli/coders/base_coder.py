@@ -48,6 +48,7 @@ from cecli.helpers.conversation import (
 )
 from cecli.helpers.profiler import TokenProfiler
 from cecli.history import ChatSummary
+from cecli.hooks import HookIntegration
 from cecli.io import ConfirmGroup, InputOutput
 from cecli.linter import Linter
 from cecli.llm import litellm
@@ -1590,6 +1591,10 @@ class Coder:
     async def run_one(self, user_message, preproc):
         self.init_before_message()
 
+        if not await HookIntegration.call_start_hooks(self):
+            self.io.tool_warning("Execution stopped by start hook")
+            return
+
         if preproc:
             message = await self.preproc_user_input(user_message)
         else:
@@ -1636,6 +1641,10 @@ class Coder:
                 break
 
             await self.auto_save_session(force=True)
+
+        if not await HookIntegration.call_end_hooks(self):
+            self.io.tool_warning("Execution stopped by end hook")
+            return
 
     def _is_url_allowed(self, url):
         allowed_domains = self.security_config.get("allowed-domains")
@@ -2274,7 +2283,7 @@ class Coder:
 
         self.io.tool_output()
         self.show_usage_report()
-        self.add_assistant_reply_to_cur_messages()
+        await self.add_assistant_reply_to_cur_messages()
 
         if exhausted:
             cur_messages = ConversationManager.get_messages_dict(MessageTag.CUR)
@@ -2596,6 +2605,13 @@ class Coder:
                             new_tool_call = copy_tool_call(tool_call)
                             new_tool_call.function.arguments = json.dumps(args)
 
+                            if not await HookIntegration.call_pre_tool_hooks(
+                                self, new_tool_call.function.name, args
+                            ):
+                                self.io.tool_warning("Tool call skipped by pre-tool call hook")
+                                all_results_content.append("Tool Request Aborted.")
+                                continue
+
                             call_result = await experimental_mcp_client.call_openai_tool(
                                 session=session,
                                 openai_tool=new_tool_call,
@@ -2628,6 +2644,16 @@ class Coder:
                                         content_parts.append(item.text)
 
                             result_text = "".join(content_parts)
+
+                            if not await HookIntegration.call_post_tool_hooks(
+                                self, new_tool_call.function.name, args, result_text
+                            ):
+                                self.io.tool_warning(
+                                    "Tool call output skipped by post-tool call hook"
+                                )
+                                all_results_content.append("Tool Response Redacted.")
+                                continue
+
                             all_results_content.append(result_text)
 
                         tool_responses.append(
@@ -2803,7 +2829,7 @@ class Coder:
         """Cleanup when the Coder object is destroyed."""
         self.ok_to_warm_cache = False
 
-    def add_assistant_reply_to_cur_messages(self):
+    async def add_assistant_reply_to_cur_messages(self):
         """
         Add the assistant's reply to `cur_messages`.
         Handles model-specific quirks, like Deepseek which requires `content`
@@ -2845,6 +2871,10 @@ class Coder:
             or msg.get("tool_calls", None)
             or msg.get("function_call", None)
         ):
+            if not await HookIntegration.call_end_message_hooks(self, str(msg)):
+                self.io.tool_warning("Execution stopped by end message hook")
+                return
+
             ConversationManager.add_message(
                 message_dict=msg,
                 tag=MessageTag.CUR,
@@ -2972,7 +3002,7 @@ class Coder:
                 async for chunk in self.show_send_output_stream(completion):
                     yield chunk
             else:
-                self.show_send_output(completion)
+                await self.show_send_output(completion)
 
             response, func_err, content_err = self.consolidate_chunks()
 
@@ -3002,7 +3032,7 @@ class Coder:
                 if args:
                     self.io.ai_output(json.dumps(args, indent=4))
 
-    def show_send_output(self, completion):
+    async def show_send_output(self, completion):
         if self.verbose:
             print(completion)
 
@@ -3017,6 +3047,10 @@ class Coder:
         self.partial_response_chunks.append(completion)
 
         response, func_err, content_err = self.consolidate_chunks()
+
+        if not await HookIntegration.call_on_message_hooks(self, self.partial_response_content):
+            self.io.tool_warning("Execution stopped by on message hook")
+            return
 
         resp_hash = dict(
             function_call=str(self.partial_response_function_call),
@@ -3182,6 +3216,10 @@ class Coder:
 
         # The Part Doing the Heavy Lifting Now
         self.consolidate_chunks()
+
+        if not await HookIntegration.call_on_message_hooks(self, self.partial_response_content):
+            self.io.tool_warning("Execution stopped by on message hook")
+            return
 
         if not received_content and len(self.partial_response_tool_calls) == 0:
             self.io.tool_warning("Empty response received from LLM. Check your provider account?")

@@ -146,7 +146,7 @@ class CopyPasteCoder(Coder):
         try:
             hash_object, completion = self.copy_paste_completion(messages, model)
             self.chat_completion_call_hashes.append(hash_object.hexdigest())
-            self.show_send_output(completion)
+            await self.show_send_output(completion)
             self.calculate_and_show_tokens_and_cost(messages, completion)
         finally:
             self.preprocess_response()

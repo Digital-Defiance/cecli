@@ -30,9 +30,11 @@ from .git import GitCommand
 from .hashline import HashlineCommand
 from .help import HelpCommand
 from .history_search import HistorySearchCommand
+from .hooks import HooksCommand
 from .lint import LintCommand
 from .list_sessions import ListSessionsCommand
 from .load import LoadCommand
+from .load_hook import LoadHookCommand
 from .load_mcp import LoadMcpCommand
 from .load_session import LoadSessionCommand
 from .load_skill import LoadSkillCommand
@@ -47,6 +49,7 @@ from .quit import QuitCommand
 from .read_only import ReadOnlyCommand
 from .read_only_stub import ReadOnlyStubCommand
 from .reasoning_effort import ReasoningEffortCommand
+from .remove_hook import RemoveHookCommand
 from .remove_mcp import RemoveMcpCommand
 from .remove_skill import RemoveSkillCommand
 from .report import ReportCommand
@@ -102,9 +105,11 @@ CommandRegistry.register(GitCommand)
 CommandRegistry.register(HashlineCommand)
 CommandRegistry.register(HelpCommand)
 CommandRegistry.register(HistorySearchCommand)
+CommandRegistry.register(HooksCommand)
 CommandRegistry.register(LintCommand)
 CommandRegistry.register(ListSessionsCommand)
 CommandRegistry.register(LoadCommand)
+CommandRegistry.register(LoadHookCommand)
 CommandRegistry.register(LoadMcpCommand)
 CommandRegistry.register(LoadSessionCommand)
 CommandRegistry.register(LoadSkillCommand)
@@ -119,6 +124,7 @@ CommandRegistry.register(QuitCommand)
 CommandRegistry.register(ReadOnlyCommand)
 CommandRegistry.register(ReadOnlyStubCommand)
 CommandRegistry.register(ReasoningEffortCommand)
+CommandRegistry.register(RemoveHookCommand)
 CommandRegistry.register(RemoveMcpCommand)
 CommandRegistry.register(RemoveSkillCommand)
 CommandRegistry.register(ReportCommand)
@@ -171,9 +177,11 @@ __all__ = [
     "HashlineCommand",
     "HelpCommand",
     "HistorySearchCommand",
+    "HookCommand",
     "LintCommand",
     "ListSessionsCommand",
     "LoadCommand",
+    "LoadHookCommand",
     "LoadMcpCommand",
     "LoadSessionCommand",
     "LoadSkillCommand",
@@ -190,6 +198,7 @@ __all__ = [
     "ReadOnlyCommand",
     "ReadOnlyStubCommand",
     "ReasoningEffortCommand",
+    "RemoveHookCommand",
     "RemoveMcpCommand",
     "RemoveSkillCommand",
     "ReportCommand",

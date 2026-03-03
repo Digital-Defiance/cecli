@@ -192,10 +192,16 @@ def normalize_hashline(hashline_str: str) -> str:
     # Try to extract old format with content: {hash_fragment}|{line_num}|...
     # We need a regex that matches the old format with optional content after
     # Pattern: {hash_fragment}|{line_num}|... where hash_fragment is 2 letters, line_num is integer
-    old_format_with_content_re = re.compile(r"^([a-zA-Z]{2})\|(-?\d+)\|")
+    old_format_with_content_re = re.compile(r"^([a-zA-Z]{2})\|(-?\d+)\|?")
     match4 = old_format_with_content_re.match(hashline_str)
     if match4:
         hash_fragment, line_num_str = match4.groups()
+        return f"|{line_num_str}{hash_fragment}|"
+
+    old_format_with_content_re = re.compile(r"^(-?\d+)\|([a-zA-Z]{2})\|?")
+    match5 = old_format_with_content_re.match(hashline_str)
+    if match5:
+        line_num_str, hash_fragment = match5.groups()
         return f"|{line_num_str}{hash_fragment}|"
 
     # If neither pattern matches, raise error
