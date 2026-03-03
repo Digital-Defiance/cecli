@@ -49,7 +49,7 @@ class WholeFileFunctionCoder(Coder):
 
         super().__init__(*args, **kwargs)
 
-    def add_assistant_reply_to_cur_messages(self, edited):
+    async def add_assistant_reply_to_cur_messages(self, edited):
         if edited:
             # Always add to conversation manager
             ConversationManager.add_message(

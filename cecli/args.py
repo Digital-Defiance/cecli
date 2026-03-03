@@ -311,6 +311,12 @@ def get_parser(default_config_files, git_root):
         default=None,
     )
     group.add_argument(
+        "--hooks",
+        metavar="HOOKS_CONFIG_JSON",
+        help="Specify hooks configuration as a JSON string",
+        default=None,
+    )
+    group.add_argument(
         "--agent-model",
         metavar="AGENT_MODEL",
         default=None,

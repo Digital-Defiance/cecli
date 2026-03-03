@@ -13,6 +13,17 @@ class UndoCommand(BaseCommand):
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
         try:
+            # Clear chat history using ConversationManager
+            from cecli.helpers.conversation import (
+                ConversationFiles,
+                ConversationManager,
+                MessageTag,
+            )
+
+            ConversationManager.clear_tag(MessageTag.DIFFS)
+            ConversationManager.clear_tag(MessageTag.FILE_CONTEXTS)
+            ConversationFiles.reset()
+
             return await cls._raw_cmd_undo(io, coder, args)
         except ANY_GIT_ERROR as err:
             io.tool_error(f"Unable to complete undo: {err}")

@@ -41,7 +41,7 @@ class AddCommand(BaseCommand):
             else:
                 fname = Path(coder.root) / word
 
-            if coder.repo and coder.repo.ignored_file(fname):
+            if coder.repo and coder.repo.ignored_file(fname) and not coder.add_gitignore_files:
                 io.tool_warning(f"Skipping {fname} due to cecli.ignore or --subtree-only.")
                 continue
 

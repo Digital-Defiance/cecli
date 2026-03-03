@@ -50,6 +50,7 @@ from cecli.helpers.conversation import (
 from cecli.helpers.copypaste import ClipboardWatcher
 from cecli.helpers.file_searcher import generate_search_path_list
 from cecli.history import ChatSummary
+from cecli.hooks import HookRegistry
 from cecli.io import InputOutput
 from cecli.llm import litellm
 from cecli.mcp import McpServerManager, load_mcp_servers
@@ -555,6 +556,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     set_args_error_data(args)
     if len(unknown):
         print("Unknown Args: ", unknown)
+
     if hasattr(args, "agent_config") and args.agent_config is not None:
         args.agent_config = convert_yaml_to_json_string(args.agent_config)
     if hasattr(args, "tui_config") and args.tui_config is not None:
@@ -567,6 +569,9 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         args.security_config = convert_yaml_to_json_string(args.security_config)
     if hasattr(args, "retries") and args.retries is not None:
         args.retries = convert_yaml_to_json_string(args.retries)
+    if hasattr(args, "hooks") and args.hooks is not None:
+        args.hooks = convert_yaml_to_json_string(args.hooks)
+
     if args.debug:
         global log_file
         os.makedirs(".cecli/logs/", exist_ok=True)
@@ -1031,6 +1036,16 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             args.mcp_servers, args.mcp_servers_file, io, args.verbose, args.mcp_transport
         )
         mcp_manager = await McpServerManager.from_servers(mcp_servers, io, args.verbose)
+        # Load hooks if specified
+        if args.hooks:
+            hook_registry = HookRegistry()
+            loaded_hooks = hook_registry.load_hooks_from_json(args.hooks)
+
+            if args.verbose and loaded_hooks:
+                io.tool_output(
+                    f"Loaded {len(loaded_hooks)} hooks from --hooks config:"
+                    f" {', '.join(loaded_hooks)}"
+                )
 
         coder = await Coder.create(
             main_model=main_model,

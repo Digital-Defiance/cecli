@@ -67,8 +67,8 @@ class HashLineCoder(Coder):
                     # Validate operation
                     if operation in ["replace", "insert", "delete"]:
                         # Validate hashline format
-                        if (isinstance(start_hash, str) and "|" in start_hash) and (
-                            operation == "insert" or (isinstance(end_hash, str) and "|" in end_hash)
+                        if isinstance(start_hash, str) and (
+                            operation == "insert" or isinstance(end_hash, str)
                         ):
                             if path not in hashline_edits_by_file:
                                 hashline_edits_by_file[path] = []
@@ -116,36 +116,35 @@ class HashLineCoder(Coder):
             full_path = self.abs_root_path(path)
             new_content = None
 
-            if Path(full_path).exists():
-                try:
+            try:
+                # Read existing content or use empty string for new files
+                if Path(full_path).exists():
                     content = self.io.read_text(full_path)
-                    # Apply all hashline operations for this file in batch
-                    new_content, _, _ = apply_hashline_operations(
-                        original_content=strip_hashline(content),
-                        operations=operations,
-                    )
+                else:
+                    content = ""
 
-                    if dry_run:
-                        # For dry runs, preserve the original edit format
-                        updated_edits.extend(original_hashline_edits_by_file[path])
-                    else:
-                        updated_edits.append((path, operations, "Batch hashline operations"))
+                # Apply all hashline operations for this file in batch
+                new_content, _, _ = apply_hashline_operations(
+                    original_content=strip_hashline(content),
+                    operations=operations,
+                )
 
-                    if new_content:
-                        if not dry_run:
-                            self.io.write_text(full_path, new_content)
-                        passed.append((path, operations, "Batch hashline operations"))
-                    else:
-                        # No changes or failed
-                        failed.append((path, operations, "Batch hashline operations"))
+                if dry_run:
+                    # For dry runs, preserve the original edit format
+                    updated_edits.extend(original_hashline_edits_by_file[path])
+                else:
+                    updated_edits.append((path, operations, "Batch hashline operations"))
 
-                except (ValueError, HashlineError) as e:
-                    # Record failure
-                    failed.append((path, operations, f"Hashline batch operation failed: {e}"))
-                    continue
-            else:
-                # File doesn't exist
-                failed.append((path, operations, "File not found"))
+                # Write the file if operation was successful (no exception)
+                # new_content could be empty string for empty file creation
+                if not dry_run:
+                    self.io.write_text(full_path, new_content)
+                passed.append((path, operations, "Batch hashline operations"))
+
+            except (ValueError, HashlineError) as e:
+                # Record failure
+                failed.append((path, operations, f"Hashline batch operation failed: {e}"))
+                continue
 
         # Process regular edits one by one (existing logic)
         for edit in regular_edits:
@@ -156,9 +155,9 @@ class HashLineCoder(Coder):
             if not isinstance(original, str) or not isinstance(updated, str):
                 continue
 
-            if Path(full_path).exists():
-                content = self.io.read_text(full_path)
-                new_content = do_replace(full_path, content, original, updated, self.fence)
+            # Always try do_replace, it handles new file creation
+            content = self.io.read_text(full_path) if Path(full_path).exists() else ""
+            new_content = do_replace(full_path, content, original, updated, self.fence)
 
             # If the edit failed, and
             # this is not a "create a new file" with an empty original...
@@ -177,7 +176,7 @@ class HashLineCoder(Coder):
 
             updated_edits.append((path, original, updated))
 
-            if new_content:
+            if new_content is not None:
                 if not dry_run:
                     self.io.write_text(full_path, new_content)
                 passed.append(edit)
@@ -217,20 +216,6 @@ Please try this operation again using the hashline range that you want to modify
 {self.fence[1]}
 
 """
-                if updated in content and updated:
-                    res += f"""Are you sure you need this LOCATE/CONTENTS block?
-The CONTENTS lines are already in {path}!
-
-"""
-            did_you_mean = find_similar_lines(original, content)
-            if did_you_mean:
-                res += f"""Did you mean to match some of these actual lines from {path}?
-
-{self.fence[0]}
-{did_you_mean}
-{self.fence[1]}
-
-"""
 
             if updated in content and updated:
                 res += f"""Are you sure you need this LOCATE/CONTENTS block?
@@ -238,9 +223,9 @@ The CONTENTS lines are already in {path}!
 
 """
         res += (
-            "The search section must be a valid JSON array in the format:\n"
+            "The LOCATE section must be a valid JSON array in the format:\n"
             '["{start hashline}", "{end hashline}", "{operation}"]\n'
-            "Hashline prefixes must have the structure `{line_num}|{hash_fragment}` (e.g., `20|Bv`)"
+            "Hashline prefixes must have the structure `{line_num}{hash_fragment}` (e.g., `20Bv`)"
             " and match one found directly in the file"
         )
         if passed:
@@ -670,13 +655,12 @@ def find_original_update_blocks(content, fence=DEFAULT_FENCE, valid_fnames=None)
                     if isinstance(parsed, list) and len(parsed) == 3:
                         # Validate the format: all strings
                         if all(isinstance(item, str) for item in parsed):
-                            # Check if first two items look like hashline format (e.g., "1|ab")
-                            if all("|" in item for item in parsed[:2]):
-                                # Check if operation is valid
-                                if parsed[2] in ["replace", "insert", "delete"]:
-                                    # This is a hashline JSON block
-                                    yield filename, parsed, updated_text_str
-                                    continue
+                            # Check if first two items look like hashline format (e.g., "1ab")
+
+                            if parsed[2] in ["replace", "insert", "delete"]:
+                                # This is a hashline JSON block
+                                yield filename, parsed, updated_text_str
+                                continue
                 except (json.JSONDecodeError, ValueError):
                     # Not a valid JSON, treat as regular edit block
                     pass
@@ -758,6 +742,10 @@ def find_filename(lines, fence, valid_fnames):
 def find_similar_lines(search_lines, content_lines, threshold=0.6):
     search_lines = search_lines.splitlines()
     content_lines = content_lines.splitlines()
+
+    # Handle empty search lines
+    if not search_lines:
+        return ""
 
     best_ratio = 0
     best_match = None

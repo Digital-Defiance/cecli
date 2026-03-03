@@ -1,6 +1,6 @@
 import os
 import weakref
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from cecli.helpers.hashline import get_hashline_content_diff, hashline
 from cecli.repomap import RepoMap
@@ -25,6 +25,8 @@ class ConversationFiles:
     _file_to_message_id: Dict[str, str] = {}
     # Track image files separately since they don't have text content
     _image_files: Dict[str, bool] = {}
+    # Track numbered context ranges for files
+    _numbered_contexts: Dict[str, List[Tuple[int, int]]] = {}
     _coder_ref = None
     _initialized = False
 
@@ -296,6 +298,7 @@ class ConversationFiles:
             cls._file_timestamps.clear()
             cls._file_diffs.clear()
             cls._file_to_message_id.clear()
+            cls._numbered_contexts.clear()  # New line
         else:
             abs_fname = os.path.abspath(fname)
             cls._file_contents_original.pop(abs_fname, None)
@@ -304,6 +307,7 @@ class ConversationFiles:
             cls._file_diffs.pop(abs_fname, None)
             cls._file_to_message_id.pop(abs_fname, None)
             cls._image_files.pop(abs_fname, None)
+            cls._numbered_contexts.pop(abs_fname, None)  # New line
 
     @classmethod
     def add_image_file(cls, fname: str) -> None:
@@ -347,9 +351,140 @@ class ConversationFiles:
         return None
 
     @classmethod
+    def update_file_context(cls, file_path: str, start_line: int, end_line: int) -> None:
+        """
+        Update numbered contexts for a file with a new range.
+
+        Args:
+            file_path: Absolute file path
+            start_line: Start line number (1-based)
+            end_line: End line number (1-based)
+        """
+        abs_fname = os.path.abspath(file_path)
+
+        # Validate range
+        if start_line > end_line:
+            start_line, end_line = end_line, start_line
+
+        # Get existing ranges
+        existing_ranges = cls._numbered_contexts.get(abs_fname, [])
+
+        # Add new range
+        new_range = (start_line, end_line)
+        all_ranges = existing_ranges + [new_range]
+
+        # Sort by start line
+        all_ranges.sort(key=lambda x: x[0])
+
+        # Merge overlapping or close ranges
+        merged_ranges = []
+        for current_start, current_end in all_ranges:
+            if not merged_ranges:
+                merged_ranges.append([current_start, current_end])
+            else:
+                last_start, last_end = merged_ranges[-1]
+
+                # Check if ranges overlap or are close (within 20 lines)
+                if current_start <= last_end + 20:  # Overlap or close
+                    # Extend the range
+                    merged_ranges[-1][1] = max(last_end, current_end)
+                else:
+                    # Add as new range
+                    merged_ranges.append([current_start, current_end])
+
+        # Convert back to tuples
+        cls._numbered_contexts[abs_fname] = [(start, end) for start, end in merged_ranges]
+
+        # Remove using hash key (file_context, abs_fname)
+        ConversationManager.remove_message_by_hash_key(("file_context_user", abs_fname))
+        ConversationManager.remove_message_by_hash_key(("file_context_assistant", abs_fname))
+
+    @classmethod
+    def get_file_context(cls, file_path: str) -> str:
+        """
+        Generate hashline representation of cached context ranges.
+
+        Args:
+            file_path: Absolute file path
+
+        Returns:
+            Hashline representation of cached ranges, or empty string if no ranges
+        """
+        abs_fname = os.path.abspath(file_path)
+
+        # Get cached ranges
+        ranges = cls._numbered_contexts.get(abs_fname, [])
+        if not ranges:
+            return ""
+
+        # Get coder instance
+        coder = cls.get_coder()
+        if not coder:
+            return ""
+
+        # Read file content
+        try:
+            content = coder.io.read_text(abs_fname)
+            if not content:
+                return ""
+        except Exception:
+            return ""
+
+        # Generate hashline representations for each range
+        context_parts = []
+        for i, (start_line, end_line) in enumerate(ranges):
+            # Note: hashline uses 1-based line numbers, so no conversion needed
+            start_line_adj = max(1, start_line)
+            end_line_adj = min(len(content.splitlines()), end_line)
+
+            if start_line_adj > end_line_adj:
+                continue
+
+            # Extract lines for this range (0-based indexing for list)
+            lines = content.splitlines()[start_line_adj - 1 : end_line_adj]
+
+            # Generate hashline representation using the hashline() function
+            # Join lines back with newlines for hashline()
+            range_content = "\n".join(lines)
+            hashline_content = hashline(range_content, start_line=start_line_adj)
+
+            context_parts.append(hashline_content.strip())
+
+        # Join with ellipsis separator
+        return "\n...\n\n".join(context_parts)
+
+    @classmethod
+    def remove_file_context(cls, file_path: str) -> None:
+        """
+        Remove all cached context for a file.
+
+        Args:
+            file_path: Absolute file path
+        """
+        abs_fname = os.path.abspath(file_path)
+
+        # Remove from numbered contexts
+        cls._numbered_contexts.pop(abs_fname, None)
+
+        # Remove using hash key (file_context, abs_fname)
+        ConversationManager.remove_message_by_hash_key(("file_context_user", abs_fname))
+        ConversationManager.remove_message_by_hash_key(("file_context_assistant", abs_fname))
+
+    @classmethod
+    def clear_all_numbered_contexts(cls) -> None:
+        """Clear all numbered contexts for all files."""
+        cls._numbered_contexts.clear()
+
+    @classmethod
+    def _get_numbered_contexts(cls) -> Dict[str, List[Tuple[int, int]]]:
+        """Get the numbered contexts dictionary."""
+        return cls._numbered_contexts
+
+    @classmethod
     def reset(cls) -> None:
         """Clear all file caches and reset to initial state."""
         cls.clear_file_cache()
+        cls.clear_all_numbered_contexts()
         cls._coder_ref = None
         cls._initialized = False
 

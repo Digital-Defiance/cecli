@@ -21,6 +21,7 @@ LLMs are a part of our lives from here on out so join us in learning about and c
 * [TUI Configuration](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/tui.md)
 * [Skills](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/skills.md)
 * [Session Management](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/sessions.md)
+* [Hooks](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/hooks.md)
 * [Custom Commands](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/custom-commands.md)
 * [Custom System Prompts](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/custom-system-prompts.md)
 * [Custom Tools](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/agent-mode.md#creating-custom-tools)
@@ -171,15 +172,15 @@ The current priorities are to improve core capabilities and user experience of t
   * [ ] Add visibility into active sub agent calls in TUI
 
 8. **Hooks**
-  * [ ] Add hooks base class for user defined python hooks with an execute method with type and priority settings
-  * [ ] Add hook manager that can accept user defined files and command line commands
-  * [ ] Integrate hook manager with coder classes with hooks for `start`, `on_message`, `end_message`, `pre_tool`, and `post_tool` 
+  * [x] Add hooks base class for user defined python hooks with an execute method with type and priority settings
+  * [x] Add hook manager that can accept user defined files and command line commands
+  * [x] Integrate hook manager with coder classes with hooks for `start`, `end`, `on_message`, `end_message`, `pre_tool`, and `post_tool` 
 
 9. **Efficient File Editing**
-  * [ ] Explore use of hashline file representation for more targeted file editing
-  * [ ] Assuming viability, update SEARCH part of SEARCH/REPLACE with hashline identification
-  * [ ] Update agent mode edit tools to work with hashline identification
-  * [ ] Update internal file diff representation to support hashline propagation
+  * [x] Explore use of hashline file representation for more targeted file editing
+  * [x] Assuming viability, update SEARCH part of SEARCH/REPLACE with hashline identification (Done with new edit format)
+  * [x] Update agent mode edit tools to work with hashline identification
+  * [x] Update internal file diff representation to support hashline propagation
 
 10. **Dynamic Context Management** 
   * [ ] Update compaction to use observational memory sub agent calls to generate decision records that are used as the compaction basis

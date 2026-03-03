@@ -20,6 +20,7 @@ class ClearCommand(BaseCommand):
         ConversationManager.clear_tag(MessageTag.CUR)
         ConversationManager.clear_tag(MessageTag.DONE)
         ConversationManager.clear_tag(MessageTag.DIFFS)
+        ConversationManager.clear_tag(MessageTag.FILE_CONTEXTS)
 
         ConversationFiles.reset()
 

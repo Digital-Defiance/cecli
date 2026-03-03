@@ -59,6 +59,8 @@ class TokensCommand(BaseCommand):
         msgs_done = ConversationManager.get_messages_dict(tag=MessageTag.DONE)
         msgs_cur = ConversationManager.get_messages_dict(tag=MessageTag.CUR)
         msgs_diffs = ConversationManager.get_messages_dict(tag=MessageTag.DIFFS)
+        msgs_file_contexts = ConversationManager.get_messages_dict(tag=MessageTag.FILE_CONTEXTS)
+
         tokens_done = 0
         tokens_cur = 0
         tokens_diffs = 0
@@ -72,12 +74,18 @@ class TokensCommand(BaseCommand):
         if msgs_diffs:
             tokens_diffs = coder.main_model.token_count(msgs_diffs)
 
+        if msgs_file_contexts:
+            tokens_file_contexts = coder.main_model.token_count(msgs_file_contexts)
+
         if tokens_cur + tokens_done:
             res.append((tokens_cur + tokens_done, "chat history", "use /clear to clear"))
             # Add separate line for diffs if they exist
 
         if tokens_diffs:
             res.append((tokens_diffs, "file diffs", "part of chat history"))
+
+        if tokens_file_contexts:
+            res.append((tokens_file_contexts, "numbered context messages", "part of chat history"))
 
         # repo map
         if coder.repo_map:

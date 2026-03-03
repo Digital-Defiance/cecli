@@ -16,7 +16,7 @@ import time
 import traceback
 import weakref
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 
 # Optional dependency: used to convert locale codes (eg ``en_US``)
 # into human-readable language names (eg ``English``).
@@ -28,6 +28,7 @@ from json.decoder import JSONDecodeError
 from pathlib import Path
 from typing import List
 from urllib.parse import urlparse
+from uuid import uuid4 as generate_unique_id
 
 import httpx
 from litellm import experimental_mcp_client
@@ -47,6 +48,7 @@ from cecli.helpers.conversation import (
 )
 from cecli.helpers.profiler import TokenProfiler
 from cecli.history import ChatSummary
+from cecli.hooks import HookIntegration
 from cecli.io import ConfirmGroup, InputOutput
 from cecli.linter import Linter
 from cecli.llm import litellm
@@ -68,6 +70,8 @@ from cecli.utils import copy_tool_call, format_tokens, is_image_file
 
 from ..dump import dump  # noqa: F401
 from ..prompts.utils.registry import PromptObject, PromptRegistry
+
+GLOBAL_DATE = date.today().isoformat()
 
 
 class UnknownEditFormat(ValueError):
@@ -150,6 +154,9 @@ class Coder:
     compact_context_completed = True
     suppress_announcements_for_next_prompt = False
     tool_reflection = False
+    last_user_message = ""
+    uuid = ""
+
     # Task coordination state variables
     input_running = False
     output_running = False
@@ -239,6 +246,7 @@ class Coder:
                 total_tokens_received=from_coder.total_tokens_received,
                 file_watcher=from_coder.file_watcher,
                 mcp_manager=from_coder.mcp_manager,
+                uuid=from_coder.uuid,
             )
             use_kwargs.update(update)  # override to complete the switch
             use_kwargs.update(kwargs)  # override passed kwargs
@@ -334,8 +342,13 @@ class Coder:
         repomap_in_memory=False,
         linear_output=False,
         security_config=None,
+        uuid="",
     ):
         # initialize from args.map_cache_dir
+        self.uuid = generate_unique_id()
+        if uuid:
+            self.uuid = uuid
+
         self.map_cache_dir = map_cache_dir
 
         self.chat_language = chat_language
@@ -479,7 +492,7 @@ class Coder:
                 self.io.tool_warning(f"Skipping {fname} that matches gitignore spec.")
                 continue
 
-            if self.repo and self.repo.ignored_file(fname):
+            if self.repo and self.repo.ignored_file(fname) and not self.add_gitignore_files:
                 self.io.tool_warning(f"Skipping {fname} that matches cecli.ignore spec.")
                 continue
 
@@ -569,7 +582,7 @@ class Coder:
         self.test_cmd = test_cmd
 
         # Clean up todo list file on startup; sessions will restore it when needed
-        todo_file_path = ".cecli/todo.txt"
+        todo_file_path = self.local_agent_folder("todo.txt")
         abs_path = self.abs_root_path(todo_file_path)
         if os.path.isfile(abs_path):
             try:
@@ -1517,7 +1530,7 @@ class Coder:
         await asyncio.sleep(0.1)
 
         try:
-            if not self.enable_context_compaction:
+            if self.enable_context_compaction:
                 self.compact_context_completed = False
                 await self.compact_context_if_needed()
                 self.compact_context_completed = True
@@ -1578,6 +1591,10 @@ class Coder:
     async def run_one(self, user_message, preproc):
         self.init_before_message()
 
+        if not await HookIntegration.call_start_hooks(self):
+            self.io.tool_warning("Execution stopped by start hook")
+            return
+
         if preproc:
             message = await self.preproc_user_input(user_message)
         else:
@@ -1587,6 +1604,9 @@ class Coder:
             user_message
         ):
             return
+
+        if not self.commands.is_command(user_message):
+            self.last_user_message = user_message
 
         while True:
             self.reflected_message = None
@@ -1601,7 +1621,7 @@ class Coder:
 
             if self.num_reflections >= self.max_reflections:
                 self.io.tool_warning(f"Only {self.max_reflections} reflections allowed, stopping.")
-                return
+                break
 
             self.num_reflections += 1
 
@@ -1621,6 +1641,10 @@ class Coder:
                 break
 
             await self.auto_save_session(force=True)
+
+        if not await HookIntegration.call_end_hooks(self):
+            self.io.tool_warning("Execution stopped by end hook")
+            return
 
     def _is_url_allowed(self, url):
         allowed_domains = self.security_config.get("allowed-domains")
@@ -1781,9 +1805,12 @@ class Coder:
                 ConversationManager.clear_tag(MessageTag.CUR)
 
                 # Keep the first message (user's initial input) if it exists
-                if cur_messages:
+                if self.last_user_message:
                     ConversationManager.add_message(
-                        message_dict=cur_messages[0],
+                        message_dict={
+                            "role": "user",
+                            "content": self.last_user_message,
+                        },
                         tag=MessageTag.CUR,
                     )
 
@@ -1819,8 +1846,10 @@ class Coder:
             self.io.tool_output("...chat history compacted.")
             self.io.update_spinner(self.io.last_spinner_text)
 
-            # Clear all diff messages
+            # Clear all diff and file context messages
             ConversationManager.clear_tag(MessageTag.DIFFS)
+            ConversationManager.clear_tag(MessageTag.FILE_CONTEXTS)
+
             # Reset ConversationFiles cache entirely
             from cecli.helpers.conversation.files import ConversationFiles
 
@@ -2254,7 +2283,7 @@ class Coder:
 
         self.io.tool_output()
         self.show_usage_report()
-        self.add_assistant_reply_to_cur_messages()
+        await self.add_assistant_reply_to_cur_messages()
 
         if exhausted:
             cur_messages = ConversationManager.get_messages_dict(MessageTag.CUR)
@@ -2576,6 +2605,13 @@ class Coder:
                             new_tool_call = copy_tool_call(tool_call)
                             new_tool_call.function.arguments = json.dumps(args)
 
+                            if not await HookIntegration.call_pre_tool_hooks(
+                                self, new_tool_call.function.name, args
+                            ):
+                                self.io.tool_warning("Tool call skipped by pre-tool call hook")
+                                all_results_content.append("Tool Request Aborted.")
+                                continue
+
                             call_result = await experimental_mcp_client.call_openai_tool(
                                 session=session,
                                 openai_tool=new_tool_call,
@@ -2608,6 +2644,16 @@ class Coder:
                                         content_parts.append(item.text)
 
                             result_text = "".join(content_parts)
+
+                            if not await HookIntegration.call_post_tool_hooks(
+                                self, new_tool_call.function.name, args, result_text
+                            ):
+                                self.io.tool_warning(
+                                    "Tool call output skipped by post-tool call hook"
+                                )
+                                all_results_content.append("Tool Response Redacted.")
+                                continue
+
                             all_results_content.append(result_text)
 
                         tool_responses.append(
@@ -2783,7 +2829,7 @@ class Coder:
         """Cleanup when the Coder object is destroyed."""
         self.ok_to_warm_cache = False
 
-    def add_assistant_reply_to_cur_messages(self):
+    async def add_assistant_reply_to_cur_messages(self):
         """
         Add the assistant's reply to `cur_messages`.
         Handles model-specific quirks, like Deepseek which requires `content`
@@ -2825,6 +2871,10 @@ class Coder:
             or msg.get("tool_calls", None)
             or msg.get("function_call", None)
         ):
+            if not await HookIntegration.call_end_message_hooks(self, str(msg)):
+                self.io.tool_warning("Execution stopped by end message hook")
+                return
+
             ConversationManager.add_message(
                 message_dict=msg,
                 tag=MessageTag.CUR,
@@ -2952,7 +3002,7 @@ class Coder:
                 async for chunk in self.show_send_output_stream(completion):
                     yield chunk
             else:
-                self.show_send_output(completion)
+                await self.show_send_output(completion)
 
             response, func_err, content_err = self.consolidate_chunks()
 
@@ -2982,7 +3032,7 @@ class Coder:
                 if args:
                     self.io.ai_output(json.dumps(args, indent=4))
 
-    def show_send_output(self, completion):
+    async def show_send_output(self, completion):
         if self.verbose:
             print(completion)
 
@@ -2997,6 +3047,10 @@ class Coder:
         self.partial_response_chunks.append(completion)
 
         response, func_err, content_err = self.consolidate_chunks()
+
+        if not await HookIntegration.call_on_message_hooks(self, self.partial_response_content):
+            self.io.tool_warning("Execution stopped by on message hook")
+            return
 
         resp_hash = dict(
             function_call=str(self.partial_response_function_call),
@@ -3162,6 +3216,10 @@ class Coder:
 
         # The Part Doing the Heavy Lifting Now
         self.consolidate_chunks()
+
+        if not await HookIntegration.call_on_message_hooks(self, self.partial_response_content):
+            self.io.tool_warning("Execution stopped by on message hook")
+            return
 
         if not received_content and len(self.partial_response_tool_calls) == 0:
             self.io.tool_warning("Empty response received from LLM. Check your provider account?")
@@ -3753,6 +3811,7 @@ class Coder:
             return edited
 
         except ANY_GIT_ERROR as err:
+            self.io.tool_error(traceback.format_exc())
             self.io.tool_error(str(err))
             return edited
         except Exception as err:
@@ -3891,6 +3950,12 @@ class Coder:
     def apply_edits_dry_run(self, edits):
         return edits
 
+    def local_agent_folder(self, path):
+        os.makedirs(f".cecli/agents/{GLOBAL_DATE}/{self.uuid}", exist_ok=True)
+
+        stripped = path.lstrip("/")
+        return f".cecli/agents/{GLOBAL_DATE}/{self.uuid}/{stripped}"
+
     async def auto_save_session(self, force=False):
         """Automatically save the current session to {auto-save-session-name}.json."""
         if not getattr(self.args, "auto_save", False):
@@ -3953,7 +4018,11 @@ class Coder:
             self.commands.cmd_running_event.set()  # Command finished
 
     async def handle_shell_commands(self, commands_str, group):
-        commands = command_parser.split_shell_commands(commands_str)
+        commands = [
+            cmd
+            for cmd in command_parser.split_shell_commands(commands_str)
+            if cmd and not (isinstance(cmd, str) and cmd.startswith("#"))
+        ]
 
         # Early return if none of the command strings have length after stripping whitespace
         if not any(cmd.strip() for cmd in commands):
