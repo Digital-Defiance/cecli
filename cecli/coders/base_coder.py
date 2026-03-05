@@ -156,6 +156,7 @@ class Coder:
     tool_reflection = False
     last_user_message = ""
     uuid = ""
+    model_kwargs = {}
 
     # Task coordination state variables
     input_running = False
@@ -1618,6 +1619,8 @@ class Coder:
             async for _ in self.send_message(message):
                 pass
 
+            await self.hot_reload()
+
             if not self.reflected_message:
                 await self.auto_save_session(force=True)
                 break
@@ -2753,6 +2756,9 @@ class Coder:
     async def reply_completed(self):
         pass
 
+    async def hot_reload(self):
+        pass
+
     async def show_exhausted_error(self):
         output_tokens = 0
         if self.partial_response_content:
@@ -2998,6 +3004,7 @@ class Coder:
                 self.temperature,
                 # This could include any tools, but for now it is just MCP tools
                 tools=tools,
+                override_kwargs=self.model_kwargs,
             )
             self.chat_completion_call_hashes.append(hash_object.hexdigest())
 
