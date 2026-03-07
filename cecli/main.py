@@ -661,7 +661,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
                 supress_tui = False
             except ImportError as e:
                 print("Error: --tui requires 'textual' package")
-                print("Install with: pip install cecli[tui]")
+                print("Install with: pip install cecli-dev[tui]")
                 print(f"Import error: {e}")
                 sys.exit(1)
 
