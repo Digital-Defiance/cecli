@@ -372,15 +372,22 @@ class ConversationManager:
         Returns:
             True if a message was removed, False otherwise
         """
-        for message in cls._messages:
-            if message.hash_key == hash_key:
-                cls._messages.remove(message)
+        messages_to_remove = [m for m in cls._messages if m.hash_key == hash_key]
+        if not messages_to_remove:
+            return False
+
+        tags_to_clear = set()
+        for message in messages_to_remove:
+            cls._messages.remove(message)
+            if message.message_id in cls._message_index:
                 del cls._message_index[message.message_id]
-                # Clear cache for this tag and all messages cache since message was removed
-                cls._tag_cache.pop(message.tag, None)
-                cls._tag_cache.pop(cls._ALL_MESSAGES_CACHE_KEY, None)
-                return True
-        return False
+            tags_to_clear.add(message.tag)
+
+        for tag in tags_to_clear:
+            cls._tag_cache.pop(tag, None)
+        cls._tag_cache.pop(cls._ALL_MESSAGES_CACHE_KEY, None)
+
+        return True
 
     @classmethod
     def get_tag_messages(cls, tag: str) -> List[BaseMessage]:
