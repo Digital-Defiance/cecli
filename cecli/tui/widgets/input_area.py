@@ -306,7 +306,9 @@ class InputArea(TextArea):
             # If on last line, navigate history
             current_row, current_col = self.cursor_location
             if current_row == self.document.line_count - 1:
-                if self.get_cursor_down_location()[1] == len(self.text):
+                if self.get_cursor_down_location()[1] == sum(
+                    len(s) for s in self.wrapped_document.lines[self.document.line_count - 1]
+                ):
                     event.stop()
                     event.prevent_default()
                     self._history_next()
