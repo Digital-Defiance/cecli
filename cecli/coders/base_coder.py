@@ -32,7 +32,7 @@ from uuid import uuid4 as generate_unique_id
 
 import httpx
 from litellm import experimental_mcp_client
-from litellm.types.utils import ChatCompletionMessageToolCall, Function, ModelResponse
+from litellm.types.utils import ModelResponse
 from prompt_toolkit.patch_stdout import patch_stdout
 from rich.console import Console
 
@@ -40,7 +40,7 @@ import cecli.prompts.utils.system as prompts
 from cecli import __version__, models, urls, utils
 from cecli.commands import Commands, SwitchCoderSignal
 from cecli.exceptions import LiteLLMExceptions
-from cecli.helpers import command_parser, coroutines, nested
+from cecli.helpers import command_parser, coroutines, nested, responses
 from cecli.helpers.conversation import (
     ConversationChunks,
     ConversationManager,
@@ -1581,8 +1581,8 @@ class Coder:
             self.reflected_message = None
             self.tool_reflection = False
 
-            if float(self.total_cost) > self.cost_multiplier * nested.getter(
-                self.args, "cost_limit", float("inf")
+            if float(self.total_cost) > self.cost_multiplier * (
+                nested.getter(self.args, "cost_limit", float("inf")) or float("inf")
             ):
                 if await self.io.confirm_ask(
                     "You have reached your configured cost limit. Continue?",
@@ -3311,66 +3311,16 @@ class Coder:
         # If no native tool calls, check if the content contains JSON tool calls
         # This handles models that write JSON in text instead of using native calling
         if not self.partial_response_tool_calls and self.partial_response_content:
-            try:
-                # Simple extraction of JSON-like structures that look like tool calls
-                # Only look for tool calls if it looks like JSON
-                if "{" in self.partial_response_content or "[" in self.partial_response_content:
-                    json_chunks = utils.split_concatenated_json(self.partial_response_content)
-                    extracted_calls = []
-                    chunk_index = 0
+            extracted_calls = responses.extract_tools_from_content_json(
+                self.partial_response_content
+            )
+            if not extracted_calls:
+                extracted_calls = responses.extract_tools_from_content_xml(
+                    self.partial_response_content
+                )
 
-                    for chunk in json_chunks:
-                        chunk_index += 1
-                        try:
-                            json_obj = json.loads(chunk)
-                            if (
-                                isinstance(json_obj, dict)
-                                and "name" in json_obj
-                                and "arguments" in json_obj
-                            ):
-                                # Create a Pydantic model for the tool call
-                                function_obj = Function(
-                                    name=json_obj["name"],
-                                    arguments=(
-                                        json.dumps(json_obj["arguments"])
-                                        if isinstance(json_obj["arguments"], (dict, list))
-                                        else str(json_obj["arguments"])
-                                    ),
-                                )
-                                tool_call_obj = ChatCompletionMessageToolCall(
-                                    type="function",
-                                    function=function_obj,
-                                    id=f"call_{len(extracted_calls)}_{int(time.time())}_{chunk_index}",
-                                )
-                                extracted_calls.append(tool_call_obj)
-                            elif isinstance(json_obj, list):
-                                for item in json_obj:
-                                    if (
-                                        isinstance(item, dict)
-                                        and "name" in item
-                                        and "arguments" in item
-                                    ):
-                                        function_obj = Function(
-                                            name=item["name"],
-                                            arguments=(
-                                                json.dumps(item["arguments"])
-                                                if isinstance(item["arguments"], (dict, list))
-                                                else str(item["arguments"])
-                                            ),
-                                        )
-                                        tool_call_obj = ChatCompletionMessageToolCall(
-                                            type="function",
-                                            function=function_obj,
-                                            id=f"call_{len(extracted_calls)}_{int(time.time())}_{chunk_index}",
-                                        )
-                                        extracted_calls.append(tool_call_obj)
-                        except json.JSONDecodeError:
-                            continue
-
-                    if extracted_calls:
-                        self.partial_response_tool_calls = extracted_calls
-            except Exception:
-                pass
+            if extracted_calls:
+                self.partial_response_tool_calls = extracted_calls
 
         return response, func_err, content_err
 
