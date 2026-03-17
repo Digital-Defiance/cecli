@@ -49,7 +49,7 @@ class AgentCoder(Coder):
         self.tool_usage_retries = 10
         self.last_round_tools = []
         self.tool_call_vectors = []
-        self.tool_similarity_threshold = 0.99
+        self.tool_similarity_threshold = 0.90
         self.max_tool_vector_history = 10
         self.read_tools = {
             "command",
@@ -62,6 +62,7 @@ class AgentCoder(Coder):
             "listchanges",
             "shownumberedcontext",
             "thinking",
+            "updatetodolist",
         }
         self.write_tools = {
             "deletetext",

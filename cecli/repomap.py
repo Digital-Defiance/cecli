@@ -168,6 +168,7 @@ class RepoMap:
         self.root = repo_root or os.getcwd()
 
         # Allow opting into an in-memory tags cache to avoid disk/SQLite locks
+        self.use_memory_cache = use_memory_cache
         if use_memory_cache:
             self.TAGS_CACHE = dict()
         else:
