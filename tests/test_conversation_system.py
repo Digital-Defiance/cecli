@@ -9,8 +9,8 @@ from cecli.helpers.conversation import (
     ConversationFiles,
     ConversationManager,
     MessageTag,
-    initialize_conversation_system,
 )
+from cecli.helpers.conversation.integration import ConversationChunks
 from cecli.io import InputOutput
 
 
@@ -123,7 +123,7 @@ class TestConversationManager:
         self.test_coder = TestCoder()
 
         # Initialize conversation system
-        initialize_conversation_system(self.test_coder)
+        ConversationChunks.initialize_conversation_system(self.test_coder)
         yield
         ConversationManager.reset()
 
@@ -255,7 +255,7 @@ class TestConversationManager:
         system_messages = ConversationManager.get_tag_messages(MessageTag.SYSTEM)
         assert len(system_messages) == 1
 
-    def test_decrement_mark_for_delete(self):
+    def test_decrement_message_markers(self):
         """Test decrementing mark_for_delete values."""
         # Add message with mark_for_delete
         ConversationManager.add_message(
@@ -267,7 +267,258 @@ class TestConversationManager:
         assert len(ConversationManager.get_messages()) == 1
 
         # Decrement once
-        ConversationManager.decrement_mark_for_delete()
+        ConversationManager.decrement_message_markers()
+
+        # Message should be removed
+        assert len(ConversationManager.get_messages()) == 0
+
+    def test_promotion_fields_in_add_message(self):
+        """Test that add_message accepts promotion parameters."""
+        # Add message with promotion and demotion markers
+        ConversationManager.add_message(
+            message_dict={"role": "user", "content": "Promoted message"},
+            tag=MessageTag.CUR,
+            mark_for_demotion=2,
+            promotion=999,
+        )
+
+        messages = ConversationManager.get_messages()
+        assert len(messages) == 1
+        msg = messages[0]
+        assert msg.mark_for_demotion == 2
+        assert msg.promotion == 999
+        assert msg.is_promoted()
+
+    def test_is_promoted_method(self):
+        """Test the is_promoted() method on BaseMessage."""
+        from cecli.helpers.conversation.base_message import BaseMessage
+
+        # Message without demotion marker is not promoted
+        msg1 = BaseMessage(
+            message_dict={"role": "user", "content": "Test1"}, tag=MessageTag.CUR.value
+        )
+        assert not msg1.is_promoted()
+
+        # Message with mark_for_demotion=None is not promoted
+        msg2 = BaseMessage(
+            message_dict={"role": "user", "content": "Test2"},
+            tag=MessageTag.CUR.value,
+            mark_for_demotion=None,
+            promotion=999,
+        )
+        assert not msg2.is_promoted()
+
+        # Message with mark_for_demotion >= 0 is promoted
+        msg3 = BaseMessage(
+            message_dict={"role": "user", "content": "Test3"},
+            tag=MessageTag.CUR.value,
+            mark_for_demotion=0,
+            promotion=999,
+        )
+        assert msg3.is_promoted()
+
+        msg4 = BaseMessage(
+            message_dict={"role": "user", "content": "Test4"},
+            tag=MessageTag.CUR.value,
+            mark_for_demotion=5,
+            promotion=999,
+        )
+        assert msg4.is_promoted()
+
+        # Message with mark_for_demotion < 0 is not promoted
+        msg5 = BaseMessage(
+            message_dict={"role": "user", "content": "Test5"},
+            tag=MessageTag.CUR.value,
+            mark_for_demotion=-1,
+            promotion=999,
+        )
+        assert not msg5.is_promoted()
+
+    def test_message_ordering_with_promotion(self):
+        """Test that get_messages() returns promoted messages first."""
+        # Add messages in a specific order
+        ConversationManager.add_message(
+            message_dict={"role": "user", "content": "Normal priority 1"},
+            tag=MessageTag.CUR,
+            priority=10,
+            timestamp=1000,
+        )
+
+        ConversationManager.add_message(
+            message_dict={"role": "user", "content": "Promoted low priority"},
+            tag=MessageTag.CUR,
+            priority=100,  # Low priority (high number)
+            promotion=999,
+            mark_for_demotion=1,
+            timestamp=2000,
+        )
+
+        ConversationManager.add_message(
+            message_dict={"role": "user", "content": "Normal priority 5"},
+            tag=MessageTag.CUR,
+            priority=5,  # Higher priority (lower number)
+            timestamp=3000,
+        )
+
+        ConversationManager.add_message(
+            message_dict={"role": "user", "content": "Promoted medium priority"},
+            tag=MessageTag.CUR,
+            priority=50,  # Medium priority
+            promotion=500,
+            mark_for_demotion=1,
+            timestamp=4000,
+        )
+
+        # Get messages - should be sorted by value (priority or promotion) in ascending order
+        messages = ConversationManager.get_messages()
+
+        # Expected order based on implementation: lower values appear first
+        # 1. "Normal priority 5" (priority=5) - lowest value
+        # 2. "Normal priority 1" (priority=10) - next lowest value
+        # 3. "Promoted medium priority" (promotion=500) - medium value
+        # 4. "Promoted low priority" (promotion=999) - highest value (appears last)
+
+        assert len(messages) == 4
+        assert messages[0].message_dict["content"] == "Normal priority 5"
+        assert messages[1].message_dict["content"] == "Normal priority 1"
+        assert messages[2].message_dict["content"] == "Promoted medium priority"
+        assert messages[3].message_dict["content"] == "Promoted low priority"
+
+        # Now decrement demotion markers to demote messages
+        ConversationManager.decrement_message_markers()
+
+        # After demotion, messages should be sorted by priority
+        messages = ConversationManager.get_messages()
+
+        # Expected order after demotion:
+        # 1. "Normal priority 5" (priority=5)
+        # 2. "Normal priority 1" (priority=10)
+        # 3. "Promoted low priority" (priority=100, now demoted)
+        # 4. "Promoted medium priority" (priority=50, now demoted)
+
+        assert len(messages) == 4
+        assert messages[0].message_dict["content"] == "Normal priority 5"
+        assert messages[1].message_dict["content"] == "Normal priority 1"
+        assert messages[2].message_dict["content"] == "Promoted medium priority"  # priority=50
+        assert messages[3].message_dict["content"] == "Promoted low priority"  # priority=100
+
+    def test_decrement_message_markers_with_demotion(self):
+        """Test that decrement_message_markers() decrements mark_for_demotion."""
+        # Add a message with mark_for_demotion
+        ConversationManager.add_message(
+            message_dict={"role": "user", "content": "Temp promoted"},
+            tag=MessageTag.CUR,
+            mark_for_demotion=3,
+            promotion=999,
+        )
+
+        # Get the message
+        messages = ConversationManager.get_messages()
+        assert len(messages) == 1
+        msg = messages[0]
+        assert msg.mark_for_demotion == 3
+        assert msg.is_promoted()
+
+        # Decrement once
+        ConversationManager.decrement_message_markers()
+        messages = ConversationManager.get_messages()
+        msg = messages[0]
+        assert msg.mark_for_demotion == 2
+        assert msg.is_promoted()
+
+        # Decrement twice more
+        ConversationManager.decrement_message_markers()
+        ConversationManager.decrement_message_markers()
+
+        messages = ConversationManager.get_messages()
+        msg = messages[0]
+        assert msg.mark_for_demotion == 0
+        assert msg.is_promoted()
+
+        # Decrement one more time (now mark_for_demotion = -1)
+        ConversationManager.decrement_message_markers()
+
+        messages = ConversationManager.get_messages()
+        msg = messages[0]
+
+        # Note: The message should still exist, just no longer promoted
+        assert len(messages) == 1
+        assert msg.mark_for_demotion == -1
+        assert not msg.is_promoted()
+
+    def test_base_sort_with_promotion(self):
+        """Test that base_sort uses promotion value for promoted messages."""
+        from cecli.helpers.conversation.base_message import BaseMessage
+        from cecli.helpers.conversation.tags import MessageTag
+
+        # Create test messages
+        messages = []
+
+        # Message 1: High priority (low number), not promoted
+        msg1 = BaseMessage(
+            message_dict={"role": "user", "content": "Msg1"},
+            tag=MessageTag.CUR.value,
+            priority=10,
+            timestamp=1000,
+        )
+        messages.append(msg1)
+
+        # Message 2: Low priority (high number), promoted with high promotion value
+        msg2 = BaseMessage(
+            message_dict={"role": "user", "content": "Msg2"},
+            tag=MessageTag.CUR.value,
+            priority=100,
+            promotion=999,
+            mark_for_demotion=0,
+            timestamp=2000,
+        )
+        messages.append(msg2)
+
+        # Message 3: Medium priority, promoted with medium promotion value
+        msg3 = BaseMessage(
+            message_dict={"role": "user", "content": "Msg3"},
+            tag=MessageTag.CUR.value,
+            priority=50,
+            promotion=500,
+            mark_for_demotion=0,
+            timestamp=3000,
+        )
+        messages.append(msg3)
+
+        # Message 4: Medium priority, not promoted
+        msg4 = BaseMessage(
+            message_dict={"role": "user", "content": "Msg4"},
+            tag=MessageTag.CUR.value,
+            priority=50,
+            timestamp=4000,
+        )
+        messages.append(msg4)
+
+        # Sort the messages using base_sort
+        sorted_messages = ConversationManager.base_sort(messages)
+
+        # Expected order:
+        # 1. msg1 (priority=10) - highest priority among non-promoted
+        # 2. msg4 (priority=50) - medium priority, not promoted
+        # 3. msg3 (promotion=500) - medium promotion value
+        # 4. msg2 (promotion=999) - highest promotion value
+
+        assert len(sorted_messages) == 4
+        assert sorted_messages[0].message_dict["content"] == "Msg1"
+        assert sorted_messages[1].message_dict["content"] == "Msg4"
+        assert sorted_messages[2].message_dict["content"] == "Msg3"
+        assert sorted_messages[3].message_dict["content"] == "Msg2"
+        # Add message with mark_for_delete
+        ConversationManager.add_message(
+            message_dict={"role": "user", "content": "Temp message"},
+            tag=MessageTag.CUR,
+            mark_for_delete=0,  # Will expire after one decrement (0 -> -1)
+        )
+
+        assert len(ConversationManager.get_messages()) == 1
+
+        # Decrement once
+        ConversationManager.decrement_message_markers()
 
         # Message should be removed
         assert len(ConversationManager.get_messages()) == 0
@@ -487,7 +738,7 @@ class TestConversationManager:
         coder = TestCoder()
 
         # Initialize conversation system
-        initialize_conversation_system(coder)
+        ConversationChunks.initialize_conversation_system(coder)
 
         # Add messages with different tags
         ConversationManager.add_message(
@@ -523,7 +774,7 @@ class TestConversationManager:
         # Create a test coder with add_cache_headers = False (default)
         coder_false = TestCoder()
         coder_false.add_cache_headers = False
-        initialize_conversation_system(coder_false)
+        ConversationChunks.initialize_conversation_system(coder_false)
 
         # Add some messages
         ConversationManager.add_message(
@@ -560,7 +811,7 @@ class TestConversationManager:
 
         coder_true = TestCoder()
         coder_true.add_cache_headers = True
-        initialize_conversation_system(coder_true)
+        ConversationChunks.initialize_conversation_system(coder_true)
 
         # Add the same messages
         ConversationManager.add_message(
@@ -631,7 +882,7 @@ class TestConversationFiles:
         self.test_coder = TestCoder()
 
         # Initialize conversation system
-        initialize_conversation_system(self.test_coder)
+        ConversationChunks.initialize_conversation_system(self.test_coder)
         yield
         ConversationFiles.reset()
 

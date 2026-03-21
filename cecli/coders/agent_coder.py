@@ -268,14 +268,14 @@ class AgentCoder(Coder):
                         except json.JSONDecodeError as e:
                             self.model_kwargs = {}
                             self.io.tool_warning(
-                                f"Could not parse JSON chunk for tool {tool_name}: {chunk}"
+                                f"Malformed JSON arguments in tool {tool_name}: {chunk}"
                             )
                             tool_responses.append(
                                 {
                                     "role": "tool",
                                     "tool_call_id": tool_call.id,
                                     "content": (
-                                        f"Could not parse JSON chunk for tool {tool_name}: {str(e)}"
+                                        f"Malformed JSON arguments in tool {tool_name}: {str(e)}"
                                     ),
                                 }
                             )
@@ -539,8 +539,6 @@ class AgentCoder(Coder):
         self.choose_fence()
 
         ConversationChunks.initialize_conversation_system(self)
-        # Decrement mark_for_delete values before adding new messages
-        ConversationManager.decrement_mark_for_delete()
 
         # Clean up ConversationFiles and remove corresponding messages
         ConversationChunks.cleanup_files(self)
@@ -563,7 +561,6 @@ class AgentCoder(Coder):
 
         ConversationChunks.add_readonly_files_messages(self)
         ConversationChunks.add_chat_files_messages(self)
-        # ConversationChunks.add_file_context_messages(self)
 
         # Add post-message context blocks (priority 250 - between CUR and REMINDER)
         ConversationChunks.add_post_message_context_blocks(self)
@@ -1009,6 +1006,7 @@ I will proceed based on the tool results and updated context.""")
                     )
                     self.model_kwargs["frequency_penalty"] = min(0, max(freq_penalty - 0.15, 0))
 
+            self.model_kwargs["temperature"] = min(self.model_kwargs["temperature"], 1)
             # One twentieth of the time, just straight reset the randomness
             if random.random() < 0.05:
                 self.model_kwargs = {}

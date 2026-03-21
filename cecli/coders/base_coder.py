@@ -2039,9 +2039,6 @@ class Coder:
 
         ConversationChunks.initialize_conversation_system(self)
 
-        # Decrement mark_for_delete values before adding new messages
-        ConversationManager.decrement_mark_for_delete()
-
         # Clean up ConversationFiles and remove corresponding messages
         ConversationChunks.cleanup_files(self)
 
@@ -2160,8 +2157,11 @@ class Coder:
                 message_dict=dict(role="user", content=inp),
                 tag=MessageTag.CUR,
                 hash_key=("user_message", inp, str(time.monotonic_ns())),
+                promotion=ConversationManager.DEFAULT_TAG_PROMOTION_VALUE,
+                mark_for_demotion=1,
             )
 
+        ConversationManager.decrement_message_markers()
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, self.format_messages)
         messages = result
@@ -2279,6 +2279,8 @@ class Coder:
                     ),
                     tag=MessageTag.CUR,
                     force=True,
+                    promotion=ConversationManager.DEFAULT_TAG_PROMOTION_VALUE,
+                    mark_for_demotion=1,
                 )
 
             await self.show_exhausted_error()
@@ -2302,6 +2304,8 @@ class Coder:
                 message_dict=dict(role="user", content="^C KeyboardInterrupt"),
                 tag=MessageTag.CUR,
                 force=True,
+                promotion=ConversationManager.DEFAULT_TAG_PROMOTION_VALUE,
+                mark_for_demotion=1,
             )
 
             # Always add assistant response to conversation manager
@@ -2311,6 +2315,8 @@ class Coder:
                 ),
                 tag=MessageTag.CUR,
                 force=True,
+                promotion=ConversationManager.DEFAULT_TAG_PROMOTION_VALUE,
+                mark_for_demotion=1,
             )
 
             return
@@ -2374,12 +2380,16 @@ class Coder:
                 message_dict=dict(role="user", content=shared_output),
                 tag=MessageTag.CUR,
                 force=True,  # Force update existing message
+                promotion=ConversationManager.DEFAULT_TAG_PROMOTION_VALUE,
+                mark_for_demotion=1,
             )
 
             ConversationManager.add_message(
                 message_dict=dict(role="assistant", content="Ok"),
                 tag=MessageTag.CUR,
                 force=True,  # Force update existing message
+                promotion=ConversationManager.DEFAULT_TAG_PROMOTION_VALUE,
+                mark_for_demotion=1,
             )
 
         if edited and self.auto_test and self.test_cmd:
@@ -2459,6 +2469,8 @@ class Coder:
                         message_dict=tool_response,
                         tag=MessageTag.CUR,
                         hash_key=(tool_response["tool_call_id"], str(time.monotonic_ns())),
+                        promotion=ConversationManager.DEFAULT_TAG_PROMOTION_VALUE,
+                        mark_for_demotion=1,
                     )
 
                 return True
@@ -2575,7 +2587,7 @@ class Coder:
                                     parsed_args_list.append(json.loads(chunk))
                                 except json.JSONDecodeError:
                                     self.io.tool_warning(
-                                        "Could not parse JSON chunk for tool"
+                                        "Malformed JSON arguments in tool"
                                         f" {tool_call.function.name}: {chunk}"
                                     )
                                     continue
@@ -2865,6 +2877,8 @@ class Coder:
                 message_dict=msg,
                 tag=MessageTag.CUR,
                 hash_key=("assistant_message", str(msg), str(time.monotonic_ns())),
+                promotion=ConversationManager.DEFAULT_TAG_PROMOTION_VALUE,
+                mark_for_demotion=1,
             )
 
     def get_file_mentions(self, content, ignore_current=False):

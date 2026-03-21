@@ -250,6 +250,8 @@ class ConversationFiles:
             ConversationManager.add_message(
                 message_dict=diff_message,
                 tag=MessageTag.DIFFS,
+                promotion=ConversationManager.DEFAULT_TAG_PROMOTION_VALUE,
+                mark_for_demotion=1,
             )
 
         return diff

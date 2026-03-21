@@ -242,6 +242,7 @@ class ConversationChunks:
 
         # Format the dict into text
         formatted_lines = []
+        has_content = False
 
         # Add prefix if present
         if repo_data.get("prefix"):
@@ -253,6 +254,7 @@ class ConversationChunks:
 
             if not tags_info:
                 # Special file without tags
+                has_content = True
                 formatted_lines.append(f"### {rel_fname}")
                 formatted_lines.append("")
             else:
@@ -262,6 +264,7 @@ class ConversationChunks:
                 sorted_tags = sorted(tags_info.items(), key=lambda x: x[1].get("line", 0))
 
                 for tag_name, tag_info in sorted_tags:
+                    has_content = True
                     kind = tag_info.get("kind", "")
                     start_line = tag_info.get("start_line", 0)
                     end_line = tag_info.get("end_line", 0)
@@ -283,7 +286,7 @@ class ConversationChunks:
         if formatted_lines and formatted_lines[-1] == "":
             formatted_lines.pop()
 
-        if formatted_lines:
+        if formatted_lines and has_content:
             return "\n".join(formatted_lines)
         else:
             return ""
@@ -648,6 +651,8 @@ class ConversationChunks:
                 tag=MessageTag.FILE_CONTEXTS,
                 hash_key=("file_context_user", file_path),
                 force=True,
+                promotion=ConversationManager.DEFAULT_TAG_PROMOTION_VALUE,
+                mark_for_demotion=1,
             )
 
             ConversationManager.add_message(
@@ -655,6 +660,8 @@ class ConversationChunks:
                 tag=MessageTag.FILE_CONTEXTS,
                 hash_key=("file_context_assistant", file_path),
                 force=True,
+                promotion=ConversationManager.DEFAULT_TAG_PROMOTION_VALUE,
+                mark_for_demotion=1,
             )
 
     @classmethod

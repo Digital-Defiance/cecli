@@ -32,6 +32,8 @@ class ConversationManager:
     _tag_cache: Dict[str, List[Dict[str, Any]]] = {}
     _ALL_MESSAGES_CACHE_KEY = "__all__"  # Special key for caching all messages (tag=None)
 
+    DEFAULT_TAG_PROMOTION_VALUE: int = 999
+
     @classmethod
     def initialize(
         cls,
@@ -117,9 +119,12 @@ class ConversationManager:
         priority: Optional[int] = None,
         timestamp: Optional[int] = None,
         mark_for_delete: Optional[int] = None,
+        mark_for_demotion: Optional[int] = None,
+        promotion: Optional[int] = None,
         hash_key: Optional[Tuple[str, ...]] = None,
         force: bool = False,
         update_timestamp: bool = True,
+        update_promotion: bool = False,
         message_id: Optional[str] = None,
     ) -> BaseMessage:
         """
@@ -160,6 +165,8 @@ class ConversationManager:
             priority=priority,
             timestamp=timestamp,
             mark_for_delete=mark_for_delete,
+            mark_for_demotion=mark_for_demotion,
+            promotion=promotion,
             hash_key=hash_key,
             message_id=message_id,
         )
@@ -175,6 +182,9 @@ class ConversationManager:
                 existing_message.priority = priority
                 if update_timestamp:
                     existing_message.timestamp = timestamp
+                if update_promotion:
+                    existing_message.mark_for_demotion = mark_for_demotion
+                    existing_message.promotion = promotion
                 existing_message.mark_for_delete = mark_for_delete
                 # Clear cache for this tag and all messages cache since message was updated
                 cls._tag_cache.pop(tag.value, None)
@@ -193,6 +203,33 @@ class ConversationManager:
             return message
 
     @classmethod
+    def base_sort(cls, messages: List[BaseMessage]) -> List[BaseMessage]:
+        """
+        Sorts messages by effective priority (promotion if mark_for_demotion has not elapsed yet), then timestamp.
+
+        Args:
+            messages: List of BaseMessage instances to sort
+
+        Returns:
+            Sorted list of messages
+        """
+        return [
+            msg
+            for _, msg in sorted(
+                enumerate(messages),
+                key=lambda pair: (
+                    (
+                        pair[1].promotion
+                        if pair[1].is_promoted() and pair[1].promotion is not None
+                        else pair[1].priority
+                    ),
+                    pair[1].timestamp,
+                    pair[0],
+                ),
+            )
+        ]
+
+    @classmethod
     def get_messages(cls) -> List[BaseMessage]:
         """
         Returns messages sorted by priority (lowest first), then raw order in list.
@@ -203,14 +240,7 @@ class ConversationManager:
         # Filter out expired messages first
         cls._remove_expired_messages()
 
-        # Sort by priority (ascending), then timestamp (ascending), preserving original order for ties
-        return [
-            msg
-            for _, msg in sorted(
-                enumerate(cls._messages),
-                key=lambda pair: (pair[1].priority, pair[1].timestamp, pair[0]),
-            )
-        ]
+        return cls.base_sort(cls._messages)
 
     @classmethod
     def get_messages_dict(
@@ -398,10 +428,10 @@ class ConversationManager:
 
         tag_str = tag.value
         messages = [msg for msg in cls._messages if msg.tag == tag_str]
-        return sorted(messages, key=lambda msg: (msg.priority, msg.timestamp))
+        return cls.base_sort(messages)
 
     @classmethod
-    def decrement_mark_for_delete(cls) -> None:
+    def decrement_message_markers(cls) -> None:
         """Decrement all mark_for_delete values, remove expired messages."""
         messages_to_remove = []
 
@@ -410,6 +440,9 @@ class ConversationManager:
                 message.mark_for_delete -= 1
                 if message.is_expired():
                     messages_to_remove.append(message)
+
+            if message.mark_for_demotion is not None:
+                message.mark_for_demotion -= 1
 
         # Remove expired messages and clear cache for each tag
         tags_to_clear = set()
@@ -609,6 +642,7 @@ class ConversationManager:
         # Only consider messages with role "user" or "assistant" (not "tool")
         last_message_idx = -1
         second_last_message_idx = -1
+        seen_context = False
 
         # Find the last non-"<context" message with valid role
         for i in range(len(messages_dict) - 1, -1, -1):
@@ -617,18 +651,25 @@ class ConversationManager:
             role = msg.get("role", "")
             tool_calls = msg.get("tool_calls", [])
 
-            if tool_calls is not None and len(tool_calls):
+            if tool_calls is not None and len(tool_calls) and not seen_context:
                 continue
 
             if isinstance(content, str) and content.strip().startswith("<context"):
+                seen_context = True
                 if not content.strip().startswith('<context name="user_input" from="agent">'):
                     continue
+                else:
+                    last_message_idx = i
+                    break
 
-            if role not in ["system", "user"]:
+            if role not in ["system", "user", "assistant"]:
                 continue
 
-            last_message_idx = i
-            break
+            if seen_context:
+                last_message_idx = i
+                break
+            else:
+                continue
 
         # Find the second-to-last message with valid role
         if last_message_idx >= 0:
@@ -638,10 +679,7 @@ class ConversationManager:
                 role = msg.get("role", "")
                 tool_calls = msg.get("tool_calls", [])
 
-                if tool_calls is not None and len(tool_calls):
-                    continue
-
-                if role not in ["system", "user"]:
+                if role not in ["system", "user", "assistant"]:
                     continue
 
                 second_last_message_idx = i

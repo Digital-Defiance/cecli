@@ -73,15 +73,15 @@ class TestConversationIntegration(unittest.TestCase):
         self.assertEqual(len(ConversationManager.get_messages()), 1)
 
         # First decrement: mark_for_delete = 1 (not expired)
-        ConversationManager.decrement_mark_for_delete()
+        ConversationManager.decrement_message_markers()
         self.assertEqual(len(ConversationManager.get_messages()), 1)
 
         # Second decrement: mark_for_delete = 0 (not expired)
-        ConversationManager.decrement_mark_for_delete()
+        ConversationManager.decrement_message_markers()
         self.assertEqual(len(ConversationManager.get_messages()), 1)
 
         # Third decrement: mark_for_delete = -1 (expired, should be removed)
-        ConversationManager.decrement_mark_for_delete()
+        ConversationManager.decrement_message_markers()
         self.assertEqual(len(ConversationManager.get_messages()), 0)
 
 

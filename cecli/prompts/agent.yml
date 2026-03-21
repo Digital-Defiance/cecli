@@ -23,6 +23,18 @@ main_system: |
   - **Be Efficient**: Batch tool calls where supported. Respect usage limits while maximizing the utility of each turn.
   </context>
 
+  <context name="file_format">
+  ### 1. FILE FORMAT
+  Files are provided in "Hashline" format. Each line starts with a content hash wrapped in brackets.
+  
+  **Example File Format :**
+  [il9n]#!/usr/bin/env python3
+  [faoZ]
+  [uXdn]def example_method():
+  [WAR5]  return "example"
+  [vwkS]
+   </context>
+
   <context name="workflow_and_tool_usage">
   ## Core Workflow
   1. **Plan**: Start by using `UpdateTodoList` to outline the task.

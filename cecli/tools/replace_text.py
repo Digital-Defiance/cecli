@@ -4,6 +4,7 @@ from cecli.helpers.hashline import (
     HashlineError,
     apply_hashline_operations,
     get_hashline_diff,
+    strip_hashline,
 )
 from cecli.tools.utils.base_tool import BaseTool
 from cecli.tools.utils.helpers import (
@@ -27,7 +28,7 @@ class Tool(BaseTool):
                 " multiple files. Each edit must include its own file_path. Use hashline ranges"
                 " with the start_line and end_line parameters with format"
                 ' "{4 char hash}" (without the braces). For empty files, use "@000" as the hashline'
-                " reference."
+                " references."
             ),
             "parameters": {
                 "type": "object",
@@ -299,7 +300,11 @@ class Tool(BaseTool):
     @classmethod
     def format_output(cls, coder, mcp_server, tool_response):
         color_start, color_end = color_markers(coder)
-        params = json.loads(tool_response.function.arguments)
+
+        try:
+            params = json.loads(tool_response.function.arguments)
+        except json.JSONDecodeError:
+            coder.io.tool_error("Invalid Tool JSON")
 
         tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
 
@@ -338,11 +343,11 @@ class Tool(BaseTool):
                         if original_content is not None:
                             # Generate diff using get_hashline_diff
                             diff_output = get_hashline_diff(
-                                original_content=original_content,
+                                original_content=strip_hashline(original_content),
                                 start_line_hash=start_line,
                                 end_line_hash=end_line,
                                 operation="replace",
-                                text=replace_text,
+                                text=strip_hashline(replace_text),
                             )
                     except HashlineError as e:
                         # If hashline verification fails, show the error
