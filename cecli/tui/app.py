@@ -825,7 +825,7 @@ class TUI(App):
         self.input_queue.put({"confirmed": message.result})
 
     # Commands that use path-based completion
-    PATH_COMPLETION_COMMANDS = {"/add", "/read-only", "/read-only-stub", "/load", "/save"}
+    PATH_COMPLETION_COMMANDS = {"/add", "/read-only", "/read-only-stub", "/rules", "/load", "/save"}
 
     def _extract_symbols(self) -> set[str]:
         """Extract code symbols from files in chat using Pygments."""

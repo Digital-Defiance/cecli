@@ -962,6 +962,12 @@ def get_parser(default_config_files, git_root):
         help="specify a read-only file (can be used multiple times, glob patterns supported)",
     ).complete = shtab.FILE
     group.add_argument(
+        "--rules",
+        action="append",
+        metavar="FILE",
+        help="specify a rules file (can be used multiple times, glob patterns supported)",
+    ).complete = shtab.FILE
+    group.add_argument(
         "--vim",
         action="store_true",
         help="Use VI editing mode in the terminal (default: False)",

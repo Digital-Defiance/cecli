@@ -581,6 +581,9 @@ class AgentCoder(Coder):
         # Add static context blocks (priority 50 - between SYSTEM and EXAMPLES)
         ConversationChunks.add_static_context_blocks(self)
 
+        # Add rules messages
+        ConversationChunks.add_rules_messages(self)
+
         # Handle file messages using conversation module helper methods
         # These methods will add messages to ConversationManager
         ConversationChunks.add_repo_map_messages(self)

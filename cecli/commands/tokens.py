@@ -88,6 +88,12 @@ class TokensCommand(BaseCommand):
         if tokens_file_contexts:
             res.append((tokens_file_contexts, "numbered context messages", "part of chat history"))
 
+        # rules files
+        msgs_rules = ConversationManager.get_messages_dict(tag=MessageTag.RULES)
+        if msgs_rules:
+            tokens_rules = coder.main_model.token_count(msgs_rules)
+            res.append((tokens_rules, "rules files", "/drop to remove"))
+
         # repo map
         if coder.repo_map:
             tokens = coder.main_model.token_count(

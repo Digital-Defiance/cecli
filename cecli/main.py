@@ -763,6 +763,15 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             read_only_fnames.extend(str(f) for f in path.rglob("*") if f.is_file())
         else:
             read_only_fnames.append(str(path))
+    rules_patterns = args.rules or []
+    rules_expanded = utils.expand_glob_patterns(rules_patterns)
+    rules_fnames = []
+    for fn in rules_expanded:
+        path = Path(fn).expanduser().resolve()
+        if path.is_dir():
+            rules_fnames.extend(str(f) for f in path.rglob("*") if f.is_file())
+        else:
+            rules_fnames.append(str(path))
     if len(all_files) > 1:
         good = True
         for fname in all_files:
@@ -1089,6 +1098,7 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             fnames=fnames,
             read_only_fnames=read_only_fnames,
             read_only_stubs_fnames=[],
+            rules_fnames=rules_fnames,
             show_diffs=args.show_diffs,
             auto_commits=args.auto_commits,
             dirty_commits=args.dirty_commits,

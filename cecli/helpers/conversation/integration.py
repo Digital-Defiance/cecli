@@ -166,6 +166,8 @@ class ConversationChunks:
                 ConversationManager.remove_message_by_hash_key(image_user_hash_key)
                 ConversationManager.remove_message_by_hash_key(image_assistant_hash_key)
 
+        ConversationManager.clear_tag(MessageTag.RULES)
+
     @classmethod
     def add_file_list_reminder(cls, coder) -> None:
         """
@@ -381,6 +383,66 @@ class ConversationChunks:
             repo_messages.extend(dict_repo_messages)
 
         return repo_messages
+
+    @classmethod
+    def add_rules_messages(cls, coder) -> List[Dict[str, Any]]:
+        """
+        Get rules file messages for reference.
+        These are always reloaded from disk and use the RULES tag.
+
+        Args:
+            coder: The coder instance
+
+        Returns:
+            List of rules file messages
+        """
+        messages = []
+        if not hasattr(coder, "abs_rules_fnames") or not coder.abs_rules_fnames:
+            return messages
+
+        for fname in sorted(coder.abs_rules_fnames):
+            # Read file content directly from disk
+            try:
+                content = coder.io.read_text(fname)
+                if content is None:
+                    continue
+
+            except Exception:
+                continue
+
+            rel_fname = coder.get_rel_fname(fname)
+
+            # Create user message
+            user_msg = {
+                "role": "user",
+                "content": f"Rules defined in {rel_fname}:\n\n{content}",
+            }
+            # Create assistant message
+            assistant_msg = {
+                "role": "assistant",
+                "content": f"I understand the rules in {rel_fname} and will follow them.",
+            }
+
+            # Add to ConversationManager with STATIC tag
+            ConversationManager.add_message(
+                message_dict=user_msg,
+                tag=MessageTag.RULES,
+                hash_key=("rules_user", fname),
+                force=True,
+                update_timestamp=False,
+            )
+
+            ConversationManager.add_message(
+                message_dict=assistant_msg,
+                tag=MessageTag.RULES,
+                hash_key=("rules_assistant", fname),
+                force=True,
+                update_timestamp=False,
+            )
+
+            messages.extend([user_msg, assistant_msg])
+
+        return messages
 
     @classmethod
     def add_readonly_files_messages(cls, coder) -> List[Dict[str, Any]]:

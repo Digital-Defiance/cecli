@@ -110,6 +110,7 @@ class Coder:
     abs_fnames = None
     abs_read_only_fnames = None
     abs_read_only_stubs_fnames = None
+    abs_rules_fnames = None
     repo = None
     last_coder_commit_hash = None
     coder_edited_files = None
@@ -218,6 +219,7 @@ class Coder:
                 read_only_stubs_fnames=list(
                     from_coder.abs_read_only_stubs_fnames
                 ),  # Copy read-only stubs
+                rules_fnames=list(from_coder.abs_rules_fnames),  # Copy read-only stubs
                 done_messages=[],
                 cur_messages=[],
                 coder_commit_hashes=from_coder.coder_commit_hashes,
@@ -283,6 +285,7 @@ class Coder:
         add_gitignore_files=False,
         read_only_fnames=None,
         read_only_stubs_fnames=None,
+        rules_fnames=None,
         show_diffs=False,
         auto_commits=True,
         dirty_commits=True,
@@ -388,19 +391,24 @@ class Coder:
         self.message_tokens_received = 0
 
         self.token_profiler = TokenProfiler(
-            enable_printing=getattr(args, "show_speed", False) if args else False
+            enable_printing=nested.getter(self.args, "show_speed", False)
         )
         self.verbose = verbose
         self.abs_fnames = set()
         self.abs_read_only_fnames = set()
         self.add_gitignore_files = add_gitignore_files
         self.abs_read_only_stubs_fnames = set()
+        self.abs_rules_fnames = set()
 
         self.io = io
         self.io.coder = weakref.ref(self)
 
-        self.manual_copy_paste = getattr(main_model, "copy_paste_transport", "api") == "clipboard"
-        self.copy_paste_mode = getattr(main_model, "copy_paste_mode", False) or auto_copy_context
+        self.manual_copy_paste = (
+            nested.getter(main_model, "copy_paste_transport", "api") == "clipboard"
+        )
+        self.copy_paste_mode = (
+            nested.getter(main_model, "copy_paste_mode", False) or auto_copy_context
+        )
 
         self.shell_commands = []
         self.partial_response_tool_calls = []
@@ -504,6 +512,15 @@ class Coder:
                         f"Error: Read-only (stub) file {fname} does not exist. Skipping."
                     )
 
+        if rules_fnames:
+            self.abs_rules_fnames = set()
+            for fname in rules_fnames:
+                abs_fname = self.abs_root_path(fname)
+                if os.path.exists(abs_fname):
+                    self.abs_rules_fnames.add(abs_fname)
+                else:
+                    self.io.tool_warning(f"Error: Rules file {fname} does not exist. Skipping.")
+
         if map_tokens is None:
             use_repo_map = main_model.use_repo_map
             map_tokens = 1024
@@ -512,7 +529,7 @@ class Coder:
 
         max_inp_tokens = self.main_model.info.get("max_input_tokens") or 0
 
-        has_map_prompt = hasattr(self, "gpt_prompts") and self.gpt_prompts.repo_content_prefix
+        has_map_prompt = nested.getter(self, "gpt_prompts.repo_content_prefix")
 
         if use_repo_map and self.repo and has_map_prompt:
             self.repo_map = RepoMap(
@@ -2048,6 +2065,9 @@ class Coder:
         # Add system messages (system prompt, examples, reminder)
         ConversationChunks.add_system_messages(self)
 
+        # Add rules messages
+        ConversationChunks.add_rules_messages(self)
+
         # Add repository map messages (they add themselves via add_repo_map_messages)
         ConversationChunks.add_repo_map_messages(self)
 
@@ -2345,7 +2365,7 @@ class Coder:
                     tool_call_response, a, b = self.consolidate_chunks()
                     if await self.process_tool_calls(tool_call_response):
                         self.num_tool_calls += 1
-                        self.reflected_message = True
+                        self.reflected_message = self.reflected_message or True
                         return
             except Exception as e:
                 self.io.tool_error(f"Error processing tool calls: {str(e)}")
@@ -3088,6 +3108,18 @@ class Coder:
             self.io.tool_warning("Empty response received from LLM. Check your provider account?")
 
         self.io.assistant_output(show_resp, pretty=self.show_pretty())
+
+        if (
+            self.edit_format == "agent"
+            and self.stream
+            and not show_resp
+            and nested.getter(self, "_has_empty_reflected")
+        ):
+            await asyncio.sleep(4)
+            self._has_empty_reflected = True
+            self.reflected_message = True
+        else:
+            self._has_empty_reflected = False
 
         if (
             hasattr(completion.choices[0], "finish_reason")

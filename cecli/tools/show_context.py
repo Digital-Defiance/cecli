@@ -107,8 +107,8 @@ class Tool(BaseTool):
                         " 'end_pattern'."
                     )
 
-                start_pattern = strip_hashline(start_pattern)
-                end_pattern = strip_hashline(end_pattern)
+                start_pattern = strip_hashline(start_pattern).strip()
+                end_pattern = strip_hashline(end_pattern).strip()
 
                 # 2. Resolve path
                 abs_path, rel_path = resolve_paths(coder, file_path)
