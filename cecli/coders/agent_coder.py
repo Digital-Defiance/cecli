@@ -66,7 +66,6 @@ class AgentCoder(Coder):
         }
         self.write_tools = {
             "deletetext",
-            "indenttext",
             "inserttext",
             "replacetext",
             "undochange",
@@ -244,14 +243,14 @@ class AgentCoder(Coder):
 
     async def _execute_local_tool_calls(self, tool_calls_list):
         tool_responses = []
-        has_write_tool = False
+        used_write_tool = False
 
         for tool_call in tool_calls_list:
             tool_name = tool_call.function.name
             result_message = ""
             try:
                 if tool_name.lower() in self.write_tools:
-                    has_write_tool = True
+                    used_write_tool = True
 
                 args_string = tool_call.function.arguments.strip()
                 parsed_args_list = []
@@ -342,7 +341,7 @@ class AgentCoder(Coder):
                 {"role": "tool", "tool_call_id": tool_call.id, "content": result_message}
             )
 
-        if self.auto_lint and has_write_tool:
+        if self.auto_lint and used_write_tool and not self.edit_allowed:
             edited = list(self.files_edited_by_tools)
             lint_errors = self.lint_edited(edited)
             self.lint_outcome = not lint_errors

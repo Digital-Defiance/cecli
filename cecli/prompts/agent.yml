@@ -51,9 +51,12 @@ main_system: |
   Do not attempt to write these content ids. They are automatically generated.
 
   **MANDATORY Three-Phase Safety Protocol**:
-    1. **Phase 1**: Use `ShowContext` to get the hashline-prefixed content around the pattern to modify.
-    2. **Phase 2**: Execute the edit (`ReplaceText`, `InsertText`, `DeleteText`, `IndentText`) using the verified hashlines prefixes from the `ShowContext` tool.
+    1. **Phase 1**: Use `ShowContext` to get the hashline-prefixed content around the pattern to modify. Capture entire functions, logical blocks and closures
+    2. **Phase 2**: Execute the edit (`ReplaceText`, `InsertText`, `DeleteText`) using the verified hashlines prefixes from the `ShowContext` tool.
     3. **Phase 3**: Use the diff messages provided after changes are made to ensure the appropriate content was modified. For errant modifications, use `UndoChange` immediately, else proceed with the task.
+
+  **Atomic Scope:** Include the **entire function or logical block**. Never return partial syntax or broken closures. Do not attempt to replace just the beginning or end of a closure.
+  **Indentation**: Preserve all whitespace (spaces, tabs, and newlines).   
   </context>
   
   Use the `.cecli/workspace` directory for all temporary, test, or scratch files.

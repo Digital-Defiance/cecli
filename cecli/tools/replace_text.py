@@ -88,8 +88,6 @@ class Tool(BaseTool):
             raise ToolError(
                 "Please call `ShowContext` first to make sure edits are appropriately scoped"
             )
-        else:
-            coder.edit_allowed = False
 
         tool_name = "ReplaceText"
         try:
@@ -160,7 +158,7 @@ class Tool(BaseTool):
                             file_metadata.append(metadata)
                             file_successful_edits += 1
 
-                        except (ToolError, HashlineError) as e:
+                        except Exception as e:
                             # Record failed edit but continue with others
                             file_failed_edits.append(f"Edit {edit_index + 1}: {str(e)}")
                             continue
@@ -176,7 +174,7 @@ class Tool(BaseTool):
                             original_content=original_content,
                             operations=operations,
                         )
-                    except (ToolError, HashlineError, ValueError) as e:
+                    except Exception as e:
                         # If batch operation fails, mark all operations as failed
                         for edit_index, _ in file_edits:
                             all_failed_edits.append(f"Edit {edit_index + 1}: {str(e)}")
@@ -235,7 +233,7 @@ class Tool(BaseTool):
                     all_failed_edits.extend(file_failed_edits)
                     files_processed += 1
 
-                except ToolError as e:
+                except Exception as e:
                     # Record all edits for this file as failed
                     for edit_index, _ in file_edits:
                         all_failed_edits.append(f"Edit {edit_index + 1}: {str(e)}")
@@ -245,6 +243,8 @@ class Tool(BaseTool):
             if total_successful_edits == 0:
                 error_msg = "No edits were successfully applied:\n" + "\n".join(all_failed_edits)
                 raise ToolError(error_msg)
+            else:
+                coder.edit_allowed = False
 
             # 5. Handle dry run overall
             if dry_run:
