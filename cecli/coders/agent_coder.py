@@ -101,7 +101,8 @@ class AgentCoder(Coder):
                 model = self.main_model.agent_model
             else:
                 model = self.main_model
-        return await super().send(messages, model, functions, tools)
+        async for chunk in super().send(messages, model, functions, tools):
+            yield chunk
 
     def _setup_agent(self):
         os.makedirs(".cecli/workspace", exist_ok=True)
