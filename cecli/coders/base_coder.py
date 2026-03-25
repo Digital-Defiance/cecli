@@ -2147,6 +2147,8 @@ class Coder:
         return True
 
     def get_active_model_name(self):
+        if self.edit_format == "agent" and self.main_model.agent_model:
+            return self.main_model.agent_model.name
         return self.main_model.name
 
     async def send_message(self, inp):

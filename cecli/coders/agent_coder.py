@@ -95,10 +95,6 @@ class AgentCoder(Coder):
         ToolRegistry.build_registry(agent_config=self.agent_config)
         super().__init__(*args, **kwargs)
 
-    def get_active_model_name(self):
-        if self.main_model.agent_model and self.main_model.agent_model is not self.main_model:
-            return self.main_model.agent_model.name
-        return self.main_model.name
 
     async def send(self, messages, model=None, functions=None, tools=None):
         if not model:
