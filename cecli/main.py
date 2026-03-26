@@ -1065,8 +1065,17 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             # Default since some models do not have max_input_tokens specified somehow
             args.context_compaction_max_tokens = 65536
     try:
+        if getattr(args, "mcp_servers_file_deprecated", None):
+            io.tool_warning(
+                "The --mcp-servers-file argument is deprecated and will be removed in a future"
+                " version. Please use --mcp-servers-files instead."
+            )
+            if not args.mcp_servers_files:
+                args.mcp_servers_files = []
+            args.mcp_servers_files.extend(args.mcp_servers_file_deprecated)
+
         mcp_servers = load_mcp_servers(
-            args.mcp_servers, args.mcp_servers_file, io, args.verbose, args.mcp_transport
+            args.mcp_servers, args.mcp_servers_files, io, args.verbose, args.mcp_transport
         )
         mcp_manager = await McpServerManager.from_servers(mcp_servers, io, args.verbose)
         # Load hooks if specified

@@ -14,7 +14,7 @@ from cecli.args_formatter import (
     MarkdownHelpFormatter,
     YamlHelpFormatter,
 )
-from cecli.deprecated_args import add_deprecated_model_args
+from cecli.deprecated_args import add_deprecated_mcp_args, add_deprecated_model_args
 
 from .dump import dump  # noqa: F401
 
@@ -364,8 +364,8 @@ def get_parser(default_config_files, git_root):
         default=None,
     )
     group.add_argument(
-        "--mcp-servers-file",
-        metavar="MCP_CONFIG_FILE",
+        "--mcp-servers-files",
+        metavar="MCP_CONFIG_FILES",
         help="Specify a file path with MCP server configurations (can be specified multiple times)",
         action="append",
         default=[],
@@ -1089,6 +1089,9 @@ def get_parser(default_config_files, git_root):
     group = parser.add_argument_group("Deprecated model settings")
     # Add deprecated model shortcut arguments
     add_deprecated_model_args(parser, group)
+
+    group = parser.add_argument_group("Deprecated agent settings")
+    add_deprecated_mcp_args(parser, group)
 
     return parser
 
