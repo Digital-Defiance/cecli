@@ -1368,6 +1368,20 @@ def test_mcp_servers_parsing(dummy_io, git_temp_dir, mocker):
     assert len(kwargs["mcp_manager"].servers) > 0
     assert hasattr(kwargs["mcp_manager"].servers[0], "name")
 
+    mock_coder_create.reset_mock()
+    mock_coder_instance._autosave_future = mock_autosave_future()
+    mcp_file = Path("mcp_servers.json")
+    mcp_content = {"mcpServers": {"git": {"command": "uvx", "args": ["mcp-server-git"]}}}
+    mcp_file.write_text(json.dumps(mcp_content))
+    main(["--mcp-servers-file", str(mcp_file), "--exit", "--yes-always"], **dummy_io)
+    mock_coder_create.assert_called_once()
+    _, kwargs = mock_coder_create.call_args
+
+    assert "mcp_manager" in kwargs
+    assert kwargs["mcp_manager"] is not None
+    assert len(kwargs["mcp_manager"].servers) > 0
+    assert hasattr(kwargs["mcp_manager"].servers[0], "name")
+
 
 def test_mcp_servers_file_multiple(dummy_io, git_temp_dir, mocker):
     mocker.patch("cecli.mcp.server.McpServer.start", new_callable=AsyncMock)
@@ -1407,17 +1421,3 @@ def test_mcp_servers_file_multiple(dummy_io, git_temp_dir, mocker):
     server_names = {server.name for server in mcp_manager.servers}
     assert "server1" in server_names
     assert "server2" in server_names
-
-    mock_coder_create.reset_mock()
-    mock_coder_instance._autosave_future = mock_autosave_future()
-    mcp_file = Path("mcp_servers.json")
-    mcp_content = {"mcpServers": {"git": {"command": "uvx", "args": ["mcp-server-git"]}}}
-    mcp_file.write_text(json.dumps(mcp_content))
-    main(["--mcp-servers-file", str(mcp_file), "--exit", "--yes-always"], **dummy_io)
-    mock_coder_create.assert_called_once()
-    _, kwargs = mock_coder_create.call_args
-
-    assert "mcp_manager" in kwargs
-    assert kwargs["mcp_manager"] is not None
-    assert len(kwargs["mcp_manager"].servers) > 0
-    assert hasattr(kwargs["mcp_manager"].servers[0], "name")
