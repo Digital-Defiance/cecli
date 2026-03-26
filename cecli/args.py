@@ -366,8 +366,9 @@ def get_parser(default_config_files, git_root):
     group.add_argument(
         "--mcp-servers-file",
         metavar="MCP_CONFIG_FILE",
-        help="Specify a file path with MCP server configurations",
-        default=None,
+        help="Specify a file path with MCP server configurations (can be specified multiple times)",
+        action="append",
+        default=[],
     )
     group.add_argument(
         "--mcp-transport",
