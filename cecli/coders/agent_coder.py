@@ -1023,9 +1023,9 @@ I will proceed based on the tool results and updated context.""")
                 self._last_repetitive_warning_severity += 1
 
             repetition_warning = f"""
-## Repetition Detected: Strategy Adjustment Required
+## Repetition Detected
 You have been using the following tools repetitively: {', '.join([f'`{t}`' for t in repetitive_tools])}.
-**Constraint:** Do not repeat the same parameters for these tools in your next turns. Prioritize editing.
+Do not repeat the same parameters for these tools in your next turns. Prioritize editing.
             """
 
             if self._last_repetitive_warning_severity > 5:
@@ -1074,13 +1074,11 @@ You have been using the following tools repetitively: {', '.join([f'`{t}`' for t
                 )
 
                 repetition_warning += f"""
-### CRITICAL: Execution Loop Detected
-You are currently "spinning gears". To break the exploration loop, you must:
-1. **Analyze**: Use the `Thinking` tool exactly once to summarize what you have found so far and why you were stuck.
-2. **Pivot**: Modify your current exploration strategy. Try alternative methods. Prioritize editing.
-3. **Reframe**: To ensure your logic reset, include a 2-sentence story about {animal} {verb} {fruit} in your thoughts.
-
-Prioritize editing or verification over further exploration.
+## CRITICAL: Execution Loop Detected
+You may be stuck in a cycle. To break the exploration loop and continue making progress, please do the following:
+1. **Analyze**: Use the `Thinking` tool exactly once to summarize your findings and why you are repeating yourself.
+2. **Reframe**: To help with creativity, include a 2-sentence story about {animal} {verb} {fruit} in your thoughts.
+3. **Pivot**: Modify your current exploration strategy. Try alternative methods. Prioritize editing.
                 """
 
             context_parts.append(repetition_warning)
