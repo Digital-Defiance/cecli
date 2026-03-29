@@ -956,7 +956,14 @@ class TUI(App):
                 if cmd_part == "/":
                     suggestions = all_commands
                 else:
-                    suggestions = [c for c in all_commands if c.startswith(cmd_part)]
+                    # First get commands that start with the prefix
+                    starts_with = [c for c in all_commands if c.startswith(cmd_part)]
+                    # Then get commands that contain the prefix anywhere (excluding those already matched)
+                    contains = [
+                        c for c in all_commands if cmd_part[1:] in c and not c.startswith(cmd_part)
+                    ]
+
+                    suggestions = starts_with + contains
             else:
                 # Complete command argument
                 # This handles both:
