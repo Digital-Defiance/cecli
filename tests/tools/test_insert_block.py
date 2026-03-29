@@ -137,11 +137,11 @@ def test_trailing_newline_preservation(coder_with_file):
 
     content = file_path.read_text()
     # When inserting in middle of file with HashPos system,
-    # trailing newlines are not preserved for insert operations
-    # The behavior is different from append operations
-    assert not content.endswith(
+    # trailing newlines should be preserved for insert operations
+    # just like they are for other operations
+    assert content.endswith(
         "\n"
-    ), "HashPos insert operation does not preserve trailing newlines when inserting in middle"
+    ), "HashPos insert operation should preserve trailing newlines when inserting in middle"
     coder.io.tool_error.assert_not_called()
 
 
