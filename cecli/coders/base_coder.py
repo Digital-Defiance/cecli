@@ -424,12 +424,14 @@ class Coder:
 
         # Set the reasoning tag name based on model settings or default
         self.reasoning_tag_name = (
-            self.main_model.reasoning_tag if self.main_model.reasoning_tag else REASONING_TAG
+            self.get_active_model().reasoning_tag
+            if self.get_active_model().reasoning_tag
+            else REASONING_TAG
         )
 
         self.stream = stream and main_model.streaming and not self.manual_copy_paste
 
-        if cache_prompts and self.main_model.cache_control:
+        if cache_prompts and self.get_active_model().cache_control:
             self.add_cache_headers = True
 
         self.show_diffs = show_diffs
@@ -524,7 +526,7 @@ class Coder:
         else:
             use_repo_map = map_tokens > 0
 
-        max_inp_tokens = self.main_model.info.get("max_input_tokens") or 0
+        max_inp_tokens = self.get_active_model().info.get("max_input_tokens") or 0
 
         has_map_prompt = nested.getter(self, "gpt_prompts.repo_content_prefix")
 
@@ -532,7 +534,7 @@ class Coder:
             self.repo_map = RepoMap(
                 map_tokens,
                 self.map_cache_dir,
-                self.main_model,
+                self.get_active_model(),
                 io,
                 self.gpt_prompts.repo_content_prefix,
                 self.verbose,
@@ -546,8 +548,8 @@ class Coder:
             )
 
         self.summarizer = summarizer or ChatSummary(
-            [self.main_model.weak_model, self.main_model],
-            self.main_model.max_chat_history_tokens,
+            [self.get_active_model().weak_model, self.get_active_model()],
+            self.get_active_model().max_chat_history_tokens,
         )
 
         self.summarizer_thread = None
@@ -722,7 +724,7 @@ class Coder:
             if map_tokens > 0:
                 refresh = self.repo_map.refresh
                 lines.append(f"Repo-map: using {map_tokens} tokens, {refresh} refresh")
-                max_map_tokens = self.main_model.get_repo_map_tokens() * 2
+                max_map_tokens = self.get_active_model().get_repo_map_tokens() * 2
                 if map_tokens > max_map_tokens:
                     lines.append(
                         f"Warning: map-tokens > {max_map_tokens} is not recommended. Too much"
@@ -904,7 +906,7 @@ class Coder:
                     # Apply context management if enabled for large files
                     if self.context_management_enabled:
                         # Calculate tokens for this file
-                        file_tokens = self.main_model.token_count(content)
+                        file_tokens = self.get_active_model().token_count(content)
 
                         if file_tokens > self.large_file_token_threshold:
                             # Instead of truncating, show the file's definitions/structure
@@ -972,7 +974,7 @@ class Coder:
                 # Apply context management if enabled for large files (same as get_files_content)
                 if self.context_management_enabled:
                     # Calculate tokens for this file
-                    file_tokens = self.main_model.token_count(content)
+                    file_tokens = self.get_active_model().token_count(content)
 
                     if file_tokens > self.large_file_token_threshold:
                         # Instead of truncating, show the file's definitions/structure
@@ -1183,13 +1185,15 @@ class Coder:
             return None
 
     def get_images_message(self, fnames):
-        supports_images = self.main_model.info.get("supports_vision")
-        supports_pdfs = self.main_model.info.get("supports_pdf_input") or self.main_model.info.get(
-            "max_pdf_size_mb"
-        )
+        supports_images = self.get_active_model().info.get("supports_vision")
+        supports_pdfs = self.get_active_model().info.get(
+            "supports_pdf_input"
+        ) or self.get_active_model().info.get("max_pdf_size_mb")
 
         # https://github.com/BerriAI/litellm/pull/6928
-        supports_pdfs = supports_pdfs or "claude-3-5-sonnet-20241022" in self.main_model.name
+        supports_pdfs = (
+            supports_pdfs or "claude-3-5-sonnet-20241022" in self.get_active_model().name
+        )
 
         if not (supports_images or supports_pdfs):
             return []
@@ -1536,7 +1540,9 @@ class Coder:
         all_read_only_fnames = self.abs_read_only_fnames | self.abs_read_only_stubs_fnames
         all_read_only_files = [self.get_rel_fname(fname) for fname in all_read_only_fnames]
         all_files = sorted(set(inchat_files + all_read_only_files))
-        edit_format = "" if self.edit_format == self.main_model.edit_format else self.edit_format
+        edit_format = (
+            "" if self.edit_format == self.get_active_model().edit_format else self.edit_format
+        )
 
         return await self.io.get_input(
             self.root,
@@ -1987,15 +1993,14 @@ class Coder:
         final_reminders = []
 
         lazy_prompt = ""
-        if self.main_model.lazy:
+        if self.get_active_model().lazy:
             lazy_prompt = self.gpt_prompts.lazy_prompt
             final_reminders.append(lazy_prompt)
 
         overeager_prompt = ""
-        if self.main_model.overeager:
+        if self.get_active_model().overeager:
             overeager_prompt = self.gpt_prompts.overeager_prompt
             final_reminders.append(overeager_prompt)
-
         user_lang = self.get_user_language()
         if user_lang:
             final_reminders.append(f"Reply in {user_lang}.\n")
@@ -2109,12 +2114,12 @@ class Coder:
                 self.warming_pings_left -= 1
                 self.next_cache_warm = time.time() + delay
 
-                kwargs = dict(self.main_model.extra_params) or dict()
+                kwargs = dict(self.get_active_model().extra_params) or dict()
                 kwargs["max_tokens"] = 1
 
                 try:
                     completion = litellm.completion(
-                        model=self.main_model.name,
+                        model=self.get_active_model().name,
                         messages=ConversationService.get_manager(self).get_messages_dict(),
                         stream=False,
                         **kwargs,
@@ -2138,13 +2143,13 @@ class Coder:
 
     async def check_tokens(self, messages):
         """Check if the messages will fit within the model's token limits."""
-        input_tokens = self.main_model.token_count(messages)
-        max_input_tokens = self.main_model.info.get("max_input_tokens") or 0
+        input_tokens = self.get_active_model().token_count(messages)
+        max_input_tokens = self.get_active_model().info.get("max_input_tokens") or 0
 
         if max_input_tokens and input_tokens >= max_input_tokens:
             self.io.tool_error(
                 f"Your estimated chat context of {input_tokens:,} tokens exceeds the"
-                f" {max_input_tokens:,} token limit for {self.main_model.name}!"
+                f" {max_input_tokens:,} token limit for {self.get_active_model().name}!"
             )
             self.io.tool_output("To reduce the chat context:")
             self.io.tool_output("- Use /drop to remove unneeded files from the chat")
@@ -2159,10 +2164,8 @@ class Coder:
                 return False
         return True
 
-    def get_active_model_name(self):
-        if self.edit_format == "agent" and self.main_model.agent_model:
-            return self.main_model.agent_model.name
-        return self.main_model.name
+    def get_active_model(self):
+        return self.main_model
 
     async def send_message(self, inp):
         # Notify IO that LLM processing is starting
@@ -2198,7 +2201,7 @@ class Coder:
         self.multi_response_content = ""
         if self.show_pretty():
             spinner_text = (
-                f"Waiting for {self.get_active_model_name()} •"
+                f"Waiting for {self.get_active_model().name} •"
                 f" ${self.format_cost(self.total_cost)} session"
             )
             self.io.start_spinner(spinner_text)
@@ -2256,7 +2259,7 @@ class Coder:
                     break
                 except FinishReasonLength:
                     # We hit the output limit!
-                    if not self.main_model.info.get("supports_assistant_prefill"):
+                    if not self.get_active_model().info.get("supports_assistant_prefill"):
                         exhausted = True
                         break
 
@@ -2771,16 +2774,16 @@ class Coder:
     async def show_exhausted_error(self):
         output_tokens = 0
         if self.partial_response_content:
-            output_tokens = self.main_model.token_count(self.partial_response_content)
-        max_output_tokens = self.main_model.info.get("max_output_tokens") or 0
+            output_tokens = self.get_active_model().token_count(self.partial_response_content)
+        max_output_tokens = self.get_active_model().info.get("max_output_tokens") or 0
 
         messages = self.format_messages()
         if hasattr(messages, "all_messages"):
             # Old system: messages is a ChatChunks object
             messages = messages.all_messages()
         # New system: messages is already a list
-        input_tokens = self.main_model.token_count(messages)
-        max_input_tokens = self.main_model.info.get("max_input_tokens") or 0
+        input_tokens = self.get_active_model().token_count(messages)
+        max_input_tokens = self.get_active_model().info.get("max_input_tokens") or 0
 
         total_tokens = input_tokens + output_tokens
 
@@ -2799,7 +2802,7 @@ class Coder:
             tot_err = " -- possibly exhausted context window!"
 
         res = ["", ""]
-        res.append(f"Model {self.main_model.name} has hit a token limit!")
+        res.append(f"Model {self.get_active_model().name} has hit a token limit!")
         res.append("Token counts below are approximate.")
         res.append("")
         res.append(f"Input tokens: ~{input_tokens:,} of {max_input_tokens:,}{inp_err}")
@@ -2811,7 +2814,7 @@ class Coder:
             res.append("To reduce output tokens:")
             res.append("- Ask for smaller changes in each request.")
             res.append("- Break your code into smaller source files.")
-            if "diff" not in self.main_model.edit_format:
+            if "diff" not in self.get_active_model().edit_format:
                 res.append("- Use a stronger model that can return diffs.")
 
         if input_tokens >= max_input_tokens or total_tokens >= max_input_tokens:
@@ -2996,7 +2999,7 @@ class Coder:
         self.io.reset_streaming_response()
 
         if not model:
-            model = self.main_model
+            model = self.get_active_model()
 
         self.partial_response_content = ""
         self.partial_response_reasoning_content = ""
@@ -3461,8 +3464,8 @@ class Coder:
                 self.message_tokens_sent += prompt_tokens
 
         else:
-            prompt_tokens = self.main_model.token_count(messages)
-            completion_tokens = self.main_model.token_count(self.partial_response_content)
+            prompt_tokens = self.get_active_model().token_count(messages)
+            completion_tokens = self.get_active_model().token_count(self.partial_response_content)
             self.message_tokens_sent += prompt_tokens
 
         self.message_tokens_received += completion_tokens
@@ -3478,7 +3481,7 @@ class Coder:
             tokens_report, self.message_tokens_sent, self.message_tokens_received
         )
 
-        if not self.main_model.info.get("input_cost_per_token"):
+        if not self.get_active_model().info.get("input_cost_per_token"):
             self.usage_report = tokens_report
             return
 
@@ -3522,10 +3525,10 @@ class Coder:
     ):
         cost = 0
 
-        input_cost_per_token = self.main_model.info.get("input_cost_per_token") or 0
-        output_cost_per_token = self.main_model.info.get("output_cost_per_token") or 0
+        input_cost_per_token = self.get_active_model().info.get("input_cost_per_token") or 0
+        output_cost_per_token = self.get_active_model().info.get("output_cost_per_token") or 0
         input_cost_per_token_cache_hit = (
-            self.main_model.info.get("input_cost_per_token_cache_hit") or 0
+            self.get_active_model().info.get("input_cost_per_token_cache_hit") or 0
         )
 
         # deepseek
@@ -3721,7 +3724,7 @@ class Coder:
             if is_image_file(fname):
                 continue
             content = self.io.read_text(fname)
-            tokens += self.main_model.token_count(content)
+            tokens += self.get_active_model().token_count(content)
 
         if tokens < warn_number_of_tokens:
             return

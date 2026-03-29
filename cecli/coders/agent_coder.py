@@ -92,15 +92,6 @@ class AgentCoder(Coder):
         ToolRegistry.build_registry(agent_config=self.agent_config)
         super().__init__(*args, **kwargs)
 
-    async def send(self, messages, model=None, functions=None, tools=None):
-        if not model:
-            if self.main_model.agent_model and self.main_model.agent_model is not self.main_model:
-                model = self.main_model.agent_model
-            else:
-                model = self.main_model
-        async for chunk in super().send(messages, model, functions, tools):
-            yield chunk
-
     def _setup_agent(self):
         os.makedirs(".cecli/workspace", exist_ok=True)
 
@@ -448,7 +439,7 @@ class AgentCoder(Coder):
                 if block_type in self.allowed_context_blocks:
                     block_content = self._generate_context_block(block_type)
                     if block_content:
-                        self.context_block_tokens[block_type] = self.main_model.token_count(
+                        self.context_block_tokens[block_type] = self.get_active_model().token_count(
                             block_content
                         )
             self.tokens_calculated = True
@@ -620,7 +611,7 @@ class AgentCoder(Coder):
                 self._calculate_context_block_tokens()
             result = '<context name="context_summary" from="agent">\n'
             result += "## Current Context Overview\n\n"
-            max_input_tokens = self.main_model.info.get("max_input_tokens") or 0
+            max_input_tokens = self.get_active_model().info.get("max_input_tokens") or 0
             if max_input_tokens:
                 result += f"Model context limit: {max_input_tokens:,} tokens\n\n"
             total_file_tokens = 0
@@ -634,7 +625,7 @@ class AgentCoder(Coder):
                     rel_fname = self.get_rel_fname(fname)
                     content = self.io.read_text(fname)
                     if content is not None:
-                        tokens = self.main_model.token_count(content)
+                        tokens = self.get_active_model().token_count(content)
                         total_file_tokens += tokens
                         editable_tokens += tokens
                         size_indicator = (
@@ -658,7 +649,7 @@ class AgentCoder(Coder):
                     rel_fname = self.get_rel_fname(fname)
                     content = self.io.read_text(fname)
                     if content is not None:
-                        tokens = self.main_model.token_count(content)
+                        tokens = self.get_active_model().token_count(content)
                         total_file_tokens += tokens
                         readonly_tokens += tokens
                         size_indicator = (
@@ -761,6 +752,12 @@ class AgentCoder(Coder):
 
         # Ensure we call base implementation to trigger execution of all tools (native + extracted)
         return await super().process_tool_calls(tool_call_response)
+
+    def get_active_model(self):
+        if self.main_model.agent_model:
+            return self.main_model.agent_model
+
+        return self.main_model
 
     async def reply_completed(self):
         """Process the completed response from the LLM.
@@ -998,8 +995,8 @@ I will proceed based on the tool results and updated context.""")
                 self.model_kwargs = {
                     "temperature": (
                         1
-                        if isinstance(self.main_model.use_temperature, bool)
-                        else float(self.main_model.use_temperature)
+                        if isinstance(self.get_active_model().use_temperature, bool)
+                        else float(self.get_active_model().use_temperature)
                     ) + 0.1,
                     "frequency_penalty": 0.2,
                     "presence_penalty": 0.1,
@@ -1015,8 +1012,8 @@ I will proceed based on the tool results and updated context.""")
                     self.model_kwargs["temperature"] = min(
                         (
                             1
-                            if isinstance(self.main_model.use_temperature, bool)
-                            else float(self.main_model.use_temperature)
+                            if isinstance(self.get_active_model().use_temperature, bool)
+                            else float(self.get_active_model().use_temperature)
                         ),
                         max(temperature - 0.15, 1),
                     )
@@ -1085,7 +1082,7 @@ Do not repeat the same parameters for these tools in your next turns. Prioritize
                 repetition_warning += f"""
 ## CRITICAL: Execution Loop Detected
 You may be stuck in a cycle. To break the exploration loop and continue making progress, please do the following:
-1. **Analyze**: Use the `Thinking` tool exactly once to summarize your findings and why you are repeating yourself.
+1. **Analyze**: Summarize your findings. Describe how you can stop repeating yourself and make progress.
 2. **Reframe**: To help with creativity, include a 2-sentence story about {animal} {verb} {fruit} in your thoughts.
 3. **Pivot**: Modify your current exploration strategy. Try alternative methods. Prioritize editing.
                 """
@@ -1144,7 +1141,7 @@ You may be stuck in a cycle. To break the exploration loop and continue making p
             if content is None:
                 return f"Error reading file: {file_path}"
             if self.context_management_enabled:
-                file_tokens = self.main_model.token_count(content)
+                file_tokens = self.get_active_model().token_count(content)
                 if file_tokens > self.large_file_token_threshold:
                     self.io.tool_output(
                         f"⚠️ '{file_path}' is very large ({file_tokens} tokens). Use"

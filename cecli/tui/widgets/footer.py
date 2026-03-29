@@ -63,7 +63,7 @@ class MainFooter(Static):
         if not self.model_name:
             return ""
         # Strip common prefixes like "openrouter/x-ai/"
-        name = self.app.worker.coder.get_active_model_name()
+        name = self.app.worker.coder.get_active_model().name
         if len(name) > 40:
             if "/" in name:
                 name = name.split("/")[-1]
