@@ -169,7 +169,10 @@ class Tool(BaseTool):
                             operations=operations,
                         )
 
-                        file_successful_edits += len(successful_ops)
+                        if new_content != original_content:
+                            file_successful_edits += len(successful_ops)
+                        else:
+                            raise ToolError("Invalid Edit - Source Not Modified")
 
                         if len(failed_ops):
                             for failed_op in failed_ops:
@@ -180,7 +183,6 @@ class Tool(BaseTool):
                         # If batch operation fails, mark all operations as failed
                         for edit_index, _ in file_edits:
                             file_failed_edits.append(f"Edit {edit_index + 1}: {str(e)}")
-                        continue
 
                     all_failed_edits.extend(file_failed_edits)
 

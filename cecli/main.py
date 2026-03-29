@@ -1,5 +1,4 @@
 import os
-import signal
 import sys
 
 try:
@@ -1490,11 +1489,6 @@ async def graceful_exit(coder=None, exit_code=0):
 
         if coder.mcp_manager and coder.mcp_manager.is_connected:
             await coder.mcp_manager.disconnect_all()
-
-    try:
-        os.killpg(os.getpgrp(), signal.SIGTERM)
-    except Exception:
-        pass
 
     return exit_code
 
