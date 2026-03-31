@@ -1174,11 +1174,16 @@ You may be stuck in a cycle. To break the exploration loop and continue making p
         This clearly delineates user input from other sections in the context window.
         """
         inp = await super().preproc_user_input(inp)
-        if inp and not inp.startswith('<context name="user_input" from="agent">'):
-            inp = f'<context name="user_input" from="agent">\n{inp}\n</context>'
+        inp = self.wrap_user_input(inp)
 
         self.agent_finished = False
         self.turn_count = 0
+        return inp
+
+    def wrap_user_input(self, inp):
+        if inp and not inp.startswith('<context name="user_input" from="agent">'):
+            inp = f'<context name="user_input" from="agent">\n{inp}\n</context>'
+
         return inp
 
     def get_directory_structure(self):

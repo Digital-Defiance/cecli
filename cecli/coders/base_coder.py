@@ -1575,6 +1575,9 @@ class Coder:
 
         return inp
 
+    def wrap_user_input(self, inp):
+        return inp
+
     async def run_one(self, user_message, preproc):
         self.init_before_message()
 

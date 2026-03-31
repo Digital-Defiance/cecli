@@ -3,6 +3,7 @@
 import concurrent.futures
 import json
 import queue
+import time
 from functools import lru_cache
 from pathlib import Path
 
@@ -637,9 +638,19 @@ class TUI(App):
         if coder:
             coder.io.start_spinner("Processing...")
 
-        self.update_key_hints(generating=True)
+        if coder and self._currently_generating:
+            from cecli.helpers.conversation import ConversationService, MessageTag
 
-        self.input_queue.put({"text": user_input})
+            ConversationService.get_manager(coder).add_message(
+                message_dict=dict(role="user", content=coder.wrap_user_input(user_input)),
+                tag=MessageTag.CUR,
+                hash_key=("user_message", user_input, str(time.monotonic_ns())),
+                promotion=ConversationService.get_manager(coder).DEFAULT_TAG_PROMOTION_VALUE,
+                mark_for_demotion=1,
+            )
+        else:
+            self.update_key_hints(generating=True)
+            self.input_queue.put({"text": user_input})
 
     def set_input_value(self, text) -> None:
         """Find the input widget and set focus to it."""
