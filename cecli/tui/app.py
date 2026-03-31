@@ -79,7 +79,7 @@ class TUI(App):
             },
         )
 
-        if other.get("use_terminal_background", False):
+        if other.get("use_terminal_background", True):
             patch_textual_strip_render_with_cache()
 
         self.bind(
@@ -307,11 +307,11 @@ class TUI(App):
 
     # ASCII banner for startup
     BANNER = f"""
-[bold {BANNER_COLORS[0]}]   ██████╗███████╗ ██████╗██╗     ██╗[/bold {BANNER_COLORS[0]}]
-[bold {BANNER_COLORS[1]}]  ██╔════╝██╔════╝██╔════╝██║     ██║[/bold {BANNER_COLORS[1]}]
-[bold {BANNER_COLORS[2]}]  ██║     █████╗  ██║     ██║     ██║[/bold {BANNER_COLORS[2]}]
-[bold {BANNER_COLORS[3]}]  ██║     ██╔══╝  ██║     ██║     ██║[/bold {BANNER_COLORS[3]}]
-[bold {BANNER_COLORS[4]}]  ╚██████╗███████╗╚██████╗███████╗██║[/bold {BANNER_COLORS[4]}]
+[bold {BANNER_COLORS[0]}]   ▒▒▒▒▒▒╗▒▒▒▒▒▒▒╗ ▒▒▒▒▒▒╗▒▒╗     ▒▒╗[/bold {BANNER_COLORS[0]}]
+[bold {BANNER_COLORS[1]}]  ▒▒╔════╝▒▒╔════╝▒▒╔════╝▒▒║     ▒▒║[/bold {BANNER_COLORS[1]}]
+[bold {BANNER_COLORS[2]}]  ▒▒║     ▒▒▒▒▒╗  ▒▒║     ▒▒║     ▒▒║[/bold {BANNER_COLORS[2]}]
+[bold {BANNER_COLORS[3]}]  ▒▒║     ▒▒╔══╝  ▒▒║     ▒▒║     ▒▒║[/bold {BANNER_COLORS[3]}]
+[bold {BANNER_COLORS[4]}]  ╚▒▒▒▒▒▒╗▒▒▒▒▒▒▒╗╚▒▒▒▒▒▒╗▒▒▒▒▒▒▒╗▒▒║[/bold {BANNER_COLORS[4]}]
 [bold {BANNER_COLORS[5]}]   ╚═════╝╚══════╝ ╚═════╝╚══════╝╚═╝[/bold {BANNER_COLORS[5]}]
 
 """
