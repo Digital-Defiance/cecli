@@ -52,7 +52,7 @@ class ToolRegistry:
             agent_config = {}
 
         # Load tools from tool_paths if specified
-        tool_paths = agent_config.get("tool_paths", [])
+        tool_paths = agent_config.get("tools_paths", [])
 
         for tool_path in tool_paths:
             path = Path(tool_path)

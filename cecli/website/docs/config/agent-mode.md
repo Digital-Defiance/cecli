@@ -245,7 +245,7 @@ To load custom tools, specify the `tools_paths` configuration option in your age
 
 ```yaml
 agent-config:
-  tool_paths: ["./custom-tools", "~/my-tools"]
+  tools_paths: ["./custom-tools", "~/my-tools"]
 ```
 
 The `tools_paths` can include:
@@ -288,7 +288,7 @@ agent-config:
   # Tool configuration
   tools_includelist: ["contextmanager", "replacetext", "finished"]  # Optional: Whitelist of tools
   tools_excludelist: ["command", "commandinteractive"]  # Optional: Blacklist of tools
-  tool_paths: ["./custom-tools", "~/my-tools"]  # Optional: Directories or files containing custom tools
+  tools_paths: ["./custom-tools", "~/my-tools"]  # Optional: Directories or files containing custom tools
   
   # Context blocks configuration
   include_context_blocks: ["todo_list", "git_status"]  # Optional: Context blocks to include

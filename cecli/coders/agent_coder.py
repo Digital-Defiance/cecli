@@ -124,7 +124,8 @@ class AgentCoder(Coder):
         config["command_timeout"] = nested.getter(config, "command_timeout", 30)
         config["hot_reload"] = nested.getter(config, "hot_reload", False)
 
-config["tool_paths"] = nested.getter(config, ["tools_paths", "tool_paths"], [])        config["tools_includelist"] = nested.getter(
+        config["tools_paths"] = nested.getter(config, "tools_paths", [])
+        config["tools_includelist"] = nested.getter(
             config, ["tools_includelist", "tools_whitelist"], []
         )
         config["tools_excludelist"] = nested.getter(
