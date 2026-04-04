@@ -46,7 +46,7 @@ class TestToolRegistry:
 
     def test_build_registry_empty_config(self):
         """Test building registry with empty config"""
-        registry, _ = ToolRegistry.build_registry({})
+        registry = ToolRegistry.build_registry({})
 
         # Should include all tools (except possibly skill tools)
         assert len(registry) > 0, "Should return tools with empty config"
@@ -59,7 +59,7 @@ class TestToolRegistry:
     def test_build_registry_with_includelist(self):
         """Test filtering with tools_includelist"""
         config = {"tools_includelist": ["contextmanager", "replacetext"]}
-        registry, _ = ToolRegistry.build_registry(config)
+        registry = ToolRegistry.build_registry(config)
 
         # Should only include tools from includelist, plus essential tools
         assert len(registry) == 3, "Should include 2 from list + 1 essential"
@@ -71,7 +71,7 @@ class TestToolRegistry:
     def test_build_registry_with_excludelist(self):
         """Test filtering with tools_excludelist"""
         config = {"tools_excludelist": ["command", "commandinteractive"]}
-        registry, _ = ToolRegistry.build_registry(config)
+        registry = ToolRegistry.build_registry(config)
 
         # Should exclude specified tools (except essentials)
         assert "command" not in registry, "Should exclude command"
@@ -81,7 +81,7 @@ class TestToolRegistry:
     def test_build_registry_exclude_essential(self):
         """Test that essential tools cannot be excluded"""
         config = {"tools_excludelist": ["contextmanager", "replacetext", "finished", "command"]}
-        registry, _ = ToolRegistry.build_registry(config)
+        registry = ToolRegistry.build_registry(config)
 
         # Essential tools should still be included despite excludelist
         assert "contextmanager" in registry, "Essential tool cannot be excluded"
@@ -95,7 +95,7 @@ class TestToolRegistry:
             "tools_includelist": ["contextmanager", "replacetext", "command"],
             "tools_excludelist": ["commandinteractive"],
         }
-        registry, _ = ToolRegistry.build_registry(config)
+        registry = ToolRegistry.build_registry(config)
 
         # Should respect all filters
         assert len(registry) == 4, "Should include exactly 4 tools (3 from list + finished)"
@@ -125,7 +125,7 @@ class TestToolRegistry:
             "tools_whitelist": ["contextmanager", "replacetext"],
             "tools_blacklist": ["command"],
         }
-        registry, _ = ToolRegistry.build_registry(config)
+        registry = ToolRegistry.build_registry(config)
 
         # Should work with legacy names
         assert "contextmanager" in registry
@@ -140,7 +140,7 @@ class TestToolRegistry:
             "tools_excludelist": ["commandinteractive"],
             "tools_blacklist": ["finished"],  # Should be ignored for essential tool
         }
-        registry, _ = ToolRegistry.build_registry(config)
+        registry = ToolRegistry.build_registry(config)
 
         # New names should take precedence
         assert "contextmanager" in registry, "Should use tools_includelist"
@@ -155,7 +155,7 @@ class TestToolRegistry:
         config = {"tools_includelist": ["contextmanager", "replacetext"]}
 
         # build_registry should return consistent results
-        registry, _ = ToolRegistry.build_registry(config)
+        registry = ToolRegistry.build_registry(config)
         filtered_names = ToolRegistry.get_registered_tools()
 
         assert set(registry.keys()) == set(
