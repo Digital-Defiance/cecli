@@ -58,6 +58,7 @@ from cecli.reasoning_tags import (
 )
 from cecli.repo import ANY_GIT_ERROR, GitRepo
 from cecli.repomap import RepoMap
+from cecli.report import update_error_prefix
 from cecli.run_cmd import run_cmd
 from cecli.sessions import SessionManager
 from cecli.tools.utils.output import print_tool_response
@@ -1513,6 +1514,9 @@ class Coder:
             except (SwitchCoderSignal, SystemExit):
                 raise
             except Exception as e:
+                traceback_str = traceback.format_exc()
+                update_error_prefix(traceback_str)
+
                 if self.verbose or self.args.debug:
                     print(e)
 
