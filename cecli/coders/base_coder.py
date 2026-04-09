@@ -531,6 +531,11 @@ class Coder:
         has_map_prompt = nested.getter(self, "gpt_prompts.repo_content_prefix")
 
         if use_repo_map and self.repo and has_map_prompt:
+            repo_root = (
+                self.repo.workspace_path
+                if (self.repo and getattr(self.repo, "workspace_path", None))
+                else self.root
+            )
             self.repo_map = RepoMap(
                 map_tokens,
                 self.map_cache_dir,
@@ -542,7 +547,7 @@ class Coder:
                 map_mul_no_files=map_mul_no_files,
                 refresh=map_refresh,
                 max_code_line_length=map_max_line_length,
-                repo_root=self.root,
+                repo_root=repo_root,
                 use_memory_cache=repomap_in_memory,
                 use_enhanced_map=getattr(self.args, "use_enhanced_map", False),
             )
@@ -3651,13 +3656,14 @@ class Coder:
                 # Continue to get tracked files normally
 
         if self.repo:
-            if not self.repo.cecli_ignore_file or not self.repo.cecli_ignore_file.is_file():
+            if hasattr(self.repo, "workspace_path") and self.repo.workspace_path:
+                files = self.repo.get_workspace_files()
+            elif not self.repo.cecli_ignore_file or not self.repo.cecli_ignore_file.is_file():
                 files = self.repo.get_tracked_files()
             else:
                 files = self.repo.get_non_ignored_files_from_root()
         else:
             files = self.get_inchat_relative_files()
-
         # This is quite slow in large repos
         # files = [fname for fname in files if self.is_file_safe(fname)]
 
@@ -3918,6 +3924,13 @@ class Coder:
     async def auto_commit(self, edited, context=None):
         if not self.repo or not self.auto_commits or self.dry_run:
             return
+
+        # Workspace-aware commit logic
+        if hasattr(self.args, "workspace") and self.args.workspace:
+            # We are in a workspace context.
+            # The GitRepo instance (self.repo) should already be pointing to the correct worktree/repo
+            # within the workspace because of the os.chdir in main.py and detection in repo.py.
+            pass
 
         if not context:
             context = self.get_context_from_history(
