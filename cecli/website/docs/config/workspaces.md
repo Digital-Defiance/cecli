@@ -58,6 +58,7 @@ To use a workspace:
 cecli --workspace-name my-workspace
 # OR if using a specific config file
 cecli --workspaces path/to/workspaces.yml --workspace-name my-workspace
+```
 
 If the workspace does not exist, `cecli` will create the directory structure at `~/.cecli/workspaces/my-workspace/` and clone the configured repositories.
 
