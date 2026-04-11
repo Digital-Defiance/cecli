@@ -441,6 +441,10 @@ class TextualInputOutput(InputOutput):
         """
         self.num_user_asks += 1
 
+        # Ring the bell if needed
+        self.notify_user_input_required()
+        self.ring_bell()
+
         question_id = (question, subject)
 
         try:
