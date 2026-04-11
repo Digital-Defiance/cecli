@@ -2197,9 +2197,10 @@ class Coder:
     def get_active_model(self):
         return self.main_model
 
-    async def send_message(self, inp):
-        # Notify IO that LLM processing is starting
-        self.io.llm_started()
+    async def send_message(self, inp, *, trigger_bell=True):
+        if trigger_bell:
+            # Notify IO that LLM processing is starting
+            self.io.llm_started()
 
         if inp:
             # Make sure current coder actually has control of conversation system
