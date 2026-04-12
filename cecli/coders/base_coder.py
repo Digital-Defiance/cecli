@@ -1607,7 +1607,6 @@ class Coder:
         if not self.commands.is_command(user_message):
             self.last_user_message = user_message
 
-        is_reflection = False
         while True:
             self.reflected_message = None
             self.empty_response = False
@@ -1625,10 +1624,8 @@ class Coder:
                 else:
                     return
 
-            async for _ in self.send_message(message, trigger_bell=not is_reflection):
+            async for _ in self.send_message(message):
                 pass
-
-            is_reflection = True
 
             await self.hot_reload()
 
@@ -2200,10 +2197,9 @@ class Coder:
     def get_active_model(self):
         return self.main_model
 
-    async def send_message(self, inp, *, trigger_bell=True):
-        if trigger_bell:
-            # Notify IO that LLM processing is starting
-            self.io.llm_started()
+    async def send_message(self, inp):
+        # Notify IO that LLM processing is starting
+        self.io.llm_started()
 
         if inp:
             # Make sure current coder actually has control of conversation system
@@ -2772,6 +2768,7 @@ class Coder:
 
     def _print_tool_call_info(self, server_tool_calls):
         """Print information about an MCP tool call."""
+        self.io.ring_bell()
         # self.io.tool_output("Preparing to run MCP tools", bold=False)
 
         for server, tool_calls in server_tool_calls.items():
