@@ -20,9 +20,11 @@ skill-name/
 ├── scripts/             # Executable scripts
 │   └── example-setup.sh         # Setup script
 │   └── example-deploy.py        # Deployment script
-└── assets/              # Binary assets (images, config files, etc.)
-    └── example-diagram.png      # Architecture diagram
-    └── example-config.json      # Configuration file
+├── assets/              # Binary assets (images, config files, etc.)
+│   └── example-diagram.png      # Architecture diagram
+│   └── example-config.json      # Configuration file
+└── evals/
+    └── evals.json        # Evaluation tests
 ```
 
 ## SKILL.md Format
@@ -105,9 +107,10 @@ To create a custom skill:
 1. Create a skill directory with the skill name
 2. Add `SKILL.md` with YAML frontmatter and instructions
 3. Add reference materials in `references/` directory
-4. Add executable scripts in `scripts/` directory  
+4. Add executable scripts in `scripts/` directory
 5. Add binary assets in `assets/` directory
-6. Test the skill by adding it to your configuration file:
+6. Add evaluation tests in `evals/` directory to test skill performance
+7. Test the skill by adding it to your configuration file:
 
 Example skill creation:
 ```bash
