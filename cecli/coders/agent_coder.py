@@ -95,7 +95,7 @@ class AgentCoder(Coder):
         super().__init__(*args, **kwargs)
 
     def _setup_agent(self):
-        os.makedirs(".cecli/workspace", exist_ok=True)
+        os.makedirs(".cecli/temp", exist_ok=True)
 
     def _get_agent_config(self):
         """
