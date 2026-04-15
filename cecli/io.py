@@ -758,6 +758,11 @@ class InputOutput:
             print()
 
     def interrupt_input(self):
+        if self.coder:
+            coder = self.coder()
+            if coder and hasattr(coder, "interrupt_event"):
+                coder.interrupt_event.set()
+
         if self.prompt_session and self.prompt_session.app:
             # Store any partial input before interrupting
             self.placeholder = self.prompt_session.app.current_buffer.text
