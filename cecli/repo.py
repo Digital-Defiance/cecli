@@ -95,6 +95,7 @@ class GitRepo:
         self.subtree_only = subtree_only
         self.git_commit_verify = git_commit_verify
         self.ignore_file_cache = {}
+        self.is_workspace = False
 
         if git_dname:
             check_fnames = [git_dname]
@@ -129,27 +130,32 @@ class GitRepo:
             raise FileNotFoundError
 
         self._init_repo_path = repo_paths.pop()
-        self.init_repo()
-
-        if cecli_ignore_file:
-            self.cecli_ignore_file = Path(cecli_ignore_file)
 
         # Detect if we're in a workspace
-        self.workspace_path = self._detect_workspace_path(self.root)
+        self.workspace_path = self._detect_workspace_path(self._init_repo_path)
         if self.workspace_path:
+            self.is_workspace = True
             self.io.tool_output(f"Working in workspace: {self.workspace_path.name}")
+
+        self.init_repo()
+        if cecli_ignore_file:
+            self.cecli_ignore_file = Path(cecli_ignore_file)
 
     def init_repo(self):
         if not self.repo:
             self.repo = git.Repo(self._init_repo_path, odbt=git.GitCmdObjectDB)
             self.root = utils.safe_abs_path(self.repo.working_tree_dir)
 
+        if self.is_workspace:
+            self.root = self.workspace_path
+
         try:
             commit = self.repo.head.commit
             return commit
         except ANY_GIT_ERROR:
-            self.repo = git.Repo(self._init_repo_path, odbt=git.GitCmdObjectDB)
-            self.root = utils.safe_abs_path(self.repo.working_tree_dir)
+            if not self.is_workspace:
+                self.repo = git.Repo(self._init_repo_path, odbt=git.GitCmdObjectDB)
+                self.root = utils.safe_abs_path(self.repo.working_tree_dir)
 
     def _detect_workspace_path(self, start_path: str):
         """Check if current directory is within a workspace"""
