@@ -2233,10 +2233,11 @@ class Coder:
 
         self.multi_response_content = ""
         if self.show_pretty():
-            spinner_text = (
-                f"Waiting for {self.get_active_model().name} •"
-                f" ${self.format_cost(self.total_cost)} session"
-            )
+            spinner_text = f"Waiting for {self.get_active_model().name}"
+
+            if not self.tui:
+                spinner_text += f" • ${self.format_cost(self.total_cost)} session"
+
             self.io.start_spinner(spinner_text)
             if self.stream:
                 self.mdstream = True
@@ -3541,13 +3542,18 @@ class Coder:
 
         self.message_tokens_received += completion_tokens
 
-        tokens_report = f"Tokens: {format_tokens(self.message_tokens_sent)} sent"
+        # Build the new streamlined format
+        tokens_parts = [format_tokens(prompt_tokens)]
 
-        if cache_write_tokens:
-            tokens_report += f", {format_tokens(cache_write_tokens)} cache write"
         if cache_hit_tokens:
-            tokens_report += f", {format_tokens(cache_hit_tokens)} cache hit"
-        tokens_report += f", {format_tokens(self.message_tokens_received)} received."
+            tokens_parts.append(f"{format_tokens(cache_hit_tokens)}")
+        if cache_write_tokens:
+            tokens_parts.append(f"{format_tokens(cache_write_tokens)}")
+
+        tokens_str = "/".join(tokens_parts)
+
+        tokens_report = f"{tokens_str} ↑ {format_tokens(completion_tokens)} ↓"
+
         tokens_report = self.token_profiler.add_to_usage_report(
             tokens_report, self.message_tokens_sent, self.message_tokens_received
         )
@@ -3570,9 +3576,12 @@ class Coder:
         self.total_cost += cost
         self.message_cost += cost
 
+        total_combined_tokens = (
+            self.total_tokens_sent + self.total_tokens_received + prompt_tokens + completion_tokens
+        )
         cost_report = (
-            f"Cost: ${self.format_cost(self.message_cost)} message,"
-            f" ${self.format_cost(self.total_cost)} session."
+            f"${self.format_cost(self.message_cost)} • {format_tokens(total_combined_tokens)} ↑↓"
+            f" ${self.format_cost(self.total_cost)}"
         )
 
         if cache_hit_tokens and cache_write_tokens:
@@ -3630,8 +3639,11 @@ class Coder:
         self.total_tokens_sent += self.message_tokens_sent
         self.total_tokens_received += self.message_tokens_received
 
-        self.io.tool_output(self.usage_report)
-        self.io.rule()
+        if self.tui and self.tui():
+            self.tui().update_cost(self.usage_report.replace("\n", " "))
+        else:
+            self.io.tool_output(self.usage_report)
+            self.io.rule()
 
         self.message_cost = 0.0
         self.message_tokens_sent = 0
