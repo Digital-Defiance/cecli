@@ -526,14 +526,10 @@ tree-sitter==0.25.2
     # via
     #   -r requirements/requirements.in
     #   tree-sitter-language-pack
-tree-sitter-c-sharp==0.23.1
-    # via tree-sitter-language-pack
-tree-sitter-embedded-template==0.25.0
-    # via tree-sitter-language-pack
-tree-sitter-language-pack==0.11.0
-    # via grep-ast
-tree-sitter-yaml==0.7.2
-    # via tree-sitter-language-pack
+tree-sitter-language-pack==1.6.2
+    # via
+    #   -r requirements/requirements.in
+    #   grep-ast
 triton==3.5.1
     # via torch
 truststore==0.10.4
@@ -542,9 +538,7 @@ typer==0.20.0
     # via -r requirements/requirements-dev.in
 typing-extensions==4.15.0
     # via
-    #   aiosignal
     #   aiosqlite
-    #   anyio
     #   beautifulsoup4
     #   huggingface-hub
     #   llama-index-core
@@ -554,11 +548,8 @@ typing-extensions==4.15.0
     #   pydantic
     #   pydantic-core
     #   pyee
-    #   pytest-asyncio
-    #   referencing
     #   sentence-transformers
     #   sqlalchemy
-    #   starlette
     #   textual
     #   torch
     #   typer
