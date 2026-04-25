@@ -1054,6 +1054,11 @@ class Model(ModelSettings):
                     "Copilot-Integration-Id": "vscode-chat",
                 }
 
+        if kwargs.get("headers", None):
+            kwargs["headers"].update({"Connection": "close"})
+        else:
+            kwargs["headers"] = {"Connection": "close"}
+
         litellm_ex = LiteLLMExceptions()
         retry_delay = 0.125
 
