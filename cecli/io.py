@@ -1707,12 +1707,16 @@ class InputOutput:
                         return f"zenity --notification --text='{NOTIFICATION_MESSAGE}'"
             return None  # No known notification tool found
         elif system == "Windows":
-            # PowerShell notification
+            # PowerShell toast notification
             return (
                 "powershell -command"
-                " \"[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');"
-                f" [System.Windows.Forms.MessageBox]::Show('{NOTIFICATION_MESSAGE}',"
-                " 'cecli')\""
+                f" \"try {{ Add-Type -AssemblyName System.Runtime.WindowsRuntime; $null = [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] }} catch {{}}; "
+                f"$template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
+                f"$toastXml = $template.GetXml(); "
+                f"$toastXml.GetElementsByTagName('text')[0].AppendChild($template.CreateTextNode('cecli')) > $null; "
+                f"$toastXml.GetElementsByTagName('text')[1].AppendChild($template.CreateTextNode('{NOTIFICATION_MESSAGE}')) > $null; "
+                f"$toast = [Windows.UI.Notifications.ToastNotification]::new($toastXml); "
+                f"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('cecli').Show($toast)\""
             )
 
         return None  # Unknown system
