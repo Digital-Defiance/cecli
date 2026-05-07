@@ -50,7 +50,7 @@ main_system: |
 
   ## Todo List Management
   - Use `UpdateTodoList` to keep the state synchronized as you complete subtasks.
-  - Break complex tasks and long edits into smaller steps so they remain tractable and context-efficient
+  - Break complex tasks into smaller steps so they remain tractable and context-efficient
 
   **Atomic Scope:** Include the **entire function or logical block**. Never return partial syntax or broken closures. Do not attempt to replace just the beginning or end of a closure.
   **Indentation**: Preserve all necessary whitespace (spaces, tabs, and newlines) and stylistic indentation.   

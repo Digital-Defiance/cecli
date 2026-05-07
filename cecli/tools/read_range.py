@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict
+from typing import Dict, List
 
 from cecli.helpers.hashline import hashline, strip_hashline
 from cecli.tools.utils.base_tool import BaseTool
@@ -25,9 +25,10 @@ class Tool(BaseTool):
                 " end_text, and optional padding."
                 " These values must be lines from the content of the file."
                 " They can contain up to 3 lines but newlines should generally be avoided."
-                " Avoid using generic keywords and symbols. Special markers '@000' and '000@' can be"
-                " used for start_text and end_text to represent the first and last lines of"
-                " the file respectively. Avoid using the special markers on non-empty files."
+                " Avoid using generic keywords and symbols."
+                "Special markers @000 and 000@ represent the file boundaries and can be"
+                " used for start_text and end_text for the first and last lines of"
+                " the file respectively. Avoid using both of the special markers together on non-empty files."
                 " Never use hashlines as the start_text and end_text values."
                 " Do not use the same pattern for the start_text and end_text."
                 " It is best to use function names, variable declarations and other block identifiers as "
@@ -102,6 +103,7 @@ class Tool(BaseTool):
 
             all_outputs = []
 
+            up_to_date_details = []
             for show_index, show_op in enumerate(show):
                 # Extract parameters for this show operation
                 file_path = show_op.get("file_path")
@@ -261,7 +263,6 @@ class Tool(BaseTool):
                     all_outputs.append("")
                 all_outputs.extend(output_lines)
 
-                # Update the conversation cache with the displayed range
                 from cecli.helpers.conversation import ConversationService
 
                 # Update the conversation cache with the displayed range
@@ -288,30 +289,49 @@ class Tool(BaseTool):
                 else:
                     already_up_to_date = False
 
+                # Collect hashline info for response
+                if (
+                    s_idx >= 0
+                    and s_idx < len(hashed_lines)
+                    and e_idx >= 0
+                    and e_idx < len(hashed_lines)
+                ):
+                    hashed_slice = hashed_lines[s_idx : e_idx + 1]
+                    up_to_date_details.append(
+                        cls.format_model_response(coder, rel_path, s_idx, e_idx, hashed_slice)
+                    )
+
                 # Conditionally remove old file context messages
-                # If the file was last read >= 10 turns ago, keep old messages (allow coexistence)
+                # If the file was last read >= 3 turns ago, keep old messages (allow coexistence)
                 # Otherwise, remove them to avoid duplicates
                 last_turn = cls._last_read_turn.get(abs_path)
-                if last_turn is None or coder.turn_count - last_turn < 10:
+                if last_turn is None or coder.turn_count - last_turn < 3 and already_up_to_date:
                     ConversationService.get_files(coder).remove_file_messages(abs_path)
 
                 # Update the last read turn for this file
                 cls._last_read_turn[abs_path] = coder.turn_count
 
-                ConversationService.get_chunks(coder).add_file_context_messages()
-
+            ConversationService.get_chunks(coder).add_file_context_messages()
+            cls.clear_old_messages(coder)
             # Log success and return the formatted context directly
             coder.edit_allowed = True
 
             if already_up_to_date:
                 coder.io.tool_output("File contents already up to date")
+                detail_str = "\n".join(up_to_date_details)
                 return (
-                    "Lines already up to date in context for these files."
-                    " Do not call `ReadRange` again with these parameters again unless you edit the relevant files."
+                    "Lines already up to date in context for these files:\n"
+                    f"{detail_str}\n"
+                    "Do not call `ReadRange` again with these parameters again unless you edit"
+                    " the relevant files."
                 )
             else:
                 coder.io.tool_output(f"✅ Successfully retrieved context for {len(show)} file(s)")
-                return f"Successfully retrieved most recent contents for {len(show)} file(s)"
+                detail_str = "\n".join(up_to_date_details)
+                return (
+                    f"Successfully retrieved most recent contents for {len(show)} file(s):\n"
+                    f"{detail_str}\n"
+                )
 
         except ToolError as e:
             # Handle expected errors raised by utility functions or validation
@@ -319,6 +339,62 @@ class Tool(BaseTool):
         except Exception as e:
             # Handle unexpected errors during processing
             return handle_tool_error(coder, tool_name, e)
+
+    @classmethod
+    def format_model_response(cls, coder, rel_path, s_idx, e_idx, hashed_slice):
+        """Format a file's context range as hash-prefixed lines for the model."""
+        lines = [
+            f"File {rel_path} Snapshot (Lines {s_idx + 1} - {e_idx + 1}, Turn {coder.turn_count}):"
+        ]
+        lines.append(hashed_slice[0])
+        lines.append("...")
+        lines.append(hashed_slice[-1])
+        lines.append("")
+        return "\n".join(lines)
+
+    @classmethod
+    def clear_old_messages(cls, coder):
+        from cecli.helpers.conversation import ConversationService, MessageTag
+
+        # Clean up stale file_context messages
+        # If a file has 3 or more file_context_user messages, remove all but the most recent
+        # (and their corresponding assistant messages) to prevent excessive stale context
+        file_context_messages = ConversationService.get_manager(coder).get_tag_messages(
+            MessageTag.FILE_CONTEXTS
+        )
+
+        # Group user file_context messages by file path
+        user_msgs_by_file: Dict[str, List[int]] = {}
+        user_msg_indices: List[int] = []
+        for msg_idx, msg in enumerate(file_context_messages):
+            if msg.hash_key and len(msg.hash_key) == 3 and msg.hash_key[0] == "file_context_user":
+                file_path = msg.hash_key[1]
+                if file_path not in user_msgs_by_file:
+                    user_msgs_by_file[file_path] = []
+                user_msgs_by_file[file_path].append(msg_idx)
+                user_msg_indices.append(msg_idx)
+
+        # If any file has 5+ user messages, shave all files to latest single context message
+        # This prevents repeated cleanup cycles from staggered message accumulation
+        hash_keys_to_remove: set = set()
+        has_overflow = any(len(indices) >= 5 for indices in user_msgs_by_file.values())
+
+        if has_overflow:
+            for file_path, indices in user_msgs_by_file.items():
+                # Keep only the latest message for each file
+                older_indices = indices[:-1]
+                for old_idx in older_indices:
+                    old_msg = file_context_messages[old_idx]
+                    content_hash = old_msg.hash_key[2]
+                    # Mark the user message for removal
+                    hash_keys_to_remove.add(("file_context_user", file_path, content_hash))
+                    # Mark the corresponding assistant message for removal
+                    hash_keys_to_remove.add(("file_context_assistant", file_path, content_hash))
+
+        if hash_keys_to_remove:
+            ConversationService.get_manager(coder).remove_messages_by_hash_key_pattern(
+                lambda hash_key: hash_key in hash_keys_to_remove
+            )
 
     @classmethod
     def format_output(cls, coder, mcp_server, tool_response):
