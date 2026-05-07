@@ -3,6 +3,8 @@ import weakref
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
+import xxhash
+
 from cecli.helpers.hashline import get_hashline_content_diff, hashline
 from cecli.repomap import RepoMap
 
@@ -250,6 +252,7 @@ class ConversationFiles:
                 rel_fname = coder.get_rel_fname(fname)
 
             # Add diff message to conversation
+            content_hash = xxhash.xxh3_128_hexdigest(diff.encode("utf-8"))
             diff_message = {
                 "role": "user",
                 "content": (
@@ -258,11 +261,21 @@ class ConversationFiles:
                 ),
             }
 
+            assistant_msg = {
+                "role": "assistant",
+                "content": f"Thank you for sharing this diff of the updates to {rel_fname}.",
+            }
+
             ConversationService.get_manager(coder).add_message(
                 message_dict=diff_message,
                 tag=MessageTag.DIFFS,
-                # promotion=ConversationService.get_manager(coder).DEFAULT_TAG_PROMOTION_VALUE,
-                # mark_for_demotion=1,
+                hash_key=("file_diff_user", rel_fname, content_hash),
+            )
+
+            ConversationService.get_manager(coder).add_message(
+                message_dict=assistant_msg,
+                tag=MessageTag.DIFFS,
+                hash_key=("file_diff_assistant", rel_fname, content_hash),
             )
 
         return diff
