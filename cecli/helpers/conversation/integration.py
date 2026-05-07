@@ -206,7 +206,7 @@ class ConversationChunks:
         should_clear = False
 
         # Token-based check
-        if diff_tokens > 0 and other_tokens > 0 and diff_tokens / other_tokens > 0.33:
+        if diff_tokens > 0 and other_tokens > 0 and diff_tokens / other_tokens > 0.5:
             should_clear = True
 
         # Message count-based check (for periodic refresh)
@@ -220,9 +220,8 @@ class ConversationChunks:
 
             # Clear all diff messages
             ConversationService.get_manager(coder).clear_tag(MessageTag.DIFFS)
-            ConversationService.get_manager(coder).clear_tag(MessageTag.FILE_CONTEXTS)
             # Clear ConversationFiles caches to force regeneration
-            ConversationService.get_files(coder).clear_file_cache()
+            ConversationService.get_files(coder).clear_file_cache(clear_contexts=False)
 
         # Get all tracked files (both regular and image files)
         tracked_files = ConversationService.get_files(coder).get_all_tracked_files()
