@@ -1708,16 +1708,23 @@ class InputOutput:
             return None  # No known notification tool found
         elif system == "Windows":
             # PowerShell toast notification
-            return (
-                "powershell -command"
-                f' "try {{ Add-Type -AssemblyName System.Runtime.WindowsRuntime; $null = [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] }} catch {{}}; '
-                f"$template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
-                f"$toastXml = $template.GetXml(); "
-                f"$toastXml.GetElementsByTagName('text')[0].AppendChild($template.CreateTextNode('cecli')) > $null; "
-                f"$toastXml.GetElementsByTagName('text')[1].AppendChild($template.CreateTextNode('{NOTIFICATION_MESSAGE}')) > $null; "
-                f"$toast = [Windows.UI.Notifications.ToastNotification]::new($toastXml); "
-                f"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('cecli').Show($toast)\""
+            ps_command = (
+                ' "try {{ Add-Type -AssemblyName System.Runtime.WindowsRuntime; $null ='
+                " [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications,"
+                " ContentType = WindowsRuntime] }} catch {{}}; "
+                "$template ="
+                " [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent"
+                "([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
+                "$toastXml = $template.GetXml(); "
+                "$toastXml.GetElementsByTagName('text')[0].AppendChild"
+                "($template.CreateTextNode('cecli')) > $null; "
+                f"$toastXml.GetElementsByTagName('text')[1].AppendChild"
+                f"($template.CreateTextNode('{NOTIFICATION_MESSAGE}')) > $null; "
+                "$toast = [Windows.UI.Notifications.ToastNotification]::new($toastXml); "
+                "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('cecli')"
+                '.Show($toast)"'
             )
+            return "powershell -command" + ps_command
 
         return None  # Unknown system
 
