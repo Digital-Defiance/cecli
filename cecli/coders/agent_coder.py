@@ -853,6 +853,12 @@ class AgentCoder(Coder):
                 self.tool_usage_history = []
             return True
 
+        if content and not tool_calls_found and self.num_reflections < self.max_reflections:
+            self.reflected_message = (
+                "Continue with your task. If you have completed it, call the `Finished` tool."
+            )
+            return True
+
         if tool_calls_found and self.num_reflections < self.max_reflections:
             self.tool_call_count = 0
             self.files_added_in_exploration = set()
