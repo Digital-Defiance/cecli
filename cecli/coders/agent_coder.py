@@ -246,7 +246,6 @@ class AgentCoder(Coder):
         else:
             await self.mcp_manager.connect_server(server_name)
 
-
     async def _execute_mcp_tool(self, server, tool_name, params):
         """Helper to execute a single MCP tool call, created from legacy format."""
 
