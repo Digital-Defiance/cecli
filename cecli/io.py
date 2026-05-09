@@ -1724,7 +1724,7 @@ class InputOutput:
                 "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('cecli')"
                 '.Show($toast)"'
             )
-            return "powershell -command" + ps_command
+            return "powershell -WindowStyle Hidden -Command" + ps_command
 
         return None  # Unknown system
 
