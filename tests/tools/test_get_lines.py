@@ -64,8 +64,8 @@ def test_pattern_with_zero_line_number_is_allowed(coder_with_file):
         ],
     )
 
-    # show_numbered_context now returns a static success message
-    assert "Successfully retrieved most recent contents for 1 file(s)" in result
+    # show_numbered_context now returns a new formatted context message
+    assert "Retrieved context for 1 operation(s)" in result
     coder.io.tool_error.assert_not_called()
 
 
@@ -85,7 +85,7 @@ def test_empty_pattern_uses_line_number(coder_with_file):
     )
 
     # show_numbered_context now returns a static success message
-    assert "Successfully retrieved most recent contents for 1 file(s)" in result
+    assert "Retrieved context for 1 operation(s)" in result
     coder.io.tool_error.assert_not_called()
 
 
@@ -140,5 +140,5 @@ def test_multiline_pattern_search(coder_with_file):
         ],
     )
 
-    assert "Successfully retrieved most recent contents for 1 file(s)" in result
+    assert "Retrieved context for 1 operation(s)" in result
     coder.io.tool_error.assert_not_called()
