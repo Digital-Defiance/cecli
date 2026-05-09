@@ -1,16 +1,11 @@
-import os
 import json
-from pathlib import Path
-import pytest
-from unittest.mock import MagicMock, AsyncMock
+import os
+from unittest.mock import AsyncMock, MagicMock
 
-from cecli.coders.agent_coder import AgentCoder
-from cecli.coders.architect_coder import ArchitectCoder
-from cecli.coders.ask_coder import AskCoder
-from cecli.coders.base_coder import Coder
-from cecli.sessions import SessionManager
-from cecli.models import Model
+import pytest
+
 from cecli.io import InputOutput
+from cecli.sessions import SessionManager
 
 
 @pytest.fixture
@@ -30,7 +25,7 @@ def mock_coder():
     coder.edit_format = "diff"
 
     # Mock the main_model and its attributes
-    main_model = MagicMock(spec=Model)
+    main_model = MagicMock()
     main_model.name = "test_model"
     main_model.weak_model.name = "test_weak_model"
     main_model.editor_model.name = "test_editor_model"
@@ -48,6 +43,9 @@ def mock_coder():
     coder.abs_root_path.side_effect = lambda x: f"/test/root/{x}"
     coder.local_agent_folder.side_effect = lambda x: f".cecli/{x}"
     coder.io = MagicMock(spec=InputOutput)
+    coder.agent_config = {}
+    coder.mcp_manager = None
+    coder.skills_manager = None
     coder.io.read_text.return_value = "some todo content"
 
     return coder
@@ -101,6 +99,7 @@ async def test_load_session_restores_edit_format(session_manager, mock_coder, tm
 
     # Mock the SwitchCoderSignal to capture the edit_format it's called with
     from cecli import commands
+
     original_switch_coder_signal = commands.SwitchCoderSignal
 
     class MockSwitchCoderSignal(Exception):
@@ -142,11 +141,14 @@ async def test_load_session_restores_architect_mode(session_manager, mock_coder,
 
     # Mock the SwitchCoderSignal to capture the edit_format it's called with
     from cecli import commands
+
     original_switch_coder_signal = commands.SwitchCoderSignal
+
     class MockSwitchCoderSignal(Exception):
         def __init__(self, edit_format, **kwargs):
             self.edit_format = edit_format
             super().__init__()
+
     commands.SwitchCoderSignal = MockSwitchCoderSignal
 
     try:
@@ -179,11 +181,14 @@ async def test_load_session_restores_ask_mode(session_manager, mock_coder, tmp_p
 
     # Mock the SwitchCoderSignal to capture the edit_format it's called with
     from cecli import commands
+
     original_switch_coder_signal = commands.SwitchCoderSignal
+
     class MockSwitchCoderSignal(Exception):
         def __init__(self, edit_format, **kwargs):
             self.edit_format = edit_format
             super().__init__()
+
     commands.SwitchCoderSignal = MockSwitchCoderSignal
 
     try:
@@ -206,29 +211,18 @@ async def test_load_session_backwards_compatible(session_manager, mock_coder, tm
     # 1. Create a session file without edit_format (old format)
     session_name = "old_session"
     session_file = session_dir / f"{session_name}.json"
-    
+
     # Create session data without edit_format
     session_data = {
         "version": 1,
         "session_name": session_name,
         "model": "test_model",
-        "chat_history": {
-            "done_messages": [],
-            "cur_messages": []
-        },
-        "files": {
-            "editable": ["file1.py"],
-            "read_only": [],
-            "read_only_stubs": []
-        },
-        "settings": {
-            "auto_commits": True,
-            "auto_lint": True,
-            "auto_test": False
-        },
-        "todo_list": None
+        "chat_history": {"done_messages": [], "cur_messages": []},
+        "files": {"editable": ["file1.py"], "read_only": [], "read_only_stubs": []},
+        "settings": {"auto_commits": True, "auto_lint": True, "auto_test": False},
+        "todo_list": None,
     }
-    
+
     with open(session_file, "w") as f:
         json.dump(session_data, f, indent=2)
 
@@ -238,11 +232,14 @@ async def test_load_session_backwards_compatible(session_manager, mock_coder, tm
     # 3. Load the session
     # Mock the SwitchCoderSignal to capture the edit_format it's called with
     from cecli import commands
+
     original_switch_coder_signal = commands.SwitchCoderSignal
+
     class MockSwitchCoderSignal(Exception):
         def __init__(self, edit_format, **kwargs):
             self.edit_format = edit_format
             super().__init__()
+
     commands.SwitchCoderSignal = MockSwitchCoderSignal
 
     try:
@@ -265,15 +262,17 @@ async def test_load_session_with_agent_mode_and_mcp_skills(session_manager, mock
     # 1. Save a session with agent mode and MCP servers/skills
     mock_coder.edit_format = "agent"
     session_name = "agent_with_mcp_session"
-    
+
     # Mock MCP servers and skills
-    mock_coder.mcp_manager = MagicMock()
-    mock_coder.mcp_manager.connected_servers = [MagicMock(name="mock_mcp")]
+    mock_coder.mcp_manager = AsyncMock()
+    mock_mcp = MagicMock()
+    mock_mcp.name = "mock_mcp"
+    mock_coder.mcp_manager.connected_servers = [mock_mcp]
     mock_coder.skills_manager = MagicMock()
     mock_coder.skills_manager.include_list = {"included_skill"}
     mock_coder.skills_manager.exclude_list = {"excluded_skill"}
     mock_coder.skills_manager.directory_paths = ["/test/skills/path"]
-    
+
     session_manager.save_session(session_name, output=False)
 
     # 2. Change the coder's edit_format and clear MCP/skills
@@ -288,11 +287,14 @@ async def test_load_session_with_agent_mode_and_mcp_skills(session_manager, mock
 
     # Mock the SwitchCoderSignal to capture the edit_format it's called with
     from cecli import commands
+
     original_switch_coder_signal = commands.SwitchCoderSignal
+
     class MockSwitchCoderSignal(Exception):
         def __init__(self, edit_format, **kwargs):
             self.edit_format = edit_format
             super().__init__()
+
     commands.SwitchCoderSignal = MockSwitchCoderSignal
 
     try:
@@ -316,17 +318,17 @@ def test_save_session_saves_edit_format(session_manager, mock_coder, tmp_path, e
     # Set the edit_format
     mock_coder.edit_format = edit_format
     session_name = f"{edit_format}_session"
-    
+
     # Save the session
     success = session_manager.save_session(session_name, output=False)
     assert success
-    
+
     # Load the session data and verify edit_format
     session_file = session_dir / f"{session_name}.json"
     assert session_file.exists()
-    
+
     with open(session_file, "r") as f:
         session_data = json.load(f)
-        
+
     # Verify edit_format was saved correctly
     assert session_data["edit_format"] == edit_format
