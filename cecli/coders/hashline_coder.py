@@ -9,7 +9,7 @@ from pathlib import Path
 from cecli import utils
 from cecli.coders.base_coder import Coder
 from cecli.helpers.hashline import (
-    HashlineError,
+    ContentHashError,
     apply_hashline_operations,
     strip_hashline,
 )
@@ -141,7 +141,7 @@ class HashLineCoder(Coder):
                     self.io.write_text(full_path, new_content)
                 passed.append((path, operations, "Batch hashline operations"))
 
-            except (ValueError, HashlineError) as e:
+            except (ValueError, ContentHashError) as e:
                 # Record failure
                 failed.append((path, operations, f"Hashline batch operation failed: {e}"))
                 continue

@@ -19,6 +19,7 @@ class ConversationChunks:
         self.coder = weakref.ref(coder)
         self.uuid = coder.uuid
         self._last_clear_count = 0
+        self._deferred_removals = set()
 
     @classmethod
     def get_instance(cls, coder) -> "ConversationChunks":
@@ -150,7 +151,7 @@ class ConversationChunks:
 
         msg = dict(
             role="user",
-            content="\n\n" + message,
+            content="System Message:\n\n" + message,
         )
 
         ConversationService.get_manager(coder).add_message(
@@ -215,7 +216,7 @@ class ConversationChunks:
 
         self._last_clear_count += 1
 
-        if should_clear and self._last_clear_count >= 10:
+        if should_clear and self._last_clear_count >= 20:
             self._last_clear_count = 0
 
             # Clear all diff messages
@@ -244,7 +245,10 @@ class ConversationChunks:
 
         # Remove files from tracking that are not in the joint set
         for tracked_file in tracked_files:
-            if tracked_file not in should_be_tracked:
+            if (
+                tracked_file not in should_be_tracked
+                and tracked_file not in self._deferred_removals
+            ):
                 # Remove file from ConversationFiles cache
                 ConversationService.get_files(coder).clear_file_cache(tracked_file)
 
@@ -776,7 +780,7 @@ class ConversationChunks:
 
             user_msg = {
                 "role": "user",
-                "content": f"Hashline-Prefixed Context For:\n{rel_fname}\n\n{context_content}",
+                "content": f"Hash-Prefixed Context For:\n{rel_fname}\n\n{context_content}",
             }
 
             assistant_msg = {
@@ -952,6 +956,12 @@ class ConversationChunks:
                 hash_key=("post_message", block_type),
                 force=True,
             )
+
+    def defer_removal(self, file_path: str):
+        self._deferred_removals.add(file_path)
+
+    def flush_removals(self):
+        self._deferred_removals.clear()
 
     def _shuffle_reminders(self, content: str) -> str:
         """

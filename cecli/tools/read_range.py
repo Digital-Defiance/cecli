@@ -15,21 +15,21 @@ from cecli.tools.utils.output import color_markers, tool_footer, tool_header
 
 class Tool(BaseTool):
     NORM_NAME = "readrange"
+    TRACK_INVOCATIONS = False
     SCHEMA = {
         "type": "function",
         "function": {
             "name": "ReadRange",
             "description": (
-                "Get hashline prefixes of content between start and end patterns in files."
+                "Get content hash prefixes of content between start and end patterns in files."
                 " Accepts an array of `show` objects, each with file_path, start_text,"
-                " end_text, and optional padding."
-                " These values must be lines from the content of the file."
+                " end_text. These values must be lines from the content of the file."
                 " They can contain up to 3 lines but newlines should generally be avoided."
                 " Avoid using generic keywords and symbols."
                 "Special markers @000 and 000@ represent the file boundaries and can be"
                 " used for start_text and end_text for the first and last lines of"
                 " the file respectively. Avoid using both of the special markers together on non-empty files."
-                " Never use hashlines as the start_text and end_text values."
+                " Never use content hashes as the start_text and end_text values."
                 " Do not use the same pattern for the start_text and end_text."
                 " It is best to use function names, variable declarations and other block identifiers as "
                 " start_texts and end_texts."
@@ -60,14 +60,6 @@ class Tool(BaseTool):
                                         " Use '000@' for the last line on empty files."
                                     ),
                                 },
-                                "padding": {
-                                    "type": "integer",
-                                    "default": 5,
-                                    "description": (
-                                        "Number of lines of padding to add before start_text and"
-                                        " after end_text."
-                                    ),
-                                },
                             },
                             "required": ["file_path", "start_text", "end_text"],
                         },
@@ -90,8 +82,12 @@ class Tool(BaseTool):
         Accepts an array of show operations to perform.
         Uses utility functions for path resolution and error handling.
         """
+        from cecli.helpers.conversation import ConversationService
+
         tool_name = "ReadRange"
-        already_up_to_date = None
+        already_up_to_date = []
+        new_context_retrieved = []
+        error_outputs = []
 
         try:
             # 1. Validate show parameter
@@ -102,29 +98,57 @@ class Tool(BaseTool):
                 raise ToolError("show array cannot be empty")
 
             all_outputs = []
+            already_up_to_details = []
+            new_context_details = []
+            ranges = {}
 
-            up_to_date_details = []
             for show_index, show_op in enumerate(show):
                 # Extract parameters for this show operation
                 file_path = show_op.get("file_path")
                 start_text = show_op.get("start_text")
                 end_text = show_op.get("end_text")
-                padding = max(int(show_op.get("padding", 5)), 5)
+                padding = 5
 
                 if file_path is None:
-                    raise ToolError(
-                        f"Show operation {show_index + 1} missing required file_path parameter"
+                    error_outputs.append(
+                        cls.format_error(
+                            coder,
+                            f"Show operation {show_index + 1} missing required file_path parameter",
+                            None,
+                            None,
+                            None,
+                            show_index,
+                        )
                     )
+                    continue
 
                 # Validate arguments for this operation
                 if not is_provided(start_text) or not is_provided(end_text):
-                    raise ToolError(
-                        f"Show operation {show_index + 1}: Provide both 'start_text' and"
-                        " 'end_text'."
+                    error_outputs.append(
+                        cls.format_error(
+                            coder,
+                            f"Show operation {show_index + 1}: Provide both 'start_text' and 'end_text'.",
+                            file_path,
+                            start_text,
+                            end_text,
+                            show_index,
+                        )
                     )
+                    continue
 
                 if start_text.count("\n") > 4 or end_text.count("\n") > 4:
-                    raise ToolError("Patterns must not contain more than 5 lines.")
+                    error_outputs.append(
+                        cls.format_error(
+                            coder,
+                            "Patterns must not contain more than 5 lines.",
+                            file_path,
+                            start_text,
+                            end_text,
+                            show_index,
+                        )
+                    )
+                    continue
+
                 start_text = strip_hashline(start_text).strip()
                 end_text = strip_hashline(end_text).strip()
 
@@ -132,12 +156,33 @@ class Tool(BaseTool):
                 abs_path, rel_path = resolve_paths(coder, file_path)
                 if not os.path.exists(abs_path):
                     # Check existence after resolving, as resolve_paths doesn't guarantee existence
-                    raise ToolError(f"File not found: {file_path}")
+                    error_outputs.append(
+                        cls.format_error(
+                            coder,
+                            f"File not found: {file_path}",
+                            file_path,
+                            start_text,
+                            end_text,
+                            show_index,
+                        )
+                    )
+                    continue
 
                 # 3. Read file content
                 content = coder.io.read_text(abs_path)
                 if content is None:
-                    raise ToolError(f"Could not read file: {file_path}")
+                    error_outputs.append(
+                        cls.format_error(
+                            coder,
+                            f"Could not read file: {file_path}",
+                            file_path,
+                            start_text,
+                            end_text,
+                            show_index,
+                        )
+                    )
+                    continue
+
                 lines = content.splitlines()
                 num_lines = len(lines)
 
@@ -182,10 +227,21 @@ class Tool(BaseTool):
                         # Too many matches - use _last_invocation to disambiguate
                         last = cls._last_invocation.get(abs_path)
                         if last is None:
-                            raise ToolError(
-                                f"Start pattern '{start_text}' too broad. Do not search for"
-                                " it again. Be more specific."
+                            error_outputs.append(
+                                cls.format_error(
+                                    coder,
+                                    (
+                                        f"Start pattern '{start_text}' too broad."
+                                        " Do not search for it again. Be more specific."
+                                    ),
+                                    file_path,
+                                    start_text,
+                                    end_text,
+                                    show_index,
+                                )
                             )
+                            continue
+
                         # Find the best match: smallest sum of absolute distances to last start/end
                         # that comes after the range, with tie-breaking by smallest sum
                         last_s, last_e = last["start_idx"], last["end_idx"]
@@ -209,23 +265,67 @@ class Tool(BaseTool):
                                     best_pair = (s, e)
 
                         if not start_indices:
-                            raise ToolError(
-                                f"Start pattern '{start_text}' not found in {file_path}. Do not search"
-                                " for it again."
+                            error_outputs.append(
+                                cls.format_error(
+                                    coder,
+                                    (
+                                        f"Start pattern '{start_text}' not found in {file_path}."
+                                        " Do not search for it again."
+                                    ),
+                                    file_path,
+                                    start_text,
+                                    end_text,
+                                    show_index,
+                                )
                             )
+                            continue
 
                         if not end_indices:
-                            raise ToolError(
-                                f"End pattern '{end_text}' not found in {file_path}. Do not search for"
-                                " it again."
+                            error_outputs.append(
+                                cls.format_error(
+                                    coder,
+                                    f"End pattern '{end_text}' not found in {file_path}. Do not search for it again.",
+                                    file_path,
+                                    start_text,
+                                    end_text,
+                                    show_index,
+                                )
                             )
+                            continue
 
                         if best_pair is None:
-                            raise ToolError(
-                                f"End pattern '{end_text}' not found after start pattern in"
-                                f" {file_path}."
+                            error_outputs.append(
+                                cls.format_error(
+                                    coder,
+                                    f"End pattern '{end_text}' not found after start pattern in {file_path}.",
+                                    file_path,
+                                    start_text,
+                                    end_text,
+                                    show_index,
+                                )
                             )
+                            continue
+
                     s_idx, e_idx = best_pair
+
+                # Validate range width when special markers are used
+                if (start_text == "@000" or end_text == "000@") and (e_idx - s_idx > 200):
+                    error_outputs.append(
+                        cls.format_error(
+                            coder,
+                            (
+                                f"Special markers cannot be used for ranges greater than 200 lines."
+                                f" The resolved range is {e_idx - s_idx + 1} lines."
+                                " Pick more refined boundaries."
+                            ),
+                            file_path,
+                            start_text,
+                            end_text,
+                            show_index,
+                        )
+                    )
+                    continue
+
                 # Store the found indices for future disambiguation
                 cls._last_invocation[abs_path] = {"start_idx": s_idx, "end_idx": e_idx}
 
@@ -242,7 +342,18 @@ class Tool(BaseTool):
                 start_line_idx = max(0, s_idx - padding_int)
                 end_line_idx = min(num_lines - 1, e_idx + padding_int)
                 if start_line_idx == -1 or end_line_idx == -1:
-                    raise ToolError("Internal error: Could not determine line range.")
+                    error_outputs.append(
+                        cls.format_error(
+                            coder,
+                            "Internal error: Could not determine line range.",
+                            file_path,
+                            start_text,
+                            end_text,
+                            show_index,
+                        )
+                    )
+                    continue
+
                 # 6. Format output for this operation
                 # Use rel_path for user-facing messages
                 output_lines = [f"Displaying context around {found_by} in {rel_path}:"]
@@ -263,31 +374,44 @@ class Tool(BaseTool):
                     all_outputs.append("")
                 all_outputs.extend(output_lines)
 
-                from cecli.helpers.conversation import ConversationService
-
                 # Update the conversation cache with the displayed range
                 # Note: start_line_idx and end_line_idx are 0-based, convert to 1-based for hashline
                 start_line = start_line_idx + 1  # Convert to 1-based
                 end_line = end_line_idx + 1  # Convert to 1-based
 
                 original_context_content = ConversationService.get_files(coder).get_file_context(
-                    abs_path
+                    abs_path,
+                    all_ranges=True,
                 )
-                ConversationService.get_files(coder).update_file_context(
+                update_tuple = ConversationService.get_files(coder).update_file_context(
                     abs_path, start_line, end_line, auto_remove=False
                 )
                 new_context_content = ConversationService.get_files(coder).get_file_context(
-                    abs_path
+                    abs_path,
+                    all_ranges=True,
                 )
 
-                if (
-                    original_context_content
-                    and original_context_content == new_context_content
-                    and already_up_to_date is not False
-                ):
-                    already_up_to_date = True
+                is_already_up_to_date = False
+                add_to_ranges = False
+                last_turn = cls._last_read_turn.get(abs_path)
+
+                if original_context_content and original_context_content == new_context_content:
+                    already_up_to_date.append(rel_path)
+                    is_already_up_to_date = True
+
+                    if last_turn is None or coder.turn_count - last_turn < 3 and already_up_to_date:
+                        add_to_ranges = True
                 else:
-                    already_up_to_date = False
+                    add_to_ranges = True
+
+                if add_to_ranges:
+                    if not ranges.get(abs_path, None):
+                        ranges[abs_path] = []
+
+                    ranges[abs_path].append(update_tuple)
+
+                    if not is_already_up_to_date:
+                        new_context_retrieved.append(rel_path)
 
                 # Collect hashline info for response
                 if (
@@ -297,41 +421,75 @@ class Tool(BaseTool):
                     and e_idx < len(hashed_lines)
                 ):
                     hashed_slice = hashed_lines[s_idx : e_idx + 1]
-                    up_to_date_details.append(
-                        cls.format_model_response(coder, rel_path, s_idx, e_idx, hashed_slice)
-                    )
+                    if is_already_up_to_date:
+                        already_up_to_details.append(
+                            cls.format_model_response(coder, rel_path, s_idx, e_idx, hashed_slice)
+                        )
+                    else:
+                        new_context_details.append(
+                            cls.format_model_response(coder, rel_path, s_idx, e_idx, hashed_slice)
+                        )
 
                 # Conditionally remove old file context messages
                 # If the file was last read >= 3 turns ago, keep old messages (allow coexistence)
                 # Otherwise, remove them to avoid duplicates
-                last_turn = cls._last_read_turn.get(abs_path)
-                if last_turn is None or coder.turn_count - last_turn < 3 and already_up_to_date:
-                    ConversationService.get_files(coder).remove_file_messages(abs_path)
+
+                # last_turn = cls._last_read_turn.get(abs_path)
+                # if last_turn is None or coder.turn_count - last_turn < 3 and already_up_to_date:
+                #    ConversationService.get_files(coder).remove_file_messages(abs_path)
 
                 # Update the last read turn for this file
                 cls._last_read_turn[abs_path] = coder.turn_count
 
+            for abs_path, tuples in ranges.items():
+                ConversationService.get_files(coder).clear_ranges(abs_path)
+                ConversationService.get_files(coder).push_range(abs_path, tuples)
+
             ConversationService.get_chunks(coder).add_file_context_messages()
             cls.clear_old_messages(coder)
+
             # Log success and return the formatted context directly
             coder.edit_allowed = True
 
-            if already_up_to_date:
-                coder.io.tool_output("File contents already up to date")
-                detail_str = "\n".join(up_to_date_details)
-                return (
-                    "Lines already up to date in context for these files:\n"
-                    f"{detail_str}\n"
-                    "Do not call `ReadRange` again with these parameters again unless you edit"
-                    " the relevant files."
-                )
-            else:
-                coder.io.tool_output(f"✅ Successfully retrieved context for {len(show)} file(s)")
-                detail_str = "\n".join(up_to_date_details)
-                return (
-                    f"Successfully retrieved most recent contents for {len(show)} file(s):\n"
-                    f"{detail_str}\n"
-                )
+            result_parts = [f"File Context Turn {coder.turn_count}"]
+
+            if already_up_to_details or new_context_details:
+                if new_context_details:
+                    coder.io.tool_output(
+                        f"✅ Retrieved context for {len(new_context_details)} operation(s)"
+                    )
+
+                    detail_str = "\n".join(new_context_details)
+                    result_parts.append(
+                        f"Retrieved context for {len(new_context_details)} operation(s):\n\n"
+                        f"{detail_str}\n"
+                    )
+                if already_up_to_details:
+                    coder.io.tool_output(
+                        f"Lines already up to date in context for {len(already_up_to_details)} operation(s)"
+                    )
+
+                    detail_str = "\n".join(already_up_to_details)
+                    result_parts.append(
+                        "Content up to date and available in history from previous read for "
+                        f"{len(already_up_to_details)} operation(s):\n\n"
+                        f"{detail_str}\n"
+                    )
+                if already_up_to_date and not new_context_retrieved:
+                    result_parts.append(
+                        "Do not call `ReadRange` again with these parameters again unless you edit"
+                        " the relevant files."
+                    )
+
+            if error_outputs:
+                coder.io.tool_error(f"Errors encountered for {len(error_outputs)} operation(s)")
+
+                result_parts.append("Errors:\n" + "\n".join(error_outputs))
+
+            if not result_parts:
+                return "No files could be processed."
+
+            return "\n---\n".join(result_parts)
 
         except ToolError as e:
             # Handle expected errors raised by utility functions or validation
@@ -343,12 +501,14 @@ class Tool(BaseTool):
     @classmethod
     def format_model_response(cls, coder, rel_path, s_idx, e_idx, hashed_slice):
         """Format a file's context range as hash-prefixed lines for the model."""
-        lines = [
-            f"File {rel_path} Snapshot (Lines {s_idx + 1} - {e_idx + 1}, Turn {coder.turn_count}):"
-        ]
-        lines.append(hashed_slice[0])
-        lines.append("...")
-        lines.append(hashed_slice[-1])
+        lines = [f"File {rel_path} Snapshot (Lines {s_idx + 1} - {e_idx + 1}):"]
+        total = len(hashed_slice)
+        if total <= 10:
+            lines.extend(hashed_slice)
+        else:
+            lines.extend(hashed_slice[:5])
+            lines.append("...")
+            lines.extend(hashed_slice[-5:])
         lines.append("")
         return "\n".join(lines)
 
@@ -357,11 +517,14 @@ class Tool(BaseTool):
         from cecli.helpers.conversation import ConversationService, MessageTag
 
         # Clean up stale file_context messages
-        # If a file has 3 or more file_context_user messages, remove all but the most recent
+        # If a file has 5 or more file_context_user messages, remove all but the most recent
         # (and their corresponding assistant messages) to prevent excessive stale context
         file_context_messages = ConversationService.get_manager(coder).get_tag_messages(
             MessageTag.FILE_CONTEXTS
         )
+        # Only process the latest 3rd of messages to leave older context alone
+        breakpoint = len(file_context_messages) * 2 // 3
+        file_context_messages = file_context_messages[breakpoint:]
 
         # Group user file_context messages by file path
         user_msgs_by_file: Dict[str, List[int]] = {}
@@ -416,17 +579,41 @@ class Tool(BaseTool):
                 file_path = show_op.get("file_path", "")
                 start_text = strip_hashline(show_op.get("start_text", "")).strip()
                 end_text = strip_hashline(show_op.get("end_text", "")).strip()
-                padding = show_op.get("padding", 5)
 
                 # Format as "show: • file_path • start_text • end_text • padding"
                 formatted_query = (
                     f"{color_start}range_{i + 1}:{color_end} {file_path} • {start_text} •"
-                    f" {end_text} • {padding}"
+                    f" {end_text}"
                 )
                 coder.io.tool_output(formatted_query)
             coder.io.tool_output("")
 
         tool_footer(coder=coder, tool_response=tool_response)
+
+    @classmethod
+    def format_error(cls, coder, error_text, file_path, start_text, end_text, operation_index):
+        """Format error output for the ReadRange tool."""
+
+        # Truncate start_text to first line with ellipsis if multiline
+        start_line = (start_text or "N/A").split("\n")[0]
+        if start_text and start_text.count("\n") > 0:
+            start_line = start_line + " ..."
+
+        # Truncate end_text to first line with ellipsis if multiline
+        end_line = (end_text or "N/A").split("\n")[0]
+        if end_text and end_text.count("\n") > 0:
+            end_line = end_line + " ..."
+
+        output = [
+            f"[Operation {operation_index + 1}]",
+            f"file_path: {file_path or 'N/A'}",
+            f"start_text: {start_line}",
+            f"end_text: {end_line}",
+            "",
+            error_text,
+        ]
+
+        return "\n".join(output)
 
     @classmethod
     def on_duplicate_request(cls, coder, **kwargs):

@@ -145,7 +145,7 @@ class AgentCoder(Coder):
                     "context_summary",
                     # "directory_structure",
                     "environment_info",
-                    "git_status",
+                    # "git_status",
                     # "symbol_outline",
                     "todo_list",
                     "skills",
@@ -1019,8 +1019,8 @@ I will proceed based on the tool results and updated context.""")
             context_parts.append("\n\n")
             context_parts.append("## File Editing Tools Disabled")
             context_parts.append(
-                "File editing tools are currently disabled.Use `ReadRange` to determine the"
-                " current hashline prefixes needed to perform an edit and activate them when you"
+                "File editing tools are currently disabled. Use `ReadRange` to determine the"
+                " current content hash prefixes needed to perform an edit and activate them when you"
                 " are ready to edit a file."
             )
 

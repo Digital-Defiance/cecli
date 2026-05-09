@@ -27,9 +27,11 @@ class ConversationFiles:
         self._file_contents_snapshot: Dict[str, str] = {}
         self._file_timestamps: Dict[str, float] = {}
         self._file_diffs: Dict[str, str] = {}
+        self._file_stub_contents: Dict[str, str] = {}
         self._file_to_message_id: Dict[str, str] = {}
         self._image_files: Dict[str, bool] = {}
         self._numbered_contexts: Dict[str, List[Tuple[int, int]]] = {}
+        self._last_merged_ranges: Dict[str, List[Tuple[int, int]]] = {}
         self._initialized = True
 
     @classmethod
@@ -155,8 +157,13 @@ class ConversationFiles:
         if content_length <= large_file_token_threshold:
             return content
 
-        # Use RepoMap to generate file stub
-        return RepoMap.get_file_stub(fname, coder.io, line_numbers=True)
+        # Use RepoMap to generate file stub (with read-through cache)
+        if abs_fname not in self._file_stub_contents:
+            self._file_stub_contents[abs_fname] = RepoMap.get_file_stub(
+                fname, coder.io, line_numbers=True
+            )
+
+        return self._file_stub_contents[abs_fname]
 
     def has_file_changed(self, fname: str) -> bool:
         """
@@ -311,7 +318,7 @@ class ConversationFiles:
 
         return content or ""
 
-    def clear_file_cache(self, fname: Optional[str] = None) -> None:
+    def clear_file_cache(self, fname: Optional[str] = None, clear_contexts=True) -> None:
         """
         Clear cache for specific file or all files.
 
@@ -323,17 +330,21 @@ class ConversationFiles:
             self._file_contents_snapshot.clear()
             self._file_timestamps.clear()
             self._file_diffs.clear()
+            self._file_stub_contents.clear()
             self._file_to_message_id.clear()
-            self._numbered_contexts.clear()
+            if clear_contexts:
+                self._numbered_contexts.clear()
         else:
             abs_fname = os.path.abspath(fname)
             self._file_contents_original.pop(abs_fname, None)
             self._file_contents_snapshot.pop(abs_fname, None)
             self._file_timestamps.pop(abs_fname, None)
             self._file_diffs.pop(abs_fname, None)
+            self._file_stub_contents.pop(abs_fname, None)
             self._file_to_message_id.pop(abs_fname, None)
             self._image_files.pop(abs_fname, None)
-            self._numbered_contexts.pop(abs_fname, None)
+            if clear_contexts:
+                self._numbered_contexts.pop(abs_fname, None)
 
     def add_image_file(self, fname: str) -> None:
         """
@@ -368,7 +379,7 @@ class ConversationFiles:
 
     def update_file_context(
         self, file_path: str, start_line: int, end_line: int, auto_remove=True
-    ) -> None:
+    ) -> Tuple[int, int]:
         """
         Update numbered contexts for a file with a new range.
 
@@ -376,6 +387,9 @@ class ConversationFiles:
             file_path: Absolute file path
             start_line: Start line number (1-based)
             end_line: End line number (1-based)
+
+        Returns:
+            The merged range (start_line, end_line) that contains the input range.
         """
         abs_fname = os.path.abspath(file_path)
 
@@ -401,8 +415,9 @@ class ConversationFiles:
             else:
                 last_start, last_end = merged_ranges[-1]
 
-                # Check if ranges overlap or are close (within 20 lines)
-                if current_start <= last_end + 20:  # Overlap or close
+                # Check if new range overlaps/contains with the last range
+                # (since sorted by start, this means current_start is between last_start and last_end)
+                if current_start <= last_end:  # Overlap or adjacent
                     # Extend the range
                     merged_ranges[-1][1] = max(last_end, current_end)
                 else:
@@ -417,7 +432,46 @@ class ConversationFiles:
         if coder and auto_remove:
             self.remove_file_messages(abs_fname)
 
-    def get_file_context(self, file_path: str) -> str:
+        # Find the merged range that contains the input range
+        for merged_start, merged_end in self._numbered_contexts[abs_fname]:
+            if merged_start <= start_line and merged_end >= end_line:
+                return (merged_start, merged_end)
+
+        return (start_line, end_line)  # fallback
+
+    def push_range(self, file_path: str, ranges: List[Tuple[int, int]]) -> None:
+        """
+        Push merged ranges into the _last_merged_ranges cache for a file.
+
+        Args:
+            file_path: Absolute file path
+            ranges: List of (start_line, end_line) tuples, as returned by
+                update_file_context()
+        """
+        abs_fname = os.path.abspath(file_path)
+        if abs_fname not in self._last_merged_ranges:
+            self._last_merged_ranges[abs_fname] = []
+        self._last_merged_ranges[abs_fname].extend(ranges)
+        # Deduplicate and sort by start_line
+        self._last_merged_ranges[abs_fname] = sorted(
+            set(self._last_merged_ranges[abs_fname]),
+            key=lambda x: x[0],
+        )
+
+    def clear_ranges(self, file_path: Optional[str] = None) -> None:
+        """
+        Clear the _last_merged_ranges cache for a specific file or all files.
+
+        Args:
+            file_path: Optional absolute file path (None = clear all)
+        """
+        if file_path is None:
+            self._last_merged_ranges.clear()
+        else:
+            abs_fname = os.path.abspath(file_path)
+            self._last_merged_ranges.pop(abs_fname, None)
+
+    def get_file_context(self, file_path: str, all_ranges=False) -> str:
         """
         Generate hashline representation of cached context ranges.
 
@@ -429,8 +483,14 @@ class ConversationFiles:
         """
         abs_fname = os.path.abspath(file_path)
 
-        # Get cached ranges
-        ranges = self._numbered_contexts.get(abs_fname, [])
+        # Get cached ranges - prefer _last_merged_ranges over full _numbered_contexts
+        ranges = self._last_merged_ranges.get(abs_fname, []) or self._numbered_contexts.get(
+            abs_fname, []
+        )
+
+        if all_ranges:
+            ranges = self._numbered_contexts.get(abs_fname, [])
+
         if not ranges:
             return ""
 
@@ -529,6 +589,7 @@ class ConversationFiles:
         """Clear all file caches and reset to initial state."""
         self.clear_file_cache()
         self.clear_all_numbered_contexts()
+        self.clear_ranges()
         self._initialized = False
 
     def debug_print_cache(self) -> None:
