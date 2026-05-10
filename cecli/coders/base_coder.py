@@ -1612,6 +1612,7 @@ class Coder:
             return
 
         if not self.commands.is_command(user_message):
+            ConversationService.get_chunks(self).flush_removals()
             self.last_user_message = user_message
 
         while True:
@@ -1865,6 +1866,7 @@ class Coder:
             manager.clear_tag(MessageTag.DIFFS)
             manager.clear_tag(MessageTag.FILE_CONTEXTS)
             ConversationService.get_files(self).clear_file_cache()
+            ConversationService.get_chunks(self).flush_removals()
 
         except Exception as e:
             self.io.tool_warning(f"Context compaction failed: {e}")

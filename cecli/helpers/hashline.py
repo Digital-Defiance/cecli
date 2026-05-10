@@ -6,7 +6,7 @@ from cecli.helpers.hashpos.hashpos import HashPos
 HASHLINE_PREFIX_RE = HashPos.HASH_PREFIX_RE
 
 
-class HashlineError(Exception):
+class ContentHashError(Exception):
     """Custom exception for hashline-specific errors."""
 
     pass
@@ -46,7 +46,7 @@ def normalize_hashline(hashline_str: str) -> str:
     try:
         return HashPos.normalize(hashpos_str=hashline_str)
     except ValueError as e:
-        raise HashlineError(str(e))
+        raise ContentHashError(str(e))
 
 
 def parse_hashline(hashline_str: str):
@@ -135,7 +135,7 @@ def find_hashline_range(
         tuple: (found_start_line, found_end_line)
 
     Raises:
-        HashlineError: If range cannot be found or is invalid
+        ContentHashError: If range cannot be found or is invalid
     """
     # Parse hashes
     start_hash, _, _ = parse_hashline(start_line_hash)
@@ -157,7 +157,7 @@ def find_hashline_range(
         hp = HashPos(source_text)
         ends = hp.resolve_to_lines(end_hash)
         if not ends:
-            raise HashlineError(f"End line hash fragment '{end_hash}' not found in file")
+            raise ContentHashError(f"End line hash fragment '{end_hash}' not found in file")
         return 0, ends[0]
 
     # Handle special marker "000@" (bottom of file) for end position
@@ -167,7 +167,7 @@ def find_hashline_range(
         hp = HashPos(source_text)
         starts = hp.resolve_to_lines(start_hash)
         if not starts:
-            raise HashlineError(f"Start line hash fragment '{start_hash}' not found in file")
+            raise ContentHashError(f"Start line hash fragment '{start_hash}' not found in file")
         found_start = starts[0]
 
         # Set end to bottom of file
@@ -177,7 +177,7 @@ def find_hashline_range(
 
         # Verify start <= end
         if found_start > found_end:
-            raise HashlineError(
+            raise ContentHashError(
                 f"Invalid range: start line {found_start} is after end line {found_end}"
             )
         return found_start, found_end
@@ -189,7 +189,7 @@ def find_hashline_range(
         found_start, found_end = hp.resolve_range(start_hash, end_hash)
         return found_start, found_end
     except ValueError as e:
-        raise HashlineError(str(e))
+        raise ContentHashError(str(e))
 
 
 def extract_hashline_range(
@@ -209,7 +209,7 @@ def extract_hashline_range(
         str: The extracted content between the hashline markers (with hashline prefixes preserved)
 
     Raises:
-        HashlineError: If hashline verification fails
+        ContentHashError: If hashline verification fails
     """
     # Normalize hashline inputs
     start_line_hash = normalize_hashline(start_line_hash)
@@ -293,7 +293,7 @@ def get_hashline_diff(
         str: A formatted diff snippet showing changes, or empty string if no changes
 
     Raises:
-        HashlineError: If hashline verification fails or operation is invalid
+        ContentHashError: If hashline verification fails or operation is invalid
     """
 
     start_line_hash = normalize_hashline(start_line_hash)
@@ -342,7 +342,7 @@ def get_hashline_diff(
         else:
             replace_text = ""
     else:
-        raise HashlineError(
+        raise ContentHashError(
             f"Invalid operation '{operation}'. Must be one of: replace, insert, delete"
         )
 
@@ -1315,7 +1315,7 @@ def apply_hashline_operations(
                     #    )
 
                     if found_start is None:
-                        raise HashlineError(
+                        raise ContentHashError(
                             f"Start line hash fragment '{start_hash_fragment}' not found in file"
                         )
 
@@ -1362,7 +1362,7 @@ def apply_hashline_operations(
                         {"index": i, "start_idx": found_start, "end_idx": found_end, "op": op}
                     )
                 except Exception as e:
-                    raise HashlineError(
+                    raise ContentHashError(
                         f"Could not resolve hash range {start_hash}...{end_hash}: {str(e)}"
                     )
 
@@ -1505,13 +1505,13 @@ def apply_hashline_operation(
         Modified content after applying the operation
 
     Raises:
-        HashlineError: If hashline verification fails or operation is invalid
+        ContentHashError: If hashline verification fails or operation is invalid
     """
     # Handle empty content as a special case
     if original_content == "" or original_content is None:
         if operation == "insert" or operation == "replace":
             if text is None:
-                raise HashlineError(
+                raise ContentHashError(
                     f"Text parameter is required for '{operation}' operation on empty file"
                 )
             # For empty files, just return the text to insert/replace with
@@ -1521,18 +1521,18 @@ def apply_hashline_operation(
             return ""
         else:
             # Should not happen due to validation above, but handle anyway
-            raise HashlineError(f"Invalid operation '{operation}' for empty file")
+            raise ContentHashError(f"Invalid operation '{operation}' for empty file")
 
     # Validate operation
     valid_operations = {"replace", "insert", "delete"}
     if operation not in valid_operations:
-        raise HashlineError(
+        raise ContentHashError(
             f"Invalid operation '{operation}'. Must be one of: {', '.join(valid_operations)}"
         )
 
     # Validate text parameter for replace/insert operations
     if operation in {"replace", "insert"} and text is None:
-        raise HashlineError(f"Text parameter is required for '{operation}' operation")
+        raise ContentHashError(f"Text parameter is required for '{operation}' operation")
 
     # Build operation dictionary for apply_hashline_operations
     op_dict = {
@@ -1553,6 +1553,6 @@ def apply_hashline_operation(
 
     # Check if operation failed
     if failed_ops:
-        raise HashlineError(failed_ops[0]["error"])
+        raise ContentHashError(failed_ops[0]["error"])
 
     return modified_content

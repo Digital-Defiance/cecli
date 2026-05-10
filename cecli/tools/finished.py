@@ -20,7 +20,7 @@ class Tool(BaseTool):
     }
 
     @classmethod
-    def execute(cls, coder, **kwargs):
+    async def execute(cls, coder, **kwargs):
         """
         Mark that the current generation task needs no further effort.
 
@@ -30,7 +30,11 @@ class Tool(BaseTool):
 
         if coder:
             coder.agent_finished = True
-            # coder.io.tool_output("Task Finished!")
+
+            if coder.files_edited_by_tools:
+                _ = await coder.auto_commit(coder.files_edited_by_tools)
+                coder.files_edited_by_tools = set()
+
             return "Task Finished!"
 
         # coder.io.tool_Error("Error: Could not mark agent task as finished")

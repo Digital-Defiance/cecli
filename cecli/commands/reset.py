@@ -11,6 +11,8 @@ class ResetCommand(BaseCommand):
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
+        ConversationService.get_chunks(coder).flush_removals()
+
         try:
             # Drop all files
             cls._drop_all_files(io, coder, kwargs.get("original_read_only_fnames"))
