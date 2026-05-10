@@ -112,12 +112,17 @@ class SessionManager:
             return False
 
         # Apply session data
-        applied = await self._apply_session_data(session_data, session_file)
+        applied, loaded_edit_format = await self._apply_session_data(session_data, session_file)
         if applied:
             from cecli.commands import SwitchCoderSignal
 
+            edit_format_to_switch_to = self.coder.edit_format
+            if loaded_edit_format:
+                edit_format_to_switch_to = loaded_edit_format
+                self.coder.edit_format = loaded_edit_format
+
             raise SwitchCoderSignal(
-                edit_format=self.coder.edit_format,
+                edit_format=edit_format_to_switch_to,
                 from_coder=self.coder,
                 summarize_from_coder=False,
                 show_announcements=True,
@@ -246,8 +251,14 @@ class SessionManager:
         self.io.tool_output("Use /list-sessions to see available sessions.")
         return None
 
-    async def _apply_session_data(self, session_data: Dict, session_file: Path) -> bool:
-        """Apply session data to current coder state."""
+    async def _apply_session_data(
+        self, session_data: Dict, session_file: Path
+    ) -> (bool, Optional[str]):
+        """Apply session data to current coder state.
+
+        Returns:
+            A tuple of (success, edit_format)
+        """
         try:
             # Clear current state
             self.coder.abs_fnames = set()
@@ -395,8 +406,10 @@ class SessionManager:
                 ToolRegistry.build_registry(agent_config=self.coder.agent_config)
                 self.coder.loaded_custom_tools = ToolRegistry.loaded_custom_tools
 
-            return True
+            # Return True and the edit format so the Coder can be switched
+            edit_format = session_data.get("edit_format")
+            return True, edit_format
 
         except Exception as e:
             self.io.tool_error(f"Error applying session data: {e}")
-            return False
+            return False, None
