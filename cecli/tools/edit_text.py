@@ -1,7 +1,7 @@
 import json
 
 from cecli.helpers.hashline import (
-    HashlineError,
+    ContentHashError,
     apply_hashline_operations,
     get_hashline_diff,
     strip_hashline,
@@ -32,13 +32,13 @@ class Tool(BaseTool):
         "function": {
             "name": "EditText",
             "description": (
-                "Edit text in one or more files using hashline markers. "
+                "Edit text in one or more files using content hash markers. "
                 "Supports replace, delete, and insert operations in a single call. "
                 "Can handle an array of up to 10 edits across multiple files. "
                 "Each edit must include its own file_path and operation type. "
-                "Use hashline ranges with the start_line and end_line parameters with format "
-                '"{4 char hash}" (without the braces). For empty files, use "@000" as the hashline '
-                "references."
+                "Use content hash ranges with the start_line and end_line parameters with format "
+                '"{4 char hash}" (without the braces). For empty files, use "@000" as the '
+                "content hash references."
             ),
             "parameters": {
                 "type": "object",
@@ -71,14 +71,14 @@ class Tool(BaseTool):
                                 "start_line": {
                                     "type": "string",
                                     "description": (
-                                        'Hashline format for start line: "{4 char hash}" (without '
+                                        'Content hash for start line: "{4 char hash}" (without '
                                         "the braces)"
                                     ),
                                 },
                                 "end_line": {
                                     "type": "string",
                                     "description": (
-                                        'Hashline format for end line: "{4 char hash}" (without the'
+                                        'Content hash for end line: "{4 char hash}" (without the'
                                         " braces)"
                                     ),
                                 },
@@ -231,7 +231,7 @@ class Tool(BaseTool):
                         if new_content != original_content:
                             file_successful_edits += len(successful_ops)
                         else:
-                            raise ToolError("Invalid Edit - Source Not Modified")
+                            raise ToolError("Invalid Edit - Edit Results In Same Content")
 
                         if len(failed_ops):
                             for failed_op in failed_ops:
@@ -424,8 +424,8 @@ class Tool(BaseTool):
                                     operation="replace",
                                     text=strip_hashline(text),
                                 )
-                        except HashlineError as e:
-                            diff_output = f"Hashline verification failed: {str(e)}"
+                        except ContentHashError as e:
+                            diff_output = f"Content hash verification failed: {str(e)}"
                         except Exception:
                             pass
 
