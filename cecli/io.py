@@ -4,6 +4,7 @@ import base64
 import functools
 import json
 import os
+import platform
 import re
 import shutil
 import signal
@@ -1706,23 +1707,47 @@ class InputOutput:
                         return f"zenity --notification --text='{NOTIFICATION_MESSAGE}'"
             return None  # No known notification tool found
         elif system == "Windows":
-            # PowerShell notification
-            return (
-                "powershell -command"
-                " \"[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');"
-                f" [System.Windows.Forms.MessageBox]::Show('{NOTIFICATION_MESSAGE}',"
-                " 'cecli')\""
+            # PowerShell toast notification
+            ps_command = (
+                ' "try {{ Add-Type -AssemblyName System.Runtime.WindowsRuntime; $null ='
+                " [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications,"
+                " ContentType = WindowsRuntime] }} catch {{}}; "
+                "$template ="
+                " [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent"
+                "([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
+                "$toastXml = $template.GetXml(); "
+                "$toastXml.GetElementsByTagName('text')[0].AppendChild"
+                "($template.CreateTextNode('cecli')) > $null; "
+                f"$toastXml.GetElementsByTagName('text')[1].AppendChild"
+                f"($template.CreateTextNode('{NOTIFICATION_MESSAGE}')) > $null; "
+                "$toast = [Windows.UI.Notifications.ToastNotification]::new($toastXml); "
+                "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('cecli')"
+                '.Show($toast)"'
             )
+            return "powershell -command" + ps_command
 
         return None  # Unknown system
 
     def _send_notification(self):
         if self.notifications_command:
             try:
-                result = subprocess.run(self.notifications_command, shell=True, capture_output=True)
-                if result.returncode != 0 and result.stderr:
-                    error_msg = result.stderr.decode("utf-8", errors="replace")
-                    self.tool_warning(f"Failed to run notifications command: {error_msg}")
+                # Use Popen to run the command in the background without waiting for it
+                # and without capturing its output, detaching it from the current terminal session.
+                kwargs = {
+                    "shell": True,
+                    "stdout": subprocess.DEVNULL,
+                    "stderr": subprocess.DEVNULL,
+                }
+                if platform.system() == "Windows":
+                    kwargs["creationflags"] = (
+                        subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
+                    )
+                else:
+                    # For non-Windows systems, start a new session to detach
+                    kwargs["start_new_session"] = True
+
+                subprocess.Popen(self.notifications_command, **kwargs)
+
             except Exception as e:
                 self.tool_warning(f"Failed to run notifications command: {e}")
         else:

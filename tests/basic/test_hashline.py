@@ -1,5 +1,5 @@
 from cecli.helpers.hashline import (
-    HashlineError,
+    ContentHashError,
     hashline,
     parse_hashline,
     strip_hashline,
@@ -181,9 +181,9 @@ def test_parse_hashline():
     assert line_num_str is None
     assert line_num is None
 
-    # Test invalid format (should raise HashlineError)
+    # Test invalid format (should raise ContentHashError)
     try:
         parse_hashline("invalid")
-        assert False, "Expected HashlineError for invalid input"
-    except HashlineError:
+        assert False, "Expected ContentHashError for invalid input"
+    except ContentHashError:
         pass  # Expected behavior

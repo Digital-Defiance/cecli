@@ -122,7 +122,8 @@ class HashPos:
                     # Use the actual coprime period for the circular logic
                     dist = min(dist, self.PERIOD - dist)
 
-                    if dist <= 5:
+                    # ~1% chance of collision around 10 items
+                    if dist <= 1:
                         content_matches.append((dist, i))
 
         if perfect_matches:

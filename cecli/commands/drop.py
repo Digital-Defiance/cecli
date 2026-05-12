@@ -16,6 +16,10 @@ class DropCommand(BaseCommand):
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
+        from cecli.helpers.conversation import ConversationService
+
+        ConversationService.get_chunks(coder).flush_removals()
+
         try:
             if not args.strip():
                 if kwargs.get("original_read_only_fnames"):
