@@ -818,9 +818,11 @@ class TestModels:
         """
         model = Model("gpt-4")
         messages = [{"role": "user", "content": "Hello"}]
-        
+
         # A complex description with various special characters
-        complex_description = 'This is a "test" description with `special` characters like \\, \n, and *.'
+        complex_description = (
+            'This is a "test" description with `special` characters like \\, \n, and *.'
+        )
 
         # Mock tool with the complex description
         mock_tool = {
@@ -840,21 +842,23 @@ class TestModels:
 
         # Verify that acompletion was called
         mock_acompletion.assert_called_once()
-        
+
         # Get the keyword arguments passed to acompletion
         call_kwargs = mock_acompletion.call_args.kwargs
-        
+
         # Check that the 'tools' argument is present and correctly formatted
         assert "tools" in call_kwargs
         sent_tools = call_kwargs["tools"]
         assert isinstance(sent_tools, list)
         assert len(sent_tools) == 1
-        
+
         # Verify the description of the sent tool
         sent_tool_function = sent_tools[0].get("function", {})
         sent_description = sent_tool_function.get("description")
-        
+
         # The description should be a JSON-escaped string
         # Expected: 'This is a \\"test\\" description with `special` characters like \\\\, \\n, and *.'
-        expected_escaped_description = 'This is a \\"test\\" description with `special` characters like \\\\, \\n, and *.'
+        expected_escaped_description = (
+            'This is a \\"test\\" description with `special` characters like \\\\, \\n, and *.'
+        )
         assert sent_description == expected_escaped_description
