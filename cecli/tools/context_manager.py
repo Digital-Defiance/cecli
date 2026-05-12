@@ -131,6 +131,8 @@ class Tool(BaseTool):
     @classmethod
     def _remove(cls, coder, file_path):
         """Remove a file from the coder's context."""
+        from cecli.helpers.conversation import ConversationService
+
         try:
             abs_path = cls._resolve_file_path(coder, file_path)
             rel_path = coder.get_rel_fname(abs_path)
@@ -147,7 +149,13 @@ class Tool(BaseTool):
             if not removed:
                 coder.io.tool_output(f"⚠️ File '{file_path}' not in context")
                 return f"File not in context: {file_path}"
+
             coder.recently_removed[rel_path] = {"removed_at": time.time()}
+
+            if not file_path.startswith("command_key::"):
+                ConversationService.get_chunks(coder).defer_removal(abs_path)
+                ConversationService.get_chunks(coder).defer_removal(rel_path)
+
             coder.io.tool_output(f"🗑️ Removed '{file_path}' from context")
             return f"Removed: {file_path}"
         except Exception as e:

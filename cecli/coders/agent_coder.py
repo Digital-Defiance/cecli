@@ -145,7 +145,7 @@ class AgentCoder(Coder):
                     "context_summary",
                     # "directory_structure",
                     "environment_info",
-                    "git_status",
+                    # "git_status",
                     # "symbol_outline",
                     "todo_list",
                     "skills",
@@ -246,132 +246,6 @@ class AgentCoder(Coder):
         else:
             await self.mcp_manager.connect_server(server_name)
 
-    async def _execute_local_tool_calls(self, tool_calls_list):
-        tool_responses = []
-        used_write_tool = False
-
-        for tool_call in tool_calls_list:
-            tool_name = tool_call.function.name
-            result_message = ""
-            try:
-                if responses.unprefix_tool_name(tool_name)[1].lower() in self.write_tools:
-                    used_write_tool = True
-
-                args_string = tool_call.function.arguments.strip()
-                parsed_args_list = []
-
-                if not await HookIntegration.call_pre_tool_hooks(self, tool_name, args_string):
-                    tool_responses.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": "Tool Request Aborted.",
-                        }
-                    )
-                    continue
-
-                if args_string:
-                    json_chunks = utils.split_concatenated_json(args_string)
-                    for chunk in json_chunks:
-                        try:
-                            parsed_args_list.append(json.loads(chunk))
-                        except json.JSONDecodeError as e:
-                            self.model_kwargs = {}
-                            self.io.tool_warning(
-                                f"Malformed JSON arguments in tool {tool_name}: {chunk}"
-                            )
-                            tool_responses.append(
-                                {
-                                    "role": "tool",
-                                    "tool_call_id": tool_call.id,
-                                    "content": (
-                                        f"Malformed JSON arguments in tool {tool_name}: {str(e)}"
-                                    ),
-                                }
-                            )
-                            continue
-                if not parsed_args_list and not args_string:
-                    parsed_args_list.append({})
-                all_results_content = []
-                norm_tool_name = tool_name.lower()
-                tasks = []
-                if norm_tool_name in ToolRegistry.get_registered_tools():
-                    tool_module = ToolRegistry.get_tool(norm_tool_name)
-                    for params in parsed_args_list:
-                        result = tool_module.process_response(self, params)
-                        if asyncio.iscoroutine(result):
-                            tasks.append(result)
-                        else:
-                            tasks.append(asyncio.to_thread(lambda: result))
-                else:
-                    all_results_content.append(f"Error: Unknown tool name '{tool_name}'")
-                if tasks:
-
-                    async def gather_and_await():
-                        return await asyncio.gather(*tasks, return_exceptions=True)
-
-                    task_results, interrupted = await interruptible(
-                        gather_and_await(), self.interrupt_event
-                    )
-
-                    if interrupted:
-                        self.io.tool_warning("Tool execution interrupted.")
-                        all_results_content.append("Tool execution interrupted by user.")
-                    elif task_results:
-                        for res in task_results:
-                            if isinstance(res, Exception):
-                                all_results_content.append(f"Error in tool execution: {res}")
-                            else:
-                                all_results_content.append(str(res))
-
-                if not await HookIntegration.call_post_tool_hooks(
-                    self, tool_name, args_string, "\n\n".join(all_results_content)
-                ):
-                    tool_responses.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": "Tool Response Redacted.",
-                        }
-                    )
-                    continue
-
-                result_message = "\n\n".join(all_results_content)
-            except Exception as e:
-                self.model_kwargs = {}
-                result_message = f"Error executing {tool_name}: {e}"
-                self.io.tool_error(f"""Error during {tool_name} execution: {e}
-{traceback.format_exc()}""")
-            tool_responses.append(
-                {"role": "tool", "tool_call_id": tool_call.id, "content": result_message}
-            )
-
-        if self.auto_lint and used_write_tool:
-            edited = list(self.files_edited_by_tools)
-            lint_errors = self.lint_edited(edited, show_output=False)
-            self.lint_outcome = not lint_errors
-
-            if lint_errors:
-                lint_errors = lint_errors.replace(
-                    "# Fix any linting errors below, if possible.",
-                    "# Fix any linting errors below, if possible and then continue with your task.",
-                    1,
-                )
-                ConversationService.get_manager(self).add_message(
-                    message_dict=dict(role="user", content=lint_errors),
-                    tag=MessageTag.CUR,
-                    hash_key=("lint_errors", "agent"),
-                    promotion=ConversationService.get_manager(self).DEFAULT_TAG_PROMOTION_VALUE,
-                    mark_for_demotion=1,
-                    force=True,
-                )
-            else:
-                ConversationService.get_manager(self).remove_message_by_hash_key(
-                    ("lint_errors", "agent")
-                )
-
-        return tool_responses
-
     async def _execute_mcp_tool(self, server, tool_name, params):
         """Helper to execute a single MCP tool call, created from legacy format."""
 
@@ -408,9 +282,9 @@ class AgentCoder(Coder):
                             content_parts.append(item.text)
                 return "".join(content_parts)
             except Exception as e:
-                self.io.tool_warning(f"""Executing {tool_name} on {server.name} failed:
-  Error: {e}
-""")
+                self.io.tool_warning(
+                    (f"Executing {tool_name} on {server.name} failed:\nError: {e}")
+                )
                 return f"Error executing tool call {tool_name}: {e}"
 
         result, interrupted = await interruptible(_exec_async(), self.interrupt_event)
@@ -507,9 +381,8 @@ class AgentCoder(Coder):
         try:
             result = '<context name="symbol_outline" from="agent">\n'
             result += "## Symbol Outline (Current Context)\n\n"
-            result += """Code definitions (classes, functions, methods, etc.) found in files currently in chat context.
-
-"""
+            result += "Code definitions (classes, functions, methods, etc.) found in files currently in chat context."
+            result += "\n\n"
             files_to_outline = list(self.abs_fnames) + list(self.abs_read_only_fnames)
             if not files_to_outline:
                 result += "No files currently in context.\n"
@@ -649,9 +522,7 @@ class AgentCoder(Coder):
                         )
                 if editable_files:
                     result += "\n".join(editable_files) + "\n\n"
-                    result += f"""**Total editable: {len(editable_files)} files, {editable_tokens:,} tokens**
-
-"""
+                    result += f"**Total editable: {len(editable_files)} files, {editable_tokens:,} tokens**\n\n"
                 else:
                     result += "No editable files in context\n\n"
             if self.abs_read_only_fnames:
@@ -671,9 +542,7 @@ class AgentCoder(Coder):
                         )
                 if readonly_files:
                     result += "\n".join(readonly_files) + "\n\n"
-                    result += f"""**Total read-only: {len(readonly_files)} files, {readonly_tokens:,} tokens**
-
-"""
+                    result += f"**Total read-only: {len(readonly_files)} files, {readonly_tokens:,} tokens**\n\n"
                 else:
                     result += "No read-only files in context\n\n"
             extra_tokens = sum(self.context_block_tokens.values())
@@ -765,9 +634,133 @@ class AgentCoder(Coder):
         # Ensure we call base implementation to trigger execution of all tools (native + extracted)
         return await super().process_tool_calls(tool_call_response)
 
-    async def _execute_local_tools(self, tool_calls):
+    async def _execute_local_tools(self, tool_calls_list):
         """Execute local tools via ToolRegistry."""
-        return await self._execute_local_tool_calls(tool_calls)
+        tool_responses = []
+        used_write_tool = False
+
+        for tool_call in tool_calls_list:
+            tool_name = tool_call.function.name
+            result_message = ""
+            try:
+                if responses.unprefix_tool_name(tool_name)[1].lower() in self.write_tools:
+                    used_write_tool = True
+
+                args_string = tool_call.function.arguments.strip()
+                parsed_args_list = []
+
+                if not await HookIntegration.call_pre_tool_hooks(self, tool_name, args_string):
+                    tool_responses.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": "Tool Request Aborted.",
+                        }
+                    )
+                    continue
+
+                if args_string:
+                    json_chunks = utils.split_concatenated_json(args_string)
+                    for chunk in json_chunks:
+                        try:
+                            parsed_args_list.append(json.loads(chunk))
+                        except json.JSONDecodeError as e:
+                            self.model_kwargs = {}
+                            self.io.tool_warning(
+                                f"Malformed JSON arguments in tool {tool_name}: {chunk}"
+                            )
+                            tool_responses.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tool_call.id,
+                                    "content": (
+                                        f"Malformed JSON arguments in tool {tool_name}: {str(e)}"
+                                    ),
+                                }
+                            )
+                            continue
+                if not parsed_args_list and not args_string:
+                    parsed_args_list.append({})
+                all_results_content = []
+                norm_tool_name = tool_name.lower()
+                tasks = []
+                if norm_tool_name in ToolRegistry.get_registered_tools():
+                    tool_module = ToolRegistry.get_tool(norm_tool_name)
+                    for params in parsed_args_list:
+                        result = tool_module.process_response(self, params)
+                        if asyncio.iscoroutine(result):
+                            tasks.append(result)
+                        else:
+                            tasks.append(asyncio.to_thread(lambda: result))
+                else:
+                    all_results_content.append(f"Error: Unknown tool name '{tool_name}'")
+                if tasks:
+
+                    async def gather_and_await():
+                        return await asyncio.gather(*tasks, return_exceptions=True)
+
+                    task_results, interrupted = await interruptible(
+                        gather_and_await(), self.interrupt_event
+                    )
+
+                    if interrupted:
+                        self.io.tool_warning("Tool execution interrupted.")
+                        all_results_content.append("Tool execution interrupted by user.")
+                    elif task_results:
+                        for res in task_results:
+                            if isinstance(res, Exception):
+                                all_results_content.append(f"Error in tool execution: {res}")
+                            else:
+                                all_results_content.append(str(res))
+
+                if not await HookIntegration.call_post_tool_hooks(
+                    self, tool_name, args_string, "\n\n".join(all_results_content)
+                ):
+                    tool_responses.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": "Tool Response Redacted.",
+                        }
+                    )
+                    continue
+
+                result_message = "\n\n".join(all_results_content)
+            except Exception as e:
+                self.model_kwargs = {}
+                result_message = f"Error executing {tool_name}: {e}"
+                self.io.tool_error(
+                    (f"Error during {tool_name} execution: {e}\n{traceback.format_exc()}")
+                )
+            tool_responses.append(
+                {"role": "tool", "tool_call_id": tool_call.id, "content": result_message}
+            )
+
+        if self.auto_lint and used_write_tool:
+            edited = list(self.files_edited_by_tools)
+            lint_errors = self.lint_edited(edited, show_output=False)
+            self.lint_outcome = not lint_errors
+
+            if lint_errors:
+                lint_errors = lint_errors.replace(
+                    "# Fix any linting errors below, if possible.",
+                    "# Fix any linting errors below, if possible and then continue with your task.",
+                    1,
+                )
+                ConversationService.get_manager(self).add_message(
+                    message_dict=dict(role="user", content=lint_errors),
+                    tag=MessageTag.CUR,
+                    hash_key=("lint_errors", "agent"),
+                    promotion=ConversationService.get_manager(self).DEFAULT_TAG_PROMOTION_VALUE,
+                    mark_for_demotion=1,
+                    force=True,
+                )
+            else:
+                ConversationService.get_manager(self).remove_message_by_hash_key(
+                    ("lint_errors", "agent")
+                )
+
+        return tool_responses
 
     async def _execute_mcp_tools(self, server, tool_calls):
         """Execute MCP tools via LiteLLM."""
@@ -860,6 +853,12 @@ class AgentCoder(Coder):
                 self.tool_usage_history = []
             return True
 
+        if content and not tool_calls_found and self.num_reflections < self.max_reflections:
+            self.reflected_message = (
+                "Continue with your task. If you have completed it, call the `Finished` tool."
+            )
+            return True
+
         if tool_calls_found and self.num_reflections < self.max_reflections:
             self.tool_call_count = 0
             self.files_added_in_exploration = set()
@@ -877,8 +876,9 @@ class AgentCoder(Coder):
                 "I have processed the results of the previous tool calls. Let me analyze them"
                 " and continue working towards your request."
             )
-            next_prompt_parts.append("""
-I will proceed based on the tool results and updated context.""")
+            next_prompt_parts.append(
+                "\nI will proceed based on the tool results and updated context."
+            )
             next_prompt_parts.append(f"\nYour original question was: {original_question}")
             self.reflected_message = "\n".join(next_prompt_parts)
             self.io.tool_output("Continuing exploration...")
@@ -1019,8 +1019,8 @@ I will proceed based on the tool results and updated context.""")
             context_parts.append("\n\n")
             context_parts.append("## File Editing Tools Disabled")
             context_parts.append(
-                "File editing tools are currently disabled.Use `ReadRange` to determine the"
-                " current hashline prefixes needed to perform an edit and activate them when you"
+                "File editing tools are currently disabled. Use `ReadRange` to determine the"
+                " current content hash prefixes needed to perform an edit and activate them when you"
                 " are ready to edit a file."
             )
 
