@@ -1719,13 +1719,13 @@ class InputOutput:
                 "$toastXml = $template.GetXml(); "
                 "$toastXml.GetElementsByTagName('text')[0].AppendChild"
                 "($template.CreateTextNode('cecli')) > $null; "
-                f"$toastXml.GetElementsByTagName('text')[1].AppendChild"
+                "$toastXml.GetElementsByTagName('text')[1].AppendChild"
                 f"($template.CreateTextNode('{NOTIFICATION_MESSAGE}')) > $null; "
                 "$toast = [Windows.UI.Notifications.ToastNotification]::new($toastXml); "
                 "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('cecli')"
                 '.Show($toast)"'
             )
-            return "powershell -command" + ps_command
+            return "powershell -WindowStyle Hidden -Command" + ps_command
 
         return None  # Unknown system
 
@@ -1740,9 +1740,7 @@ class InputOutput:
                     "stderr": subprocess.DEVNULL,
                 }
                 if platform.system() == "Windows":
-                    kwargs["creationflags"] = (
-                        subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
-                    )
+                    kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
                 else:
                     # For non-Windows systems, start a new session to detach
                     kwargs["start_new_session"] = True

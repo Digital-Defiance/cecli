@@ -453,7 +453,6 @@ class Coder:
 
         # Initialize conversation system if enabled
         ConversationService.get_chunks(self).initialize_conversation_system()
-        self.observation_manager = ObservationManager.get_instance(self)
 
         self.commands = commands or Commands(self.io, self, args=args)
         self.commands.coder = self
@@ -1752,7 +1751,7 @@ class Coder:
             return
 
         # Trigger background observation/reflection check
-        await self.observation_manager.check_and_trigger()
+        await ObservationManager.get_instance(self).check_and_trigger()
 
         manager = ConversationService.get_manager(self)
         done_messages = manager.get_messages_dict(MessageTag.DONE)
@@ -1789,8 +1788,8 @@ class Coder:
                 if not text:
                     raise ValueError(f"Summarization of {tag} messages returned empty.")
 
-                if self.observation_manager.observations:
-                    obs_text = "\n".join(self.observation_manager.observations)
+                if ObservationManager.get_instance(self).observations:
+                    obs_text = "\n".join(ObservationManager.get_instance(self).observations)
                     text = f"HISTORICAL OBSERVATIONS:\n{obs_text}\n\n{text}"
 
                 manager.clear_tag(tag)
