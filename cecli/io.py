@@ -1309,8 +1309,8 @@ class InputOutput:
                 self.user_input(f"{question} - {res}", log_only=False)
             else:
                 # Ring the bell if needed
-                self.notify_user_input_required()
-                self.ring_bell()
+                await self.notify_user_input_required()
+                await self.ring_bell()
                 self.start_spinner("Awaiting Confirmation...", False)
 
                 while True:
@@ -1385,12 +1385,12 @@ class InputOutput:
 
         return is_yes
 
-    @restore_multiline
-    def prompt_ask(self, question, default="", subject=None):
+    @restore_multiline_async
+    async def prompt_ask(self, question, default="", subject=None):
         self.num_user_asks += 1
 
         # Ring the bell if needed
-        self.ring_bell()
+        await self.ring_bell()
 
         if subject:
             self.tool_output()
@@ -1405,14 +1405,16 @@ class InputOutput:
         else:
             try:
                 if self.prompt_session:
-                    res = self.prompt_session.prompt(
+                    res = await self.prompt_session.prompt_async(
                         question + " ",
                         default=default,
                         style=style,
                         complete_while_typing=True,
                     )
                 else:
-                    res = input(question + " ")
+                    res = await asyncio.get_event_loop().run_in_executor(
+                        None, input, question + " "
+                    )
             except EOFError:
                 # Treat EOF (Ctrl+D) as if the user pressed Enter
                 res = default
@@ -1728,15 +1730,13 @@ class InputOutput:
 
         return None  # Unknown system
 
-    def _send_notification(self):
+    async def _send_notification(self):
         if self.notifications_command:
             try:
-                # Use Popen to run the command in the background without waiting for it
-                # and without capturing its output, detaching it from the current terminal session.
+                # Use asyncio.create_subprocess_shell for non-blocking execution
                 kwargs = {
-                    "shell": True,
-                    "stdout": subprocess.DEVNULL,
-                    "stderr": subprocess.DEVNULL,
+                    "stdout": asyncio.subprocess.DEVNULL,
+                    "stderr": asyncio.subprocess.DEVNULL,
                 }
                 if platform.system() == "Windows":
                     kwargs["creationflags"] = (
@@ -1746,22 +1746,22 @@ class InputOutput:
                     # For non-Windows systems, start a new session to detach
                     kwargs["start_new_session"] = True
 
-                subprocess.Popen(self.notifications_command, **kwargs)
+                await asyncio.create_subprocess_shell(self.notifications_command, **kwargs)
 
             except Exception as e:
                 self.tool_warning(f"Failed to run notifications command: {e}")
         else:
             print("\a", end="", flush=True)  # Ring the bell
 
-    def notify_user_input_required(self):
+    async def notify_user_input_required(self):
         """Send a notification that user input is required."""
         if self.notifications:
-            self._send_notification()
+            await self._send_notification()
 
-    def ring_bell(self):
+    async def ring_bell(self):
         """Ring the terminal bell if needed and clear the flag"""
         if self.bell_on_next_input and self.notifications:
-            self._send_notification()
+            await self._send_notification()
             self.bell_on_next_input = False
 
     def toggle_multiline_mode(self):

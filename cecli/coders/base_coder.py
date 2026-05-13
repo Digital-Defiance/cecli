@@ -1455,7 +1455,7 @@ class Coder:
 
                 # Check if we should recreate input
                 if not coroutines.is_active(self.io.input_task):
-                    self.io.ring_bell()
+                    await self.io.ring_bell()
                     await self.io.recreate_input()
 
                 await asyncio.sleep(0.1)  # Small yield to prevent tight loop
