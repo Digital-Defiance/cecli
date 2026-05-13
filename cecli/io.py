@@ -1731,6 +1731,8 @@ class InputOutput:
         return None  # Unknown system
 
     async def _send_notification(self):
+        if self.verbose:
+            self.tool_output("Sending notification.", log_only=True)
         if self.notifications_command:
             try:
                 # Use asyncio.create_subprocess_shell for non-blocking execution
@@ -1751,6 +1753,8 @@ class InputOutput:
             except Exception as e:
                 self.tool_warning(f"Failed to run notifications command: {e}")
         else:
+            if self.verbose:
+                self.tool_output("Ringing terminal bell.", log_only=True)
             print("\a", end="", flush=True)  # Ring the bell
 
     async def notify_user_input_required(self):
