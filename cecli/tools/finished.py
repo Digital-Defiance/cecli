@@ -30,6 +30,7 @@ class Tool(BaseTool):
 
         if coder:
             coder.agent_finished = True
+            coder.io.notify_user_input_required()
 
             if coder.files_edited_by_tools:
                 _ = await coder.auto_commit(coder.files_edited_by_tools)
