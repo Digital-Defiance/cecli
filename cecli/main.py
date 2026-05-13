@@ -1194,15 +1194,21 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
     if args.exit:
         return await graceful_exit(coder)
     if args.auto_load:
-        try:
-            from cecli.sessions import SessionManager
+        if await pre_init_io.confirm_ask(
+            "Do you want to load your previous session?",
+            acknowledge=True,
+            explicit_yes_required=True,
+        ):
+            try:
+                from cecli.sessions import SessionManager
 
-            session_manager = SessionManager(coder, io)
-            await session_manager.load_session(
-                args.auto_save_session_name if args.auto_save_session_name else "auto-save"
-            )
-        except Exception:
-            pass
+                session_manager = SessionManager(coder, io)
+                await session_manager.load_session(
+                    args.auto_save_session_name if args.auto_save_session_name else "auto-save",
+                    switch=False,
+                )
+            except Exception:
+                pass
 
     if suppress_pre_init:
         await graceful_exit(coder)

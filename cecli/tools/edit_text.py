@@ -37,7 +37,7 @@ class Tool(BaseTool):
                 "Can handle an array of up to 10 edits across multiple files. "
                 "Each edit must include its own file_path and operation type. "
                 "Use content hash ranges with the start_line and end_line parameters with format "
-                '"{4 char hash}" (without the braces). For empty files, use "@000" as the '
+                "`{4 char hash}` (without the braces). For empty files, use `@000` as the "
                 "content hash references."
             ),
             "parameters": {
@@ -71,14 +71,14 @@ class Tool(BaseTool):
                                 "start_line": {
                                     "type": "string",
                                     "description": (
-                                        'Content hash for start line: "{4 char hash}" (without '
+                                        "Content hash for start line: `{4 char hash}` (without "
                                         "the braces)"
                                     ),
                                 },
                                 "end_line": {
                                     "type": "string",
                                     "description": (
-                                        'Content hash for end line: "{4 char hash}" (without the'
+                                        "Content hash for end line: `{4 char hash}` (without the"
                                         " braces)"
                                     ),
                                 },

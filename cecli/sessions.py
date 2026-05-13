@@ -88,7 +88,7 @@ class SessionManager:
 
         return sessions
 
-    async def load_session(self, session_identifier: str) -> bool:
+    async def load_session(self, session_identifier: str, switch=True) -> bool:
         """Load a saved session by name or file path."""
         if not session_identifier:
             self.io.tool_error("Please provide a session name or file path.")
@@ -113,7 +113,7 @@ class SessionManager:
 
         # Apply session data
         applied, loaded_edit_format = await self._apply_session_data(session_data, session_file)
-        if applied:
+        if applied and switch:
             from cecli.commands import SwitchCoderSignal
 
             edit_format_to_switch_to = self.coder.edit_format

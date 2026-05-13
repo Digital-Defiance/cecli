@@ -7,10 +7,7 @@ class Tool(BaseTool):
         "type": "function",
         "function": {
             "name": "LoadSkill",
-            "description": (
-                "Load a skill by name (agent mode only). Adds skill to include list and removes"
-                " from exclude list."
-            ),
+            "description": "Load a skill by name.",
             "parameters": {
                 "type": "object",
                 "properties": {

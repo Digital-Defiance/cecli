@@ -26,17 +26,21 @@ class ObservationManager:
         if self.is_processing:
             return
 
-        manager = ConversationService.get_manager(self.coder)
-        cur_messages = manager.get_messages_dict(MessageTag.CUR)
+        cur_messages = ConversationService.get_manager(self.coder).get_messages_dict(MessageTag.CUR)
 
         # Calculate unobserved tokens
         unobserved = cur_messages[self._last_observed_index :]
+        current_index = len(cur_messages)
+
         if not unobserved:
             return
 
         tokens = self.coder.summarizer.count_tokens(unobserved)
 
-        if tokens >= self.observation_threshold:
+        if (
+            tokens >= self.observation_threshold
+            and (not self._last_observed_index or current_index - self._last_observed_index >= 10)
+        ) or tokens >= 2 * self.observation_threshold:
             asyncio.create_task(self.run_observation(unobserved))
             self._last_observed_index = len(cur_messages)
 
@@ -50,8 +54,7 @@ class ObservationManager:
     async def run_observation(self, messages):
         self.is_processing = True
         try:
-            manager = ConversationService.get_manager(self.coder)
-            all_messages = manager.get_messages_dict()
+            all_messages = ConversationService.get_manager(self.coder).get_messages_dict()
             prompt = self.coder.gpt_prompts.observation_prompt
             observation = await self.coder.summarizer.summarize_all_as_text(
                 all_messages, prompt, max_tokens=8192

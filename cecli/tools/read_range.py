@@ -30,7 +30,7 @@ class Tool(BaseTool):
                 " respectively. Avoid using both of the special markers together on non-empty"
                 " files. Never use content hashes as the start_text and end_text values. Do not use"
                 " the same pattern for the start_text and end_text. It is best to use function"
-                " names, variable declarations and other block identifiers as  start_texts and"
+                " names, variable declarations and other block identifiers as start_texts and"
                 " end_texts."
             ),
             "parameters": {
