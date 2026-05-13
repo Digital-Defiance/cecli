@@ -3,6 +3,7 @@ from typing import List
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
 from cecli.helpers.conversation import ConversationService
+from cecli.helpers.observations.manager import ObservationManager
 
 
 class ResetCommand(BaseCommand):
@@ -24,7 +25,7 @@ class ResetCommand(BaseCommand):
             # Re-initialize Conversation components with current coder
             ConversationService.get_manager(coder).initialize(reformat=True)
             ConversationService.get_files(coder)  # Ensure instance exists/initialized
-            coder.observation_manager.reset()
+            ObservationManager.get_instance(coder).reset()
 
             # Clear TUI output if available
             if coder.tui and coder.tui():
