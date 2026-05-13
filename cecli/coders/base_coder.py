@@ -42,7 +42,7 @@ from cecli.commands import Commands, SwitchCoderSignal
 from cecli.exceptions import LiteLLMExceptions
 from cecli.helpers import command_parser, coroutines, nested, responses
 from cecli.helpers.conversation import ConversationService, MessageTag
-from cecli.helpers.observations.manager import ObservationManager
+from cecli.helpers.observations.service import ObservationService
 from cecli.helpers.profiler import TokenProfiler
 from cecli.history import ChatSummary
 from cecli.hooks import HookIntegration
@@ -1751,7 +1751,7 @@ class Coder:
             return
 
         # Trigger background observation/reflection check
-        await ObservationManager.get_instance(self).check_and_trigger()
+        await ObservationService.get_instance(self).check_and_trigger()
 
         manager = ConversationService.get_manager(self)
         done_messages = manager.get_messages_dict(MessageTag.DONE)
@@ -1788,8 +1788,8 @@ class Coder:
                 if not text:
                     raise ValueError(f"Summarization of {tag} messages returned empty.")
 
-                if ObservationManager.get_instance(self).observations:
-                    obs_text = "\n".join(ObservationManager.get_instance(self).observations)
+                if ObservationService.get_instance(self).observations:
+                    obs_text = "\n".join(ObservationService.get_instance(self).observations)
                     text = f"HISTORICAL OBSERVATIONS:\n{obs_text}\n\n{text}"
 
                 manager.clear_tag(tag)

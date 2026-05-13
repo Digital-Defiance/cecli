@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from cecli.helpers.observations.manager import ObservationManager
+from cecli.helpers.observations.service import ObservationService
 
 
 @pytest.mark.asyncio
@@ -11,7 +11,7 @@ async def test_observation_manager_initialization():
     coder.uuid = "test-uuid"
     coder.context_compaction_max_tokens = 60000
 
-    manager = ObservationManager.get_instance(coder)
+    manager = ObservationService.get_instance(coder)
     assert manager.observation_threshold == 20000
     assert manager.reflection_threshold == 40000
     assert manager.observations == []
@@ -22,7 +22,7 @@ async def test_observation_manager_reset():
     coder = MagicMock()
     coder.uuid = "test-uuid-reset"
     coder.context_compaction_max_tokens = 60000
-    manager = ObservationManager.get_instance(coder)
+    manager = ObservationService.get_instance(coder)
 
     manager.observations = ["obs1"]
     manager._last_observed_index = 5
@@ -48,7 +48,7 @@ async def test_check_and_trigger_observation(monkeypatch):
     ):
         coder.summarizer.count_tokens.return_value = 25000
 
-        manager = ObservationManager.get_instance(coder)
+        manager = ObservationService.get_instance(coder)
 
         with patch.object(manager, "run_observation", new_callable=AsyncMock) as mock_run:
             await manager.check_and_trigger()
@@ -69,7 +69,7 @@ async def test_compact_context_with_observations():
     coder.io = MagicMock()
 
     # Mock observation manager with some observations
-    obs_manager = ObservationManager.get_instance(coder)
+    obs_manager = ObservationService.get_instance(coder)
     obs_manager.observations = ["Observation 1"]
 
     # Mock prompts
@@ -133,7 +133,7 @@ async def test_compact_context_with_observations_integration():
     coder.io = MagicMock()
 
     # Mock observation manager with some observations
-    obs_manager = ObservationManager.get_instance(coder)
+    obs_manager = ObservationService.get_instance(coder)
     obs_manager.observations = ["Observation 1"]
 
     # Mock prompts

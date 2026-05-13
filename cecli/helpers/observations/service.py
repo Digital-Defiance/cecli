@@ -5,7 +5,7 @@ from cecli.helpers.conversation.service import ConversationService
 from cecli.helpers.conversation.tags import MessageTag
 
 
-class ObservationManager:
+class ObservationService:
     _instances = {}
 
     @classmethod
