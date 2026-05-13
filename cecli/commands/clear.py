@@ -2,7 +2,7 @@ from typing import List
 
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
-from cecli.helpers.observations.manager import ObservationManager
+from cecli.helpers.observations.service import ObservationService
 
 
 class ClearCommand(BaseCommand):
@@ -20,7 +20,7 @@ class ClearCommand(BaseCommand):
         ConversationService.get_manager(coder).clear_tag(MessageTag.FILE_CONTEXTS)
 
         ConversationService.get_files(coder).reset()
-        ObservationManager.get_instance(coder).reset()
+        ObservationService.get_instance(coder).reset()
 
         # Clear TUI output if available
         if coder.tui and coder.tui():
