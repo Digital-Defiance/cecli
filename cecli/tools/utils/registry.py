@@ -6,6 +6,7 @@ this provides centralized tool registration, discovery, and filtering
 based on agent configuration.
 """
 
+import json
 import traceback
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Type
@@ -31,6 +32,16 @@ class ToolRegistry:
                 name = tool_class.SCHEMA.get("function", {}).get("name", "").lower()
             except Exception:
                 pass
+
+            description = tool_class.SCHEMA["function"]["description"]
+            wrapped = f'"{description}"'
+
+            try:
+                json.loads(wrapped)
+            except json.JSONDecodeError:
+                tool_class.SCHEMA["function"]["description"] = json.dumps(
+                    description, ensure_ascii=False
+                )[1:-1]
 
         if not name and hasattr(tool_class, "NORM_NAME"):
             name = tool_class.NORM_NAME
