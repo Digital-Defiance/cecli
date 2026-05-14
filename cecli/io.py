@@ -817,7 +817,6 @@ class InputOutput:
     ):
         self.rule()
         self.notify_user_input_required()
-        self.notify_user_input_required()
 
         rel_fnames = list(rel_fnames)
         show = ""
