@@ -71,7 +71,6 @@ async def test_compact_context_with_observations():
     # Mock observation manager with some observations
     obs_manager = ObservationManager.get_instance(coder)
     obs_manager.observations = ["Observation 1"]
-    coder.observation_manager = obs_manager
 
     # Mock prompts
     coder.gpt_prompts = MagicMock()
@@ -136,7 +135,6 @@ async def test_compact_context_with_observations_integration():
     # Mock observation manager with some observations
     obs_manager = ObservationManager.get_instance(coder)
     obs_manager.observations = ["Observation 1"]
-    coder.observation_manager = obs_manager
 
     # Mock prompts
     coder.gpt_prompts = MagicMock()
