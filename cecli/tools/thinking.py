@@ -11,8 +11,8 @@ class Tool(BaseTool):
         "function": {
             "name": "Thinking",
             "description": (
-                "Use this tool to store useful facts for later "
-                "keep a scratch pad of your current efforts "
+                "Use this tool to store useful facts for later, "
+                "keep a scratch pad of your current efforts, "
                 "and clarify your thoughts and intentions for your next steps."
             ),
             "parameters": {

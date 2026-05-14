@@ -816,6 +816,7 @@ class InputOutput:
         edit_format=None,
     ):
         self.rule()
+        self.notify_user_input_required()
 
         rel_fnames = list(rel_fnames)
         show = ""
@@ -1309,8 +1310,8 @@ class InputOutput:
                 self.user_input(f"{question} - {res}", log_only=False)
             else:
                 # Ring the bell if needed
-                await self.notify_user_input_required()
-                await self.ring_bell()
+                self.notify_user_input_required()
+                self.ring_bell()
                 self.start_spinner("Awaiting Confirmation...", False)
 
                 while True:
@@ -1385,12 +1386,12 @@ class InputOutput:
 
         return is_yes
 
-    @restore_multiline_async
-    async def prompt_ask(self, question, default="", subject=None):
+    @restore_multiline
+    def prompt_ask(self, question, default="", subject=None):
         self.num_user_asks += 1
 
         # Ring the bell if needed
-        await self.ring_bell()
+        self.ring_bell()
 
         if subject:
             self.tool_output()
@@ -1405,16 +1406,14 @@ class InputOutput:
         else:
             try:
                 if self.prompt_session:
-                    res = await self.prompt_session.prompt_async(
+                    res = self.prompt_session.prompt(
                         question + " ",
                         default=default,
                         style=style,
                         complete_while_typing=True,
                     )
                 else:
-                    res = await asyncio.get_event_loop().run_in_executor(
-                        None, input, question + " "
-                    )
+                    res = input(question + " ")
             except EOFError:
                 # Treat EOF (Ctrl+D) as if the user pressed Enter
                 res = default
@@ -1720,52 +1719,48 @@ class InputOutput:
                 "$toastXml = $template.GetXml(); "
                 "$toastXml.GetElementsByTagName('text')[0].AppendChild"
                 "($template.CreateTextNode('cecli')) > $null; "
-                f"$toastXml.GetElementsByTagName('text')[1].AppendChild"
+                "$toastXml.GetElementsByTagName('text')[1].AppendChild"
                 f"($template.CreateTextNode('{NOTIFICATION_MESSAGE}')) > $null; "
                 "$toast = [Windows.UI.Notifications.ToastNotification]::new($toastXml); "
                 "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('cecli')"
                 '.Show($toast)"'
             )
-            return "powershell -command" + ps_command
+            return "powershell -WindowStyle Hidden -Command" + ps_command
 
         return None  # Unknown system
 
-    async def _send_notification(self):
-        if self.verbose:
-            self.tool_output("Sending notification.", log_only=True)
+    def _send_notification(self):
         if self.notifications_command:
             try:
-                # Use asyncio.create_subprocess_shell for non-blocking execution
+                # Use Popen to run the command in the background without waiting for it
+                # and without capturing its output, detaching it from the current terminal session.
                 kwargs = {
-                    "stdout": asyncio.subprocess.DEVNULL,
-                    "stderr": asyncio.subprocess.DEVNULL,
+                    "shell": True,
+                    "stdout": subprocess.DEVNULL,
+                    "stderr": subprocess.DEVNULL,
                 }
                 if platform.system() == "Windows":
-                    kwargs["creationflags"] = (
-                        subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
-                    )
+                    kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
                 else:
                     # For non-Windows systems, start a new session to detach
                     kwargs["start_new_session"] = True
 
-                await asyncio.create_subprocess_shell(self.notifications_command, **kwargs)
+                subprocess.Popen(self.notifications_command, **kwargs)
 
             except Exception as e:
                 self.tool_warning(f"Failed to run notifications command: {e}")
         else:
-            if self.verbose:
-                self.tool_output("Ringing terminal bell.", log_only=True)
             print("\a", end="", flush=True)  # Ring the bell
 
-    async def notify_user_input_required(self):
+    def notify_user_input_required(self):
         """Send a notification that user input is required."""
         if self.notifications:
-            await self._send_notification()
+            self._send_notification()
 
-    async def ring_bell(self):
+    def ring_bell(self):
         """Ring the terminal bell if needed and clear the flag"""
         if self.bell_on_next_input and self.notifications:
-            await self._send_notification()
+            self._send_notification()
             self.bell_on_next_input = False
 
     def toggle_multiline_mode(self):

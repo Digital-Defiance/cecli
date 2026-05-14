@@ -7,10 +7,7 @@ class Tool(BaseTool):
         "type": "function",
         "function": {
             "name": "RemoveSkill",
-            "description": (
-                "Remove a skill by name (agent mode only). Removes skill from include list and adds"
-                " to exclude list."
-            ),
+            "description": "Remove a skill by name.",
             "parameters": {
                 "type": "object",
                 "properties": {
