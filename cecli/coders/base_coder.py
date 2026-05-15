@@ -579,7 +579,7 @@ class Coder:
         self.files_edited_by_tools = set()
 
         # Linting and testing
-        self.linter = Linter(root=self.root, encoding=io.encoding)
+        self.linter = Linter(root=self.root, encoding=io.encoding, interrupt_event=self.interrupt_event)
         self.auto_lint = auto_lint
         self.setup_lint_cmds(lint_cmds)
         self.lint_cmds = lint_cmds
@@ -2409,7 +2409,10 @@ class Coder:
             return
 
         if edited and self.auto_lint:
-            lint_errors = self.lint_edited(edited)
+            lint_errors = await self.lint_edited(edited)
+            if lint_errors is None:  # Interrupted
+                return
+
             await self.auto_commit(edited, context="Ran the linter")
             self.lint_outcome = not lint_errors
             if lint_errors:
@@ -2887,12 +2890,16 @@ class Coder:
         self.io.tool_error(res)
         await self.io.offer_url(urls.token_limits)
 
-    def lint_edited(self, fnames, show_output=True):
+    async def lint_edited(self, fnames, show_output=True):
         res = ""
         for fname in fnames:
             if not fname:
                 continue
-            errors = self.linter.lint(self.abs_root_path(fname))
+            try:
+                errors = await self.linter.lint(self.abs_root_path(fname))
+            except asyncio.CancelledError:
+                self.io.tool_warning("Linting interrupted.")
+                return None
 
             if errors:
                 res += "\n"
