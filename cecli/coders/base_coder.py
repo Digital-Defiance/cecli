@@ -60,7 +60,7 @@ from cecli.reasoning_tags import (
 from cecli.repo import ANY_GIT_ERROR, GitRepo
 from cecli.repomap import RepoMap
 from cecli.report import update_error_prefix
-from cecli.run_cmd import run_cmd
+from cecli.run_cmd import run_cmd, run_cmd_async
 from cecli.sessions import SessionManager
 from cecli.tools.utils.output import print_tool_response
 from cecli.tools.utils.registry import ToolRegistry
@@ -4154,8 +4154,10 @@ class Coder:
             self.io.tool_output(f"Running {command}")
             # Add the command to input history
             # self.io.add_to_input_history(f"/run {command.strip()}")
-            exit_status, output = await asyncio.to_thread(
-                run_cmd, command, error_print=self.io.tool_error, cwd=self.root
+            exit_status, output = await run_cmd_async(
+                command,
+                self.interrupt_event,
+                cwd=self.root,
             )
 
             if output:
