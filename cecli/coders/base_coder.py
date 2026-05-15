@@ -3212,121 +3212,121 @@ class Coder:
             async for chunk in coroutines.interruptible_async_generator(
                 completion, self.interrupt_event
             ):
-            if self.args.debug:
-                with open(".cecli/logs/chunks.log", "a") as f:
-                    print(chunk, file=f)
+                if self.args.debug:
+                    with open(".cecli/logs/chunks.log", "a") as f:
+                        print(chunk, file=f)
 
-            # Check if confirmation is in progress and wait if needed
-            if not self.io.confirmation_in_progress_event.is_set():
-                await self.io.confirmation_in_progress_event.wait()
+                # Check if confirmation is in progress and wait if needed
+                if not self.io.confirmation_in_progress_event.is_set():
+                    await self.io.confirmation_in_progress_event.wait()
 
-            if isinstance(chunk, str):
-                self.io.tool_error(chunk)
-                continue
-            else:
-                if len(chunk.choices) == 0:
+                if isinstance(chunk, str):
+                    self.io.tool_error(chunk)
                     continue
+                else:
+                    if len(chunk.choices) == 0:
+                        continue
 
-                if (
-                    hasattr(chunk.choices[0], "finish_reason")
-                    and chunk.choices[0].finish_reason == "length"
-                ):
-                    raise FinishReasonLength()
+                    if (
+                        hasattr(chunk.choices[0], "finish_reason")
+                        and chunk.choices[0].finish_reason == "length"
+                    ):
+                        raise FinishReasonLength()
 
-                try:
-                    if chunk.choices[0].delta.tool_calls:
-                        received_content = True
-                        self.token_profiler.on_token()
-                        for tool_call_chunk in chunk.choices[0].delta.tool_calls:
-                            self.tool_reflection = True
-
-                            if tool_call_chunk.type:
-                                self.io.update_spinner_suffix(tool_call_chunk.type)
-
-                            if tool_call_chunk.function:
-                                if tool_call_chunk.function.name:
-                                    self.io.update_spinner_suffix(tool_call_chunk.function.name)
-
-                                if tool_call_chunk.function.arguments:
-                                    self.io.update_spinner_suffix(
-                                        tool_call_chunk.function.arguments
-                                    )
-
-                except (AttributeError, IndexError):
-                    # Handle cases where the response structure doesn't match expectations
-                    pass
-
-                try:
-                    func = chunk.choices[0].delta.function_call
-                    # dump(func)
-                    if func:
-                        for k, v in func.items():
-                            self.tool_reflection = True
-                            self.io.update_spinner_suffix(v)
-
-                        received_content = True
-                        self.token_profiler.on_token()
-                except AttributeError:
-                    pass
-
-                text = ""
-
-                try:
-                    reasoning_content = chunk.choices[0].delta.reasoning_content
-                except AttributeError:
                     try:
-                        reasoning_content = chunk.choices[0].delta.reasoning
+                        if chunk.choices[0].delta.tool_calls:
+                            received_content = True
+                            self.token_profiler.on_token()
+                            for tool_call_chunk in chunk.choices[0].delta.tool_calls:
+                                self.tool_reflection = True
+
+                                if tool_call_chunk.type:
+                                    self.io.update_spinner_suffix(tool_call_chunk.type)
+
+                                if tool_call_chunk.function:
+                                    if tool_call_chunk.function.name:
+                                        self.io.update_spinner_suffix(tool_call_chunk.function.name)
+
+                                    if tool_call_chunk.function.arguments:
+                                        self.io.update_spinner_suffix(
+                                            tool_call_chunk.function.arguments
+                                        )
+
+                    except (AttributeError, IndexError):
+                        # Handle cases where the response structure doesn't match expectations
+                        pass
+
+                    try:
+                        func = chunk.choices[0].delta.function_call
+                        # dump(func)
+                        if func:
+                            for k, v in func.items():
+                                self.tool_reflection = True
+                                self.io.update_spinner_suffix(v)
+
+                            received_content = True
+                            self.token_profiler.on_token()
                     except AttributeError:
-                        reasoning_content = None
+                        pass
 
-                if reasoning_content:
-                    if nested.getter(self.args, "show_thinking"):
-                        if not self.got_reasoning_content:
-                            text += f"<{REASONING_TAG}>\n\n"
-                        text += reasoning_content
-                        self.got_reasoning_content = True
-                        received_content = True
-                    self.token_profiler.on_token()
-                    self.io.update_spinner_suffix(reasoning_content)
-                    self.partial_response_reasoning_content += reasoning_content
+                    text = ""
 
-                try:
-                    content = chunk.choices[0].delta.content
-                    if content:
-                        if self.got_reasoning_content and not self.ended_reasoning_content:
-                            text += f"\n\n</{self.reasoning_tag_name}>\n\n"
-                            self.ended_reasoning_content = True
+                    try:
+                        reasoning_content = chunk.choices[0].delta.reasoning_content
+                    except AttributeError:
+                        try:
+                            reasoning_content = chunk.choices[0].delta.reasoning
+                        except AttributeError:
+                            reasoning_content = None
 
-                        text += content
-                        received_content = True
+                    if reasoning_content:
+                        if nested.getter(self.args, "show_thinking"):
+                            if not self.got_reasoning_content:
+                                text += f"<{REASONING_TAG}>\n\n"
+                            text += reasoning_content
+                            self.got_reasoning_content = True
+                            received_content = True
                         self.token_profiler.on_token()
-                        self.io.update_spinner_suffix(content)
-                except AttributeError:
-                    pass
+                        self.io.update_spinner_suffix(reasoning_content)
+                        self.partial_response_reasoning_content += reasoning_content
 
-            self.partial_response_content += text
+                    try:
+                        content = chunk.choices[0].delta.content
+                        if content:
+                            if self.got_reasoning_content and not self.ended_reasoning_content:
+                                text += f"\n\n</{self.reasoning_tag_name}>\n\n"
+                                self.ended_reasoning_content = True
 
-            chunk_index += 1
-            chunk._hidden_params["created_at"] = chunk_index
-            self.partial_response_chunks.append(chunk)
+                            text += content
+                            received_content = True
+                            self.token_profiler.on_token()
+                            self.io.update_spinner_suffix(content)
+                    except AttributeError:
+                        pass
 
-            if self.show_pretty():
-                # Use simplified streaming - just call the method with full content
-                content_to_show = self.live_incremental_response(False)
-                self.stream_wrapper(content_to_show, final=False)
-            elif text:
-                # Apply reasoning tag formatting for non-pretty output
-                if nested.getter(self.args, "show_thinking"):
-                    text = replace_reasoning_tags(text, self.reasoning_tag_name)
-                try:
-                    self.stream_wrapper(text, final=False)
-                except UnicodeEncodeError:
-                    # Safely encode and decode the text
-                    safe_text = text.encode(sys.stdout.encoding, errors="backslashreplace").decode(
-                        sys.stdout.encoding
-                    )
-                    self.stream_wrapper(safe_text, final=False)
-                yield text
+                self.partial_response_content += text
+
+                chunk_index += 1
+                chunk._hidden_params["created_at"] = chunk_index
+                self.partial_response_chunks.append(chunk)
+
+                if self.show_pretty():
+                    # Use simplified streaming - just call the method with full content
+                    content_to_show = self.live_incremental_response(False)
+                    self.stream_wrapper(content_to_show, final=False)
+                elif text:
+                    # Apply reasoning tag formatting for non-pretty output
+                    if nested.getter(self.args, "show_thinking"):
+                        text = replace_reasoning_tags(text, self.reasoning_tag_name)
+                    try:
+                        self.stream_wrapper(text, final=False)
+                    except UnicodeEncodeError:
+                        # Safely encode and decode the text
+                        safe_text = text.encode(sys.stdout.encoding, errors="backslashreplace").decode(
+                            sys.stdout.encoding
+                        )
+                        self.stream_wrapper(safe_text, final=False)
+                    yield text
         except (asyncio.CancelledError, KeyboardInterrupt):
             raise KeyboardInterrupt
 
