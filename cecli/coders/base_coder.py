@@ -3208,7 +3208,10 @@ class Coder:
         received_content = False
         chunk_index = 0
 
-        async for chunk in completion:
+        try:
+            async for chunk in coroutines.interruptible_async_generator(
+                completion, self.interrupt_event
+            ):
             if self.args.debug:
                 with open(".cecli/logs/chunks.log", "a") as f:
                     print(chunk, file=f)
@@ -3324,6 +3327,8 @@ class Coder:
                     )
                     self.stream_wrapper(safe_text, final=False)
                 yield text
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            raise KeyboardInterrupt
 
         # The Part Doing the Heavy Lifting Now
         self.consolidate_chunks()
