@@ -17,6 +17,7 @@ from textual.theme import Theme
 
 from cecli.editor import pipe_editor
 from cecli.helpers.agents.service import AgentService
+from cecli.helpers.coroutines import is_active
 from cecli.io import CommandCompletionException
 from cecli.tui.io import TextualInputOutput
 
@@ -723,9 +724,30 @@ class TUI(App):
         # Determine which coder is in the foreground for input routing
         foreground_coder = AgentService.get_instance(coder).foreground_coder
 
-        if coder and self._currently_generating:
+        if coder and is_active(getattr(coder.io, "output_task", None)):
             from cecli.helpers.conversation import ConversationService, MessageTag
 
+            # Check if the foreground coder is the primary coder
+            is_primary = foreground_coder is coder
+            if not is_primary:
+                # Could be a sub-agent
+                parent_uuid = getattr(foreground_coder, "parent_uuid", None)
+                if parent_uuid:
+                    # It's a sub-agent — check if it's idle
+                    agent_service = AgentService.get_instance(coder)
+                    for info in agent_service.sub_agents.values():
+                        if info.coder.uuid == foreground_coder.uuid:
+                            if not is_active(info.generate_task):
+                                # Idle sub-agent: start a new generate task via worker loop
+                                if self.worker.loop is not None:
+                                    self.worker.loop.call_soon_threadsafe(
+                                        lambda: agent_service.start_generate_task(info, user_input)
+                                    )
+                                return
+                            break
+
+            # Default (primary coder, actively generating sub-agent,
+            # or sub-agent not found in tracking): append to conversation
             ConversationService.get_manager(foreground_coder).add_message(
                 message_dict=dict(
                     role="user", content=foreground_coder.wrap_user_input(user_input)
