@@ -317,21 +317,16 @@ class Tool(BaseTool):
                     s_idx, e_idx = best_pair
 
                 # Validate range width when special markers are used
+                # If too large, use _get_range_preview which tries get_file_stub
+                # first, falling back to 20 equally-spaced lines for non-code files
                 if (start_text == "@000" or end_text == "000@") and (e_idx - s_idx > 200):
-                    error_outputs.append(
-                        cls.format_error(
-                            coder,
-                            (
-                                "Special markers cannot be used for ranges greater than 200 lines."
-                                f" The resolved range is {e_idx - s_idx + 1} lines."
-                                " Pick more refined boundaries."
-                            ),
-                            file_path,
-                            start_text,
-                            end_text,
-                            show_index,
-                        )
+                    preview = cls._get_range_preview(
+                        abs_path, coder.io, start_idx=s_idx, end_idx=e_idx, line_numbers=True
                     )
+                    if show_index > 0:
+                        all_outputs.append("")
+                    all_outputs.append(preview)
+                    cls._last_invocation[abs_path] = {"start_idx": s_idx, "end_idx": e_idx}
                     continue
 
                 # Store the found indices for future disambiguation
@@ -627,3 +622,84 @@ class Tool(BaseTool):
     @classmethod
     def on_duplicate_request(cls, coder, **kwargs):
         coder.edit_allowed = True
+
+    @classmethod
+    def _get_range_preview(cls, abs_path, io, start_idx, end_idx, line_numbers=True):
+        """Get a preview of a large file range between start_idx and end_idx.
+
+        For code files (where tree-sitter can parse structure), uses
+        RepoMap.get_file_stub to generate a structural outline. For non-code files
+        (text, logs, markdown, etc.) where get_file_stub returns nothing useful,
+        falls back to 20 equally-spaced lines from the range.
+
+        Args:
+            abs_path (str): Absolute path to the file
+            io (InputOutput): Instance for file operations
+            start_idx (int): 0-based start line of the range
+            end_idx (int): 0-based end line of the range (inclusive)
+            line_numbers (bool): Whether to include line numbers in output
+
+        Returns:
+            str: Formatted preview — structural outline for code, sampled lines for text
+        """
+        from cecli.repomap import RepoMap
+
+        stub = RepoMap.get_file_stub(
+            abs_path, io, start_line=start_idx, end_line=end_idx, line_numbers=line_numbers
+        )
+
+        # If get_file_stub returned a useful structural outline, wrap it with headers
+        if stub and stub != "# No outline available":
+            total_lines = end_idx - start_idx + 1
+            parts = [
+                f"File range too large ({total_lines} lines).",
+                "Showing structural outline of the range:",
+                "",
+                stub,
+            ]
+            return "\n".join(parts)
+
+        content = io.read_text(abs_path)
+        if not content:
+            return ""
+
+        lines = content.splitlines()
+        num_file_lines = len(lines)
+        # Clamp indices to actual file content bounds
+        actual_start = max(0, min(start_idx, num_file_lines - 1))
+        actual_end = max(0, min(end_idx, num_file_lines - 1))
+        total_lines = actual_end - actual_start + 1
+
+        if total_lines <= 0:
+            return ""
+
+        if total_lines <= 20:
+            # Return all lines
+            sample_lines = [(actual_start + i, lines[actual_start + i]) for i in range(total_lines)]
+        else:
+            # Pick 20 equally-spaced lines across the range
+            spacing = max(1, total_lines // 20)
+            sample_lines = []
+            for i in range(0, total_lines, spacing):
+                if len(sample_lines) >= 20:
+                    break
+                idx = actual_start + i
+                # Deduplicate sequential indices from uneven spacing
+                if not sample_lines or idx != sample_lines[-1][0]:
+                    sample_lines.append((idx, lines[idx]))
+
+            # Always include the last line
+            if sample_lines and sample_lines[-1][0] != actual_end:
+                sample_lines.append((actual_end, lines[actual_end]))
+
+        # Format the output
+        parts = [
+            f"File range too large ({total_lines} lines).",
+            f"Showing {len(sample_lines)} equally-spaced lines from the range:",
+            "",
+        ]
+        for idx, line_content in sample_lines:
+            line_num = idx + 1
+            parts.append(f"  {line_num:>5} | {line_content}")
+
+        return "\n".join(parts)
