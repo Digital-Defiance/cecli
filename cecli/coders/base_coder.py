@@ -42,6 +42,7 @@ from cecli.commands import Commands, SwitchCoderSignal
 from cecli.exceptions import LiteLLMExceptions
 from cecli.helpers import command_parser, coroutines, nested, responses
 from cecli.helpers.conversation import ConversationService, MessageTag
+from cecli.helpers.io_proxy import IOProxy
 from cecli.helpers.observations.service import ObservationService
 from cecli.helpers.profiler import TokenProfiler
 from cecli.history import ChatSummary
@@ -137,6 +138,7 @@ class Coder:
     partial_response_reasoning_content = ""
     partial_response_chunks = []
     partial_response_tool_calls = []
+    partial_response_consolidated = None
     commit_before_message = []
     message_cost = 0.0
     total_tokens_sent = 0
@@ -160,7 +162,8 @@ class Coder:
     suppress_announcements_for_next_prompt = False
     tool_reflection = False
     last_user_message = ""
-    uuid = ""
+    uuid: str = ""
+    parent_uuid: str = ""
     model_kwargs = {}
     cost_multiplier = 1
     stop_on_empty = True
@@ -237,6 +240,7 @@ class Coder:
                 file_watcher=from_coder.file_watcher,
                 mcp_manager=from_coder.mcp_manager,
                 uuid=from_coder.uuid,
+                parent_uuid=from_coder.parent_uuid,
                 repo=from_coder.repo,
             )
             use_kwargs.update(update)  # override to complete the switch
@@ -335,14 +339,19 @@ class Coder:
         repomap_in_memory=False,
         linear_output=False,
         security_config=None,
-        uuid="",
+        uuid: str = "",
+        parent_uuid: str = "",
     ):
         # initialize from args.map_cache_dir
-        self.interrupt_event = asyncio.Event()
         self.coroutines = coroutines
-        self.uuid = generate_unique_id()
+        self.interrupt_event = asyncio.Event()
+        self.uuid = str(generate_unique_id())
+
         if uuid:
-            self.uuid = uuid
+            self.uuid = str(uuid)
+
+        if parent_uuid:
+            self.parent_uuid = str(parent_uuid)
 
         self.map_cache_dir = map_cache_dir
 
@@ -413,7 +422,15 @@ class Coder:
         self.abs_rules_fnames = set()
 
         self.io = io
-        self.io.coder = weakref.ref(self)
+
+        # Wrap io with IOProxy for coder_uuid injection in output messages
+        # Always create a new IOProxy so sub-agents get their own _coder_uuid.
+        # Unwrap any existing IOProxy to avoid fragile nested proxy chains.
+        raw_io = IOProxy.unwrap(io)
+        self.io = IOProxy(raw_io, self)
+
+        if not self.parent_uuid:
+            self.io.coder = weakref.ref(self)
 
         self.manual_copy_paste = (
             nested.getter(main_model, "copy_paste_transport", "api") == "clipboard"
@@ -1309,7 +1326,8 @@ class Coder:
                     await self.io.recreate_input()
                     await self.io.input_task
                     user_message = self.io.input_task.result()
-
+                    if isinstance(user_message, tuple) and len(user_message) == 2:
+                        user_message, _ = user_message
                     if (
                         self.args
                         and not self.args.tui
@@ -1419,7 +1437,12 @@ class Coder:
                 # Wait for input task completion
                 if self.io.input_task and self.io.input_task.done():
                     try:
-                        user_message = self.io.input_task.result()
+                        _result = self.io.input_task.result()
+                        user_message = (
+                            _result[0]
+                            if isinstance(_result, tuple) and len(_result) == 2
+                            else _result
+                        )
 
                         # Defer to confirmation handler to fix Windows event loop race.
                         if not self.io.confirmation_in_progress_event.is_set():
@@ -1583,7 +1606,7 @@ class Coder:
             if self.commands.is_run_command(inp):
                 self.commands.cmd_running_event.clear()  # Command is running
 
-            return await self.commands.run(inp)
+            return await self.commands.run(inp, coder=self)
 
         await self.check_for_file_mentions(inp)
         inp = await self.check_for_urls(inp)
@@ -2931,7 +2954,7 @@ class Coder:
                 # but response.dict() is the Pydantic V1 method name.
                 response_dict = dict(response)
             except TypeError:
-                print("Response parsing error.")
+                self.io.tool_warning("Response parsing error.")
                 return
 
         msg = response_dict["choices"][0]["message"]
@@ -3065,6 +3088,7 @@ class Coder:
         self.partial_response_chunks = []
         self.partial_response_tool_calls = []
         self.partial_response_function_call = dict()
+        self.partial_response_consolidated = None
 
         completion = None
         self.token_profiler.start()
@@ -3081,11 +3105,20 @@ class Coder:
                 interrupt_event=self.interrupt_event,
             )
 
-            (hash_object, completion), interrupted = await coroutines.interruptible(
-                completion_coro, self.interrupt_event
-            )
+            try:
+                (hash_object, completion), interrupted = await coroutines.interruptible(
+                    completion_coro, self.interrupt_event
+                )
+            except TypeError:
+                self.io.tool_warning(
+                    "TypeError in interruptible() — this may indicate a bug "
+                    "in the LLM response handling. Converting to KeyboardInterrupt."
+                )
+                raise KeyboardInterrupt
+
             if interrupted:
                 raise KeyboardInterrupt
+
             self.chat_completion_call_hashes.append(hash_object.hexdigest())
 
             if not isinstance(completion, ModelResponse):
@@ -3329,6 +3362,9 @@ class Coder:
             self.io.tool_warning("Empty response received from LLM. Check your provider account?")
 
     def consolidate_chunks(self):
+        if self.partial_response_consolidated:
+            return self.partial_response_consolidated
+
         response = (
             self.partial_response_chunks[0]
             if not self.stream
@@ -3439,6 +3475,7 @@ class Coder:
             if extracted_calls:
                 self.partial_response_tool_calls = extracted_calls
 
+        self.partial_response_consolidated = (response, func_err, content_err)
         return response, func_err, content_err
 
     def stream_wrapper(self, content, final):

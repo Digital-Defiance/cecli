@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import locale
+import logging
 import os
 import platform
 import random
@@ -14,6 +15,7 @@ from pathlib import Path
 from cecli import utils
 from cecli.change_tracker import ChangeTracker
 from cecli.helpers import nested, responses
+from cecli.helpers.agents.service import AgentService
 from cecli.helpers.background_commands import BackgroundCommandManager
 from cecli.helpers.conversation import ConversationService, MessageTag
 from cecli.helpers.similarity import (
@@ -33,6 +35,8 @@ from .base_coder import Coder
 
 from cecli.helpers.coroutines import interruptible  # isort:skip
 
+logger = logging.getLogger(__name__)
+
 
 class AgentCoder(Coder):
     """Mode where the LLM autonomously manages which files are in context."""
@@ -40,6 +44,7 @@ class AgentCoder(Coder):
     edit_format = "agent"
     prompt_format = "agent"
     context_management_enabled = True
+
     hashlines = True
     stop_on_empty = False
 
@@ -92,8 +97,13 @@ class AgentCoder(Coder):
         self.skip_cli_confirmations = False
         self.agent_finished = False
         self.agent_config = self._get_agent_config()
+        self.max_sub_agents = self.agent_config.get("max_sub_agents", 3)
+        self.sub_agent_paths = self.agent_config.get("subagent_paths", [])
         self._setup_agent()
+
+        AgentService.build_registry(self.sub_agent_paths)
         ToolRegistry.build_registry(agent_config=self.agent_config)
+
         self.loaded_custom_tools = ToolRegistry.loaded_custom_tools
         super().__init__(*args, **kwargs)
 
@@ -808,6 +818,7 @@ class AgentCoder(Coder):
         # 1. Handle Tool Execution Follow-up (Reflection)
         if self.agent_finished:
             self.tool_usage_history = []
+            self.tool_call_vectors = []
             self.reflected_message = None
             if self.files_edited_by_tools:
                 _ = await self.auto_commit(self.files_edited_by_tools)
@@ -860,11 +871,15 @@ class AgentCoder(Coder):
                 self.tool_usage_history = []
             return True
 
-        if content and not tool_calls_found and self.num_reflections < self.max_reflections:
-            self.reflected_message = (
-                "Continue with your task. If you have completed it, call the `Finished` tool."
-            )
-            return True
+        # 4. If we have called no tools (e.g. the first message)
+        # Allow early exiting
+        # If a model forgets a tool call, replay the request instead of stopping early
+        if self.tool_call_vectors:
+            if content and not tool_calls_found and self.num_reflections < self.max_reflections:
+                self.reflected_message = (
+                    "Continue with your task. If you have completed it, call the `Finished` tool."
+                )
+                return True
 
         if tool_calls_found and self.num_reflections < self.max_reflections:
             self.tool_call_count = 0

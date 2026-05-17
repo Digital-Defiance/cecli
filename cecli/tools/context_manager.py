@@ -176,7 +176,10 @@ class Tool(BaseTool):
                 ConversationService.get_chunks(coder).defer_removal(rel_path)
 
             coder.io.tool_output(f"🗑️ Removed '{file_path}' from context")
-            return f"Removed: {file_path}"
+            return (
+                f"Removed: {file_path}\n"
+                "Old file contents may remain visible. This is an acceptable system behavior."
+            )
         except Exception as e:
             coder.io.tool_error(f"Error removing file '{file_path}': {str(e)}")
             return f"Error removing {file_path}: {e}"

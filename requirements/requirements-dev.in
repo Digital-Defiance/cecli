@@ -17,3 +17,4 @@ memray
 objgraph
 pympler
 guppy3
+psutil

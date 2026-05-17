@@ -33,6 +33,7 @@ from .help import HelpCommand
 from .history_search import HistorySearchCommand
 from .hooks import HooksCommand
 from .include_skill import IncludeSkillCommand
+from .invoke_agent import InvokeAgentCommand
 from .lint import LintCommand
 from .list_sessions import ListSessionsCommand
 from .list_skills import ListSkillsCommand
@@ -51,6 +52,7 @@ from .paste import PasteCommand
 from .quit import QuitCommand
 from .read_only import ReadOnlyCommand
 from .read_only_stub import ReadOnlyStubCommand
+from .reap_agent import ReapAgentCommand
 from .reasoning_effort import ReasoningEffortCommand
 from .remove_hook import RemoveHookCommand
 from .remove_mcp import RemoveMcpCommand
@@ -62,6 +64,7 @@ from .run import RunCommand
 from .save import SaveCommand
 from .save_session import SaveSessionCommand
 from .settings import SettingsCommand
+from .spawn_agent import SpawnAgentCommand
 from .terminal_setup import TerminalSetupCommand
 from .test import TestCommand
 from .think_tokens import ThinkTokensCommand
@@ -112,6 +115,9 @@ CommandRegistry.register(HashlineCommand)
 CommandRegistry.register(HelpCommand)
 CommandRegistry.register(HistorySearchCommand)
 CommandRegistry.register(HooksCommand)
+CommandRegistry.register(InvokeAgentCommand)
+CommandRegistry.register(ReapAgentCommand)
+CommandRegistry.register(SpawnAgentCommand)
 CommandRegistry.register(IncludeSkillCommand)
 CommandRegistry.register(LintCommand)
 CommandRegistry.register(ListSessionsCommand)
@@ -188,8 +194,11 @@ __all__ = [
     "HashlineCommand",
     "HelpCommand",
     "HistorySearchCommand",
-    "HookCommand",
+    "HooksCommand",
     "IncludeSkillCommand",
+    "InvokeAgentCommand",
+    "ReapAgentCommand",
+    "SpawnAgentCommand",
     "LintCommand",
     "ListSessionsCommand",
     "ListSkillsCommand",

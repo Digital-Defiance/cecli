@@ -111,8 +111,8 @@ class BaseTool(ABC):
             for i, (prev_params_tuple, _) in enumerate(cls._invocations[tool_name]):
                 if prev_params_tuple == current_params_tuple:
                     error_msg = (
-                        f"Tool '{tool_name}' has been called with identical parameters recently. "
-                        "This request is denied."
+                        f"Tool '{tool_name}' has been called with identical parameters. "
+                        "This operation is invalid."
                     )
                     cls.on_duplicate_request(coder, **params)
                     return handle_tool_error(

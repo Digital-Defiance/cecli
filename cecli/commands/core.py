@@ -165,12 +165,12 @@ class Commands:
         raw_completer = getattr(self, f"completions_raw_{cmd}", None)
         return raw_completer
 
-    def get_completions(self, cmd, args=""):
+    def get_completions(self, cmd, args="", coder=None):
         assert cmd.startswith("/")
         cmd = cmd[1:]
         command_class = CommandRegistry.get_command(cmd)
         if command_class:
-            return command_class.get_completions(self.io, self.coder, args)
+            return command_class.get_completions(self.io, coder or self.coder, args)
         return []
 
     def get_commands(self):
@@ -178,12 +178,15 @@ class Commands:
         commands = [f"/{cmd}" for cmd in registry_commands]
         return sorted(commands)
 
-    async def execute(self, cmd_name, args, **kwargs):
+    async def execute(self, cmd_name, args, coder=None, **kwargs):
+        active_coder = coder or self.coder
         command_class = CommandRegistry.get_command(cmd_name)
+
         if not command_class:
-            self.io.tool_output(f"Error: Command {cmd_name} not found.")
+            active_coder.io.tool_output(f"Error: Command {cmd_name} not found.")
             return
         self.cmd_running_event.clear()
+
         try:
             kwargs.update(
                 {
@@ -198,14 +201,16 @@ class Commands:
                     "system_args": self.args,
                 }
             )
-            return await CommandRegistry.execute(cmd_name, self.io, self.coder, args, **kwargs)
+            return await CommandRegistry.execute(
+                cmd_name, active_coder.io, active_coder, args, **kwargs
+            )
         except ANY_GIT_ERROR as err:
-            self.io.tool_error(f"Unable to complete {cmd_name}: {err}")
+            active_coder.io.tool_error(f"Unable to complete {cmd_name}: {err}")
             return
         except SwitchCoderSignal as e:
             raise e
         except Exception as e:
-            self.io.tool_error(f"Error executing command {cmd_name}: {str(e)}")
+            active_coder.io.tool_error(f"Error executing command {cmd_name}: {str(e)}")
             return
         finally:
             self.cmd_running_event.set()
@@ -222,19 +227,19 @@ class Commands:
         matching_commands = [cmd for cmd in all_commands if cmd.startswith(first_word)]
         return matching_commands, first_word, rest_inp
 
-    async def run(self, inp):
+    async def run(self, inp, coder=None):
         if inp.startswith("!"):
-            return await self.execute("run", inp[1:])
+            return await self.execute("run", inp[1:], coder=coder)
         res = self.matching_commands(inp)
         if res is None:
             return
         matching_commands, first_word, rest_inp = res
         if len(matching_commands) == 1:
             command = matching_commands[0][1:]
-            return await self.execute(command, rest_inp)
+            return await self.execute(command, rest_inp, coder=coder)
         elif first_word in matching_commands:
             command = first_word[1:]
-            return await self.execute(command, rest_inp)
+            return await self.execute(command, rest_inp, coder=coder)
         elif len(matching_commands) > 1:
             self.io.tool_error(f"Ambiguous command: {', '.join(matching_commands)}")
         else:

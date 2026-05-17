@@ -1,7 +1,6 @@
 import os
 import weakref
 from typing import Any, Dict, List, Optional, Tuple
-from uuid import UUID
 
 import xxhash
 
@@ -18,7 +17,8 @@ class ConversationFiles:
     and diff generation for file-based messages.
     """
 
-    _instances: Dict[UUID, "ConversationFiles"] = {}
+    _instances = weakref.WeakKeyDictionary()  # coder -> ConversationFiles (ties lifetime)
+    _uuid_index = weakref.WeakValueDictionary()  # uuid -> ConversationFiles (secondary lookup)
 
     def __init__(self, coder):
         self.coder = weakref.ref(coder)
@@ -37,20 +37,38 @@ class ConversationFiles:
     @classmethod
     def get_instance(cls, coder) -> "ConversationFiles":
         """Get or create files instance for coder."""
-        if coder.uuid not in cls._instances:
-            cls._instances[coder.uuid] = cls(coder)
+        # Fast path: exact coder object already registered
+        if coder in cls._instances:
+            return cls._instances[coder]
 
-        # Update weakref for SwitchCoderSignal
-        if coder is not cls._instances[coder.uuid].get_coder():
-            cls._instances[coder.uuid].coder = weakref.ref(coder)
+        # Fallback: child coder inheriting parent's uuid
+        if coder.uuid in cls._uuid_index:
+            instance = cls._uuid_index[coder.uuid]
 
-        return cls._instances[coder.uuid]
+            if instance.get_coder() is not coder:
+                instance.coder = weakref.ref(coder)
+
+            cls._instances[coder] = instance
+
+            return instance
+
+        # New coder with a new uuid — create fresh
+        instance = cls(coder)
+        cls._instances[coder] = instance
+        cls._uuid_index[coder.uuid] = instance
+        return instance
 
     @classmethod
-    def destroy_instance(cls, coder_uuid: UUID):
+    def destroy_instance(cls, coder_uuid: str):
         """Explicit cleanup for sub-agents."""
-        if coder_uuid in cls._instances:
-            del cls._instances[coder_uuid]
+        if coder_uuid in cls._uuid_index:
+            instance = cls._uuid_index[coder_uuid]
+            # Remove from coder-keyed dict
+            for key, val in list(cls._instances.items()):
+                if val is instance:
+                    del cls._instances[key]
+                    break
+            del cls._uuid_index[coder_uuid]
 
     def get_coder(self):
         """Get strong reference to coder (or None if destroyed)."""

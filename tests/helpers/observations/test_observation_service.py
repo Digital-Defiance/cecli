@@ -43,7 +43,7 @@ async def test_check_and_trigger_observation(monkeypatch):
     mock_manager.get_tag_messages.return_value = [{"role": "user", "content": "hello"}] * 100
 
     with patch(
-        "cecli.helpers.observations.manager.ConversationService.get_manager",
+        "cecli.helpers.conversation.service.ConversationService.get_manager",
         return_value=mock_manager,
     ):
         coder.summarizer.count_tokens.return_value = 25000
