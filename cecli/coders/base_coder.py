@@ -3847,7 +3847,7 @@ class Coder:
             return
 
         warn_number_of_files = 4
-        warn_number_of_tokens = 20 * 1024
+        warn_number_of_tokens = 32 * 1024
 
         num_files = len(self.abs_fnames)
         if num_files < warn_number_of_files:
