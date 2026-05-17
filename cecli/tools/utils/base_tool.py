@@ -112,7 +112,7 @@ class BaseTool(ABC):
                 if prev_params_tuple == current_params_tuple:
                     error_msg = (
                         f"Tool '{tool_name}' has been called with identical parameters. "
-                        "This operation is invalid."
+                        "Duplicate tool call rejected."
                     )
                     cls.on_duplicate_request(coder, **params)
                     return handle_tool_error(
