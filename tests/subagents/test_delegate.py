@@ -1,5 +1,5 @@
 """
-Tests for cecli/tools/dispatch.py — Dispatch tool execution.
+Tests for cecli/tools/delegate.py — Delegate tool execution.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -7,13 +7,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 
-class TestDispatchTool:
-    """Tests for the Dispatch tool (cecli.tools.dispatch)."""
+class TestDelegateTool:
+    """Tests for the Delegate tool (cecli.tools.delegate)."""
 
     @pytest.mark.asyncio
     async def test_empty_name_returns_error(self):
         """Missing name returns error string."""
-        from cecli.tools.dispatch import Tool
+        from cecli.tools.delegate import Tool
 
         result = await Tool.execute(None, name="", prompt="do it")
         assert "Error" in result
@@ -22,7 +22,7 @@ class TestDispatchTool:
     @pytest.mark.asyncio
     async def test_empty_prompt_returns_error(self):
         """Missing prompt returns error string."""
-        from cecli.tools.dispatch import Tool
+        from cecli.tools.delegate import Tool
 
         result = await Tool.execute(None, name="reviewer", prompt="")
         assert "Error" in result
@@ -31,16 +31,16 @@ class TestDispatchTool:
     @pytest.mark.asyncio
     async def test_both_empty_returns_name_error(self):
         """Both empty — name error comes first."""
-        from cecli.tools.dispatch import Tool
+        from cecli.tools.delegate import Tool
 
         result = await Tool.execute(None, name="", prompt="")
         assert "Error" in result
         assert "name" in result
 
     @pytest.mark.asyncio
-    async def test_valid_dispatch_calls_invoke(self):
+    async def test_valid_delegate_calls_invoke(self):
         """Valid params call AgentService.invoke with correct args."""
-        from cecli.tools.dispatch import Tool
+        from cecli.tools.delegate import Tool
 
         mock_coder = MagicMock()
         mock_coder.uuid = "parent-uuid"
@@ -57,9 +57,9 @@ class TestDispatchTool:
             assert "review summary" in result
 
     @pytest.mark.asyncio
-    async def test_dispatch_no_summary(self):
+    async def test_delegate_no_summary(self):
         """When invoke returns None, returns appropriate message."""
-        from cecli.tools.dispatch import Tool
+        from cecli.tools.delegate import Tool
 
         mock_coder = MagicMock()
         with patch("cecli.helpers.agents.service.AgentService") as MockService:
@@ -71,9 +71,9 @@ class TestDispatchTool:
             assert "completed (no summary)" in result
 
     @pytest.mark.asyncio
-    async def test_dispatch_value_error_returns_error_string(self):
+    async def test_delegate_value_error_returns_error_string(self):
         """ValueError from service returns error string."""
-        from cecli.tools.dispatch import Tool
+        from cecli.tools.delegate import Tool
 
         mock_coder = MagicMock()
         with patch("cecli.helpers.agents.service.AgentService") as MockService:
@@ -86,9 +86,9 @@ class TestDispatchTool:
             assert "unknown agent" in result
 
     @pytest.mark.asyncio
-    async def test_dispatch_runtime_error_returns_error_string(self):
+    async def test_delegate_runtime_error_returns_error_string(self):
         """RuntimeError from service returns error string."""
-        from cecli.tools.dispatch import Tool
+        from cecli.tools.delegate import Tool
 
         mock_coder = MagicMock()
         with patch("cecli.helpers.agents.service.AgentService") as MockService:
@@ -103,7 +103,7 @@ class TestDispatchTool:
     @pytest.mark.asyncio
     async def test_unexpected_exception_caught(self):
         """Any other exception returns error string (doesn't propagate)."""
-        from cecli.tools.dispatch import Tool
+        from cecli.tools.delegate import Tool
 
         mock_coder = MagicMock()
         with patch("cecli.helpers.agents.service.AgentService") as MockService:

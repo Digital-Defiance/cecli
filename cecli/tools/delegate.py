@@ -1,25 +1,22 @@
-"""Dispatch tool - allows the primary agent to spawn sub-agents."""
+"""Delegate tool - allows the primary agent to spawn sub-agents."""
 
 from cecli.tools.utils.base_tool import BaseTool
 
 
 class Tool(BaseTool):
-    NORM_NAME = "dispatch"
+    NORM_NAME = "delegate"
     TRACK_INVOCATIONS = True
     SCHEMA = {
         "type": "function",
         "function": {
-            "name": "Dispatch",
-            "description": (
-                "Dispatch a specialized sub-agent to handle a sub-task autonomously. "
-                "The sub-agent works independently and returns a summary when done."
-            ),
+            "name": "Delegate",
+            "description": "Delegate a specialized sub-agent to handle a sub-task autonomously. ",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "name": {
                         "type": "string",
-                        "description": "Name of the sub-agent to dispatch.",
+                        "description": "Name of the sub-agent to delegate to.",
                     },
                     "prompt": {
                         "type": "string",
@@ -33,7 +30,7 @@ class Tool(BaseTool):
 
     @classmethod
     async def execute(cls, coder, **kwargs):
-        """Dispatch a sub-agent to work on a sub-task."""
+        """Delegate a sub-agent to work on a sub-task."""
         name = kwargs.get("name", "")
         prompt = kwargs.get("prompt", "")
 
@@ -56,4 +53,4 @@ class Tool(BaseTool):
         except RuntimeError as e:
             return f"Error: {e}"
         except Exception as e:
-            return f"Error dispatching sub-agent '{name}': {e}"
+            return f"Error delegating to sub-agent '{name}': {e}"
