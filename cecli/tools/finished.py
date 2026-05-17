@@ -1,4 +1,7 @@
+import json
+
 from cecli.tools.utils.base_tool import BaseTool
+from cecli.tools.utils.output import color_markers, tool_footer, tool_header
 
 
 class Tool(BaseTool):
@@ -65,3 +68,19 @@ class Tool(BaseTool):
 
         # coder.io.tool_Error("Error: Could not mark agent task as finished")
         return "Error: Could not mark agent task as finished"
+
+    @classmethod
+    def format_output(cls, coder, mcp_server, tool_response):
+        color_start, color_end = color_markers(coder)
+        params = json.loads(tool_response.function.arguments)
+
+        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+
+        summary = params.get("summary")
+        if summary:
+            coder.io.tool_output("")
+            coder.io.tool_output(f"{color_start}Summary:{color_end}")
+            coder.io.tool_output(summary)
+            coder.io.tool_output("")
+
+        tool_footer(coder=coder, tool_response=tool_response)
