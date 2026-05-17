@@ -1,6 +1,6 @@
 """SubAgentCoder - a Coder variant for sub-agents.
 
-Extends AgentCoder but excludes the Dispatch tool from its tool schemas
+Extends AgentCoder but excludes the Delegate tool from its tool schemas
 so sub-agents cannot spawn further sub-agents.
 """
 
@@ -25,11 +25,11 @@ class SubAgentCoder(AgentCoder):
 
         Sub-agents inject their configured system prompt into the conversation
         instead of using the default main system prompt.
-        Always restricts tools to exclude the 'dispatch' tool.
+        Always restricts tools to exclude the 'delegate' tool.
         """
         if not self.use_enhanced_context:
             chunks = super().format_chat_chunks()
-            # Override tool schemas to exclude dispatch even in fallback path
+            # Override tool schemas to exclude delegate even in fallback path
             self.tool_schemas = self.get_local_tool_schemas()
             return chunks
 
@@ -47,11 +47,11 @@ class SubAgentCoder(AgentCoder):
         return ConversationService.get_manager(self).get_messages_dict()
 
     def get_local_tool_schemas(self) -> List[Dict]:
-        """Return tool schemas, excluding the 'dispatch' tool."""
+        """Return tool schemas, excluding the 'delegate' tool."""
         registry = ToolRegistry.build_registry(agent_config=self.agent_config)
         schemas = []
         for name, tool_class in registry.items():
-            if name == "dispatch":
+            if name == "delegate":
                 continue
             if tool_class.SCHEMA:
                 schemas.append(tool_class.SCHEMA)

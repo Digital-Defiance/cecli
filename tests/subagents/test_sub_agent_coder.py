@@ -40,15 +40,15 @@ class TestSubAgentCoder:
         # without __init__ having set it
         _ = coder.parent_uuid  # Should not raise
 
-    def test_get_local_tool_schemas_excludes_dispatch(self):
-        """get_local_tool_schemas() excludes the 'dispatch' tool."""
+    def test_get_local_tool_schemas_excludes_delegate(self):
+        """get_local_tool_schemas() excludes the 'delegate' tool."""
         from cecli.coders.sub_agent_coder import SubAgentCoder
 
-        # Mock registry returning tools including dispatch
+        # Mock registry returning tools including delegate
         mock_schemas = [
             ("explore_code", MagicMock(SCHEMA={"name": "ExploreCode"})),
             ("finished", MagicMock(SCHEMA={"name": "Finished"})),
-            ("dispatch", MagicMock(SCHEMA={"name": "Dispatch"})),
+            ("delegate", MagicMock(SCHEMA={"name": "Delegate"})),
             ("grep", MagicMock(SCHEMA={"name": "Grep"})),
         ]
 
@@ -61,7 +61,7 @@ class TestSubAgentCoder:
             schemas = SubAgentCoder.get_local_tool_schemas(dummy_coder)
 
         names = [s["name"] for s in schemas]
-        assert "Dispatch" not in names
+        assert "Delegate" not in names
         assert "ExploreCode" in names
         assert "Finished" in names
         assert "Grep" in names

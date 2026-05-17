@@ -6,7 +6,7 @@ from . import (
     command,
     command_interactive,
     context_manager,
-    dispatch,
+    delegate,
     edit_text,
     explore_code,
     finished,
@@ -31,6 +31,7 @@ TOOL_MODULES = [
     command,
     command_interactive,
     context_manager,
+    delegate,
     edit_text,
     explore_code,
     finished,
@@ -48,5 +49,4 @@ TOOL_MODULES = [
     thinking,
     undo_change,
     update_todo_list,
-    dispatch,
 ]
