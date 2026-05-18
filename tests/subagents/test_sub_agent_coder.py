@@ -133,7 +133,7 @@ class TestSubAgentCoder:
         coder.use_enhanced_context = True
         coder.choose_fence = MagicMock()
 
-        with patch("cecli.coders.sub_agent_coder.ConversationService") as MockCS:
+        with patch("cecli.coders.agent_coder.ConversationService") as MockCS:
             mock_chunks = MagicMock()
             mock_manager = MagicMock()
             MockCS.get_chunks.return_value = mock_chunks

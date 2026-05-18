@@ -15,7 +15,7 @@ class TestDelegateTool:
         """Missing name returns error string."""
         from cecli.tools.delegate import Tool
 
-        result = await Tool.execute(None, name="", prompt="do it")
+        result = await Tool.execute(None, delegations=[{"name": "", "prompt": "do it"}])
         assert "Error" in result
         assert "name" in result
 
@@ -24,7 +24,7 @@ class TestDelegateTool:
         """Missing prompt returns error string."""
         from cecli.tools.delegate import Tool
 
-        result = await Tool.execute(None, name="reviewer", prompt="")
+        result = await Tool.execute(None, delegations=[{"name": "reviewer", "prompt": ""}])
         assert "Error" in result
         assert "prompt" in result
 
@@ -33,7 +33,7 @@ class TestDelegateTool:
         """Both empty — name error comes first."""
         from cecli.tools.delegate import Tool
 
-        result = await Tool.execute(None, name="", prompt="")
+        result = await Tool.execute(None, delegations=[{"name": "", "prompt": ""}])
         assert "Error" in result
         assert "name" in result
 
@@ -50,7 +50,9 @@ class TestDelegateTool:
             mock_instance.invoke = AsyncMock(return_value="review summary")
             MockService.get_instance.return_value = mock_instance
 
-            result = await Tool.execute(mock_coder, name="reviewer", prompt="review this")
+            result = await Tool.execute(
+                mock_coder, delegations=[{"name": "reviewer", "prompt": "review this"}]
+            )
 
             MockService.get_instance.assert_called_once_with(mock_coder)
             mock_instance.invoke.assert_called_once_with("reviewer", "review this", blocking=True)
@@ -67,7 +69,9 @@ class TestDelegateTool:
             mock_instance.invoke = AsyncMock(return_value=None)
             MockService.get_instance.return_value = mock_instance
 
-            result = await Tool.execute(mock_coder, name="tester", prompt="test")
+            result = await Tool.execute(
+                mock_coder, delegations=[{"name": "tester", "prompt": "test"}]
+            )
             assert "completed (no summary)" in result
 
     @pytest.mark.asyncio
@@ -81,8 +85,8 @@ class TestDelegateTool:
             mock_instance.invoke = AsyncMock(side_effect=ValueError("unknown agent"))
             MockService.get_instance.return_value = mock_instance
 
-            result = await Tool.execute(mock_coder, name="ghost", prompt="x")
-            assert "Error" in result
+            result = await Tool.execute(mock_coder, delegations=[{"name": "ghost", "prompt": "x"}])
+            assert "failed" in result
             assert "unknown agent" in result
 
     @pytest.mark.asyncio
@@ -96,8 +100,10 @@ class TestDelegateTool:
             mock_instance.invoke = AsyncMock(side_effect=RuntimeError("max reached"))
             MockService.get_instance.return_value = mock_instance
 
-            result = await Tool.execute(mock_coder, name="reviewer", prompt="x")
-            assert "Error" in result
+            result = await Tool.execute(
+                mock_coder, delegations=[{"name": "reviewer", "prompt": "x"}]
+            )
+            assert "failed" in result
             assert "max reached" in result
 
     @pytest.mark.asyncio
@@ -111,6 +117,8 @@ class TestDelegateTool:
             mock_instance.invoke = AsyncMock(side_effect=Exception("unexpected"))
             MockService.get_instance.return_value = mock_instance
 
-            result = await Tool.execute(mock_coder, name="reviewer", prompt="x")
-            assert "Error" in result
+            result = await Tool.execute(
+                mock_coder, delegations=[{"name": "reviewer", "prompt": "x"}]
+            )
+            assert "failed with unexpected error" in result
             assert "unexpected" in result

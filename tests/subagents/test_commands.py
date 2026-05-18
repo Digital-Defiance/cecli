@@ -104,7 +104,11 @@ class TestInvokeAgentCommand:
             mock_instance.invoke = AsyncMock(return_value="task done")
             MockSvc.get_instance.return_value = mock_instance
 
-            await InvokeAgentCommand.execute(io, coder, "reviewer do it")
+            with patch("cecli.helpers.conversation.service.ConversationService") as MockCS:
+                mock_manager = MagicMock()
+                MockCS.get_manager.return_value = mock_manager
+
+                await InvokeAgentCommand.execute(io, coder, "reviewer do it")
 
         io.tool_output.assert_called_once()
         assert "task done" in io.tool_output.call_args[0][0]
