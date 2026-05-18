@@ -52,6 +52,7 @@ Agent Mode uses a centralized local tool registry that manages all available too
 - **Git Tools**: `GitDiff`, `GitLog`, `GitShow`, `GitStatus`
 - **Utility Tools**: `UpdateTodoList`, `UndoChange`, `Finished`
 - **Skill Management**: `LoadSkill`, `RemoveSkill`
+- **Sub-Agent Tools**: `Delegate` - Delegate sub-tasks to specialized sub-agents
 
 #### Enhanced Context Management
 
@@ -154,6 +155,14 @@ agent-config:
   tools_excludelist: ["command", "commandinteractive"]  # Optional: Blacklist of tools
   tools_paths: ["./custom-tools", "~/my-tools"]  # Optional: Directories or files containing custom tools
   
+  # Server configuration
+  servers_includelist: ["local"]  # Optional: Whitelist of MCP server names to allow
+  servers_excludelist: []  # Optional: Blacklist of MCP server names to exclude
+  
+  # Sub-agent configuration
+  subagent_paths: [".cecli/subagents"]  # Optional: Directories to search for sub-agent definitions
+  max_sub_agents: 3  # Optional: Maximum concurrent sub-agents (default: 3)
+  
   # Context blocks configuration
   include_context_blocks: ["todo_list", "git_status"]  # Optional: Context blocks to include
   exclude_context_blocks: ["symbol_outline", "directory_structure"]  # Optional: Context blocks to exclude
@@ -177,6 +186,10 @@ agent-config:
 - **`tools_includelist`**: Array of tool names to allow (only these tools will be available)
 - **`tools_excludelist`**: Array of tool names to exclude (these tools will be disabled)
 - **`tools_paths`**: Array of directories or Python files containing custom tools to load
+- **`servers_includelist`**: Array of MCP server names to allow (only these servers will be available)
+- **`servers_excludelist`**: Array of MCP server names to exclude (these servers will be disabled)
+- **`subagent_paths`**: Array of directories to search for sub-agent definition `.md` files
+- **`max_sub_agents`**: Maximum number of concurrent sub-agents (default: 3)
 - **`include_context_blocks`**: Array of context block names to include (overrides default set)
 - **`exclude_context_blocks`**: Array of context block names to exclude from default set
 
@@ -256,6 +269,7 @@ The following context blocks are available by default and can be customized usin
 - **`symbol_outline`**: Lists classes, functions, and methods in current context
 - **`todo_list`**: Shows the current todo list managed via `UpdateTodoList` tool
 - **`skills`**: Include skills content in the conversation
+- **`sub_agents`**: Include registered sub-agents in the conversation context
 
 When `include_context_blocks` is specified, only the listed blocks will be included. When `exclude_context_blocks` is specified, the listed blocks will be removed from the default set.
 
@@ -281,6 +295,14 @@ agent-config:
   tools_includelist: ["contextmanager", "edittext", "finished"]  # Optional: Whitelist of tools
   tools_excludelist: ["command", "commandinteractive"]  # Optional: Blacklist of tools
   tools_paths: ["./custom-tools", "~/my-tools"]  # Optional: Directories or files containing custom tools
+  
+  # Server configuration
+  servers_includelist: ["local"]  # Optional: Whitelist of MCP server names to allow
+  servers_excludelist: []  # Optional: Blacklist of MCP server names to exclude
+  
+  # Sub-agent configuration
+  subagent_paths: [".cecli/subagents"]  # Optional: Directories to search for sub-agent definitions
+  max_sub_agents: 3  # Optional: Maximum concurrent sub-agents (default: 3)
   
   # Context blocks configuration
   include_context_blocks: ["todo_list", "git_status"]  # Optional: Context blocks to include
