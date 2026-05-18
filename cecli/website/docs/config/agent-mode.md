@@ -145,43 +145,11 @@ Arguments: {}
 ### Agent Configuration
 Agent Mode can be configured using the `--agent-config` command line argument, which accepts a JSON string for fine-grained control over tool availability and behavior.
 
-Agent Mode can also be configured directly in the relevant config.yml file:
-
-```yaml
-agent: true
-agent-config:
-  # Tool configuration
-  tools_includelist: [contextmanager", "edittext", "finished"]  # Optional: Whitelist of tools
-  tools_excludelist: ["command", "commandinteractive"]  # Optional: Blacklist of tools
-  tools_paths: ["./custom-tools", "~/my-tools"]  # Optional: Directories or files containing custom tools
-  
-  # Server configuration
-  servers_includelist: ["local"]  # Optional: Whitelist of MCP server names to allow
-  servers_excludelist: []  # Optional: Blacklist of MCP server names to exclude
-  
-  # Sub-agent configuration
-  subagent_paths: [".cecli/subagents"]  # Optional: Directories to search for sub-agent definitions
-  max_sub_agents: 3  # Optional: Maximum concurrent sub-agents (default: 3)
-  
-  # Context blocks configuration
-  include_context_blocks: ["todo_list", "git_status"]  # Optional: Context blocks to include
-  exclude_context_blocks: ["symbol_outline", "directory_structure"]  # Optional: Context blocks to exclude
-  
-  # Performance and behavior settings
-  hot_reload: false # automatically reload skills folders and definitions between turns
-  large_file_token_threshold: 12500  # Token threshold for large file warnings
-  skip_cli_confirmations: false  # YOLO mode - be brave and let the LLM cook
-  command_timeout: 30 # Time to wait for commands to finish before automatic backgrounding occurs
-  
-  # Skills configuration (see Skills documentation for details)
-  skills_paths: ["~/my-skills", "./project-skills"]  # Directories to search for skills
-  skills_includelist: ["python-refactoring", "react-components"]  # Optional: Whitelist of skills to include
-  skills_excludelist: ["legacy-tools"]  # Optional: Blacklist of skills to exclude
-```
+Agent Mode can also be configured directly in your configuration file. See the [Complete Configuration Example](#complete-configuration-example) below for a full reference.
 
 #### Configuration Options
 
-- **`large_file_token_threshold`**: Maximum token threshold for large file warnings (default: 25000)
+- **`large_file_token_threshold`**: Maximum token threshold for large file warnings (default: 32768)
 - **`skip_cli_confirmations`**: YOLO mode, be brave and let the LLM cook, can also use the option `yolo` (default: False)
 - **`tools_includelist`**: Array of tool names to allow (only these tools will be available)
 - **`tools_excludelist`**: Array of tool names to exclude (these tools will be disabled)
@@ -192,6 +160,7 @@ agent-config:
 - **`max_sub_agents`**: Maximum number of concurrent sub-agents (default: 3)
 - **`include_context_blocks`**: Array of context block names to include (overrides default set)
 - **`exclude_context_blocks`**: Array of context block names to exclude from default set
+- **`command_timeout`**: Time in seconds to wait for shell commands to finish before automatic backgrounding occurs (default: None)
 
 #### Essential Tools
 
@@ -309,9 +278,8 @@ agent-config:
   exclude_context_blocks: ["symbol_outline", "directory_structure"]  # Optional: Context blocks to exclude
   
   # Performance and behavior settings
-  large_file_token_threshold: 12500  # Token threshold for large file warnings
+  large_file_token_threshold: 32768  # Token threshold for large file warnings (default: 32768)
   skip_cli_confirmations: false  # YOLO mode - be brave and let the LLM cook
-  
   # Skills configuration (see Skills documentation for details)
   skills_paths: ["~/my-skills", "./project-skills"]  # Directories to search for skills
   skills_includelist: ["python-refactoring", "react-components"]  # Optional: Whitelist of skills to include

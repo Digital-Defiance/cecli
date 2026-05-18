@@ -48,7 +48,7 @@ Sub-agents can be used for:
 
 Sub-agents are defined using Markdown files (`.md`) with YAML front matter. The front matter specifies the agent's name and optional model override, while the body content becomes the agent's system prompt.
 
-By default, cecli looks for sub-agent definitions in the `.cecli/subagents/` directory. You can configure custom paths using the `subagent_paths` option.
+Sub-agent definition files can be placed in any directory. You can configure which directories cecli scans using the `subagent_paths` option.
 
 ### Sub-Agent File Format
 
@@ -79,8 +79,8 @@ Any content after the closing `---` of the front matter becomes the sub-agent's 
 Add sub-agent paths to your YAML configuration file:
 
 ```yaml
-# .cecli/config.yml or ~/.config/cecli/config.yml
-agent:
+# .cecli.conf.yml or ~/.cecli.conf.yml
+agent-config:
     max_sub_agents: 3  # Maximum concurrent sub-agents (default: 3)
     subagent_paths:
         - ".cecli/subagents"  # Default path
@@ -96,6 +96,8 @@ agent:
 | `/invoke-agent <name> <prompt>` | Invoke a sub-agent with a prompt (blocking — waits for completion) |
 | `/spawn-agent <name>` | Spawn a sub-agent without a prompt (non-blocking — waits for user input) |
 | `/reap-agent` | Force destroy the currently active sub-agent |
+
+> **Tip**: Both `/invoke-agent` and `/spawn-agent` support tab completion of sub-agent names.
 
 ### Invoking a Sub-Agent (Blocking)
 
@@ -148,7 +150,6 @@ When sub-agents are active, the TUI shows agent pills in the input container's b
 ```
 
 - **Keyboard**: Use `Ctrl+Alt+Left` / `Ctrl+Alt+Right` to cycle through agents. Use `Ctrl+Alt+Up` to return to the primary agent.
-- **Mouse**: Click on any pill to switch to that agent's container directly.
 
 ### Container Routing
 
