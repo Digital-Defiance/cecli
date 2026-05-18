@@ -2200,7 +2200,15 @@ class Coder:
         import asyncio
 
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, self.format_messages)
+
+        async def format_in_executor():
+            return await loop.run_in_executor(None, self.format_messages)
+
+        result, interrupted = await self.coroutines.interruptible(
+            format_in_executor(), self.interrupt_event
+        )
+        if interrupted:
+            raise KeyboardInterrupt("Interrupted during message formatting")
         messages = result
 
         if not await self.check_tokens(messages):
