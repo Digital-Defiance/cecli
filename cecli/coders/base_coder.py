@@ -262,9 +262,14 @@ class Coder:
                 if from_coder.mcp_manager:
                     res.mcp_manager = from_coder.mcp_manager
 
-                # Transfer TUI app weak reference
-                res.tui = from_coder.tui
-                res.context_management_enabled = from_coder.context_management_enabled
+                    # When switching away from agent mode, disconnect the "Local" MCP server
+                    # (which provides agent-only tools like tool calling and file editing)
+                    # so it's not available in non-agent modes.
+                    if from_coder.edit_format == "agent" and res.edit_format != "agent":
+                        if from_coder.mcp_manager:
+                            local_server = from_coder.mcp_manager.get_server("Local")
+                            if local_server:
+                                await from_coder.mcp_manager.disconnect_server("Local")
 
             await res.initialize_mcp_tools()
 
