@@ -24,6 +24,11 @@ class InvokeAgentCommand(BaseCommand):
             agent_service = AgentService.get_instance(coder)
             summary = await agent_service.invoke(name, prompt, blocking=True)
             if summary:
+                from cecli.helpers.conversation.service import ConversationService
+
+                ConversationService.get_manager(coder).add_message(
+                    message_dict=dict(role="user", content=summary),
+                )
                 io.tool_output(f"Sub-agent '{name}' completed:\n{summary}")
             else:
                 io.tool_output(f"Sub-agent '{name}' completed (no summary).")
