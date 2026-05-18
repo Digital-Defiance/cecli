@@ -55,6 +55,7 @@ system_reminder: |
 
   **Finishing Up**: 
   Be very detailed in your `Finished` tool summary in describing your task, findings, efforts and results.
+  Include all of your final response inside the "summary" text so maximum information is available to the user.
 
   {lazy_prompt}
   {shell_cmd_reminder}
