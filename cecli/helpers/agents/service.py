@@ -331,7 +331,11 @@ class AgentService:
 
         model_override = getattr(config, "model", None)
         if model_override:
-            kwargs["main_model"] = models.Model(model_override, from_model=parent_coder.main_model)
+            kwargs["main_model"] = models.Model(
+                model_override,
+                from_model=parent_coder.main_model,
+                agent_model=model_override,
+            )
 
         new_coder = await Coder.create(**kwargs)
         # IOProxy wrapping is handled by base_coder.py's Coder.__init__
