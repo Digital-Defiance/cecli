@@ -180,6 +180,7 @@ class AgentCoder(Coder):
                     # "git_status",
                     # "symbol_outline",
                     "todo_list",
+                    "sub_agents",
                     "skills",
                 },
             )
@@ -384,6 +385,8 @@ class AgentCoder(Coder):
             content = self.get_skills_context()
         elif block_name == "loaded_skills":
             content = self.get_skills_content()
+        elif block_name == "sub_agents":
+            content = self.get_sub_agents_context()
         if content is not None:
             self.context_blocks_cache[block_name] = content
         return content
@@ -492,7 +495,22 @@ class AgentCoder(Coder):
         ConversationService.get_chunks(self).add_file_list_reminder()
 
         # Add system messages (including examples and reminder)
-        ConversationService.get_chunks(self).add_system_messages()
+        # For sub-agents, use their specific system prompt via AgentService lookup
+        # For primary agents, use the default system messages flow
+        needs_system_prompts = True
+        if hasattr(self, "parent_uuid") and self.parent_uuid:
+            from cecli.helpers.agents.service import AgentService
+
+            service = AgentService.get_instance(self)
+            info = service.sub_agents.get(self.uuid)
+            if info:
+                config = AgentService.get_registry().get(info.name)
+                if config and config.prompt and config.prompt.strip():
+                    ConversationService.get_chunks(self).add_system_message(config.prompt)
+                    needs_system_prompts = False
+
+        if needs_system_prompts:
+            ConversationService.get_chunks(self).add_system_messages()
 
         # Add static context blocks (priority 50 - between SYSTEM and EXAMPLES)
         ConversationService.get_chunks(self).add_static_context_blocks()
@@ -1419,6 +1437,44 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
             return self.skills_manager.get_skills_content()
         except Exception as e:
             self.io.tool_error(f"Error generating skills content context: {str(e)}")
+            return None
+
+    def get_sub_agents_context(self):
+        """
+        Generate a context block for registered sub-agents.
+        Only shown for primary coders (no parent_uuid).
+
+        Returns:
+            Formatted context block string with sub-agent names and descriptions,
+            or None if no sub-agents are registered or if called from a sub-agent.
+        """
+        if not self.use_enhanced_context:
+            return None
+        if hasattr(self, "parent_uuid") and self.parent_uuid:
+            return None
+        try:
+            from cecli.helpers.agents.service import AgentService
+
+            registry = AgentService.get_registry()
+            if not registry:
+                return None
+
+            result = '<context name="sub_agents" from="agent">\n'
+            result += "## Available Sub-Agents\n\n"
+            result += f"Found {len(registry)} registered sub-agent(s):\n\n"
+
+            for name, config in sorted(registry.items()):
+                result += f"**{name}**:\n"
+                desc = config.metadata.get("description", "")
+                if desc:
+                    result += f"{desc}\n"
+                result += "\n"
+
+            result += "Use the `Delegate` tool with the sub-agent name to delegate tasks.\n"
+            result += "</context>"
+            return result
+        except Exception as e:
+            self.io.tool_error(f"Error generating sub-agents context: {str(e)}")
             return None
 
     def get_background_command_output(self):

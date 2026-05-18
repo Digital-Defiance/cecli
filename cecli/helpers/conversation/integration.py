@@ -876,6 +876,10 @@ class ConversationChunks:
                 block = coder.get_cached_context_block("directory_structure")
                 if block:
                     message_blocks["directory_structure"] = block
+            if "sub_agents" in coder.allowed_context_blocks and not coder.parent_uuid:
+                block = coder._generate_context_block("sub_agents")
+                if block:
+                    message_blocks["sub_agents"] = block
             if "skills" in coder.allowed_context_blocks:
                 block = coder._generate_context_block("skills")
                 if block:
