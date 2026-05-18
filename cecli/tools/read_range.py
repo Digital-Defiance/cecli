@@ -254,7 +254,10 @@ class Tool(BaseTool):
                                 candidates.append((dist_sum, s, e))
                         # Sort by distance sum, then prefer ranges after the last range
                         candidates.sort(key=lambda x: (x[0], x[1] < last_s, x[1], x[2]))
-                        best_pair = (candidates[0][1], candidates[0][2])
+                        if candidates:
+                            best_pair = (candidates[0][1], candidates[0][2])
+                        else:
+                            best_pair = None
                     else:
                         best_pair = None
                         min_dist = float("inf")
