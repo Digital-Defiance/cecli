@@ -21,7 +21,7 @@ Sub-agents can be used for:
 ┌─────────────────────────────────────────────────────────┐
 │                    TUI Session                           │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │ SubAgentPills: ○ Primary  ● reviewer  ○ tester   │   │
+│  │ Mode: ○ primary  ◆ reviewer  ○ tester              │   │
 │  ├──────────────────────────────────────────────────┤   │
 │  │          OutputContainer (active agent)          │   │
 │  ├──────────────────────────────────────────────────┤   │
@@ -67,7 +67,7 @@ and suggestions for improvement.
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | Yes | Unique name used to reference the sub-agent in commands and the Dispatch tool |
+| `name` | Yes | Unique name used to reference the sub-agent in commands and the Delegate tool |
 | `model` | No | Model override for this sub-agent. If omitted, inherits the parent agent's model |
 
 #### System Prompt
@@ -107,13 +107,13 @@ The most common way to use sub-agents. The primary agent waits for the sub-agent
 
 This sends the prompt to the reviewer sub-agent, which works autonomously and returns a summary when done.
 
-### Dispatching from the Primary Agent
+### Delegating from the Primary Agent
 
-The primary agent can also delegate work using the `Dispatch` tool. This enables the autonomous workflow:
+The primary agent can also delegate work using the `Delegate` tool. This enables the autonomous workflow:
 
 1. The primary agent analyzes a task
 2. It decomposes the work into sub-tasks
-3. It dispatches each sub-task to the appropriate sub-agent
+3. It delegates each sub-task to the appropriate sub-agent
 4. Sub-agents work independently and return their summaries
 5. The primary agent synthesizes the results
 
@@ -141,10 +141,10 @@ This is useful if a sub-agent is stuck, misbehaving, or you no longer need its w
 
 ### Switching Between Agents
 
-When sub-agents are active, the TUI shows a **SubAgentPills** bar at the top of the output area, displaying each agent as a clickable pill:
+When sub-agents are active, the TUI shows agent pills in the input container's border title, displaying each agent with status icons:
 
 ```
-┌─ [primary]  ● [reviewer]  ○ [tester] ──────────────────┐
+┌─ agent: ○ primary  ◆ reviewer  ○ tester ─────────────────┐
 ```
 
 - **Keyboard**: Use `Ctrl+Alt+Left` / `Ctrl+Alt+Right` to cycle through agents. Use `Ctrl+Alt+Up` to return to the primary agent.
@@ -157,13 +157,13 @@ Each agent gets its own output container. When you switch agents:
 1. The active container is shown; all others are hidden
 2. Your input is routed to the active agent
 3. Tool output, streaming responses, and task notifications are displayed in the correct container
-4. The SubAgentPills bar highlights the active agent
+4. Agent pills in the border title highlight the active agent
 
 ## Lifecycle and Limits
 
 ### Max Sub-Agents
 
-The `max_subagents` setting (default: 3) limits how many concurrent sub-agents can exist. This prevents resource exhaustion.
+The `max_sub_agents` setting (default: 3) limits how many concurrent sub-agents can exist. This prevents resource exhaustion.
 
 When the limit is reached:
 
@@ -178,7 +178,7 @@ When the limit is reached:
 
 ## Restrictions
 
-- **No nested sub-agents**: Sub-agents cannot spawn further sub-agents. The `Dispatch` tool is excluded from sub-agent tool schemas.
+- **No nested sub-agents**: Sub-agents cannot spawn further sub-agents. The `Delegate` tool is excluded from sub-agent tool schemas.
 - **TUI-dependent**: Sub-agent container switching and the reap command depend on the TUI. Running in headless or non-TUI modes may not support these features.
 
 ## Examples
@@ -222,8 +222,8 @@ happy paths. Use the project's existing testing patterns and conventions.
 
 By defining multiple sub-agents, you can get different perspectives on the same code:
 
-1. Dispatch a **reviewer** to analyze security concerns
-2. Dispatch a **tester** to identify test gaps
+1. Delegate to a **reviewer** to analyze security concerns
+2. Delegate to a **tester** to identify test gaps
 3. The primary agent synthesizes both reports into an action plan
 
 ## See Also
