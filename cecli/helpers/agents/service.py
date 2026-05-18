@@ -426,23 +426,10 @@ class AgentService:
         if not blocking:
             return None
 
-        # Blocking: run the sub-agent with the prompt
-        info.status = SubAgentStatus.RUNNING
-        try:
-            await new_coder.generate(user_message=prompt, preproc=True)
-            if info.status == SubAgentStatus.RUNNING:
-                info.status = SubAgentStatus.FINISHED
-                info.summary = info.summary or "(completed without explicit summary)"
-            summary = info.summary
-            return summary
-        except asyncio.CancelledError:
-            info.status = SubAgentStatus.FINISHED
-            info.summary = info.summary or "(interrupted)"
-            raise
-        except Exception as exc:
-            info.status = SubAgentStatus.ERROR
-            info.error = str(exc)
-            raise
+        # Blocking: run the sub-agent with the prompt using start_generate_task
+        task = self.start_generate_task(info, prompt)
+        await task
+        return info.summary
 
     async def spawn(self, name: str) -> None:
         """Spawn a sub-agent (non-blocking) that waits for user input."""
