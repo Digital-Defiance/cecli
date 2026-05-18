@@ -5,11 +5,9 @@ so sub-agents cannot spawn further sub-agents.
 """
 
 import logging
-from typing import Dict, List
 
 from cecli.coders.agent_coder import AgentCoder
 from cecli.helpers.conversation.service import ConversationService
-from cecli.tools.utils.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +18,10 @@ class SubAgentCoder(AgentCoder):
     edit_format = "subagent"
     prompt_format = "subagent"
 
+    def post_init(self):
+        super().post_init()
+        self.registered_tools["excluded"].add("delegate")
+
     def format_chat_chunks(self):
         """Override format_chat_chunks to inject sub-agent prompt as system message.
 
@@ -29,8 +31,6 @@ class SubAgentCoder(AgentCoder):
         """
         if not self.use_enhanced_context:
             chunks = super().format_chat_chunks()
-            # Override tool schemas to exclude delegate even in fallback path
-            self.tool_schemas = self.get_local_tool_schemas()
             return chunks
 
         self.choose_fence()
@@ -45,14 +45,3 @@ class SubAgentCoder(AgentCoder):
         ConversationService.get_chunks(self).add_randomized_cta()
 
         return ConversationService.get_manager(self).get_messages_dict()
-
-    def get_local_tool_schemas(self) -> List[Dict]:
-        """Return tool schemas, excluding the 'delegate' tool."""
-        registry = ToolRegistry.build_registry(agent_config=self.agent_config)
-        schemas = []
-        for name, tool_class in registry.items():
-            if name == "delegate":
-                continue
-            if tool_class.SCHEMA:
-                schemas.append(tool_class.SCHEMA)
-        return schemas

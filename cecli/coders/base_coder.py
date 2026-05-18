@@ -344,6 +344,10 @@ class Coder:
     ):
         # initialize from args.map_cache_dir
         self.coroutines = coroutines
+        # Per-instance tool and server filtering dictionaries
+        # Each contains "included" and "excluded" sets that filter from the global singletons
+        self.registered_tools = {"included": set(), "excluded": set()}
+        self.registered_servers = {"included": set(), "excluded": set()}
         self.interrupt_event = asyncio.Event()
         self.uuid = str(generate_unique_id())
 
@@ -649,6 +653,11 @@ class Coder:
                 self.io.tool_output("JSON Schema:")
                 self.io.tool_output(json.dumps(self.functions, indent=4))
 
+        self.post_init()
+
+    def post_init(self):
+        pass
+
     @property
     def gpt_prompts(self):
         """Get prompts from the registry based on the coder type."""
@@ -775,8 +784,18 @@ class Coder:
         if self.mcp_tools:
             mcp_servers = []
             for server_name, server_tools in self.mcp_tools:
+                # Filter servers per instance configuration
+                if (
+                    self.registered_servers["included"]
+                    and server_name not in self.registered_servers["included"]
+                ):
+                    continue
+                if server_name in self.registered_servers["excluded"]:
+                    continue
                 mcp_servers.append(server_name)
-            lines.append(f"MCP servers configured: {', '.join(mcp_servers)}")
+
+            if mcp_servers:
+                lines.append(f"MCP servers configured: {', '.join(mcp_servers)}")
 
         for fname in self.abs_read_only_stubs_fnames:
             rel_fname = self.get_rel_fname(fname)
@@ -2836,11 +2855,34 @@ class Coder:
         raise AttributeError("mcp_tools is read only.")
 
     def get_tool_list(self):
-        """Get a flattened list of all MCP tools with server prefixes."""
+        """Get a flattened list of all MCP tools with server prefixes, filtered by registered_servers."""
         tool_list = []
         if self.mcp_tools:
             for server_name, server_tools in self.mcp_tools:
+                # Apply per-instance server filtering
+                if (
+                    self.registered_servers["included"]
+                    and server_name not in self.registered_servers["included"]
+                ):
+                    continue
+                if server_name in self.registered_servers["excluded"]:
+                    continue
+
                 for tool in server_tools:
+                    if server_name == "Local":
+                        # Apply per-instance tool name filtering
+                        tool_name = tool.get("function", {}).get("name", "")
+                        if (
+                            self.registered_tools["excluded"]
+                            and tool_name.lower() in self.registered_tools["excluded"]
+                        ):
+                            continue
+                        if (
+                            self.registered_tools["included"]
+                            and tool_name.lower() not in self.registered_tools["included"]
+                        ):
+                            continue
+
                     # Prefix the tool name with server name
                     prefixed_tool = responses.prefix_tool_call(tool, server_name)
                     tool_list.append(prefixed_tool)
