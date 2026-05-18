@@ -107,6 +107,22 @@ class AgentCoder(Coder):
         self.loaded_custom_tools = ToolRegistry.loaded_custom_tools
         super().__init__(*args, **kwargs)
 
+    def post_init(self):
+        super().post_init()
+        # Populate per-instance tool and server filters from config
+        self.registered_tools["included"] = set(
+            map(str.lower, self.agent_config.get("tools_includelist", []))
+        )
+        self.registered_tools["excluded"] = set(
+            map(str.lower, self.agent_config.get("tools_excludelist", []))
+        )
+        self.registered_servers["included"] = set(
+            map(str.lower, self.agent_config.get("servers_includelist", []))
+        )
+        self.registered_servers["excluded"] = set(
+            map(str.lower, self.agent_config.get("servers_excludelist", []))
+        )
+
     def _setup_agent(self):
         os.makedirs(".cecli/temp", exist_ok=True)
 
@@ -147,6 +163,12 @@ class AgentCoder(Coder):
             config, ["tools_excludelist", "tools_blacklist"], []
         )
 
+        config["servers_includelist"] = nested.getter(
+            config, ["servers_includelist", "servers_whitelist"], []
+        )
+        config["servers_excludelist"] = nested.getter(
+            config, ["servers_excludelist", "servers_blacklist"], []
+        )
         config["include_context_blocks"] = set(
             nested.getter(
                 config,

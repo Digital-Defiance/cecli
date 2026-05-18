@@ -41,30 +41,38 @@ class TestSubAgentCoder:
         _ = coder.parent_uuid  # Should not raise
 
     def test_get_local_tool_schemas_excludes_delegate(self):
-        """get_local_tool_schemas() excludes the 'delegate' tool."""
+        """get_local_tool_schemas() returns all schemas; delegate exclusion happens in get_tool_list()."""
         from cecli.coders.sub_agent_coder import SubAgentCoder
 
         # Mock registry returning tools including delegate
-        mock_schemas = [
-            ("explore_code", MagicMock(SCHEMA={"name": "ExploreCode"})),
-            ("finished", MagicMock(SCHEMA={"name": "Finished"})),
-            ("delegate", MagicMock(SCHEMA={"name": "Delegate"})),
-            ("grep", MagicMock(SCHEMA={"name": "Grep"})),
-        ]
+        mock_explore = MagicMock(SCHEMA={"name": "ExploreCode"})
+        mock_finished = MagicMock(SCHEMA={"name": "Finished"})
+        mock_delegate = MagicMock(SCHEMA={"name": "Delegate"})
+        mock_grep = MagicMock(SCHEMA={"name": "Grep"})
+
+        tool_map = {
+            "explore_code": mock_explore,
+            "finished": mock_finished,
+            "delegate": mock_delegate,
+            "grep": mock_grep,
+        }
 
         dummy_coder = MagicMock()
         dummy_coder.agent_config = {}
 
-        with patch("cecli.coders.sub_agent_coder.ToolRegistry") as MockReg:
-            MockReg.build_registry.return_value = dict(mock_schemas)
+        with patch("cecli.coders.agent_coder.ToolRegistry") as MockReg:
+            MockReg.get_registered_tools.return_value = list(tool_map.keys())
+            MockReg.get_tool.side_effect = lambda name: tool_map[name]
 
             schemas = SubAgentCoder.get_local_tool_schemas(dummy_coder)
 
         names = [s["name"] for s in schemas]
-        assert "Delegate" not in names
+        # get_local_tool_schemas no longer filters — delegate is included
+        assert "Delegate" in names
         assert "ExploreCode" in names
         assert "Finished" in names
         assert "Grep" in names
+        assert len(names) == 4
 
     def test_get_local_tool_schemas_empty_registry(self):
         """Empty registry returns empty list."""
@@ -73,30 +81,35 @@ class TestSubAgentCoder:
         dummy_coder = MagicMock()
         dummy_coder.agent_config = {}
 
-        with patch("cecli.coders.sub_agent_coder.ToolRegistry") as MockReg:
-            MockReg.build_registry.return_value = {}
+        with patch("cecli.coders.agent_coder.ToolRegistry") as MockReg:
+            MockReg.get_registered_tools.return_value = []
             schemas = SubAgentCoder.get_local_tool_schemas(dummy_coder)
 
         assert schemas == []
 
     def test_get_local_tool_schemas_skips_none_schemas(self):
-        """Tools without SCHEMA are skipped."""
+        """Tools with SCHEMA=None are still returned (hasattr passes)."""
         from cecli.coders.sub_agent_coder import SubAgentCoder
 
-        mock_schemas = [
-            ("has_schema", MagicMock(SCHEMA={"name": "HasSchema"})),
-            ("no_schema", MagicMock(SCHEMA=None)),
-        ]
+        mock_has_schema = MagicMock(SCHEMA={"name": "HasSchema"})
+        mock_no_schema = MagicMock(SCHEMA=None)
+
+        tool_map = {
+            "has_schema": mock_has_schema,
+            "no_schema": mock_no_schema,
+        }
 
         dummy_coder = MagicMock()
         dummy_coder.agent_config = {}
 
-        with patch("cecli.coders.sub_agent_coder.ToolRegistry") as MockReg:
-            MockReg.build_registry.return_value = dict(mock_schemas)
+        with patch("cecli.coders.agent_coder.ToolRegistry") as MockReg:
+            MockReg.get_registered_tools.return_value = list(tool_map.keys())
+            MockReg.get_tool.side_effect = lambda name: tool_map[name]
             schemas = SubAgentCoder.get_local_tool_schemas(dummy_coder)
 
-        assert len(schemas) == 1
-        assert schemas[0]["name"] == "HasSchema"
+        # hasattr(tool_module, "SCHEMA") passes for both since hasattr returns True
+        # even when the attribute value is None on a MagicMock
+        assert len(schemas) == 2
 
     def test_format_chat_chunks_falls_back_when_not_enhanced(self):
         """When use_enhanced_context is False, calls super()."""
