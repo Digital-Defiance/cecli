@@ -787,7 +787,7 @@ class TUI(App):
 
     def action_clear_output(self):
         """Clear all output."""
-        output_container = self.query_one("#output", OutputContainer)
+        output_container = self._get_visible_container()
         output_container.clear_output()
         if self.tui_config["banner"]:
             output_container.add_output(self.BANNER, dim=False)
@@ -796,16 +796,16 @@ class TUI(App):
                 f"[bold {self.BANNER_COLORS[0]}] [/bold {self.BANNER_COLORS[0]}]", dim=False
             )
 
-        self.worker.coder.show_announcements()
+        self._get_visible_coder().show_announcements()
 
     def action_output_up(self):
         """Scroll the output area up one page."""
-        output_container = self.query_one("#output", OutputContainer)
+        output_container = self._get_visible_container()
         output_container.action_page_up()
 
     def action_output_down(self):
         """Scroll the output area down one page."""
-        output_container = self.query_one("#output", OutputContainer)
+        output_container = self._get_visible_container()
         output_container.action_page_down()
 
     def action_interrupt(self):
