@@ -145,6 +145,21 @@ class ConversationChunks:
             force=True,
         )
 
+        msg = dict(
+            role="user",
+            content=self._shuffle_reminders(
+                coder.fmt_system_prompt(coder.gpt_prompts.system_reminder)
+            ),
+        )
+
+        ConversationService.get_manager(coder).add_message(
+            message_dict=msg,
+            tag=MessageTag.REMINDER,
+            hash_key=("main", "subagent_reminder"),
+            force=True,
+            mark_for_delete=0,
+        )
+
     def add_randomized_cta(self) -> None:
         coder = self.get_coder()
         if not coder:

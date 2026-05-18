@@ -53,6 +53,9 @@ system_reminder: |
   - **Sandbox**: Perform all verification and temp logic in `.cecli/temp`.
   - **Responses**: Reason out loud through the problem but be brief.
 
+  **Finishing Up**: 
+  Be very detailed in your `Finished` tool summary in describing your task, findings, efforts and results.
+
   {lazy_prompt}
   {shell_cmd_reminder}
   </context>
