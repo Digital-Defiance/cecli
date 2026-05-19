@@ -42,7 +42,7 @@ class InputContainer(Vertical):
         sub_agents = self._get_sub_agents()
         if sub_agents:
             pills_text = self._format_sub_agent_pills(sub_agents, self.show_squares)
-            self.border_title = f"{mode}: {pills_text}"
+            self.border_title = f"agent: {pills_text}"
         else:
             self.border_title = mode
         self.refresh()
