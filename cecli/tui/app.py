@@ -554,6 +554,8 @@ class TUI(App):
 
             footer = self.query_one(MainFooter)
             footer.update_mode(msg.get("mode", "code"))
+        elif msg_type == "switch_agent":
+            self._switch_to_container(msg["uuid"])
 
     def add_output(self, text, task_id=None):
         """Add output to the output container."""
