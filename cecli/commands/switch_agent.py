@@ -3,7 +3,6 @@ from typing import List
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
 from cecli.helpers.agents.service import AgentService
-from cecli.tui.io import TextualInputOutput
 
 
 class SwitchAgentCommand(BaseCommand):
@@ -13,6 +12,8 @@ class SwitchAgentCommand(BaseCommand):
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
         """Execute the switch-agent command."""
+        from cecli.tui.io import TextualInputOutput
+
         agent_name = args.strip()
         if not agent_name:
             io.tool_error("Usage: /switch-agent <agent-name>")
