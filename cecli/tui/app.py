@@ -686,6 +686,8 @@ class TUI(App):
 
     def on_input_area_submit(self, message: InputArea.Submit):
         """Handle input submission."""
+        from cecli.helpers.agents.service import AgentService
+
         user_input = message.value
 
         if not user_input.strip():
@@ -724,7 +726,6 @@ class TUI(App):
                 return
             
             # Resolve agent name to UUID
-            from cecli.helpers.agents.service import AgentService
             agent_service = AgentService.get_instance(self.worker.coder)
             primary_uuid = str(self.worker.coder.uuid)
             
