@@ -105,7 +105,83 @@ all_fences = [
 ]
 
 
-class Coder:
+class UsageMeta(type):
+    """Metaclass that provides shared accumulator properties across all Coder subclasses.
+    Every instance shares the same unified total token and cost amounts."""
+
+    _total_cost = 0
+    _total_tokens_sent = 0
+    _total_tokens_received = 0
+    _total_cached_tokens = 0
+
+    @property
+    def total_cost(cls):
+        return UsageMeta._total_cost
+
+    @total_cost.setter
+    def total_cost(cls, value):
+        UsageMeta._total_cost = value
+
+    @property
+    def total_tokens_sent(cls):
+        return UsageMeta._total_tokens_sent
+
+    @total_tokens_sent.setter
+    def total_tokens_sent(cls, value):
+        UsageMeta._total_tokens_sent = value
+
+    @property
+    def total_tokens_received(cls):
+        return UsageMeta._total_tokens_received
+
+    @total_tokens_received.setter
+    def total_tokens_received(cls, value):
+        UsageMeta._total_tokens_received = value
+
+    @property
+    def total_cached_tokens(cls):
+        return UsageMeta._total_cached_tokens
+
+    @total_cached_tokens.setter
+    def total_cached_tokens(cls, value):
+        UsageMeta._total_cached_tokens = value
+
+
+class Coder(metaclass=UsageMeta):
+
+    # Instance-level properties that delegate to the shared metaclass storage
+    @property
+    def total_cost(self):
+        return type(self).total_cost
+
+    @total_cost.setter
+    def total_cost(self, value):
+        type(self).total_cost = value
+
+    @property
+    def total_tokens_sent(self):
+        return type(self).total_tokens_sent
+
+    @total_tokens_sent.setter
+    def total_tokens_sent(self, value):
+        type(self).total_tokens_sent = value
+
+    @property
+    def total_tokens_received(self):
+        return type(self).total_tokens_received
+
+    @total_tokens_received.setter
+    def total_tokens_received(self, value):
+        type(self).total_tokens_received = value
+
+    @property
+    def total_cached_tokens(self):
+        return type(self).total_cached_tokens
+
+    @total_cached_tokens.setter
+    def total_cached_tokens(self, value):
+        type(self).total_cached_tokens = value
+
     abs_fnames = None
     abs_read_only_fnames = None
     abs_read_only_stubs_fnames = None
@@ -141,9 +217,6 @@ class Coder:
     partial_response_consolidated = None
     commit_before_message = []
     message_cost = 0.0
-    total_tokens_sent = 0
-    total_tokens_received = 0
-    total_cached_tokens = 0
     message_tokens_sent = 0
     message_tokens_received = 0
     message_cached_tokens = 0
@@ -232,11 +305,7 @@ class Coder:
                 cur_messages=[],
                 coder_commit_hashes=from_coder.coder_commit_hashes,
                 commands=from_coder.commands.clone(),
-                total_cost=from_coder.total_cost,
                 ignore_mentions=from_coder.ignore_mentions,
-                total_tokens_sent=from_coder.total_tokens_sent,
-                total_tokens_received=from_coder.total_tokens_received,
-                total_cached_tokens=from_coder.total_cached_tokens,
                 file_watcher=from_coder.file_watcher,
                 mcp_manager=from_coder.mcp_manager,
                 uuid=from_coder.uuid,
@@ -316,7 +385,6 @@ class Coder:
         map_max_line_length=100,
         commands=None,
         summarizer=None,
-        total_cost=0.0,
         map_refresh="auto",
         cache_prompts=False,
         num_cache_warming_pings=0,
@@ -325,9 +393,6 @@ class Coder:
         commit_language=None,
         detect_urls=True,
         ignore_mentions=None,
-        total_tokens_sent=0,
-        total_tokens_received=0,
-        total_cached_tokens=0,
         file_watcher=None,
         auto_copy_context=False,
         auto_accept_architect=True,
@@ -407,10 +472,6 @@ class Coder:
         self.chat_completion_response_hashes = []
         self.need_commit_before_edits = set()
 
-        self.total_cost = total_cost
-        self.total_tokens_sent = total_tokens_sent
-        self.total_tokens_received = total_tokens_received
-        self.total_cached_tokens = total_cached_tokens
         self.message_tokens_sent = 0
         self.message_tokens_received = 0
         self.message_cached_tokens = 0
