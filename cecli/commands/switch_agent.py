@@ -75,8 +75,6 @@ class SwitchAgentCommand(BaseCommand):
     def get_completions(cls, io, coder, args) -> List[str]:
         """Get completion options for switch-agent command."""
         try:
-            from collections import Counter
-
             agent_service = AgentService.get_instance(coder)
             names = []
 
@@ -89,18 +87,11 @@ class SwitchAgentCommand(BaseCommand):
 
             # Add sub-agent names, excluding the currently active one
             if agent_service and agent_service.sub_agents:
-                # Count name occurrences to detect duplicates
-                name_counts = Counter(
-                    info.name for info in agent_service.sub_agents.values()
-                )
                 for uuid, sub_agent_info in agent_service.sub_agents.items():
                     if uuid != foreground_uuid:
                         name = sub_agent_info.name
-                        if name_counts[name] > 1:
-                            # Include UUID prefix for duplicate names
-                            names.append(f"{name} ({uuid[:3]})")
-                        else:
-                            names.append(name)
+                        # Always include UUID prefix for sub-agents
+                        names.append(f"{name} ({uuid[:3]})")
 
             current_arg = args.strip().lower()
             if current_arg:
