@@ -112,7 +112,6 @@ class InputContainer(Vertical):
             A string like ``"◍ primary ◆ reviewer (a6b)"``.
         """
         parts = []
-        name_counts = Counter(sa["name"] for sa in sub_agents)
 
         for sa in sub_agents:
             active = sa.get("active", False)
