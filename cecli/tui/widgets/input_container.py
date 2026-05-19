@@ -1,3 +1,5 @@
+from collections import Counter
+
 from textual.containers import Vertical
 from textual.reactive import reactive
 
@@ -49,7 +51,7 @@ class InputContainer(Vertical):
         """Query AgentService via self.app to build sub-agent pill data.
 
         Returns:
-            List of dicts with ``name``, ``active``, and ``generating`` keys,
+            List of dicts with ``name``, ``uuid``, ``active``, and ``generating`` keys,
             or empty list.
         """
         try:
@@ -61,13 +63,14 @@ class InputContainer(Vertical):
             agent_service = AgentService.get_instance(coder)
 
             sub_agents = []
-            primary_uuid = agent_service.coder.uuid
+            primary_uuid = str(agent_service.coder.uuid)
             active_uuid = agent_service.foreground_uuid or primary_uuid
 
             # Primary is never "generating" in the sub-agent sense
             sub_agents.append(
                 {
                     "name": "primary",
+                    "uuid": primary_uuid,
                     "active": active_uuid == primary_uuid,
                     "generating": is_active(getattr(coder.io, "output_task", None)),
                 }
@@ -78,6 +81,7 @@ class InputContainer(Vertical):
                 sub_agents.append(
                     {
                         "name": info.name,
+                        "uuid": coder_uuid,
                         "active": coder_uuid == active_uuid,
                         "generating": is_active(info.generate_task),
                     }
@@ -101,13 +105,15 @@ class InputContainer(Vertical):
           - ◆/■ (generating, active) — alternates for animation
 
         Args:
-            sub_agents: List of dicts with ``name``, ``active``, and ``generating`` keys.
+            sub_agents: List of dicts with ``name``, ``uuid``, ``active``, and ``generating`` keys.
             show_squares: If True, use square icons (□/■) instead of diamonds (◇/◆) for generating agents.
 
         Returns:
-            A string like ``"◍ primary ◆ reviewer"``.
+            A string like ``"◍ primary ◆ reviewer (a6b)"``.
         """
         parts = []
+        name_counts = Counter(sa["name"] for sa in sub_agents)
+
         for sa in sub_agents:
             active = sa.get("active", False)
             gen = sa.get("generating", False)
@@ -118,7 +124,13 @@ class InputContainer(Vertical):
                     icon = "◆" if active else "◇"
             else:
                 icon = "●" if active else "○"
-            parts.append(f"{icon} {sa['name']}")
+
+            name = sa["name"]
+            display_name = name
+            if name_counts[name] > 1 and name != "primary":
+                display_name = f"{name} ({sa['uuid'][:3]})"
+
+            parts.append(f"{icon} {display_name}")
         return " ".join(parts)
 
     def update_cost(self, cost_text: str):
