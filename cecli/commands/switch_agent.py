@@ -59,7 +59,6 @@ class SwitchAgentCommand(BaseCommand):
 
             # Determine current foreground agent
             foreground_uuid = agent_service.foreground_uuid
-            primary_uuid = str(coder.uuid)
 
             # Add "primary" only if not already on primary
             if foreground_uuid is not None:

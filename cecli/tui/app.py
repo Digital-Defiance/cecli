@@ -559,7 +559,7 @@ class TUI(App):
             # Ensure the target container exists before switching
             primary_uuid = str(self.worker.coder.uuid)
             if target_uuid != primary_uuid and target_uuid not in self._sub_agent_containers:
-                self.show_error(f"Agent container not found. Cannot switch.")
+                self.show_error("Agent container not found. Cannot switch.")
             else:
                 self._switch_to_container(target_uuid)
 
