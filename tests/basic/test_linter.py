@@ -39,12 +39,12 @@ class TestLinter:
     @pytest.mark.skipif(
         platform.system() != "Windows", reason="Windows-specific test for dir command"
     )
-    def test_run_cmd_win(self):
+    async def test_run_cmd_win(self):
         from pathlib import Path
 
         root = Path(__file__).parent.parent.parent.absolute().as_posix()
         linter = Linter(encoding="utf-8", root=root)
-        result = linter.run_cmd("dir", "tests\\basic", "code")
+        result = await linter.run_cmd("dir", "tests\\basic", "code")
         assert result is None
 
     @patch("cecli.linter.run_cmd_async")
