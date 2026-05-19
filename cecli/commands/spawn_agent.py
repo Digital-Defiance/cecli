@@ -20,7 +20,11 @@ class SpawnAgentCommand(BaseCommand):
         try:
             agent_service = AgentService.get_instance(coder)
             await agent_service.spawn(name)
-            io.tool_output(f"Sub-agent '{name}' spawned. " "Switch to it with Ctrl+Alt+Right.")
+            if coder.tui and coder.tui():
+                io.tool_output(
+                    f"Sub-agent '{name}' spawned. "
+                    f"Switch to it with {coder.tui().get_keys_for("next_agent")}"
+                )
         except ValueError as e:
             io.tool_error(f"Error: {e}")
         except RuntimeError as e:
