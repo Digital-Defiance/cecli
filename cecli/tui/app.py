@@ -738,6 +738,13 @@ class TUI(App):
                         target_uuid = uuid
                         break
 
+                # If not found by name, try matching first 3 chars of UUID
+                if target_uuid is None:
+                    for uuid, info in agent_service.sub_agents.items():
+                        if uuid[:3] == agent_name:
+                            target_uuid = uuid
+                            break
+
             if target_uuid is None:
                 self.show_error(f"Agent '{agent_name}' not found.")
                 return
