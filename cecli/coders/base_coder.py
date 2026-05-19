@@ -2226,6 +2226,10 @@ class Coder:
 
         ConversationService.get_manager(self).flush_queue()
 
+        # Clear any stale interrupt state before starting formatting
+        # to avoid immediately re-catching a previous interrupt
+        self.interrupt_event.clear()
+
         if inp:
             # Make sure current coder actually has control of conversation system
             ConversationService.get_chunks(self).initialize_conversation_system()
@@ -2251,8 +2255,15 @@ class Coder:
         result, interrupted = await self.coroutines.interruptible(
             format_in_executor(), self.interrupt_event
         )
+
         if interrupted:
-            raise KeyboardInterrupt("Interrupted during message formatting")
+            # Use CancelledError instead of KeyboardInterrupt to avoid
+            # propagating through the asyncio event loop during cleanup.
+            # KeyboardInterrupt is re-raised by Task.__step and bypasses
+            # asyncio.gather(return_exceptions=True), causing crashes
+            # when tasks are gathered during _cleanup_loop.
+            raise asyncio.CancelledError("Interrupted during message formatting")
+
         messages = result
 
         if not await self.check_tokens(messages):
