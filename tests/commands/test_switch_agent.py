@@ -96,6 +96,30 @@ class TestSwitchAgentCommand:
         completions = SwitchAgentCommand.get_completions(mock_io, mock_coder, "rev")
         assert completions == ["reviewer"]
 
+    @pytest.mark.asyncio
+    async def test_execute_switch_by_uuid_prefix_tui(
+        self, mock_coder, mock_io, mock_agent_service
+    ):
+        """Test switching to a sub-agent by first 3 UUID chars in TUI mode."""
+        mock_io.output_queue.put = MagicMock()
+
+        with patch("cecli.commands.switch_agent.hasattr", return_value=True):
+            await SwitchAgentCommand.execute(mock_io, mock_coder, "sub")
+
+        mock_io.output_queue.put.assert_called_once_with(
+            {"type": "switch_agent", "uuid": "sub-uuid-1"}
+        )
+
+    def test_get_completions_with_duplicate_names(self, mock_coder, mock_io, mock_agent_service):
+        """Test completions include UUID prefixes when there are duplicate names."""
+        # Add a second sub-agent with the same name
+        mock_agent_service.sub_agents["sub-uuid-2"] = MagicMock(name="reviewer")
+        mock_agent_service.foreground_uuid = None
+        completions = SwitchAgentCommand.get_completions(mock_io, mock_coder, "")
+        assert "reviewer (sub)" in completions
+        assert "reviewer (sub)" in completions  # second one also has prefix
+        assert len([c for c in completions if c.startswith("reviewer")]) == 2
+
     def test_get_completions_with_duplicate_names(self, mock_coder, mock_io, mock_agent_service):
         """Test completions include UUID prefixes when there are duplicate names."""
         # Add a second sub-agent with the same name
