@@ -561,8 +561,7 @@ class TUI(App):
             if target_uuid != primary_uuid and target_uuid not in self._sub_agent_containers:
                 self.show_error(f"Agent container not found. Cannot switch.")
             else:
-                # Use call_from_thread to ensure UI updates happen on the main thread
-                self.call_from_thread(self._switch_to_container, target_uuid)
+                self._switch_to_container(target_uuid)
 
     def add_output(self, text, task_id=None):
         """Add output to the output container."""
@@ -710,6 +709,43 @@ class TUI(App):
             input_area = self.query_one("#input", InputArea)
             input_area.value = ""
             self._open_editor_suspended(initial_content)
+            return
+
+        # Intercept /switch-agent command to handle immediately without LLM processing
+        if stripped.startswith("/switch-agent"):
+            parts = stripped.split(maxsplit=1)
+            agent_name = parts[1].strip() if len(parts) > 1 else ""
+            
+            input_area = self.query_one("#input", InputArea)
+            input_area.value = ""
+            
+            if not agent_name:
+                self.show_error("Usage: /switch-agent <agent-name>")
+                return
+            
+            # Resolve agent name to UUID
+            from cecli.helpers.agents.service import AgentService
+            agent_service = AgentService.get_instance(self.worker.coder)
+            primary_uuid = str(self.worker.coder.uuid)
+            
+            target_uuid = None
+            if agent_name == "primary":
+                target_uuid = primary_uuid
+            else:
+                for uuid, info in agent_service.sub_agents.items():
+                    if info.name == agent_name:
+                        target_uuid = uuid
+                        break
+            
+            if target_uuid is None:
+                self.show_error(f"Agent '{agent_name}' not found.")
+                return
+            
+            if target_uuid != primary_uuid and target_uuid not in self._sub_agent_containers:
+                self.show_error(f"Agent container for '{agent_name}' not found.")
+                return
+            
+            self._switch_to_container(target_uuid)
             return
 
         # Save to history before clearing
