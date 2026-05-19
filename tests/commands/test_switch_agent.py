@@ -33,9 +33,7 @@ def mock_agent_service(mock_coder):
 
 class TestSwitchAgentCommand:
     @pytest.mark.asyncio
-    async def test_execute_switch_to_sub_agent_tui(
-        self, mock_coder, mock_io, mock_agent_service
-    ):
+    async def test_execute_switch_to_sub_agent_tui(self, mock_coder, mock_io, mock_agent_service):
         """Test switching to a sub-agent in TUI mode."""
         mock_io.output_queue.put = MagicMock()
 
@@ -47,9 +45,7 @@ class TestSwitchAgentCommand:
         )
 
     @pytest.mark.asyncio
-    async def test_execute_switch_to_primary_tui(
-        self, mock_coder, mock_io, mock_agent_service
-    ):
+    async def test_execute_switch_to_primary_tui(self, mock_coder, mock_io, mock_agent_service):
         """Test switching back to the primary agent in TUI mode."""
         mock_agent_service.foreground_uuid = "sub-uuid-1"
         mock_io.output_queue.put = MagicMock()
