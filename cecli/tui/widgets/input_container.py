@@ -1,5 +1,3 @@
-from collections import Counter
-
 from textual.containers import Vertical
 from textual.reactive import reactive
 
