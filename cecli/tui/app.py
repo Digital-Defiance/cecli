@@ -561,7 +561,8 @@ class TUI(App):
             if target_uuid != primary_uuid and target_uuid not in self._sub_agent_containers:
                 self.show_error(f"Agent container not found. Cannot switch.")
             else:
-                self._switch_to_container(target_uuid)
+                # Use call_from_thread to ensure UI updates happen on the main thread
+                self.call_from_thread(self._switch_to_container, target_uuid)
 
     def add_output(self, text, task_id=None):
         """Add output to the output container."""
