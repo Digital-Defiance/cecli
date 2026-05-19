@@ -44,12 +44,15 @@ cog.out(get_help_md())
 | **/load** | Load and execute commands from a file |
 | **/load-mcp** | Load a MCP server by name |
 | **/ls** | List all known files and indicate which are included in the chat session |
+| **/main-agent** | Switch to the main/primary agent. |
 | **/map** | Print out the current repository map |
 | **/map-refresh** | Force a refresh of the repository map |
 | **/model** | Switch the Main Model to a new LLM |
 | **/models** | Search the list of available models |
+| **/next-agent** | Switch to the next agent (primary or sub-agent). |
 | **/multiline-mode** | Toggle multiline mode (swaps behavior of Enter and Meta+Enter) |
 | **/paste** | Paste image/text from the clipboard into the chat.        Optionally provide a name for the image. |
+| **/prev-agent** | Switch to the previous agent (primary or sub-agent). |
 | **/quit** | Exit the application |
 | **/read-only** | Add files to the chat that are for reference only, or turn added files to read-only |
 | **/reasoning-effort** | Set the reasoning effort level (values: number or low/medium/high depending on model) |
