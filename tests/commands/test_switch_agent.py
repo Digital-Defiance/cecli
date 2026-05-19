@@ -63,9 +63,7 @@ class TestSwitchAgentCommand:
         mock_io.tool_error.assert_called_once_with("Error: Agent 'non-existent-agent' not found.")
 
     @pytest.mark.asyncio
-    async def test_execute_switch_by_uuid_prefix_tui(
-        self, mock_coder, mock_io, mock_agent_service
-    ):
+    async def test_execute_switch_by_uuid_prefix_tui(self, mock_coder, mock_io, mock_agent_service):
         """Test switching to a sub-agent by first 3 UUID chars in TUI mode."""
         mock_io.output_queue.put = MagicMock()
 
