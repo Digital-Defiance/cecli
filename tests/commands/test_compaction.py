@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 # It's better to patch the Coder class where it's used if possible,
 # but for this test, we will instantiate it and mock its methods.
