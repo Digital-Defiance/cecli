@@ -55,10 +55,21 @@ class SwitchAgentCommand(BaseCommand):
         """Get completion options for switch-agent command."""
         try:
             agent_service = AgentService.get_instance(coder)
-            names = ["primary"]
+            names = []
+            
+            # Determine current foreground agent
+            foreground_uuid = agent_service.foreground_uuid
+            primary_uuid = str(coder.uuid)
+            
+            # Add "primary" only if not already on primary
+            if foreground_uuid is not None:
+                names.append("primary")
+            
+            # Add sub-agent names, excluding the currently active one
             if agent_service and agent_service.sub_agents:
-                for sub_agent_info in agent_service.sub_agents.values():
-                    names.append(sub_agent_info.name)
+                for uuid, sub_agent_info in agent_service.sub_agents.items():
+                    if uuid != foreground_uuid:
+                        names.append(sub_agent_info.name)
 
             current_arg = args.strip().lower()
             if current_arg:
