@@ -29,15 +29,29 @@ class SwitchAgentCommand(BaseCommand):
             agent_uuid = str(coder.uuid)
         else:
             if agent_service and agent_service.sub_agents:
-                for uuid, sub_agent_info in agent_service.sub_agents.items():
-                    if sub_agent_info.name == agent_name:
-                        agent_uuid = uuid
-                        break
+                # Try parsing "name (uuid)" format
+                if agent_name.endswith(")") and " (" in agent_name:
+                    try:
+                        # Extract uuid prefix from "name (prefix)"
+                        uuid_prefix = agent_name.rsplit(" (", 1)[1][:-1]
+                        for uuid, info in agent_service.sub_agents.items():
+                            if uuid.startswith(uuid_prefix):
+                                agent_uuid = uuid
+                                break
+                    except IndexError:
+                        pass  # Not the format we expected
 
-                # If not found by name, try matching first 3 chars of UUID
+                # If not found via "name (uuid)", try matching by name directly
                 if agent_uuid is None:
                     for uuid, sub_agent_info in agent_service.sub_agents.items():
-                        if uuid[:3] == agent_name:
+                        if sub_agent_info.name == agent_name:
+                            agent_uuid = uuid
+                            break
+
+                # If still not found, try matching by uuid prefix directly
+                if agent_uuid is None:
+                    for uuid, sub_agent_info in agent_service.sub_agents.items():
+                        if uuid.startswith(agent_name):
                             agent_uuid = uuid
                             break
 
