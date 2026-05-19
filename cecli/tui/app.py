@@ -978,6 +978,12 @@ class TUI(App):
         agent_service = AgentService.get_instance(self.worker.coder)
         primary_uuid = str(self.worker.coder.uuid)
 
+        # Check if the target container exists
+        if uuid != primary_uuid and uuid not in self._sub_agent_containers:
+            # Sub-agent container not found, fall back to primary
+            self.show_error(f"Agent container for UUID {uuid} not found. Switching to primary.")
+            uuid = primary_uuid
+
         if uuid == primary_uuid:
             # Switch to primary agent
             agent_service.foreground_uuid = None
