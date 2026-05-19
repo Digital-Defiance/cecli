@@ -332,6 +332,10 @@ class Coder(metaclass=UsageMeta):
 
         if res is not None:
             if from_coder:
+                # Preserve TUI ref in all child coders
+                if from_coder.tui:
+                    res.tui = from_coder.tui
+
                 if res.mcp_manager:
                     # When switching to a non-agent coder, disconnect the "Local" MCP server
                     # (which provides agent-only tools like tool calling and file editing)
@@ -3746,7 +3750,7 @@ class Coder(metaclass=UsageMeta):
         total_stats += " ↑↓"
 
         if not self.get_active_model().info.get("input_cost_per_token"):
-            self.usage_report = tokens_report + "\n" + total_stats
+            self.usage_report = tokens_report + " " + total_stats
             return
 
         try:
@@ -3769,7 +3773,7 @@ class Coder(metaclass=UsageMeta):
         )
 
         if cache_hit_tokens and cache_write_tokens:
-            sep = "\n"
+            sep = " "
         else:
             sep = " "
 
