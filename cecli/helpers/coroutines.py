@@ -55,6 +55,9 @@ async def interruptible(coroutine, interrupt_event):
         - If not interrupted: (coroutine_result, False)
         - If interrupted: (None, True)
     """
+    if interrupt_event is None:
+        interrupt_event = asyncio.Event()
+
     main_task = asyncio.create_task(coroutine)
     interrupt_task = asyncio.create_task(interrupt_event.wait())
 
