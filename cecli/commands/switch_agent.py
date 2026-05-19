@@ -12,8 +12,6 @@ class SwitchAgentCommand(BaseCommand):
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
         """Execute the switch-agent command."""
-        from cecli.tui.io import TextualInputOutput
-
         agent_name = args.strip()
         if not agent_name:
             io.tool_error("Usage: /switch-agent <agent-name>")
@@ -40,7 +38,7 @@ class SwitchAgentCommand(BaseCommand):
             io.tool_error(f"Error: Agent '{agent_name}' not found.")
             return 1
 
-        if isinstance(io, TextualInputOutput):
+        if hasattr(io, "output_queue") and io.output_queue:
             io.output_queue.put({"type": "switch_agent", "uuid": agent_uuid})
         else:
             # Non-TUI mode
