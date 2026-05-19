@@ -127,7 +127,7 @@ class InputContainer(Vertical):
 
             name = sa["name"]
             display_name = name
-            if name_counts[name] > 1 and name != "primary":
+            if name != "primary":
                 display_name = f"{name} ({sa['uuid'][:3]})"
 
             parts.append(f"{icon} {display_name}")
