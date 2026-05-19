@@ -717,18 +717,18 @@ class TUI(App):
         if stripped.startswith("/switch-agent"):
             parts = stripped.split(maxsplit=1)
             agent_name = parts[1].strip() if len(parts) > 1 else ""
-            
+
             input_area = self.query_one("#input", InputArea)
             input_area.value = ""
-            
+
             if not agent_name:
                 self.show_error("Usage: /switch-agent <agent-name>")
                 return
-            
+
             # Resolve agent name to UUID
             agent_service = AgentService.get_instance(self.worker.coder)
             primary_uuid = str(self.worker.coder.uuid)
-            
+
             target_uuid = None
             if agent_name == "primary":
                 target_uuid = primary_uuid
@@ -737,15 +737,15 @@ class TUI(App):
                     if info.name == agent_name:
                         target_uuid = uuid
                         break
-            
+
             if target_uuid is None:
                 self.show_error(f"Agent '{agent_name}' not found.")
                 return
-            
+
             if target_uuid != primary_uuid and target_uuid not in self._sub_agent_containers:
                 self.show_error(f"Agent container for '{agent_name}' not found.")
                 return
-            
+
             self._switch_to_container(target_uuid)
             return
 

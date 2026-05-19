@@ -56,15 +56,15 @@ class SwitchAgentCommand(BaseCommand):
         try:
             agent_service = AgentService.get_instance(coder)
             names = []
-            
+
             # Determine current foreground agent
             foreground_uuid = agent_service.foreground_uuid
             primary_uuid = str(coder.uuid)
-            
+
             # Add "primary" only if not already on primary
             if foreground_uuid is not None:
                 names.append("primary")
-            
+
             # Add sub-agent names, excluding the currently active one
             if agent_service and agent_service.sub_agents:
                 for uuid, sub_agent_info in agent_service.sub_agents.items():
