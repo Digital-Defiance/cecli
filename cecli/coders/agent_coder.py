@@ -246,6 +246,12 @@ class AgentCoder(Coder):
             joined_skills = ", ".join(skills_list)
             self.io.tool_output(f"Available Skills: {joined_skills}")
 
+        registry = AgentService.get_registry()
+        if registry:
+            names = sorted(registry.keys())
+            joined_names = ", ".join(names)
+            self.io.tool_output(f"Available Subagents: {joined_names}")
+
     def get_local_tool_schemas(self):
         """Returns the JSON schemas for all local tools using the tool registry."""
         schemas = []
@@ -503,8 +509,6 @@ class AgentCoder(Coder):
         # For primary agents, use the default system messages flow
         needs_system_prompts = True
         if hasattr(self, "parent_uuid") and self.parent_uuid:
-            from cecli.helpers.agents.service import AgentService
-
             service = AgentService.get_instance(self)
             info = service.sub_agents.get(self.uuid)
             if info:
@@ -1468,8 +1472,6 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
         if hasattr(self, "parent_uuid") and self.parent_uuid:
             return None
         try:
-            from cecli.helpers.agents.service import AgentService
-
             registry = AgentService.get_registry()
             if not registry:
                 return None
