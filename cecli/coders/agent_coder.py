@@ -76,7 +76,7 @@ class AgentCoder(Coder):
             "edittext",
             "undochange",
         }
-        self.edit_allowed = False
+        self.edit_allowed = True
         self.max_tool_calls = 10000
         self.large_file_token_threshold = 8192
         self.skills_manager = None
