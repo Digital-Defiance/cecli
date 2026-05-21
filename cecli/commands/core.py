@@ -97,7 +97,6 @@ class Commands:
         self.cmd_running_event = asyncio.Event()
         self.cmd_running_event.set()
         self.last_command_show_notification = True
-        self.last_command_show_notification = True
 
     def _load_custom_commands(self, custom_commands):
         """
