@@ -94,6 +94,7 @@ class Commands:
 
         self.cmd_running_event = asyncio.Event()
         self.cmd_running_event.set()
+        self.last_command_show_notification = True
 
     def _load_custom_commands(self, custom_commands):
         """
@@ -185,6 +186,8 @@ class Commands:
         if not command_class:
             active_coder.io.tool_output(f"Error: Command {cmd_name} not found.")
             return
+
+        self.last_command_show_notification = command_class.show_completion_notification
         self.cmd_running_event.clear()
 
         try:
