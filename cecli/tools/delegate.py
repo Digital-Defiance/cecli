@@ -65,13 +65,13 @@ class Tool(BaseTool):
         from cecli.helpers.agents.service import AgentService
 
         agent_service = AgentService.get_instance(coder)
-
         # Track results with status flag instead of fragile emoji checks
         results: list[tuple[bool, str]] = []
 
         async def _run_one(name: str, prompt: str) -> tuple[bool, str]:
             """Run a single sub-agent and return a (success, formatted_message) tuple."""
             try:
+                agent_service._check_max_sub_agents()
                 summary = await agent_service.invoke(name, prompt, blocking=True)
                 if summary:
                     return True, f"Sub-agent '{name}' completed:\n{summary}"
