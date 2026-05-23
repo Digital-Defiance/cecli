@@ -134,7 +134,9 @@ async def run_cmd_async(
 
     if platform.system() == "Windows":
         loop = asyncio.get_running_loop()
-        if not isinstance(loop, asyncio.SelectorEventLoop):
+        if hasattr(asyncio, "SelectorEventLoop") and not isinstance(
+            loop, asyncio.SelectorEventLoop
+        ):
             # Fallback to synchronous version if not using SelectorEventLoop
             return await loop.run_in_executor(
                 None,
