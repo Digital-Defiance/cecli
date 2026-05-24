@@ -42,8 +42,8 @@ def service(mock_coder):
 def registry():
     """Pre-populated registry."""
     AgentService._global_registry = {
-        "reviewer": MagicMock(name="reviewer", prompt="Review code.", model=None),
-        "tester": MagicMock(name="tester", prompt="Write tests.", model="gpt-4"),
+        "reviewer": MagicMock(name="reviewer", prompt="Review code.", model=None, hooks={}),
+        "tester": MagicMock(name="tester", prompt="Write tests.", model="gpt-4", hooks={}),
     }
     yield
     AgentService._global_registry = {}

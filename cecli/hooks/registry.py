@@ -173,6 +173,12 @@ class HookRegistry:
                         hook = obj()
                         self.hook_manager.register_hook(hook)
                         hooks.append(hook.name)
+                    except ValueError as e:
+                        # Hook might already be registered; still count as loaded
+                        if "already exists" in str(e):
+                            hooks.append(hook.name)
+                        else:
+                            print(f"Warning: Could not register hook '{name}': {e}")
                     except Exception as e:
                         print(f"Warning: Could not instantiate hook {name}: {e}")
 
