@@ -286,6 +286,7 @@ agent-config:
   skills_paths: ["~/my-skills", "./project-skills"]  # Directories to search for skills
   skills_includelist: ["python-refactoring", "react-components"]  # Optional: Whitelist of skills to include
   skills_excludelist: ["legacy-tools"]  # Optional: Blacklist of skills to exclude
+  skills_init: ["python-refactoring"]  # Optional: Skills to load and enable on startup
 
 # Other Agent Mode options
 use-enhanced-map: true  # Use enhanced repo map with import relationships
@@ -296,6 +297,13 @@ This configuration system allows for fine-grained control over which tools are a
 ### Skills
 
 Agent Mode includes a powerful skills system that allows you to extend the AI's capabilities with custom instructions, reference materials, scripts, and assets. Skills are configured through the `agent-config` parameter in the YAML configuration file.
+
+Skills can be configured to load automatically on startup using the `skills_init` option, which accepts a list of skill names that will be both loaded (included in context) and whitelisted (made discoverable) when the agent starts:
+
+```yaml
+agent-config:
+  skills_init: ["python-refactoring"]
+```
 
 For complete documentation on creating and using skills, including skill directory structure, SKILL.md format, and best practices, see the [Skills documentation](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/skills.md).
 
