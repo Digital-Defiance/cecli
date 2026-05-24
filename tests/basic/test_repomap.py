@@ -444,6 +444,9 @@ class TestRepoMapAllLanguages:
         self.GPT35 = gpt35_model
         self.fixtures_dir = Path(__file__).parent.parent / "fixtures" / "languages"
 
+    def test_language_bash(self):
+        self._test_language_repo_map("bash", "sh", "greet")
+
     def test_language_c(self):
         self._test_language_repo_map("c", "c", "main")
 
