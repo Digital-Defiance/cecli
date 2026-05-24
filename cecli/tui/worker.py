@@ -92,6 +92,8 @@ class CoderWorker:
                 break  # Normal exit
             except asyncio.CancelledError:
                 break
+            except KeyboardInterrupt:
+                continue
             except SwitchCoderSignal as switch:
                 # Handle chat mode switches (e.g., /chat-mode architect)
                 try:
@@ -179,7 +181,11 @@ class CoderWorker:
             except RuntimeError:
                 # Loop may already be closed
                 pass
-
+            except KeyboardInterrupt:
+                # An interrupt was not caught within the async run loop.
+                # We'll just pass to allow the thread to exit gracefully
+                # without a scary traceback.
+                pass
         self.interrupt()
 
         # Wait for thread to finish
