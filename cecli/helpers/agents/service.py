@@ -242,6 +242,15 @@ class AgentService:
         except (KeyError, AttributeError, RuntimeError):
             logger.warning("Failed to destroy conversation instances", exc_info=True)
 
+        # Destroy hook resources for the sub-agent
+        from cecli.hooks.service import HookService
+
+        try:
+            HookService.destroy_instances(info.coder.uuid)
+            HookService.destroy_registry(info.coder.uuid)
+        except (KeyError, AttributeError, RuntimeError):
+            logger.warning("Failed to destroy hook instances", exc_info=True)
+
         # Notify TUI to remove the sub-agent container
         try:
             # Use self.coder (parent) for TUI lookup — sub-agents don't have
@@ -366,6 +375,35 @@ class AgentService:
         from cecli.helpers.conversation.service import ConversationService
 
         ConversationService.get_chunks(new_coder).add_system_message(system_prompt)
+
+        # Initialize hooks from sub-agent config if defined
+        hooks_config = getattr(config, "hooks", {})
+        if hooks_config:
+            import tempfile
+            from pathlib import Path
+
+            from cecli.hooks import HookService
+
+            hook_registry = HookService.get_registry(new_coder)
+
+            # Write hooks config to a temp YAML file and load it
+            import yaml
+
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as temp_file:
+                yaml.dump({"hooks": hooks_config}, temp_file)
+                temp_file_path = Path(temp_file.name)
+
+            try:
+                loaded_hooks = hook_registry.load_hooks_from_config(temp_file_path)
+                if loaded_hooks:
+                    logger.info(
+                        "Loaded %d hooks for sub-agent '%s': %s",
+                        len(loaded_hooks),
+                        name,
+                        ", ".join(loaded_hooks),
+                    )
+            finally:
+                temp_file_path.unlink(missing_ok=True)
 
         return new_coder, info
 
