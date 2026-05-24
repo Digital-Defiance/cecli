@@ -207,6 +207,7 @@ class AgentCoder(Coder):
             config["skills_excludelist"] = nested.getter(
                 config, ["skills_excludelist", "skills_blacklist"], []
             )
+            config["skills_init"] = nested.getter(config, ["skills_init", "skills_startup"], [])
 
         if "skills" not in self.allowed_context_blocks or not nested.getter(
             config, "skills_paths", []
@@ -227,6 +228,7 @@ class AgentCoder(Coder):
                 directory_paths=config.get("skills_paths", []),
                 include_list=config.get("skills_includelist", []),
                 exclude_list=config.get("skills_excludelist", []),
+                initialize_list=config.get("skills_init", []),
                 git_root=git_root,
                 coder=self,
             )
