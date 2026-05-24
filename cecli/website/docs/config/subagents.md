@@ -42,6 +42,7 @@ and suggestions for improvement.
 |-------|----------|-------------|
 | `name` | Yes | Unique name used to reference the sub-agent in commands and the Delegate tool |
 | `model` | No | Model override for this sub-agent. If omitted, inherits the parent agent's model |
+| `hooks` | No | Per-agent hooks configuration (see [Hooks](/config/hooks) for syntax) |
 
 #### System Prompt
 
@@ -202,6 +203,36 @@ By defining multiple sub-agents, you can get different perspectives on the same 
 2. Delegate to a **tester** to identify test gaps
 3. The primary agent synthesizes both reports into an action plan
 
+
+### Hooks in Sub-Agent Definitions
+
+Sub-agents can define their own hooks using the `hooks` field in their YAML front matter. These hooks are registered on the sub-agent's own `HookManager` when the sub-agent is spawned, and are cleaned up when the sub-agent is destroyed.
+
+> **Note**: Sub-agents do **not** inherit hooks from their parent agent. Each sub-agent must define its own hooks if needed.
+
+#### Example: Sub-Agent with Hooks
+
+```markdown
+---
+name: tester
+model: gemini/gemini-3-flash-preview
+hooks:
+  start:
+    - name: log_test_start
+      command: "echo 'Test session started at {timestamp}' >> .cecli/hooks_log.txt"
+      priority: 10
+      enabled: true
+  end:
+    - name: log_test_end
+      command: "echo 'Test session ended at {timestamp}' >> .cecli/hooks_log.txt"
+      priority: 10
+      enabled: true
+---
+You are a testing specialist. 
+Your job is to write comprehensive tests for code changes.
+```
+
+The `hooks` field uses the same syntax as the global hooks configuration (see [Hooks](/config/hooks) for details).
 ## See Also
 
 - [Agent Mode](/config/agent-mode)

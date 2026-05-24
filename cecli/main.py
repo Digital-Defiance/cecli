@@ -55,7 +55,7 @@ from cecli.helpers.conversation import ConversationService, MessageTag
 from cecli.helpers.copypaste import ClipboardWatcher
 from cecli.helpers.file_searcher import generate_search_path_list
 from cecli.history import ChatSummary
-from cecli.hooks import HookRegistry
+from cecli.hooks import HookService
 from cecli.io import InputOutput
 from cecli.llm import litellm
 from cecli.mcp import McpServerManager, load_mcp_servers
@@ -1002,16 +1002,6 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             args.mcp_servers, args.mcp_servers_files, io, args.verbose, args.mcp_transport
         )
         mcp_manager = await McpServerManager.from_servers(mcp_servers, io, args.verbose)
-        # Load hooks if specified
-        if args.hooks:
-            hook_registry = HookRegistry()
-            loaded_hooks = hook_registry.load_hooks_from_json(args.hooks)
-
-            if args.verbose and loaded_hooks:
-                io.tool_output(
-                    f"Loaded {len(loaded_hooks)} hooks from --hooks config:"
-                    f" {', '.join(loaded_hooks)}"
-                )
 
         coder = await Coder.create(
             main_model=main_model,
@@ -1058,6 +1048,19 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
             linear_output=args.linear_output,
             security_config=args.security_config,
         )
+
+        # Load hooks if specified (after coder creation so they register
+        # on the primary agent's per-coder HookManager)
+        if args.hooks:
+            hook_registry = HookService.get_registry(coder)
+            loaded_hooks = hook_registry.load_hooks_from_json(args.hooks)
+
+            if args.verbose and loaded_hooks:
+                io.tool_output(
+                    f"Loaded {len(loaded_hooks)} hooks from --hooks config:"
+                    f" {', '.join(loaded_hooks)}"
+                )
+
         if args.show_model_warnings and not suppress_pre_init:
             problem = await models.sanity_check_models(pre_init_io, main_model)
             if problem:
