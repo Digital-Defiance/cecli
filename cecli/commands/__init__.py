@@ -45,6 +45,7 @@ from .load_skill import LoadSkillCommand
 from .ls import LsCommand
 from .map import MapCommand
 from .map_refresh import MapRefreshCommand
+from .merge import MergeCommand
 from .model import ModelCommand
 from .models import ModelsCommand
 from .multiline_mode import MultilineModeCommand
@@ -132,6 +133,7 @@ CommandRegistry.register(LoadSkillCommand)
 CommandRegistry.register(LsCommand)
 CommandRegistry.register(MapCommand)
 CommandRegistry.register(MapRefreshCommand)
+CommandRegistry.register(MergeCommand)
 CommandRegistry.register(ModelCommand)
 CommandRegistry.register(ModelsCommand)
 CommandRegistry.register(MultilineModeCommand)
@@ -213,6 +215,7 @@ __all__ = [
     "LsCommand",
     "MapCommand",
     "MapRefreshCommand",
+    "MergeCommand",
     "ModelCommand",
     "ModelsCommand",
     "MultilineModeCommand",

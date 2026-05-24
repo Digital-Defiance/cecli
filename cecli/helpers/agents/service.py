@@ -16,6 +16,13 @@ import cecli.models as models
 
 logger = logging.getLogger(__name__)
 
+# Default summary strings used as fallbacks when a sub-agent finishes
+# without setting an explicit summary. These are exported so consumers
+# (e.g. the /merge command) can check against them reliably.
+DEFAULT_SUMMARY_NO_SUMMARY = "(no summary)"
+DEFAULT_SUMMARY_COMPLETED = "(completed without explicit summary)"
+DEFAULT_SUMMARY_INTERRUPTED = "(interrupted)"
+
 
 class SubAgentStatus(Enum):
     """Status of a sub-agent."""
@@ -136,7 +143,7 @@ class AgentService:
                 continue
             for info in list(service.sub_agents.values()):
                 if info.coder.uuid == sub_coder_uuid:
-                    info.summary = summary or "(no summary)"
+                    info.summary = summary or DEFAULT_SUMMARY_NO_SUMMARY
                     info.status = SubAgentStatus.FINISHED
                     return
 
@@ -432,10 +439,10 @@ class AgentService:
                 await info.coder.generate(user_message=user_message, preproc=True)
                 if info.status == SubAgentStatus.RUNNING:
                     info.status = SubAgentStatus.FINISHED
-                    info.summary = info.summary or "(completed without explicit summary)"
+                    info.summary = info.summary or DEFAULT_SUMMARY_COMPLETED
             except asyncio.CancelledError:
                 info.status = SubAgentStatus.FINISHED
-                info.summary = info.summary or "(interrupted)"
+                info.summary = info.summary or DEFAULT_SUMMARY_INTERRUPTED
                 logger.debug("Sub-agent %s generate cancelled (interrupted)", info.name)
                 raise
             except Exception as exc:
