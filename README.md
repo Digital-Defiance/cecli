@@ -1,3 +1,38 @@
+# Bright Vision Core
+
+**PyPI:** [`bright-vision-core`](https://pypi.org/project/bright-vision-core/) — cecli engine + headless HTTP API for the [Bright Vision](https://github.com/Digital-Defiance/bright-vision) desktop IDE.
+
+| Piece | Role |
+|-------|------|
+| **`cecli/`** | Coding agent (coders, commands, LiteLLM, git) — fork of [cecli](https://github.com/dwash96/cecli) |
+| **`bright_vision_core/`** | Headless FastAPI on `:8741`, sessions, superproject git, EARS/spec todos |
+
+### Lineage (fork²)
+
+This repo is a **biforkation**: [Aider](https://github.com/Aider-AI/aider) → [cecli](https://github.com/dwash96/cecli) → **bright-vision-core** (cecli + `bright_vision_core`). The Vision HTTP layer was **ported** from our earlier **`aider-vision-core`** tree (file merge, not replayed git history). Product docs were adapted from the old core site (Aider → Bright prose); the desktop site is [bright-vision.digitaldefiance.org](https://bright-vision.digitaldefiance.org). Details: [docs/LINEAGE.md](docs/LINEAGE.md).
+
+## Install (PyPI)
+
+```bash
+pip install bright-vision-core
+bright-vision-core-serve    # HTTP API at http://127.0.0.1:8741
+curl -s http://127.0.0.1:8741/health
+```
+
+Editable dev install (Bright Vision monorepo submodule):
+
+```bash
+pip install -e ./bright-vision-core
+```
+
+The same wheel also provides the **`cecli`** CLI (`cecli`, `aider-ce`, `ce.cli`) for terminal use.
+
+**Bright Vision desktop** manages Ollama locally (Terminal → Local LLM) and spawns this core on **Terminal → Start**. You do not need a separate `local-llm.sh` repo for the app.
+
+Release: [docs/PUBLISHING.md](docs/PUBLISHING.md). Lineage: [docs/LINEAGE.md](docs/LINEAGE.md). Vision API: [bright_vision_core/README.md](bright_vision_core/README.md). **Website:** [bright_vision_core/website/](bright_vision_core/website/) → [bright-vision-core.digitaldefiance.org](https://bright-vision-core.digitaldefiance.org) (not `cecli/website/`).
+
+---
+
 ## Why `cecli`?
 
 `cecli` (probably pronounced like "Cecily") is yet another cli agent crafted for extensibility and customization. Originally a fork of the [Aider](https://cecli.dev/) AI pair programming tool, we aim to make agentic coding as maximally effective as it can be based on the growing capabilities of large language models.
@@ -34,6 +69,15 @@ LLMs are a part of our lives from here on out so join us in learning about and c
 This project can be installed using several methods:
 
 ### Package Installation
+
+**Bright Vision Core** (cecli + `bright_vision_core` + `bright-vision-core-serve`):
+
+```bash
+pip install bright-vision-core
+```
+
+Upstream cecli-only name on PyPI (this repo publishes **`bright-vision-core`** instead):
+
 ```bash
 pip install cecli-dev
 ```
@@ -41,14 +85,14 @@ pip install cecli-dev
 or
 
 ```bash
-uv pip install --native-tls cecli-dev
+uv pip install --native-tls bright-vision-core
 ```
 
-The package exports a `cecli` command that can start the application
+The package exports `cecli` and `bright-vision-core-serve`.
 
 ### Tool Installation
 ```bash
-uv tool install --native-tls --python python3.12 cecli-dev
+uv tool install --native-tls --python python3.12 bright-vision-core
 ```
 
 Use the tool installation so cecli doesn't interfere with your development environment

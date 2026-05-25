@@ -24,7 +24,7 @@ load_dotenv()
 
 BOT_SUFFIX = """
 
-Note: [A bot script](https://github.com/Aider-AI/cecli/blob/main/scripts/issues.py) made these updates to the issue.
+Note: [A bot script](https://github.com/Aider-AI/aider/blob/main/scripts/issues.py) made these updates to the issue.
 """  # noqa
 
 DUPLICATE_COMMENT = (

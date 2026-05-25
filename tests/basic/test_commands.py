@@ -164,7 +164,7 @@ class TestCommands(TestCase):
             mock_tool_error.assert_called_once_with("Failed to copy to clipboard: Clipboard error")
 
     async def test_cmd_add_bad_glob(self):
-        # https://github.com/Aider-AI/cecli/issues/293
+        # https://github.com/Aider-AI/aider/issues/293
 
         io = InputOutput(pretty=False, fancy_input=False, yes=False)
         from cecli.coders import Coder
@@ -458,7 +458,7 @@ class TestCommands(TestCase):
                 pass
 
             # this was blowing up with GitCommandError, per:
-            # https://github.com/Aider-AI/cecli/issues/201
+            # https://github.com/Aider-AI/aider/issues/201
             commands.execute("add", "temp.txt")
 
     async def test_cmd_commit(self):
@@ -499,7 +499,7 @@ class TestCommands(TestCase):
             outside_file.touch()
 
             # This should not be allowed!
-            # https://github.com/Aider-AI/cecli/issues/178
+            # https://github.com/Aider-AI/aider/issues/178
             commands.execute("add", "../outside.txt")
 
             self.assertEqual(len(coder.abs_fnames), 0)
@@ -523,7 +523,7 @@ class TestCommands(TestCase):
 
             # This should not be allowed!
             # It was blowing up with GitCommandError, per:
-            # https://github.com/Aider-AI/cecli/issues/178
+            # https://github.com/Aider-AI/aider/issues/178
             commands.execute("add", "../outside.txt")
 
             self.assertEqual(len(coder.abs_fnames), 0)

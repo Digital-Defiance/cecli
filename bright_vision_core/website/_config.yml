@@ -1,0 +1,71 @@
+title: Bright Vision Core
+description: Biforkation engine docs — cecli + headless HTTP API for Bright Vision.
+theme: just-the-docs
+url: "https://bright-vision-core.digitaldefiance.org"
+
+analytics:
+  enabled: false
+
+plugins:
+  - jekyll-redirect-from
+  - jekyll-sitemap
+  - jekyll-feed
+
+defaults:
+  - scope:
+      path: "README.md"
+      type: "pages"
+    values:
+      description: "Bright Vision Core — headless engine documentation"
+
+exclude:
+  - "tmp*"
+  - "**/tmp*"
+  - OLD
+  - "**/OLD/**"
+  - "OLD/**"
+  - vendor
+  - feed.xml
+  - blog
+  - _posts
+
+aux_links:
+  "Bright Vision":
+    - "https://bright-vision.digitaldefiance.org/"
+  "Cecli":
+    - "https://cecli.dev/"
+  "GitHub":
+    - "https://github.com/Digital-Defiance/bright-vision-core"
+  "Lineage":
+    - "https://github.com/Digital-Defiance/bright-vision-core/blob/main/docs/LINEAGE.md"
+
+nav_external_links:
+  - title: "Bright Vision"
+    url: "https://bright-vision.digitaldefiance.org/"
+  - title: "cecli.dev"
+    url: "https://cecli.dev/"
+  - title: "GitHub"
+    url: "https://github.com/Digital-Defiance/bright-vision-core"
+
+repository: Digital-Defiance/bright-vision-core
+
+callouts:
+  tip:
+    title: Tip
+    color: green
+  note:
+    title: Note
+    color: yellow
+
+kramdown:
+  syntax_highlighter_opts:
+    css_class: highlight
+
+sass:
+  style: compressed
+
+compress_html:
+  clippings: all
+  comments: all
+  endings: all
+  startings: []

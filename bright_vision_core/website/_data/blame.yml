@@ -1,0 +1,4896 @@
+- aider_percentage: 31.33
+  aider_total: 47
+  end_date: '2023-06-15'
+  end_tag: v0.6.0
+  file_counts:
+    cecli/coder.py:
+      Paul Gauthier: 32
+      Paul Gauthier (cecli): 4
+    cecli/commands.py:
+      Paul Gauthier: 2
+    cecli/main.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 5
+    cecli/models.py:
+      Paul Gauthier: 27
+    cecli/repomap.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 1
+    cecli/utils.py:
+      Paul Gauthier: 25
+      Paul Gauthier (cecli): 21
+    setup.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 7
+    tests/test_utils.py:
+      Paul Gauthier (cecli): 9
+  grand_total:
+    Paul Gauthier: 103
+    Paul Gauthier (cecli): 47
+  start_tag: v0.5.0
+  total_lines: 150
+- aider_percentage: 14.36
+  aider_total: 209
+  end_date: '2023-06-25'
+  end_tag: v0.7.0
+  file_counts:
+    .github/workflows/release.yml:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 29
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/__init__.py:
+      Paul Gauthier: 6
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 314
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 35
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 115
+      Paul Gauthier (cecli): 3
+    cecli/coders/wholefile_func_coder.py:
+      Paul Gauthier: 120
+      Paul Gauthier (cecli): 11
+    cecli/commands.py:
+      Paul Gauthier: 28
+    cecli/diffs.py:
+      Paul Gauthier: 18
+    cecli/io.py:
+      Paul Gauthier: 16
+    cecli/main.py:
+      Paul Gauthier: 51
+      Paul Gauthier (cecli): 8
+    cecli/models.py:
+      Paul Gauthier: 52
+    scripts/benchmark.py:
+      Paul Gauthier: 312
+      Paul Gauthier (cecli): 22
+    scripts/versionbump.py:
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 44
+    setup.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 2
+    tests/test_coder.py:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 18
+    tests/test_commands.py:
+      Paul Gauthier: 3
+    tests/test_editblock.py:
+      Paul Gauthier: 28
+    tests/test_main.py:
+      Paul Gauthier: 8
+    tests/test_models.py:
+      Paul Gauthier: 21
+      Paul Gauthier (cecli): 7
+    tests/test_wholefile.py:
+      Paul Gauthier: 86
+      Paul Gauthier (cecli): 65
+  grand_total:
+    Paul Gauthier: 1246
+    Paul Gauthier (cecli): 209
+  start_tag: v0.6.0
+  total_lines: 1455
+- aider_percentage: 7.94
+  aider_total: 139
+  end_date: '2023-07-06'
+  end_tag: v0.8.0
+  file_counts:
+    .github/workflows/ubuntu-tests.yml:
+      Paul Gauthier: 5
+    .github/workflows/windows-tests.yml:
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 15
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/__init__.py:
+      Paul Gauthier: 10
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 161
+      Paul Gauthier (cecli): 5
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 14
+    cecli/coders/editblock_func_coder.py:
+      Paul Gauthier: 131
+      Paul Gauthier (cecli): 8
+    cecli/coders/single_wholefile_func_coder.py:
+      Paul Gauthier: 49
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 24
+    cecli/coders/wholefile_func_coder.py:
+      Paul Gauthier: 14
+    cecli/commands.py:
+      Paul Gauthier: 18
+    cecli/diffs.py:
+      Paul Gauthier: 25
+    cecli/io.py:
+      Paul Gauthier: 38
+      Paul Gauthier (cecli): 9
+    cecli/main.py:
+      Paul Gauthier: 14
+      Paul Gauthier (cecli): 5
+      kwmiebach: 5
+    cecli/repomap.py:
+      Paul Gauthier: 30
+    cecli/utils.py:
+      Paul Gauthier: 11
+    benchmark/Dockerfile:
+      Paul Gauthier: 7
+    benchmark/benchmark.py:
+      Paul Gauthier: 447
+      Paul Gauthier (cecli): 29
+    benchmark/docker.sh:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 1
+    benchmark/docker_build.sh:
+      Paul Gauthier: 8
+    benchmark/plot.sh:
+      Paul Gauthier: 29
+    benchmark/rungrid.py:
+      Paul Gauthier: 60
+    benchmark/test_benchmark.py:
+      Paul Gauthier: 35
+      Paul Gauthier (cecli): 12
+    tests/test_coder.py:
+      Paul Gauthier: 101
+      Paul Gauthier (cecli): 32
+    tests/test_commands.py:
+      Paul Gauthier: 21
+      Paul Gauthier (cecli): 17
+    tests/test_editblock.py:
+      Paul Gauthier: 86
+    tests/test_io.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 6
+    tests/test_main.py:
+      Paul Gauthier: 26
+    tests/test_repomap.py:
+      Paul Gauthier: 26
+    tests/test_wholefile.py:
+      Paul Gauthier: 189
+  grand_total:
+    Paul Gauthier: 1607
+    Paul Gauthier (cecli): 139
+    kwmiebach: 5
+  start_tag: v0.7.0
+  total_lines: 1751
+- aider_percentage: 18.95
+  aider_total: 170
+  end_date: '2023-07-16'
+  end_tag: v0.9.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 75
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 8
+    cecli/coders/single_wholefile_func_coder.py:
+      Paul Gauthier: 1
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 47
+    cecli/coders/wholefile_func_coder.py:
+      Paul Gauthier: 1
+    cecli/commands.py:
+      Paul Gauthier: 87
+      Paul Gauthier (cecli): 4
+    cecli/io.py:
+      Paul Gauthier: 8
+    cecli/main.py:
+      Paul Gauthier: 162
+      Paul Gauthier (cecli): 57
+    cecli/repomap.py:
+      Paul Gauthier: 37
+    cecli/utils.py:
+      Paul Gauthier: 8
+    benchmark/benchmark.py:
+      Paul Gauthier: 3
+    scripts/versionbump.py:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 13
+    setup.py:
+      Paul Gauthier (cecli): 1
+    tests/test_coder.py:
+      Paul Gauthier: 110
+      Paul Gauthier (cecli): 30
+    tests/test_commands.py:
+      Paul Gauthier: 36
+      Paul Gauthier (cecli): 61
+    tests/test_editblock.py:
+      Paul Gauthier: 1
+    tests/test_io.py:
+      Paul Gauthier: 1
+    tests/test_main.py:
+      Paul Gauthier: 20
+    tests/test_repomap.py:
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 1
+    tests/test_wholefile.py:
+      Paul Gauthier: 50
+    tests/utils.py:
+      Paul Gauthier: 43
+      Paul Gauthier (cecli): 3
+  grand_total:
+    Paul Gauthier: 727
+    Paul Gauthier (cecli): 170
+  start_tag: v0.8.0
+  total_lines: 897
+- aider_percentage: 12.26
+  aider_total: 39
+  end_date: '2023-07-22'
+  end_tag: v0.10.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 24
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 11
+    cecli/coders/single_wholefile_func_coder.py:
+      Paul Gauthier: 2
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 2
+    cecli/coders/wholefile_func_coder.py:
+      Paul Gauthier: 2
+    cecli/commands.py:
+      Amer Amayreh: 4
+      Paul Gauthier (cecli): 12
+    cecli/io.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 5
+    cecli/main.py:
+      Paul Gauthier: 62
+    cecli/versioncheck.py:
+      Paul Gauthier: 22
+      Paul Gauthier (cecli): 5
+    benchmark/benchmark.py:
+      Paul Gauthier: 1
+    scripts/versionbump.py:
+      Paul Gauthier (cecli): 2
+    tests/test_coder.py:
+      Paul Gauthier: 43
+    tests/test_commands.py:
+      Paul Gauthier: 31
+      Paul Gauthier (cecli): 12
+    tests/test_editblock.py:
+      Paul Gauthier: 20
+    tests/test_main.py:
+      Paul Gauthier: 44
+      Paul Gauthier (cecli): 3
+    tests/utils.py:
+      Paul Gauthier: 6
+  grand_total:
+    Amer Amayreh: 4
+    Paul Gauthier: 275
+    Paul Gauthier (cecli): 39
+  start_tag: v0.9.0
+  total_lines: 318
+- aider_percentage: 6.63
+  aider_total: 55
+  end_date: '2023-08-02'
+  end_tag: v0.11.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 119
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 2
+    cecli/commands.py:
+      Paul Gauthier: 38
+      Paul Gauthier (cecli): 2
+    cecli/history.py:
+      Paul Gauthier: 103
+      Paul Gauthier (cecli): 25
+    cecli/main.py:
+      Paul Gauthier: 86
+      Paul Gauthier (cecli): 3
+    cecli/repo.py:
+      Paul Gauthier: 133
+      Paul Gauthier (cecli): 13
+    cecli/sendchat.py:
+      Paul Gauthier: 64
+    scripts/versionbump.py:
+      Paul Gauthier: 4
+    tests/test_coder.py:
+      Paul Gauthier: 35
+    tests/test_commands.py:
+      Paul Gauthier: 53
+      Paul Gauthier (cecli): 6
+    tests/test_main.py:
+      Paul Gauthier: 30
+      Paul Gauthier (cecli): 1
+    tests/test_repo.py:
+      Paul Gauthier: 75
+      Paul Gauthier (cecli): 5
+    tests/test_sendchat.py:
+      Paul Gauthier: 25
+    tests/utils.py:
+      Paul Gauthier: 6
+  grand_total:
+    Paul Gauthier: 774
+    Paul Gauthier (cecli): 55
+  start_tag: v0.10.0
+  total_lines: 829
+- aider_percentage: 5.21
+  aider_total: 28
+  end_date: '2023-08-11'
+  end_tag: v0.12.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Arseniy Pavlenko: 3
+      Paul Gauthier: 4
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 124
+    cecli/commands.py:
+      Joshua Vial: 2
+      Paul Gauthier: 17
+      Paul Gauthier (cecli): 3
+    cecli/history.py:
+      Paul Gauthier: 10
+    cecli/io.py:
+      Paul Gauthier: 10
+    cecli/main.py:
+      Paul Gauthier: 2
+    cecli/repo.py:
+      Paul Gauthier: 26
+    cecli/repomap.py:
+      Paul Gauthier: 22
+    cecli/sendchat.py:
+      Paul Gauthier: 17
+    cecli/voice.py:
+      Paul Gauthier: 77
+      Paul Gauthier (cecli): 8
+    benchmark/benchmark.py:
+      Paul Gauthier: 60
+    scripts/versionbump.py:
+      Paul Gauthier: 1
+    tests/test_coder.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 17
+    tests/test_commands.py:
+      Paul Gauthier: 22
+    tests/test_editblock.py:
+      Paul Gauthier: 52
+    tests/test_repo.py:
+      Paul Gauthier: 58
+  grand_total:
+    Arseniy Pavlenko: 3
+    Joshua Vial: 2
+    Paul Gauthier: 504
+    Paul Gauthier (cecli): 28
+  start_tag: v0.11.0
+  total_lines: 537
+- aider_percentage: 4.18
+  aider_total: 24
+  end_date: '2023-08-22'
+  end_tag: v0.13.0
+  file_counts:
+    .github/workflows/ubuntu-tests.yml:
+      Paul Gauthier: 1
+    .github/workflows/windows-tests.yml:
+      Paul Gauthier: 1
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 93
+      Paul Gauthier (cecli): 2
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 6
+    cecli/coders/editblock_func_coder.py:
+      Paul Gauthier: 2
+    cecli/coders/single_wholefile_func_coder.py:
+      Paul Gauthier: 2
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 16
+    cecli/coders/wholefile_func_coder.py:
+      Paul Gauthier: 3
+    cecli/commands.py:
+      Paul Gauthier: 34
+    cecli/io.py:
+      Paul Gauthier: 8
+    cecli/main.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 20
+    cecli/repo.py:
+      Paul Gauthier: 59
+    cecli/voice.py:
+      Paul Gauthier: 26
+    setup.py:
+      Paul Gauthier (cecli): 1
+    tests/test_coder.py:
+      Paul Gauthier: 277
+      Paul Gauthier (cecli): 1
+    tests/test_main.py:
+      Paul Gauthier: 1
+    tests/test_repo.py:
+      Paul Gauthier: 17
+    tests/test_wholefile.py:
+      Paul Gauthier: 1
+  grand_total:
+    Paul Gauthier: 550
+    Paul Gauthier (cecli): 24
+  start_tag: v0.12.0
+  total_lines: 574
+- aider_percentage: 0.53
+  aider_total: 1
+  end_date: '2023-09-08'
+  end_tag: v0.14.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Joshua Vial: 20
+      Paul Gauthier: 4
+    cecli/commands.py:
+      JV: 1
+    cecli/history.py:
+      JV: 1
+      Joshua Vial: 6
+    cecli/main.py:
+      JV: 1
+      Joshua Vial: 1
+    cecli/models/__init__.py:
+      JV: 1
+      Paul Gauthier: 14
+    cecli/models/model.py:
+      JV: 27
+      Joshua Vial: 4
+      Paul Gauthier: 8
+    cecli/models/openai.py:
+      JV: 3
+      Paul Gauthier: 3
+    cecli/models/openrouter.py:
+      JV: 28
+      Joshua Vial: 2
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 1
+    cecli/repo.py:
+      JV: 2
+    cecli/repomap.py:
+      JV: 1
+      Joshua Vial: 1
+    cecli/sendchat.py:
+      JV: 2
+      Joshua Vial: 4
+      Paul Gauthier: 1
+    benchmark/Dockerfile:
+      Paul Gauthier: 1
+    setup.py:
+      Paul Gauthier: 1
+    tests/test_models.py:
+      Joshua Vial: 22
+      Paul Gauthier: 13
+  grand_total:
+    JV: 67
+    Joshua Vial: 60
+    Paul Gauthier: 61
+    Paul Gauthier (cecli): 1
+  start_tag: v0.13.0
+  total_lines: 189
+- aider_percentage: 10.57
+  aider_total: 41
+  end_date: '2023-10-20'
+  end_tag: v0.15.0
+  file_counts:
+    .github/workflows/release.yml:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 14
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 13
+      Thinh Nguyen: 2
+    cecli/commands.py:
+      Alexander Kjeldaas (cecli): 1
+      Paul Gauthier: 49
+    cecli/main.py:
+      Paul Gauthier: 29
+      Paul Gauthier (cecli): 24
+      Thinh Nguyen: 7
+    cecli/repo.py:
+      Paul Gauthier: 26
+      Paul Gauthier (cecli): 2
+    cecli/repomap.py:
+      Paul Gauthier: 11
+    cecli/voice.py:
+      Paul Gauthier: 9
+    benchmark/Dockerfile:
+      Joshua Vial: 1
+    benchmark/benchmark.py:
+      Joshua Vial: 1
+    docker/Dockerfile:
+      Paul Gauthier: 9
+    scripts/versionbump.py:
+      Paul Gauthier: 2
+    tests/test_commands.py:
+      Paul Gauthier: 123
+    tests/test_main.py:
+      Paul Gauthier: 17
+    tests/test_repo.py:
+      Paul Gauthier: 38
+  grand_total:
+    Alexander Kjeldaas (cecli): 1
+    Joshua Vial: 2
+    Paul Gauthier: 336
+    Paul Gauthier (cecli): 40
+    Thinh Nguyen: 9
+  start_tag: v0.14.0
+  total_lines: 388
+- aider_percentage: 1.71
+  aider_total: 16
+  end_date: '2023-10-29'
+  end_tag: v0.16.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 7
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 13
+    cecli/commands.py:
+      Paul Gauthier: 5
+    cecli/queries/tree-sitter-c-sharp-tags.scm:
+      Paul Gauthier: 46
+    cecli/queries/tree-sitter-c-tags.scm:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 4
+    cecli/queries/tree-sitter-cpp-tags.scm:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 8
+    cecli/queries/tree-sitter-elisp-tags.scm:
+      Paul Gauthier: 5
+    cecli/queries/tree-sitter-elixir-tags.scm:
+      Paul Gauthier: 54
+    cecli/queries/tree-sitter-elm-tags.scm:
+      Paul Gauthier: 19
+    cecli/queries/tree-sitter-go-tags.scm:
+      Paul Gauthier: 30
+    cecli/queries/tree-sitter-java-tags.scm:
+      Paul Gauthier: 20
+    cecli/queries/tree-sitter-javascript-tags.scm:
+      Paul Gauthier: 88
+    cecli/queries/tree-sitter-ocaml-tags.scm:
+      Paul Gauthier: 116
+    cecli/queries/tree-sitter-php-tags.scm:
+      Paul Gauthier: 26
+    cecli/queries/tree-sitter-python-tags.scm:
+      Paul Gauthier: 12
+    cecli/queries/tree-sitter-ql-tags.scm:
+      Paul Gauthier: 26
+    cecli/queries/tree-sitter-ruby-tags.scm:
+      Paul Gauthier: 64
+    cecli/queries/tree-sitter-rust-tags.scm:
+      Paul Gauthier: 60
+    cecli/queries/tree-sitter-typescript-tags.scm:
+      Paul Gauthier: 23
+    cecli/repomap.py:
+      Paul Gauthier: 193
+      Paul Gauthier (cecli): 2
+    benchmark/Dockerfile:
+      Paul Gauthier: 4
+    docker/Dockerfile:
+      Paul Gauthier: 1
+    setup.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 2
+    tests/test_coder.py:
+      Paul Gauthier: 21
+    tests/test_commands.py:
+      Paul Gauthier: 10
+      paul-gauthier: 1
+    tests/test_editblock.py:
+      Paul Gauthier: 55
+    tests/test_repomap.py:
+      Paul Gauthier: 5
+  grand_total:
+    Paul Gauthier: 918
+    Paul Gauthier (cecli): 16
+    paul-gauthier: 1
+  start_tag: v0.15.0
+  total_lines: 935
+- aider_percentage: 7.91
+  aider_total: 22
+  end_date: '2023-11-06'
+  end_tag: v0.17.0
+  file_counts:
+    .github/workflows/docker-build-test.yml:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 16
+    .github/workflows/release.yml:
+      Paul Gauthier: 4
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 21
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 29
+    cecli/commands.py:
+      Omri Bloch: 1
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 6
+    cecli/io.py:
+      Paul Gauthier: 1
+    cecli/main.py:
+      Paul Gauthier: 3
+    cecli/models/openai.py:
+      Paul Gauthier: 9
+    cecli/queries/tree-sitter-elisp-tags.scm:
+      Paul Gauthier: 3
+    cecli/repomap.py:
+      Paul Gauthier: 6
+    benchmark/Dockerfile:
+      Paul Gauthier: 2
+    benchmark/benchmark.py:
+      Paul Gauthier: 24
+    docker/Dockerfile:
+      Paul Gauthier: 5
+    setup.py:
+      Jack Hallam: 3
+      Paul Gauthier: 10
+    tests/test_commands.py:
+      Paul Gauthier: 65
+    tests/test_editblock.py:
+      Paul Gauthier: 23
+    tests/test_io.py:
+      Paul Gauthier: 24
+    tests/utils.py:
+      Paul Gauthier: 6
+  grand_total:
+    Jack Hallam: 3
+    Omri Bloch: 1
+    Paul Gauthier: 252
+    Paul Gauthier (cecli): 22
+  start_tag: v0.16.0
+  total_lines: 278
+- aider_percentage: 38.49
+  aider_total: 107
+  end_date: '2023-11-17'
+  end_tag: v0.18.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 33
+    cecli/commands.py:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 3
+    cecli/io.py:
+      Paul Gauthier: 3
+    cecli/models/model.py:
+      Paul Gauthier: 13
+    cecli/repomap.py:
+      Paul Gauthier: 10
+    benchmark/benchmark.py:
+      Paul Gauthier: 22
+      Paul Gauthier (cecli): 50
+    benchmark/rungrid.py:
+      Paul Gauthier: 16
+    scripts/versionbump.py:
+      Paul Gauthier (cecli): 41
+    tests/test_coder.py:
+      Paul Gauthier: 25
+    tests/test_commands.py:
+      Paul Gauthier: 19
+    tests/test_main.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 13
+    tests/test_repomap.py:
+      Paul Gauthier: 13
+  grand_total:
+    Paul Gauthier: 171
+    Paul Gauthier (cecli): 107
+  start_tag: v0.17.0
+  total_lines: 278
+- aider_percentage: 0.75
+  aider_total: 14
+  end_date: '2023-12-19'
+  end_tag: v0.19.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/__init__.py:
+      Paul Gauthier: 2
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 66
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 2
+    cecli/coders/search_replace.py:
+      Paul Gauthier: 769
+    cecli/coders/udiff_coder.py:
+      Paul Gauthier: 395
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 2
+    cecli/commands.py:
+      Paul Gauthier: 1
+    cecli/history.py:
+      Paul Gauthier: 3
+    cecli/main.py:
+      Paul Gauthier: 44
+      Your Name: 3
+      Your Name (cecli): 14
+    cecli/models/__init__.py:
+      Paul Gauthier: 3
+    cecli/models/model.py:
+      Paul Gauthier: 7
+    cecli/models/openai.py:
+      Paul Gauthier: 13
+    cecli/models/openrouter.py:
+      Paul Gauthier: 4
+    cecli/repo.py:
+      Paul Gauthier: 4
+    cecli/sendchat.py:
+      Paul Gauthier: 15
+    cecli/utils.py:
+      Paul Gauthier: 28
+    cecli/voice.py:
+      Paul Gauthier: 7
+    benchmark/benchmark.py:
+      Paul Gauthier: 200
+    benchmark/refactor_tools.py:
+      Paul Gauthier: 209
+    tests/test_coder.py:
+      Paul Gauthier: 11
+    tests/test_commands.py:
+      Paul Gauthier: 1
+    tests/test_io.py:
+      Paul Gauthier: 1
+    tests/test_main.py:
+      Paul Gauthier: 10
+      Your Name: 18
+    tests/test_models.py:
+      Paul Gauthier: 10
+    tests/test_repo.py:
+      Paul Gauthier: 1
+    tests/test_repomap.py:
+      Paul Gauthier: 1
+    tests/test_sendchat.py:
+      Paul Gauthier: 23
+    tests/test_wholefile.py:
+      Paul Gauthier: 10
+  grand_total:
+    Paul Gauthier: 1843
+    Your Name: 21
+    Your Name (cecli): 14
+  start_tag: v0.18.0
+  total_lines: 1878
+- aider_percentage: 11.49
+  aider_total: 40
+  end_date: '2024-01-04'
+  end_tag: v0.20.0
+  file_counts:
+    .github/workflows/docker-build-test.yml:
+      Paul Gauthier: 4
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Joshua Vial: 28
+      Paul Gauthier: 25
+    cecli/coders/search_replace.py:
+      Paul Gauthier: 2
+    cecli/coders/udiff_coder.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 2
+    cecli/commands.py:
+      Christopher Toth: 2
+      Joshua Vial: 16
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 7
+    cecli/io.py:
+      Joshua Vial: 15
+    cecli/models/model.py:
+      Joshua Vial: 43
+    cecli/models/openrouter.py:
+      Joshua Vial: 4
+    cecli/repo.py:
+      Christopher Toth: 5
+    cecli/repomap.py:
+      Paul Gauthier: 6
+    cecli/sendchat.py:
+      Joshua Vial: 9
+    cecli/utils.py:
+      Joshua Vial: 29
+    benchmark/benchmark.py:
+      Joshua Vial: 16
+    tests/test_commands.py:
+      Paul Gauthier: 21
+      Paul Gauthier (cecli): 24
+    tests/test_models.py:
+      Joshua Vial: 13
+    tests/test_udiff.py:
+      Paul Gauthier: 66
+      Paul Gauthier (cecli): 7
+  grand_total:
+    Christopher Toth: 7
+    Joshua Vial: 173
+    Paul Gauthier: 128
+    Paul Gauthier (cecli): 40
+  start_tag: v0.19.0
+  total_lines: 348
+- aider_percentage: 19.78
+  aider_total: 18
+  end_date: '2024-01-08'
+  end_tag: v0.21.0
+  file_counts:
+    .github/workflows/ubuntu-tests.yml:
+      Paul Gauthier: 1
+    .github/workflows/windows-tests.yml:
+      Paul Gauthier: 1
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/udiff_coder.py:
+      Paul Gauthier: 22
+    cecli/main.py:
+      Paul Gauthier (cecli): 10
+    cecli/versioncheck.py:
+      Paul Gauthier (cecli): 8
+    setup.py:
+      Paul Gauthier: 2
+    tests/test_udiff.py:
+      Paul Gauthier: 46
+  grand_total:
+    Paul Gauthier: 73
+    Paul Gauthier (cecli): 18
+  start_tag: v0.20.0
+  total_lines: 91
+- aider_percentage: 0.0
+  aider_total: 0
+  end_date: '2024-01-22'
+  end_tag: v0.22.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 2
+    cecli/coders/udiff_coder.py:
+      Paul Gauthier: 5
+    cecli/commands.py:
+      Paul Gauthier: 48
+    cecli/main.py:
+      Paul Gauthier: 2
+  grand_total:
+    Paul Gauthier: 58
+  start_tag: v0.21.0
+  total_lines: 58
+- aider_percentage: 1.11
+  aider_total: 2
+  end_date: '2024-02-03'
+  end_tag: v0.23.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 10
+    cecli/commands.py:
+      Paul Gauthier: 5
+    cecli/main.py:
+      Paul Gauthier: 15
+      Zachary Vorhies: 7
+    cecli/mdstream.py:
+      Paul Gauthier: 120
+      Paul Gauthier (cecli): 2
+    cecli/models/openai.py:
+      Paul Gauthier: 3
+    benchmark/benchmark.py:
+      Paul Gauthier: 17
+  grand_total:
+    Paul Gauthier: 171
+    Paul Gauthier (cecli): 2
+    Zachary Vorhies: 7
+  start_tag: v0.22.0
+  total_lines: 180
+- aider_percentage: 5.07
+  aider_total: 19
+  end_date: '2024-02-10'
+  end_tag: v0.24.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 5
+    cecli/commands.py:
+      Paul Gauthier: 16
+      Paul Gauthier (cecli): 8
+    cecli/main.py:
+      Paul Gauthier: 2
+    cecli/models/__init__.py:
+      Paul Gauthier: 2
+    cecli/models/model.py:
+      Paul Gauthier: 3
+    cecli/models/openai.py:
+      Paul Gauthier: 135
+    cecli/scrape.py:
+      Paul Gauthier: 176
+      Paul Gauthier (cecli): 11
+    cecli/utils.py:
+      Paul Gauthier: 8
+    tests/test_models.py:
+      Paul Gauthier: 8
+  grand_total:
+    Paul Gauthier: 356
+    Paul Gauthier (cecli): 19
+  start_tag: v0.23.0
+  total_lines: 375
+- aider_percentage: 6.02
+  aider_total: 8
+  end_date: '2024-03-04'
+  end_tag: v0.25.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 46
+    cecli/commands.py:
+      Paul Gauthier: 5
+    cecli/main.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 8
+    cecli/models/openai.py:
+      Paul Gauthier: 1
+    cecli/repo.py:
+      Paul Gauthier: 11
+    cecli/scrape.py:
+      Paul Gauthier: 1
+    tests/test_coder.py:
+      Paul Gauthier: 28
+    tests/test_commands.py:
+      Paul Gauthier: 28
+  grand_total:
+    Paul Gauthier: 125
+    Paul Gauthier (cecli): 8
+  start_tag: v0.24.0
+  total_lines: 133
+- aider_percentage: 0.0
+  aider_total: 0
+  end_date: '2024-03-08'
+  end_tag: v0.26.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 8
+    cecli/main.py:
+      Paul Gauthier: 30
+  grand_total:
+    Paul Gauthier: 39
+  start_tag: v0.25.0
+  total_lines: 39
+- aider_percentage: 0.0
+  aider_total: 0
+  end_date: '2024-03-22'
+  end_tag: v0.27.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/commands.py:
+      Paul Gauthier: 10
+    cecli/main.py:
+      Paul Gauthier: 14
+    cecli/queries/tree-sitter-typescript-tags.scm:
+      Ryan Freckleton: 32
+    cecli/repomap.py:
+      Paul Gauthier: 6
+    benchmark/benchmark.py:
+      Paul Gauthier: 111
+    tests/test_commands.py:
+      Paul Gauthier: 3
+    tests/test_repomap.py:
+      Ryan Freckleton: 59
+  grand_total:
+    Paul Gauthier: 145
+    Ryan Freckleton: 91
+  start_tag: v0.26.0
+  total_lines: 236
+- aider_percentage: 0.0
+  aider_total: 0
+  end_date: '2024-04-09'
+  end_tag: v0.28.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/models/openai.py:
+      Paul Gauthier: 10
+  grand_total:
+    Paul Gauthier: 11
+  start_tag: v0.27.0
+  total_lines: 11
+- aider_percentage: 5.47
+  aider_total: 35
+  end_date: '2024-04-21'
+  end_tag: v0.29.0
+  file_counts:
+    .github/workflows/docker-build-test.yml:
+      Paul Gauthier: 1
+    .github/workflows/release.yml:
+      Paul Gauthier: 2
+    .github/workflows/ubuntu-tests.yml:
+      Paul Gauthier: 2
+    .github/workflows/windows-tests.yml:
+      Paul Gauthier: 2
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Aloha: 1
+      Paul Gauthier: 22
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 9
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 2
+    cecli/commands.py:
+      Paul Gauthier: 30
+    cecli/history.py:
+      Paul Gauthier: 6
+    cecli/main.py:
+      Paul Gauthier: 81
+    cecli/models.py:
+      Paul Gauthier: 219
+      Paul Gauthier (cecli): 33
+    cecli/repo.py:
+      Paul Gauthier: 19
+    cecli/repomap.py:
+      Paul Gauthier: 10
+      Paul Gauthier (cecli): 2
+    cecli/sendchat.py:
+      Paul Gauthier: 4
+    cecli/voice.py:
+      Paul Gauthier: 3
+    benchmark/benchmark.py:
+      Paul Gauthier: 60
+    tests/test_coder.py:
+      Paul Gauthier: 28
+    tests/test_commands.py:
+      Paul Gauthier: 25
+    tests/test_editblock.py:
+      Paul Gauthier: 4
+    tests/test_models.py:
+      Paul Gauthier: 13
+    tests/test_repo.py:
+      Paul Gauthier: 26
+    tests/test_repomap.py:
+      Paul Gauthier: 13
+    tests/test_sendchat.py:
+      Paul Gauthier: 8
+    tests/test_wholefile.py:
+      Paul Gauthier: 14
+  grand_total:
+    Aloha: 1
+    Paul Gauthier: 604
+    Paul Gauthier (cecli): 35
+  start_tag: v0.28.0
+  total_lines: 640
+- aider_percentage: 0.0
+  aider_total: 0
+  end_date: '2024-04-23'
+  end_tag: v0.30.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 11
+    cecli/history.py:
+      Paul Gauthier: 2
+    cecli/main.py:
+      Paul Gauthier: 27
+    cecli/models.py:
+      Paul Gauthier: 171
+    cecli/sendchat.py:
+      Paul Gauthier: 3
+    cecli/voice.py:
+      Paul Gauthier: 2
+    benchmark/benchmark.py:
+      Paul Gauthier: 1
+    tests/test_coder.py:
+      Paul Gauthier: 1
+    tests/test_commands.py:
+      Paul Gauthier: 1
+    tests/test_editblock.py:
+      Paul Gauthier: 1
+    tests/test_models.py:
+      Paul Gauthier: 6
+    tests/test_repo.py:
+      Paul Gauthier: 1
+    tests/test_repomap.py:
+      Paul Gauthier: 2
+    tests/test_wholefile.py:
+      Paul Gauthier: 1
+  grand_total:
+    Paul Gauthier: 231
+  start_tag: v0.29.0
+  total_lines: 231
+- aider_percentage: 0.16
+  aider_total: 2
+  end_date: '2024-05-02'
+  end_tag: v0.31.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 375
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 131
+    cecli/commands.py:
+      Paul Gauthier: 45
+    cecli/gui.py:
+      Paul Gauthier: 531
+      Paul Gauthier (cecli): 2
+    cecli/main.py:
+      Paul Gauthier: 114
+    cecli/models.py:
+      Paul Gauthier: 14
+    cecli/scrape.py:
+      Paul Gauthier: 15
+    cecli/sendchat.py:
+      Paul Gauthier: 3
+    tests/test_coder.py:
+      Paul Gauthier: 16
+    tests/test_commands.py:
+      Paul Gauthier: 10
+    tests/test_editblock.py:
+      Paul Gauthier: 4
+    tests/test_wholefile.py:
+      Paul Gauthier: 1
+  grand_total:
+    Paul Gauthier: 1260
+    Paul Gauthier (cecli): 2
+  start_tag: v0.30.0
+  total_lines: 1262
+- aider_percentage: 3.0
+  aider_total: 8
+  end_date: '2024-05-07'
+  end_tag: v0.32.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 7
+    cecli/coders/__init__.py:
+      Paul Gauthier: 2
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 55
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 4
+    cecli/coders/editblock_fenced_coder.py:
+      Paul Gauthier: 11
+    cecli/gui.py:
+      Paul Gauthier: 1
+    cecli/main.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 3
+    cecli/models.py:
+      Paul Gauthier: 54
+    cecli/sendchat.py:
+      Paul Gauthier: 10
+    cecli/utils.py:
+      Paul Gauthier: 1
+    benchmark/benchmark.py:
+      Paul Gauthier: 81
+      Paul Gauthier (cecli): 5
+    benchmark/plots.py:
+      Paul Gauthier: 5
+    tests/test_main.py:
+      Paul Gauthier: 18
+    tests/test_sendchat.py:
+      Paul Gauthier: 4
+  grand_total:
+    Paul Gauthier: 259
+    Paul Gauthier (cecli): 8
+  start_tag: v0.31.0
+  total_lines: 267
+- aider_percentage: 0.0
+  aider_total: 0
+  end_date: '2024-05-08'
+  end_tag: v0.33.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 1
+    cecli/commands.py:
+      Paul Gauthier: 1
+    cecli/litellm.py:
+      Paul Gauthier: 11
+    cecli/main.py:
+      Paul Gauthier: 1
+    cecli/models.py:
+      Paul Gauthier: 9
+    cecli/sendchat.py:
+      Paul Gauthier: 1
+    cecli/voice.py:
+      Paul Gauthier: 2
+  grand_total:
+    Paul Gauthier: 27
+  start_tag: v0.32.0
+  total_lines: 27
+- aider_percentage: 0.0
+  aider_total: 0
+  end_date: '2024-05-10'
+  end_tag: v0.34.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 6
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 18
+    cecli/main.py:
+      Paul Gauthier: 9
+    cecli/models.py:
+      Paul Gauthier: 14
+    cecli/repomap.py:
+      Paul Gauthier: 3
+    cecli/sendchat.py:
+      Paul Gauthier: 7
+    tests/test_sendchat.py:
+      Paul Gauthier: 4
+  grand_total:
+    Paul Gauthier: 62
+  start_tag: v0.33.0
+  total_lines: 62
+- aider_percentage: 6.42
+  aider_total: 17
+  end_date: '2024-05-13'
+  end_tag: v0.35.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 18
+      Paul Gauthier (cecli): 5
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 22
+      Paul Gauthier (cecli): 1
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 84
+      Paul Gauthier (cecli): 10
+    cecli/history.py:
+      Paul Gauthier: 20
+    cecli/io.py:
+      Paul Gauthier: 8
+    cecli/main.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 1
+    cecli/models.py:
+      Paul Gauthier: 25
+    cecli/sendchat.py:
+      Paul Gauthier: 8
+    cecli/utils.py:
+      Paul Gauthier: 51
+    cecli/versioncheck.py:
+      Paul Gauthier: 10
+  grand_total:
+    Paul Gauthier: 248
+    Paul Gauthier (cecli): 17
+  start_tag: v0.34.0
+  total_lines: 265
+- aider_percentage: 14.64
+  aider_total: 89
+  end_date: '2024-05-22'
+  end_tag: v0.36.0
+  file_counts:
+    Gemfile:
+      Paul Gauthier (cecli): 5
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 42
+      Paul Gauthier (cecli): 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 113
+      Paul Gauthier (cecli): 3
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier (cecli): 2
+    cecli/commands.py:
+      Paul Gauthier: 49
+    cecli/io.py:
+      Paul Gauthier: 9
+    cecli/linter.py:
+      Paul Gauthier: 211
+      Paul Gauthier (cecli): 29
+    cecli/litellm.py:
+      Paul Gauthier: 2
+    cecli/main.py:
+      Paul Gauthier: 48
+      Paul Gauthier (cecli): 2
+    cecli/models.py:
+      Paul Gauthier: 3
+    cecli/repo.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 14
+    benchmark/benchmark.py:
+      Paul Gauthier: 5
+    benchmark/over_time.py:
+      Paul Gauthier: 30
+      Paul Gauthier (cecli): 27
+    scripts/jekyll_build.sh:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 3
+    scripts/jekyll_run.sh:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 3
+  grand_total:
+    Paul Gauthier: 519
+    Paul Gauthier (cecli): 89
+  start_tag: v0.35.0
+  total_lines: 608
+- aider_percentage: 18.65
+  aider_total: 113
+  end_date: '2024-06-04'
+  end_tag: v0.37.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 73
+      Paul Gauthier (cecli): 3
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 1
+    cecli/commands.py:
+      Aleksandr Bobrov: 1
+      Aleksandr Bobrov (cecli): 1
+      Paul Gauthier: 24
+    cecli/io.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 1
+    cecli/linter.py:
+      Paul Gauthier: 4
+    cecli/litellm.py:
+      Paul Gauthier: 1
+    cecli/repomap.py:
+      Paul Gauthier: 115
+    cecli/sendchat.py:
+      Paul Gauthier: 2
+    cecli/voice.py:
+      Paul Gauthier (cecli): 4
+    benchmark/over_time.py:
+      Paul Gauthier (cecli): 7
+    benchmark/swe_bench.py:
+      Paul Gauthier: 101
+      Paul Gauthier (cecli): 30
+    scripts/blame.py:
+      Paul Gauthier: 159
+      Paul Gauthier (cecli): 53
+    tests/test_io.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 14
+  grand_total:
+    Aleksandr Bobrov: 1
+    Aleksandr Bobrov (cecli): 1
+    Paul Gauthier: 492
+    Paul Gauthier (cecli): 112
+  start_tag: v0.36.0
+  total_lines: 606
+- aider_percentage: 8.96
+  aider_total: 50
+  end_date: '2024-06-16'
+  end_tag: v0.38.0
+  file_counts:
+    .github/workflows/docker-build-test.yml:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 4
+    .github/workflows/pages.yml:
+      Paul Gauthier: 71
+    .github/workflows/ubuntu-tests.yml:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 4
+    .github/workflows/windows-tests.yml:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 4
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Krazer: 4
+      Paul Gauthier: 58
+      develmusa: 1
+    cecli/args_formatter.py:
+      Paul Gauthier: 119
+      Paul Gauthier (cecli): 17
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 78
+    cecli/commands.py:
+      Paul Gauthier: 29
+    cecli/gui.py:
+      Paul Gauthier: 22
+    cecli/io.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 2
+    cecli/main.py:
+      Krazer: 13
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 5
+    cecli/models.py:
+      Krazer: 11
+      Paul Gauthier: 10
+    cecli/repo.py:
+      Paul Gauthier: 2
+    cecli/repomap.py:
+      Paul Gauthier: 13
+    cecli/scrape.py:
+      Paul Gauthier: 10
+    cecli/tests/test_urls.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 8
+    cecli/urls.py:
+      Paul Gauthier: 8
+    scripts/jekyll_run.sh:
+      Paul Gauthier: 9
+    scripts/update-docs.sh:
+      Paul Gauthier: 14
+      Paul Gauthier (cecli): 6
+    website/Gemfile:
+      Paul Gauthier: 4
+  grand_total:
+    Krazer: 28
+    Paul Gauthier: 479
+    Paul Gauthier (cecli): 50
+    develmusa: 1
+  start_tag: v0.37.0
+  total_lines: 558
+- aider_percentage: 17.1
+  aider_total: 59
+  end_date: '2024-06-20'
+  end_tag: v0.39.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/__main__.py:
+      Paul Gauthier (cecli): 4
+    cecli/args.py:
+      Daniel Vainsencher: 6
+      John-Mason P. Shackelford: 18
+      Paul Gauthier: 23
+    cecli/args_formatter.py:
+      Paul Gauthier: 24
+      Paul Gauthier (cecli): 15
+    cecli/coders/base_coder.py:
+      Daniel Vainsencher: 5
+      Daniel Vainsencher (cecli): 2
+      Paul Gauthier: 2
+    cecli/commands.py:
+      Paul Gauthier: 1
+    cecli/io.py:
+      Daniel Vainsencher: 14
+    cecli/main.py:
+      Daniel Vainsencher: 1
+      John-Mason P. Shackelford: 14
+    cecli/models.py:
+      Paul Gauthier: 18
+    cecli/repo.py:
+      Paul Gauthier: 23
+    cecli/scrape.py:
+      Nicolas Perez: 1
+    cecli/tests/test_commands.py:
+      Paul Gauthier: 6
+    cecli/tests/test_main.py:
+      John-Mason P. Shackelford: 88
+    cecli/tests/test_repo.py:
+      Paul Gauthier: 24
+      Paul Gauthier (cecli): 24
+    cecli/urls.py:
+      Nicolas Perez: 1
+      Paul Gauthier: 1
+    cecli/utils.py:
+      Daniel Vainsencher: 7
+      Daniel Vainsencher (cecli): 14
+      John-Mason P. Shackelford: 7
+    scripts/update-docs.sh:
+      Paul Gauthier: 1
+  grand_total:
+    Daniel Vainsencher: 33
+    Daniel Vainsencher (cecli): 16
+    John-Mason P. Shackelford: 127
+    Nicolas Perez: 2
+    Paul Gauthier: 124
+    Paul Gauthier (cecli): 43
+  start_tag: v0.38.0
+  total_lines: 345
+- aider_percentage: 5.82
+  aider_total: 21
+  end_date: '2024-06-24'
+  end_tag: v0.40.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Krazer: 6
+      Paul Gauthier: 33
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 28
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 64
+    cecli/linter.py:
+      Paul Gauthier: 24
+      Paul Gauthier (cecli): 21
+    cecli/main.py:
+      Krazer: 36
+      Paul Gauthier: 23
+    cecli/models.py:
+      Dustin Miller: 14
+      Krazer: 31
+      Paul Gauthier: 28
+    cecli/repo.py:
+      Paul Gauthier: 26
+    cecli/tests/test_editblock.py:
+      Paul Gauthier: 26
+  grand_total:
+    Dustin Miller: 14
+    Krazer: 73
+    Paul Gauthier: 253
+    Paul Gauthier (cecli): 21
+  start_tag: v0.39.0
+  total_lines: 361
+- aider_percentage: 5.86
+  aider_total: 15
+  end_date: '2024-07-01'
+  end_tag: v0.41.0
+  file_counts:
+    .github/workflows/release.yml:
+      Paul Gauthier: 1
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 10
+      Paul Gauthier (cecli): 6
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 125
+      Paul Gauthier (cecli): 2
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 3
+    cecli/commands.py:
+      Amir Elaguizy (cecli): 6
+      Paul Gauthier: 1
+    cecli/gui.py:
+      Paul Gauthier: 4
+    cecli/main.py:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 1
+    cecli/mdstream.py:
+      Paul Gauthier: 1
+    cecli/models.py:
+      Mitsuki Ogasahara: 3
+      Paul Gauthier: 38
+    cecli/repo.py:
+      Paul Gauthier: 7
+    cecli/repomap.py:
+      Paul Gauthier: 12
+    cecli/sendchat.py:
+      Paul Gauthier: 2
+    cecli/tests/test_coder.py:
+      Paul Gauthier: 10
+    cecli/tests/test_editblock.py:
+      Paul Gauthier: 2
+    cecli/tests/test_wholefile.py:
+      Paul Gauthier: 4
+    scripts/update-docs.sh:
+      Paul Gauthier: 3
+    setup.py:
+      Paul Gauthier: 3
+  grand_total:
+    Amir Elaguizy (cecli): 6
+    Mitsuki Ogasahara: 3
+    Paul Gauthier: 238
+    Paul Gauthier (cecli): 9
+  start_tag: v0.40.0
+  total_lines: 256
+- aider_percentage: 2.29
+  aider_total: 7
+  end_date: '2024-07-04'
+  end_tag: v0.42.0
+  file_counts:
+    .github/workflows/pages.yml:
+      Paul Gauthier: 14
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 6
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 10
+      Paul Gauthier (cecli): 7
+    cecli/commands.py:
+      Paul Gauthier: 31
+    cecli/history.py:
+      Paul Gauthier: 5
+    cecli/io.py:
+      Paul Gauthier: 32
+    cecli/llm.py:
+      Paul Gauthier: 18
+    cecli/main.py:
+      Paul Gauthier: 26
+    cecli/models.py:
+      Paul Gauthier: 78
+    cecli/repomap.py:
+      Paul Gauthier: 4
+    cecli/scrape.py:
+      Paul Gauthier: 8
+    cecli/sendchat.py:
+      Paul Gauthier: 45
+    cecli/tests/test_sendchat.py:
+      Paul Gauthier: 1
+    cecli/versioncheck.py:
+      Paul Gauthier: 12
+    cecli/voice.py:
+      Paul Gauthier: 6
+    scripts/jekyll_run.sh:
+      Paul Gauthier: 2
+  grand_total:
+    Paul Gauthier: 299
+    Paul Gauthier (cecli): 7
+  start_tag: v0.41.0
+  total_lines: 306
+- aider_percentage: 9.82
+  aider_total: 38
+  end_date: '2024-07-07'
+  end_tag: v0.43.0
+  file_counts:
+    .github/workflows/docker-build-test.yml:
+      Paul Gauthier: 2
+    .github/workflows/pages.yml:
+      Paul Gauthier: 4
+    .github/workflows/ubuntu-tests.yml:
+      Paul Gauthier: 2
+    .github/workflows/windows-tests.yml:
+      Paul Gauthier: 2
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 2
+    cecli/args_formatter.py:
+      Paul Gauthier: 4
+    cecli/coders/__init__.py:
+      Paul Gauthier: 2
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 45
+    cecli/coders/help_coder.py:
+      Paul Gauthier: 17
+    cecli/commands.py:
+      Paul Gauthier: 69
+      Paul Gauthier (cecli): 5
+    cecli/help.py:
+      Paul Gauthier: 114
+      Paul Gauthier (cecli): 6
+    cecli/help_pats.py:
+      Paul Gauthier: 10
+    cecli/llm.py:
+      Paul Gauthier: 1
+    cecli/main.py:
+      Paul Gauthier: 36
+    cecli/repomap.py:
+      Paul Gauthier: 14
+    cecli/tests/test_commands.py:
+      Paul Gauthier: 1
+    cecli/tests/test_help.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 24
+    cecli/versioncheck.py:
+      Paul Gauthier: 2
+    scripts/jekyll_run.sh:
+      Paul Gauthier: 1
+    scripts/update-docs.sh:
+      Paul Gauthier: 7
+    setup.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 3
+  grand_total:
+    Paul Gauthier: 349
+    Paul Gauthier (cecli): 38
+  start_tag: v0.42.0
+  total_lines: 387
+- aider_percentage: 27.04
+  aider_total: 159
+  end_date: '2024-07-16'
+  end_tag: v0.44.0
+  file_counts:
+    .github/workflows/ubuntu-tests.yml:
+      Paul Gauthier: 3
+    .github/workflows/windows-tests.yml:
+      Paul Gauthier: 4
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 5
+    cecli/args_formatter.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier (cecli): 1
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 1
+    cecli/commands.py:
+      Paul Gauthier: 17
+      Paul Gauthier (cecli): 10
+    cecli/help.py:
+      Paul Gauthier: 20
+    cecli/main.py:
+      Paul Gauthier: 22
+    cecli/models.py:
+      Paul Gauthier: 11
+    cecli/scrape.py:
+      Paul Gauthier: 54
+    cecli/utils.py:
+      Paul Gauthier: 78
+      Paul Gauthier (cecli): 16
+    cecli/versioncheck.py:
+      Paul Gauthier: 28
+    cecli/voice.py:
+      Paul Gauthier: 6
+    benchmark/Dockerfile:
+      Paul Gauthier: 3
+    docker/Dockerfile:
+      Paul Gauthier: 14
+      Paul Gauthier (cecli): 1
+    scripts/blame.py:
+      Paul Gauthier: 38
+      Paul Gauthier (cecli): 49
+    scripts/pip-compile.sh:
+      Paul Gauthier: 18
+    scripts/update-docs.sh:
+      Paul Gauthier: 2
+    setup.py:
+      Paul Gauthier: 26
+      Paul Gauthier (cecli): 1
+    tests/basic/test_coder.py:
+      Paul Gauthier: 25
+      Paul Gauthier (cecli): 37
+    tests/browser/test_browser.py:
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 18
+    tests/help/test_help.py:
+      Paul Gauthier: 23
+    tests/scrape/test_scrape.py:
+      Paul Gauthier: 16
+      Paul Gauthier (cecli): 26
+  grand_total:
+    Paul Gauthier: 429
+    Paul Gauthier (cecli): 159
+  start_tag: v0.43.0
+  total_lines: 588
+- aider_percentage: 48.43
+  aider_total: 123
+  end_date: '2024-07-18'
+  end_tag: v0.45.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 3
+    cecli/commands.py:
+      Paul Gauthier: 18
+      Paul Gauthier (cecli): 4
+    cecli/main.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 5
+    cecli/models.py:
+      Paul Gauthier: 16
+    cecli/repomap.py:
+      Paul Gauthier: 1
+    cecli/scrape.py:
+      Paul Gauthier: 9
+    cecli/versioncheck.py:
+      Paul Gauthier: 14
+    tests/basic/test_coder.py:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 25
+    tests/basic/test_commands.py:
+      Paul Gauthier: 22
+      Paul Gauthier (cecli): 81
+    tests/basic/test_main.py:
+      Paul Gauthier: 27
+      Paul Gauthier (cecli): 5
+  grand_total:
+    Paul Gauthier: 131
+    Paul Gauthier (cecli): 123
+  start_tag: v0.44.0
+  total_lines: 254
+- aider_percentage: 53.3
+  aider_total: 339
+  end_date: '2024-07-29'
+  end_tag: v0.46.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier (cecli): 3
+    cecli/coders/__init__.py:
+      Paul Gauthier: 2
+      Your Name: 1
+    cecli/coders/ask_coder.py:
+      Your Name: 9
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 17
+      Paul Gauthier (cecli): 45
+      Your Name: 27
+      Your Name (cecli): 6
+    cecli/coders/editblock_coder.py:
+      Your Name (cecli): 2
+    cecli/coders/editblock_fenced_coder.py:
+      Your Name (cecli): 2
+    cecli/coders/help_coder.py:
+      Your Name: 1
+      Your Name (cecli): 1
+    cecli/coders/udiff_coder.py:
+      Your Name (cecli): 2
+    cecli/coders/wholefile_coder.py:
+      Your Name (cecli): 2
+    cecli/commands.py:
+      Paul Gauthier: 43
+      Your Name: 28
+      Your Name (cecli): 34
+    cecli/io.py:
+      Paul Gauthier: 3
+    cecli/llm.py:
+      Paul Gauthier: 11
+    cecli/main.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 8
+      Your Name: 6
+      Your Name (cecli): 1
+    cecli/models.py:
+      Paul Gauthier: 24
+    cecli/queries/tree-sitter-elm-tags.scm:
+      Charles Joachim: 4
+    cecli/repomap.py:
+      Paul Gauthier: 12
+    cecli/scrape.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 32
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 85
+    benchmark/Dockerfile:
+      Your Name: 1
+    tests/basic/test_coder.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 5
+    tests/basic/test_repo.py:
+      Paul Gauthier (cecli): 13
+    tests/basic/test_repomap.py:
+      Paul Gauthier: 70
+      Paul Gauthier (cecli): 25
+    tests/scrape/test_scrape.py:
+      Paul Gauthier: 14
+      Paul Gauthier (cecli): 73
+  grand_total:
+    Charles Joachim: 4
+    Paul Gauthier: 220
+    Paul Gauthier (cecli): 289
+    Your Name: 73
+    Your Name (cecli): 50
+  start_tag: v0.45.0
+  total_lines: 636
+- aider_percentage: 58.42
+  aider_total: 392
+  end_date: '2024-07-31'
+  end_tag: v0.47.0
+  file_counts:
+    .github/workflows/docker-release.yml:
+      Paul Gauthier (cecli): 35
+    .github/workflows/release.yml:
+      Paul Gauthier (cecli): 2
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 5
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 3
+    cecli/commands.py:
+      Paul Gauthier: 23
+      Paul Gauthier (cecli): 4
+    cecli/history.py:
+      Paul Gauthier: 16
+      Paul Gauthier (cecli): 6
+    cecli/io.py:
+      Paul Gauthier: 27
+      Paul Gauthier (cecli): 8
+    cecli/linter.py:
+      Paul Gauthier: 14
+      Paul Gauthier (cecli): 1
+    cecli/main.py:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 1
+    cecli/queries/tree-sitter-ocaml-tags.scm:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 18
+    cecli/repo.py:
+      Paul Gauthier (cecli): 4
+    cecli/repomap.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 5
+    cecli/scrape.py:
+      Paul Gauthier: 2
+    cecli/sendchat.py:
+      Paul Gauthier (cecli): 2
+    cecli/utils.py:
+      Paul Gauthier: 7
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 12
+    docker/Dockerfile:
+      Paul Gauthier: 19
+      Paul Gauthier (cecli): 21
+    scripts/blame.py:
+      Paul Gauthier: 64
+      Paul Gauthier (cecli): 110
+    scripts/update-blame.sh:
+      Paul Gauthier: 6
+    scripts/update-docs.sh:
+      Paul Gauthier: 1
+    tests/basic/test_coder.py:
+      Paul Gauthier: 33
+      Paul Gauthier (cecli): 4
+    tests/basic/test_commands.py:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 30
+    tests/basic/test_history.py:
+      Paul Gauthier (cecli): 109
+    tests/basic/test_repo.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 12
+    tests/basic/test_repomap.py:
+      Paul Gauthier: 1
+  grand_total:
+    Paul Gauthier: 279
+    Paul Gauthier (cecli): 392
+  start_tag: v0.46.0
+  total_lines: 671
+- aider_percentage: 45.1
+  aider_total: 276
+  end_date: '2024-08-06'
+  end_tag: v0.48.0
+  file_counts:
+    .github/workflows/ubuntu-tests.yml:
+      paul-gauthier: 1
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 6
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 61
+      Paul Gauthier (cecli): 41
+    cecli/commands.py:
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 24
+    cecli/history.py:
+      Paul Gauthier: 2
+    cecli/main.py:
+      Paul Gauthier: 21
+      Paul Gauthier (cecli): 30
+    cecli/models.py:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 7
+      Thinh Nguyen: 1
+    cecli/repo.py:
+      Paul Gauthier: 42
+      Paul Gauthier (cecli): 23
+    cecli/repomap.py:
+      Paul Gauthier: 62
+      Paul Gauthier (cecli): 2
+    cecli/sendchat.py:
+      Paul Gauthier: 26
+      Paul Gauthier (cecli): 2
+    cecli/utils.py:
+      Paul Gauthier: 29
+      Paul Gauthier (cecli): 4
+    scripts/blame.py:
+      Paul Gauthier (cecli): 2
+    tests/basic/test_coder.py:
+      Paul Gauthier: 13
+    tests/basic/test_commands.py:
+      Paul Gauthier: 19
+      Paul Gauthier (cecli): 18
+    tests/basic/test_history.py:
+      Paul Gauthier: 2
+    tests/basic/test_main.py:
+      Paul Gauthier: 25
+      Paul Gauthier (cecli): 42
+    tests/basic/test_repo.py:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 36
+    tests/basic/test_scripting.py:
+      Paul Gauthier (cecli): 39
+  grand_total:
+    Paul Gauthier: 334
+    Paul Gauthier (cecli): 276
+    Thinh Nguyen: 1
+    paul-gauthier: 1
+  start_tag: v0.47.0
+  total_lines: 612
+- aider_percentage: 59.65
+  aider_total: 473
+  end_date: '2024-08-10'
+  end_tag: v0.49.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 13
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 91
+      Paul Gauthier (cecli): 44
+    cecli/commands.py:
+      Paul Gauthier: 34
+      Paul Gauthier (cecli): 108
+    cecli/io.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 24
+    cecli/llm.py:
+      Paul Gauthier (cecli): 5
+    cecli/main.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 4
+    cecli/models.py:
+      Paul Gauthier: 34
+      Paul Gauthier (cecli): 3
+    cecli/repo.py:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 13
+    cecli/repomap.py:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 23
+    cecli/scrape.py:
+      Paul Gauthier (cecli): 17
+    cecli/sendchat.py:
+      Paul Gauthier: 21
+    cecli/urls.py:
+      Paul Gauthier: 1
+    cecli/utils.py:
+      Paul Gauthier (cecli): 11
+    cecli/versioncheck.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 11
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 11
+    docker/Dockerfile:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 2
+    tests/basic/test_coder.py:
+      Paul Gauthier (cecli): 7
+    tests/basic/test_commands.py:
+      Paul Gauthier: 35
+      Paul Gauthier (cecli): 93
+    tests/basic/test_editblock.py:
+      Paul Gauthier (cecli): 1
+    tests/basic/test_main.py:
+      Paul Gauthier (cecli): 33
+    tests/basic/test_sendchat.py:
+      Paul Gauthier: 47
+    tests/basic/test_wholefile.py:
+      Paul Gauthier (cecli): 1
+    tests/scrape/test_scrape.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 49
+  grand_total:
+    Paul Gauthier: 320
+    Paul Gauthier (cecli): 473
+  start_tag: v0.48.0
+  total_lines: 793
+- aider_percentage: 65.52
+  aider_total: 209
+  end_date: '2024-08-13'
+  end_tag: v0.50.0
+  file_counts:
+    .github/workflows/release.yml:
+      Branch Vincent: 2
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier (cecli): 10
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 24
+      Paul Gauthier (cecli): 32
+    cecli/commands.py:
+      Amir Elaguizy (cecli): 13
+      Paul Gauthier: 28
+      Paul Gauthier (cecli): 18
+    cecli/io.py:
+      Paul Gauthier: 1
+    cecli/main.py:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 2
+    cecli/models.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 4
+    cecli/scrape.py:
+      Paul Gauthier (cecli): 26
+    cecli/sendchat.py:
+      Paul Gauthier (cecli): 1
+    cecli/utils.py:
+      Paul Gauthier: 1
+    cecli/versioncheck.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 1
+    scripts/versionbump.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 34
+    tests/basic/test_coder.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 19
+    tests/basic/test_commands.py:
+      Paul Gauthier: 18
+      Paul Gauthier (cecli): 41
+    tests/basic/test_main.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 8
+    tests/help/test_help.py:
+      Paul Gauthier: 7
+  grand_total:
+    Amir Elaguizy (cecli): 13
+    Branch Vincent: 2
+    Paul Gauthier: 108
+    Paul Gauthier (cecli): 196
+  start_tag: v0.49.0
+  total_lines: 319
+- aider_percentage: 62.86
+  aider_total: 689
+  end_date: '2024-08-20'
+  end_tag: v0.51.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 10
+    cecli/coders/__init__.py:
+      Paul Gauthier: 4
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 172
+      Paul Gauthier (cecli): 51
+    cecli/coders/single_wholefile_func_coder.py:
+      Paul Gauthier: 29
+    cecli/commands.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 5
+    cecli/llm.py:
+      Paul Gauthier: 2
+    cecli/main.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 16
+    cecli/models.py:
+      Paul Gauthier: 45
+      Paul Gauthier (cecli): 2
+    cecli/repomap.py:
+      Paul Gauthier: 16
+      Paul Gauthier (cecli): 58
+    cecli/sendchat.py:
+      Paul Gauthier: 3
+    cecli/utils.py:
+      Paul Gauthier (cecli): 6
+    bright_vision_core/website/_includes/code-in-json-benchmark.js:
+      Paul Gauthier: 24
+      Paul Gauthier (cecli): 141
+    bright_vision_core/website/_includes/code-in-json-syntax.js:
+      Paul Gauthier: 42
+      Paul Gauthier (cecli): 97
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    benchmark/benchmark.py:
+      Paul Gauthier: 7
+    benchmark/over_time.py:
+      Paul Gauthier: 14
+      Paul Gauthier (cecli): 57
+    docker/Dockerfile:
+      Paul Gauthier: 10
+    scripts/blame.py:
+      Paul Gauthier (cecli): 17
+    tests/basic/test_commands.py:
+      Paul Gauthier: 5
+    tests/basic/test_main.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 125
+    tests/basic/test_repomap.py:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 104
+  grand_total:
+    Paul Gauthier: 407
+    Paul Gauthier (cecli): 689
+  start_tag: v0.50.0
+  total_lines: 1096
+- aider_percentage: 66.9
+  aider_total: 479
+  end_date: '2024-08-23'
+  end_tag: v0.52.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 6
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 80
+      Paul Gauthier (cecli): 23
+    cecli/coders/chat_chunks.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 3
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 45
+      Paul Gauthier (cecli): 68
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 1
+    cecli/commands.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 42
+      pcamp: 1
+    cecli/io.py:
+      Paul Gauthier: 40
+      Paul Gauthier (cecli): 41
+    cecli/main.py:
+      Paul Gauthier: 2
+    cecli/models.py:
+      Paul Gauthier: 30
+    cecli/repomap.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 5
+    cecli/utils.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 9
+    cecli/versioncheck.py:
+      Paul Gauthier: 2
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    benchmark/benchmark.py:
+      Paul Gauthier: 1
+    scripts/blame.py:
+      Paul Gauthier: 1
+    tests/basic/test_commands.py:
+      Paul Gauthier (cecli): 100
+    tests/basic/test_editblock.py:
+      Paul Gauthier (cecli): 1
+    tests/basic/test_find_or_blocks.py:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 106
+    tests/basic/test_io.py:
+      Paul Gauthier (cecli): 32
+    tests/basic/test_main.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 43
+    tests/basic/test_wholefile.py:
+      Paul Gauthier: 8
+  grand_total:
+    Paul Gauthier: 236
+    Paul Gauthier (cecli): 479
+    pcamp: 1
+  start_tag: v0.51.0
+  total_lines: 716
+- aider_percentage: 62.33
+  aider_total: 455
+  end_date: '2024-08-27'
+  end_tag: v0.53.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 10
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 57
+      Paul Gauthier (cecli): 18
+    cecli/coders/chat_chunks.py:
+      Paul Gauthier (cecli): 9
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 44
+      Paul Gauthier (cecli): 6
+    cecli/commands.py:
+      Paul Gauthier: 19
+    cecli/history.py:
+      Paul Gauthier (cecli): 3
+    cecli/io.py:
+      Paul Gauthier: 44
+      Paul Gauthier (cecli): 22
+    cecli/main.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 9
+    cecli/models.py:
+      Paul Gauthier: 50
+      Paul Gauthier (cecli): 21
+    cecli/repo.py:
+      Paul Gauthier (cecli): 3
+    cecli/repomap.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 1
+    cecli/sendchat.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 11
+    cecli/utils.py:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 9
+    cecli/versioncheck.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 10
+    scripts/versionbump.py:
+      Paul Gauthier: 1
+    tests/basic/test_commands.py:
+      Paul Gauthier: 12
+    tests/basic/test_editblock.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 26
+    tests/basic/test_io.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 66
+    tests/basic/test_main.py:
+      Paul Gauthier: 2
+    tests/basic/test_models.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 42
+    tests/basic/test_repo.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 8
+    tests/basic/test_repomap.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 63
+    tests/fixtures/sample-code-base/sample.js:
+      Paul Gauthier (cecli): 50
+    tests/fixtures/sample-code-base/sample.py:
+      Paul Gauthier (cecli): 68
+  grand_total:
+    Paul Gauthier: 275
+    Paul Gauthier (cecli): 455
+  start_tag: v0.52.0
+  total_lines: 730
+- aider_percentage: 70.0
+  aider_total: 224
+  end_date: '2024-08-28'
+  end_tag: v0.54.0
+  file_counts:
+    .github/workflows/docker-build-test.yml:
+      Paul Gauthier (cecli): 1
+    .github/workflows/ubuntu-tests.yml:
+      Paul Gauthier (cecli): 1
+    .github/workflows/windows-tests.yml:
+      Paul Gauthier (cecli): 1
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 12
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 25
+      Paul Gauthier (cecli): 12
+    cecli/commands.py:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 4
+    cecli/io.py:
+      Paul Gauthier: 28
+    cecli/main.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 6
+    cecli/models.py:
+      Paul Gauthier (cecli): 11
+    cecli/run_cmd.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 70
+    cecli/utils.py:
+      Paul Gauthier (cecli): 15
+    cecli/versioncheck.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 13
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    tests/basic/test_coder.py:
+      Paul Gauthier: 14
+      Paul Gauthier (cecli): 49
+    tests/basic/test_io.py:
+      Paul Gauthier: 4
+    tests/basic/test_main.py:
+      Antti Kaihola: 4
+      Paul Gauthier (cecli): 29
+    tests/scrape/test_scrape.py:
+      Paul Gauthier: 1
+  grand_total:
+    Antti Kaihola: 4
+    Paul Gauthier: 92
+    Paul Gauthier (cecli): 224
+  start_tag: v0.53.0
+  total_lines: 320
+- aider_percentage: 52.4
+  aider_total: 787
+  end_date: '2024-09-04'
+  end_tag: v0.55.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 2
+    cecli/args.py:
+      Paul Gauthier (cecli): 7
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 63
+      Paul Gauthier (cecli): 42
+    cecli/coders/editblock_coder.py:
+      Nikolay Sedelnikov: 8
+    cecli/coders/editblock_func_coder.py:
+      Antti Kaihola: 2
+    cecli/coders/search_replace.py:
+      Paul Gauthier: 2
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 16
+    cecli/commands.py:
+      Antti Kaihola: 7
+      Paul Gauthier: 83
+      Paul Gauthier (cecli): 27
+    cecli/format_settings.py:
+      Paul Gauthier (cecli): 2
+    cecli/gui.py:
+      Paul Gauthier: 4
+    cecli/io.py:
+      Paul Gauthier: 57
+      Paul Gauthier (cecli): 13
+    cecli/linter.py:
+      Paul Gauthier: 5
+    cecli/llm.py:
+      Paul Gauthier: 2
+    cecli/main.py:
+      Paul Gauthier: 86
+      Paul Gauthier (cecli): 22
+    cecli/models.py:
+      Paul Gauthier: 24
+      Paul Gauthier (cecli): 2
+    cecli/repo.py:
+      Paul Gauthier: 85
+    cecli/repomap.py:
+      Paul Gauthier: 32
+      Paul Gauthier (cecli): 4
+    cecli/report.py:
+      Paul Gauthier: 77
+      Paul Gauthier (cecli): 120
+    cecli/run_cmd.py:
+      Paul Gauthier: 17
+      Paul Gauthier (cecli): 24
+    cecli/scrape.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 8
+    cecli/special.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 197
+    cecli/urls.py:
+      Paul Gauthier (cecli): 1
+    cecli/utils.py:
+      Paul Gauthier: 31
+      Paul Gauthier (cecli): 29
+    cecli/versioncheck.py:
+      Paul Gauthier: 32
+      Paul Gauthier (cecli): 6
+    cecli/voice.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 9
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    scripts/versionbump.py:
+      Paul Gauthier: 9
+    tests/basic/test_coder.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 105
+    tests/basic/test_editblock.py:
+      Antti Kaihola: 3
+      Nikolay Sedelnikov: 37
+    tests/basic/test_io.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 15
+    tests/basic/test_main.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 10
+    tests/basic/test_models.py:
+      Paul Gauthier (cecli): 4
+    tests/basic/test_repomap.py:
+      Paul Gauthier (cecli): 42
+    tests/basic/test_run_cmd.py:
+      Paul Gauthier (cecli): 11
+    tests/basic/test_special.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 74
+    tests/scrape/test_scrape.py:
+      Paul Gauthier (cecli): 11
+  grand_total:
+    Antti Kaihola: 12
+    Nikolay Sedelnikov: 45
+    Paul Gauthier: 658
+    Paul Gauthier (cecli): 787
+  start_tag: v0.54.0
+  total_lines: 1502
+- aider_percentage: 55.4
+  aider_total: 154
+  end_date: '2024-09-09'
+  end_tag: v0.56.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 6
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 14
+      Paul Gauthier (cecli): 10
+    cecli/commands.py:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 6
+    cecli/io.py:
+      Paul Gauthier: 5
+    cecli/linter.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 4
+      fry69: 12
+    cecli/main.py:
+      Paul Gauthier: 35
+      Paul Gauthier (cecli): 48
+    cecli/models.py:
+      Paul Gauthier: 2
+      fry69: 3
+    cecli/repo.py:
+      Paul Gauthier: 16
+    cecli/repomap.py:
+      Paul Gauthier: 13
+    cecli/report.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 20
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    benchmark/benchmark.py:
+      Paul Gauthier: 1
+    tests/basic/test_linter.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 51
+    tests/basic/test_main.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 9
+  grand_total:
+    Paul Gauthier: 109
+    Paul Gauthier (cecli): 154
+    fry69: 15
+  start_tag: v0.55.0
+  total_lines: 278
+- aider_percentage: 70.36
+  aider_total: 406
+  end_date: '2024-09-21'
+  end_tag: v0.57.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args_formatter.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 1
+    cecli/coders/base_coder.py:
+      Krazer: 1
+      Paul Gauthier: 17
+      Paul Gauthier (cecli): 2
+    cecli/coders/chat_chunks.py:
+      Paul Gauthier: 5
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier (cecli): 27
+    cecli/commands.py:
+      Krazer: 3
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 34
+    cecli/io.py:
+      Krazer: 27
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 42
+    cecli/main.py:
+      Krazer: 2
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 8
+    cecli/models.py:
+      Jay Alammar: 1
+      Jay Alammar (cecli): 13
+      Paul Gauthier: 43
+      Paul Gauthier (cecli): 46
+    cecli/repo.py:
+      Paul Gauthier: 3
+    cecli/run_cmd.py:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 33
+    cecli/sendchat.py:
+      Paul Gauthier: 3
+    cecli/utils.py:
+      Paul Gauthier: 2
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Anjor Kanekar: 1
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 12
+    benchmark/benchmark.py:
+      Paul Gauthier: 4
+    scripts/issues.py:
+      Paul Gauthier: 10
+      Paul Gauthier (cecli): 123
+    scripts/versionbump.py:
+      Paul Gauthier (cecli): 8
+    tests/basic/test_coder.py:
+      Paul Gauthier: 1
+    tests/basic/test_editblock.py:
+      Christian Clauss: 2
+    tests/basic/test_io.py:
+      Paul Gauthier (cecli): 37
+    tests/basic/test_main.py:
+      Paul Gauthier: 18
+      Paul Gauthier (cecli): 20
+  grand_total:
+    Anjor Kanekar: 1
+    Christian Clauss: 2
+    Jay Alammar: 1
+    Jay Alammar (cecli): 13
+    Krazer: 33
+    Paul Gauthier: 134
+    Paul Gauthier (cecli): 393
+  start_tag: v0.56.0
+  total_lines: 577
+- aider_percentage: 48.74
+  aider_total: 658
+  end_date: '2024-09-29'
+  end_tag: v0.58.0
+  file_counts:
+    .github/workflows/docker-build-test.yml:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 11
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Mike Bailey: 7
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 55
+      Stein Martin Hustad: 17
+      fry69: 2
+    cecli/coders/__init__.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 2
+    cecli/coders/architect_coder.py:
+      Paul Gauthier: 40
+      Paul Gauthier (cecli): 3
+    cecli/coders/base_coder.py:
+      Jonathan Ellis: 1
+      Paul Gauthier: 32
+      Paul Gauthier (cecli): 8
+    cecli/coders/editor_editblock_coder.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 1
+    cecli/coders/editor_whole_coder.py:
+      Paul Gauthier: 7
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 2
+    cecli/commands.py:
+      Jonathan Ellis: 1
+      Mike Bailey: 1
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 78
+      fry69: 2
+    cecli/help.py:
+      Paul Gauthier: 27
+      Paul Gauthier (cecli): 7
+    cecli/history.py:
+      Paul Gauthier: 1
+    cecli/io.py:
+      Paul Gauthier: 39
+      Paul Gauthier (cecli): 62
+      Stein Martin Hustad: 5
+      fry69: 10
+    cecli/linter.py:
+      Paul Gauthier: 6
+    cecli/main.py:
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 6
+      Stein Martin Hustad: 4
+      fry69: 1
+      rti: 1
+    cecli/models.py:
+      Paul Gauthier: 58
+      Paul Gauthier (cecli): 85
+    cecli/repo.py:
+      Paul Gauthier: 16
+      Paul Gauthier (cecli): 2
+    cecli/repomap.py:
+      Paul Gauthier: 5
+    cecli/scrape.py:
+      Paul Gauthier (cecli): 3
+    cecli/sendchat.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 5
+    cecli/utils.py:
+      Paul Gauthier: 4
+    cecli/versioncheck.py:
+      Paul Gauthier: 2
+    cecli/voice.py:
+      Mike Bailey: 17
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 10
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 92
+    benchmark/benchmark.py:
+      Paul Gauthier: 25
+      Paul Gauthier (cecli): 29
+      fry69: 3
+    scripts/issues.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 45
+    scripts/update-docs.sh:
+      Paul Gauthier: 1
+    scripts/yank-old-versions.py:
+      Paul Gauthier (cecli): 51
+    tests/basic/test_commands.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 98
+    tests/basic/test_io.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 97
+    tests/basic/test_main.py:
+      Paul Gauthier: 2
+    tests/basic/test_models.py:
+      Paul Gauthier: 4
+    tests/basic/test_sanity_check_repo.py:
+      fry69: 179
+    tests/basic/test_wholefile.py:
+      Paul Gauthier: 16
+  grand_total:
+    Jonathan Ellis: 2
+    Mike Bailey: 25
+    Paul Gauthier: 441
+    Paul Gauthier (cecli): 658
+    Stein Martin Hustad: 26
+    fry69: 197
+    rti: 1
+  start_tag: v0.57.0
+  total_lines: 1350
+- aider_percentage: 72.14
+  aider_total: 145
+  end_date: '2024-10-04'
+  end_tag: v0.59.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 6
+    cecli/args_formatter.py:
+      Paul Gauthier: 4
+    cecli/coders/architect_coder.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 6
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 1
+    cecli/commands.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 49
+    cecli/gui.py:
+      Paul Gauthier: 2
+    cecli/main.py:
+      Paul Gauthier: 10
+      Paul Gauthier (cecli): 4
+    cecli/models.py:
+      Paul Gauthier (cecli): 12
+    cecli/repomap.py:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 3
+    cecli/urls.py:
+      Paul Gauthier: 2
+    cecli/versioncheck.py:
+      Paul Gauthier: 1
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 4
+    scripts/issues.py:
+      Paul Gauthier: 1
+    scripts/update-docs.sh:
+      Paul Gauthier: 2
+    tests/basic/test_commands.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 53
+    tests/basic/test_models.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 18
+    tests/basic/test_sanity_check_repo.py:
+      Paul Gauthier: 1
+    tests/help/test_help.py:
+      Paul Gauthier: 1
+  grand_total:
+    Paul Gauthier: 56
+    Paul Gauthier (cecli): 145
+  start_tag: v0.58.0
+  total_lines: 201
+- aider_percentage: 51.47
+  aider_total: 140
+  end_date: '2024-10-22'
+  end_tag: v0.60.0
+  file_counts:
+    .github/workflows/close-stale.yml:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 19
+    .github/workflows/pages.yml:
+      Paul Gauthier: 3
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 1
+      fry69: 2
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 2
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier (cecli): 3
+    cecli/commands.py:
+      Paul Gauthier: 1
+    cecli/help.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 33
+    cecli/io.py:
+      Jonathan Ellis: 10
+      Paul Gauthier: 7
+    cecli/main.py:
+      Paul Gauthier: 20
+      Paul Gauthier (cecli): 39
+    cecli/models.py:
+      Paul Gauthier: 18
+      Sven Grunewaldt: 10
+      fry69: 16
+    cecli/resources/__init__.py:
+      Paul Gauthier: 3
+    cecli/sendchat.py:
+      Paul Gauthier: 3
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    tests/basic/test_editblock.py:
+      Paul Gauthier: 23
+    tests/basic/test_main.py:
+      Paul Gauthier: 1
+    tests/help/test_help.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 46
+  grand_total:
+    Jonathan Ellis: 10
+    Paul Gauthier: 94
+    Paul Gauthier (cecli): 140
+    Sven Grunewaldt: 10
+    fry69: 18
+  start_tag: v0.59.0
+  total_lines: 272
+- aider_percentage: 65.31
+  aider_total: 804
+  end_date: '2024-11-01'
+  end_tag: v0.61.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/analytics.py:
+      Paul Gauthier: 75
+      Paul Gauthier (cecli): 89
+    cecli/args.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 28
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 56
+      Paul Gauthier (cecli): 43
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 14
+    cecli/commands.py:
+      Paul Gauthier: 14
+      Paul Gauthier (cecli): 86
+    cecli/io.py:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 32
+    cecli/linter.py:
+      Paul Gauthier: 6
+    cecli/main.py:
+      Paul Gauthier: 48
+      Paul Gauthier (cecli): 10
+    cecli/models.py:
+      Paul Gauthier: 40
+      Paul Gauthier (cecli): 63
+      kAIto47802: 4
+    cecli/repomap.py:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 52
+    cecli/sendchat.py:
+      Paul Gauthier: 23
+      Paul Gauthier (cecli): 23
+    cecli/urls.py:
+      Paul Gauthier: 2
+    cecli/utils.py:
+      Paul Gauthier (cecli): 6
+    scripts/issues.py:
+      Paul Gauthier (cecli): 13
+    scripts/pip-compile.sh:
+      Paul Gauthier (cecli): 13
+    scripts/update-docs.sh:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 5
+    tests/basic/test_analytics.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 99
+    tests/basic/test_commands.py:
+      Konstantin L: 16
+      Paul Gauthier: 91
+      Paul Gauthier (cecli): 212
+    tests/basic/test_io.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 4
+    tests/basic/test_main.py:
+      Paul Gauthier (cecli): 3
+    tests/basic/test_models.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 9
+    tests/basic/test_sanity_check_repo.py:
+      Paul Gauthier (cecli): 6
+    tests/basic/test_sendchat.py:
+      Paul Gauthier (cecli): 8
+  grand_total:
+    Konstantin L: 16
+    Paul Gauthier: 407
+    Paul Gauthier (cecli): 804
+    kAIto47802: 4
+  start_tag: v0.60.0
+  total_lines: 1231
+- aider_percentage: 80.49
+  aider_total: 66
+  end_date: '2024-11-04'
+  end_tag: v0.62.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier (cecli): 14
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 6
+    cecli/main.py:
+      Paul Gauthier (cecli): 4
+    cecli/models.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 36
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 12
+  grand_total:
+    Paul Gauthier: 16
+    Paul Gauthier (cecli): 66
+  start_tag: v0.61.0
+  total_lines: 82
+- aider_percentage: 54.99
+  aider_total: 369
+  end_date: '2024-11-13'
+  end_tag: v0.63.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/architect_coder.py:
+      Paul Gauthier: 3
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 42
+      Paul Gauthier (cecli): 1
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 4
+    cecli/commands.py:
+      Paul Gauthier: 13
+    cecli/exceptions.py:
+      Paul Gauthier: 72
+      Paul Gauthier (cecli): 4
+    cecli/io.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 23
+    cecli/main.py:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 9
+    cecli/models.py:
+      Logan Attwood: 17
+      Paul Gauthier: 50
+      Paul Gauthier (cecli): 7
+    cecli/repo.py:
+      Paul Gauthier: 7
+    cecli/repomap.py:
+      Paul Gauthier: 4
+    cecli/sendchat.py:
+      Paul Gauthier: 17
+      Paul Gauthier (cecli): 4
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    scripts/issues.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 183
+    tests/basic/test_coder.py:
+      Paul Gauthier: 2
+    tests/basic/test_commands.py:
+      Paul Gauthier (cecli): 16
+    tests/basic/test_editblock.py:
+      Paul Gauthier: 41
+    tests/basic/test_exceptions.py:
+      Paul Gauthier (cecli): 65
+    tests/basic/test_main.py:
+      Paul Gauthier: 1
+    tests/basic/test_sanity_check_repo.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 2
+    tests/basic/test_sendchat.py:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 55
+    tests/scrape/test_scrape.py:
+      Paul Gauthier: 1
+  grand_total:
+    Logan Attwood: 17
+    Paul Gauthier: 285
+    Paul Gauthier (cecli): 369
+  start_tag: v0.62.0
+  total_lines: 671
+- aider_percentage: 72.99
+  aider_total: 873
+  end_date: '2024-11-21'
+  end_tag: v0.64.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/analytics.py:
+      Paul Gauthier: 20
+      Paul Gauthier (cecli): 21
+    cecli/args.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 10
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 3
+      caetanominuzzo: 1
+    cecli/commands.py:
+      Chad Phillips: 4
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 19
+    cecli/editor.py:
+      Chad Phillips: 133
+      Paul Gauthier (cecli): 13
+    cecli/exceptions.py:
+      Paul Gauthier: 5
+    cecli/help_pats.py:
+      Paul Gauthier: 1
+    cecli/io.py:
+      Chad Phillips: 9
+      Paul Gauthier (cecli): 41
+      mw: 21
+    cecli/main.py:
+      Paul Gauthier: 21
+      Paul Gauthier (cecli): 37
+    cecli/models.py:
+      Paul Gauthier: 41
+      Paul Gauthier (cecli): 33
+    cecli/repo.py:
+      Paul Gauthier (cecli): 5
+    cecli/urls.py:
+      Paul Gauthier: 1
+    bright_vision_core/website/_includes/edit-leaderboard.js:
+      Paul Gauthier (cecli): 97
+    bright_vision_core/website/_includes/quant-chart.js:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 66
+    bright_vision_core/website/_includes/refactor-leaderboard.js:
+      Paul Gauthier (cecli): 90
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 10
+    bright_vision_core/website/share/index.md:
+      Paul Gauthier (cecli): 29
+    benchmark/over_time.py:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 159
+    scripts/blame.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 2
+    scripts/issues.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 12
+    scripts/versionbump.py:
+      Paul Gauthier: 7
+    tests/basic/test_analytics.py:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 30
+    tests/basic/test_commands.py:
+      Paul Gauthier (cecli): 4
+    tests/basic/test_editor.py:
+      Paul Gauthier (cecli): 129
+    tests/basic/test_main.py:
+      Paul Gauthier (cecli): 8
+    tests/basic/test_models.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 55
+  grand_total:
+    Chad Phillips: 146
+    Paul Gauthier: 155
+    Paul Gauthier (cecli): 873
+    caetanominuzzo: 1
+    mw: 21
+  start_tag: v0.63.0
+  total_lines: 1196
+- aider_percentage: 81.11
+  aider_total: 584
+  end_date: '2024-11-26'
+  end_tag: v0.65.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/analytics.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 5
+    cecli/args.py:
+      Paul Gauthier (cecli): 12
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 31
+    cecli/commands.py:
+      Paul Gauthier: 2
+    cecli/io.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 9
+    cecli/main.py:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 19
+    cecli/models.py:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 17
+    cecli/queries/tree-sitter-dart-tags.scm:
+      malkoG: 91
+    cecli/urls.py:
+      Paul Gauthier (cecli): 1
+    bright_vision_core/website/_includes/quant-chart.js:
+      Paul Gauthier (cecli): 76
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    benchmark/benchmark.py:
+      Paul Gauthier (cecli): 10
+    benchmark/docker.sh:
+      Paul Gauthier (cecli): 1
+    benchmark/over_time.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 157
+    scripts/update-docs.sh:
+      Paul Gauthier: 1
+    scripts/update-history.py:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 64
+    tests/basic/test_coder.py:
+      Paul Gauthier (cecli): 81
+    tests/basic/test_editor.py:
+      Paul Gauthier (cecli): 16
+    tests/basic/test_main.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 42
+    tests/basic/test_models.py:
+      Paul Gauthier (cecli): 30
+    tests/basic/test_repomap.py:
+      Paul Gauthier (cecli): 13
+  grand_total:
+    Paul Gauthier: 45
+    Paul Gauthier (cecli): 584
+    malkoG: 91
+  start_tag: v0.64.0
+  total_lines: 720
+- aider_percentage: 86.35
+  aider_total: 854
+  end_date: '2024-12-01'
+  end_tag: v0.66.0
+  file_counts:
+    .github/workflows/docker-build-test.yml:
+      Paul Gauthier (cecli): 2
+    .github/workflows/docker-release.yml:
+      Paul Gauthier (cecli): 2
+    .github/workflows/pages.yml:
+      Paul Gauthier (cecli): 3
+    .github/workflows/release.yml:
+      Paul Gauthier (cecli): 2
+    .github/workflows/ubuntu-tests.yml:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 8
+    .github/workflows/windows-tests.yml:
+      Paul Gauthier (cecli): 4
+    cecli/__init__.py:
+      Paul Gauthier: 16
+    cecli/analytics.py:
+      Paul Gauthier (cecli): 19
+    cecli/args.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 6
+      Philippe de Reynal: 6
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 41
+    cecli/commands.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 27
+    cecli/io.py:
+      Paul Gauthier (cecli): 17
+    cecli/linter.py:
+      Paul Gauthier (cecli): 2
+    cecli/main.py:
+      Paul Gauthier: 17
+      Paul Gauthier (cecli): 46
+    cecli/models.py:
+      Paul Gauthier: 7
+    cecli/run_cmd.py:
+      Paul Gauthier (cecli): 8
+    cecli/utils.py:
+      Paul Gauthier: 1
+    cecli/voice.py:
+      Philippe de Reynal: 24
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    benchmark/benchmark.py:
+      Paul Gauthier (cecli): 38
+    scripts/blame.py:
+      Paul Gauthier (cecli): 26
+    scripts/issues.py:
+      Paul Gauthier: 3
+    scripts/update-history.py:
+      Paul Gauthier (cecli): 59
+    tests/basic/test_coder.py:
+      Paul Gauthier: 4
+    tests/basic/test_commands.py:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 72
+    tests/basic/test_main.py:
+      Paul Gauthier (cecli): 4
+    tests/basic/test_models.py:
+      Paul Gauthier: 2
+    tests/basic/test_repomap.py:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 45
+    tests/basic/test_voice.py:
+      Paul Gauthier (cecli): 103
+    tests/browser/test_browser.py:
+      Paul Gauthier: 1
+    tests/fixtures/languages/c/test.c:
+      Paul Gauthier (cecli): 6
+    tests/fixtures/languages/cpp/test.cpp:
+      Paul Gauthier (cecli): 6
+    tests/fixtures/languages/csharp/test.cs:
+      Paul Gauthier (cecli): 39
+    tests/fixtures/languages/elisp/test.el:
+      Paul Gauthier (cecli): 25
+    tests/fixtures/languages/elixir/test.ex:
+      Paul Gauthier (cecli): 5
+    tests/fixtures/languages/elm/test.elm:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 37
+    tests/fixtures/languages/go/test.go:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 41
+    tests/fixtures/languages/java/test.java:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 14
+    tests/fixtures/languages/javascript/test.js:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 25
+    tests/fixtures/languages/ocaml/test.ml:
+      Paul Gauthier (cecli): 19
+    tests/fixtures/languages/php/test.php:
+      Paul Gauthier (cecli): 5
+    tests/fixtures/languages/python/test.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 26
+    tests/fixtures/languages/ql/test.ql:
+      Paul Gauthier (cecli): 3
+    tests/fixtures/languages/ruby/test.rb:
+      Paul Gauthier (cecli): 3
+    tests/fixtures/languages/rust/test.rs:
+      Paul Gauthier (cecli): 33
+    tests/fixtures/languages/tsx/test.tsx:
+      Paul Gauthier (cecli): 30
+    tests/fixtures/languages/typescript/test.ts:
+      Paul Gauthier (cecli): 3
+  grand_total:
+    Paul Gauthier: 105
+    Paul Gauthier (cecli): 854
+    Philippe de Reynal: 30
+  start_tag: v0.65.0
+  total_lines: 989
+- aider_percentage: 64.41
+  aider_total: 429
+  end_date: '2024-12-06'
+  end_tag: v0.67.0
+  file_counts:
+    .github/workflows/issues.yml:
+      Paul Gauthier (cecli): 29
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/analytics.py:
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 7
+    cecli/args.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 5
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 15
+    cecli/commands.py:
+      Paul Gauthier: 11
+    cecli/io.py:
+      Paul Gauthier: 28
+      Paul Gauthier (cecli): 32
+    cecli/llm.py:
+      Paul Gauthier: 5
+    cecli/main.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 5
+    cecli/models.py:
+      Paul Gauthier: 1
+    cecli/run_cmd.py:
+      Paul Gauthier: 1
+    cecli/utils.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 22
+    cecli/watch.py:
+      Paul Gauthier: 52
+      Paul Gauthier (cecli): 211
+    bright_vision_core/website/_includes/qwq-chart.js:
+      Paul Gauthier: 55
+      Paul Gauthier (cecli): 47
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    scripts/blame.py:
+      Paul Gauthier (cecli): 26
+    scripts/update-history.py:
+      Paul Gauthier: 5
+    scripts/versionbump.py:
+      Paul Gauthier: 2
+    tests/basic/test_analytics.py:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 3
+    tests/basic/test_main.py:
+      Paul Gauthier: 1
+    tests/basic/test_models.py:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 7
+    tests/basic/test_watch.py:
+      Paul Gauthier: 10
+      Paul Gauthier (cecli): 34
+    tests/browser/test_browser.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 1
+  grand_total:
+    Paul Gauthier: 237
+    Paul Gauthier (cecli): 429
+  start_tag: v0.66.0
+  total_lines: 666
+- aider_percentage: 65.11
+  aider_total: 418
+  end_date: '2024-12-10'
+  end_tag: v0.68.0
+  file_counts:
+    .github/workflows/pages.yml:
+      Paul Gauthier (cecli): 1
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/analytics.py:
+      Paul Gauthier: 2
+    cecli/args.py:
+      Paul Gauthier: 62
+      Paul Gauthier (cecli): 7
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 12
+    cecli/coders/editor_editblock_coder.py:
+      Paul Gauthier: 1
+    cecli/coders/editor_whole_coder.py:
+      Paul Gauthier: 1
+    cecli/commands.py:
+      Paul Gauthier: 28
+      Paul Gauthier (cecli): 21
+    cecli/copypaste.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 60
+    cecli/exceptions.py:
+      Paul Gauthier: 9
+    cecli/history.py:
+      Paul Gauthier (cecli): 1
+    cecli/io.py:
+      Paul Gauthier: 13
+    cecli/main.py:
+      Paul Gauthier: 34
+      Paul Gauthier (cecli): 26
+    cecli/models.py:
+      Paul Gauthier: 15
+    cecli/repo.py:
+      Paul Gauthier (cecli): 1
+    cecli/run_cmd.py:
+      Paul Gauthier: 1
+    cecli/sendchat.py:
+      Paul Gauthier (cecli): 4
+    cecli/utils.py:
+      Paul Gauthier: 1
+    cecli/voice.py:
+      Paul Gauthier: 9
+    cecli/watch.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 35
+    bright_vision_core/website/_includes/edit-leaderboard.js:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 90
+    bright_vision_core/website/_includes/head_custom.html:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 53
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 2
+    scripts/blame.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 17
+    scripts/pip-compile.sh:
+      Paul Gauthier: 2
+    tests/basic/test_commands.py:
+      Paul Gauthier (cecli): 28
+    tests/basic/test_history.py:
+      Paul Gauthier (cecli): 3
+    tests/basic/test_main.py:
+      Paul Gauthier (cecli): 53
+    tests/basic/test_repo.py:
+      Paul Gauthier (cecli): 3
+    tests/basic/test_sendchat.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 1
+    tests/basic/test_watch.py:
+      Paul Gauthier: 1
+  grand_total:
+    Paul Gauthier: 224
+    Paul Gauthier (cecli): 418
+  start_tag: v0.67.0
+  total_lines: 642
+- aider_percentage: 68.65
+  aider_total: 219
+  end_date: '2024-12-13'
+  end_tag: v0.69.0
+  file_counts:
+    .github/workflows/pages.yml:
+      Paul Gauthier: 2
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/analytics.py:
+      Paul Gauthier: 2
+    cecli/args.py:
+      Mir Adnan ALI: 5
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      JeongJuhyeon: 1
+      Mir Adnan ALI: 3
+    cecli/commands.py:
+      Mir Adnan ALI: 4
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 3
+    cecli/io.py:
+      Mir Adnan ALI: 37
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 3
+    cecli/main.py:
+      Mir Adnan ALI: 1
+    cecli/models.py:
+      Paul Gauthier: 7
+    cecli/watch.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 47
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    benchmark/benchmark.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 7
+    scripts/blame.py:
+      Paul Gauthier (cecli): 1
+    scripts/issues.py:
+      Paul Gauthier (cecli): 70
+    scripts/update-history.py:
+      Paul Gauthier: 3
+    tests/basic/test_io.py:
+      Paul Gauthier (cecli): 20
+    tests/basic/test_watch.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 68
+  grand_total:
+    JeongJuhyeon: 1
+    Mir Adnan ALI: 50
+    Paul Gauthier: 49
+    Paul Gauthier (cecli): 219
+  start_tag: v0.68.0
+  total_lines: 319
+- aider_percentage: 73.19
+  aider_total: 871
+  end_date: '2024-12-26'
+  end_tag: v0.70.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/analytics.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 42
+    cecli/args.py:
+      Evan Johnson: 2
+    cecli/coders/search_replace.py:
+      Paul Gauthier: 5
+    cecli/commands.py:
+      Paul Gauthier (cecli): 36
+    cecli/help_pats.py:
+      Paul Gauthier: 3
+    cecli/io.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 9
+    cecli/main.py:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 5
+      apaz-cli: 3
+      mdk: 6
+    cecli/models.py:
+      Paul Gauthier: 38
+    cecli/repo.py:
+      Paul Gauthier: 14
+    cecli/utils.py:
+      Paul Gauthier: 2
+    cecli/watch.py:
+      Paul Gauthier: 13
+    bright_vision_core/website/_includes/head_custom.html:
+      Paul Gauthier (cecli): 4
+    bright_vision_core/website/_includes/leaderboard.js:
+      Paul Gauthier (cecli): 14
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 28
+      Paul Gauthier (cecli): 2
+    benchmark/Dockerfile:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 43
+    benchmark/benchmark.py:
+      Paul Gauthier: 70
+      Paul Gauthier (cecli): 152
+    benchmark/clone-exercism.sh:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 18
+    benchmark/cpp-test.sh:
+      Paul Gauthier: 10
+      Paul Gauthier (cecli): 1
+    benchmark/docker.sh:
+      Paul Gauthier (cecli): 4
+    benchmark/install-docker-ubuntu.sh:
+      Paul Gauthier (cecli): 63
+    benchmark/npm-test.sh:
+      Paul Gauthier: 10
+      Paul Gauthier (cecli): 3
+    benchmark/problem_stats.py:
+      Paul Gauthier: 34
+      Paul Gauthier (cecli): 319
+    benchmark/rsync.sh:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 26
+    scripts/blame.py:
+      Paul Gauthier (cecli): 6
+    scripts/my_models.py:
+      Paul Gauthier (cecli): 95
+    scripts/update-blame.sh:
+      Paul Gauthier (cecli): 3
+    scripts/update-docs.sh:
+      Paul Gauthier: 1
+    tests/basic/test_analytics.py:
+      Paul Gauthier (cecli): 19
+    tests/basic/test_main.py:
+      Paul Gauthier (cecli): 7
+    tests/basic/test_sanity_check_repo.py:
+      mdk: 34
+  grand_total:
+    Evan Johnson: 2
+    Paul Gauthier: 274
+    Paul Gauthier (cecli): 871
+    apaz-cli: 3
+    mdk: 40
+  start_tag: v0.69.0
+  total_lines: 1190
+- aider_percentage: 60.61
+  aider_total: 237
+  end_date: '2025-01-10'
+  end_tag: v0.71.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 2
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 13
+    cecli/commands.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 22
+    cecli/io.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 16
+    cecli/linter.py:
+      Aaron Weisberg: 6
+    cecli/main.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 13
+      apaz-cli: 18
+    cecli/mdstream.py:
+      Paul Gauthier: 38
+      Paul Gauthier (cecli): 58
+    cecli/models.py:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 2
+    cecli/repo.py:
+      Krazer: 10
+      Paul Gauthier: 5
+    cecli/run_cmd.py:
+      Aaron Weisberg: 2
+    cecli/utils.py:
+      Paul Gauthier: 9
+    cecli/voice.py:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 13
+    cecli/watch.py:
+      Paul Gauthier: 1
+    benchmark/Dockerfile:
+      Josh Vera: 1
+      Paul Maunders: 12
+    benchmark/benchmark.py:
+      Nimesh Ghelani: 1
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 30
+    benchmark/problem_stats.py:
+      Paul Gauthier (cecli): 5
+    docker/Dockerfile:
+      Paul Gauthier (cecli): 32
+    scripts/update-history.py:
+      Paul Gauthier (cecli): 1
+    tests/basic/test_io.py:
+      Paul Gauthier (cecli): 7
+    tests/basic/test_linter.py:
+      Aaron Weisberg: 2
+    tests/basic/test_models.py:
+      Paul Gauthier (cecli): 25
+  grand_total:
+    Aaron Weisberg: 10
+    Josh Vera: 1
+    Krazer: 10
+    Nimesh Ghelani: 1
+    Paul Gauthier: 102
+    Paul Gauthier (cecli): 237
+    Paul Maunders: 12
+    apaz-cli: 18
+  start_tag: v0.70.0
+  total_lines: 391
+- aider_percentage: 48.35
+  aider_total: 161
+  end_date: '2025-01-20'
+  end_tag: v0.72.0
+  file_counts:
+    .github/workflows/docker-build-test.yml:
+      Paul Gauthier (cecli): 58
+    .github/workflows/pages.yml:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 1
+    .github/workflows/ubuntu-tests.yml:
+      Paul Gauthier (cecli): 8
+    .github/workflows/windows-tests.yml:
+      Paul Gauthier (cecli): 8
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Titusz Pan: 6
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 2
+    cecli/coders/single_wholefile_func_coder.py:
+      Paul Gauthier: 1
+    cecli/coders/wholefile_func_coder.py:
+      Paul Gauthier: 1
+    cecli/commands.py:
+      Paul Gauthier: 3
+    cecli/history.py:
+      Paul Gauthier: 7
+    cecli/io.py:
+      Paul Gauthier (cecli): 14
+      Titusz Pan: 6
+    cecli/main.py:
+      Titusz Pan: 1
+    cecli/models.py:
+      Paul Gauthier: 39
+    cecli/queries/tree-sitter-kotlin-tags.scm:
+      Paul Walker: 27
+    cecli/repomap.py:
+      Paul Gauthier (cecli): 2
+    cecli/sendchat.py:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 22
+    cecli/utils.py:
+      Paul Gauthier: 1
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 2
+    benchmark/benchmark.py:
+      Paul Gauthier: 9
+    benchmark/rsync.sh:
+      Paul Gauthier: 21
+    docker/Dockerfile:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 6
+    scripts/my_models.py:
+      Paul Gauthier: 3
+    scripts/update-docs.sh:
+      Paul Gauthier: 2
+    tests/basic/test_io.py:
+      Paul Gauthier (cecli): 40
+    tests/basic/test_repomap.py:
+      Paul Walker: 1
+    tests/fixtures/languages/kotlin/test.kt:
+      Paul Walker: 16
+  grand_total:
+    Paul Gauthier: 115
+    Paul Gauthier (cecli): 161
+    Paul Walker: 44
+    Titusz Pan: 13
+  start_tag: v0.71.0
+  total_lines: 333
+- aider_percentage: 33.7
+  aider_total: 307
+  end_date: '2025-01-31'
+  end_tag: v0.73.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 5
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 38
+      Paul Gauthier (cecli): 29
+    cecli/commands.py:
+      xqyz: 1
+    cecli/io.py:
+      Paul Gauthier: 7
+    cecli/main.py:
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 15
+    cecli/models.py:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 34
+    cecli/resources/model-settings.yml:
+      Paul Gauthier: 442
+      kennyfrc: 17
+      xqyz: 12
+    cecli/sendchat.py:
+      Mir Adnan ALI: 26
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 6
+    cecli/urls.py:
+      Paul Gauthier: 1
+    bright_vision_core/website/_includes/leaderboard.js:
+      Paul Gauthier (cecli): 1
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 2
+    benchmark/benchmark.py:
+      Paul Gauthier (cecli): 21
+    benchmark/rsync.sh:
+      Paul Gauthier: 2
+    tests/basic/test_coder.py:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 53
+    tests/basic/test_main.py:
+      Paul Gauthier (cecli): 69
+    tests/basic/test_sendchat.py:
+      Paul Gauthier (cecli): 77
+  grand_total:
+    Mir Adnan ALI: 26
+    Paul Gauthier: 548
+    Paul Gauthier (cecli): 307
+    kennyfrc: 17
+    xqyz: 13
+  start_tag: v0.72.0
+  total_lines: 911
+- aider_percentage: 72.82
+  aider_total: 635
+  end_date: '2025-02-06'
+  end_tag: v0.74.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 24
+      Paul Gauthier (cecli): 9
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 5
+    cecli/coders/wholefile_coder.py:
+      Paul Gauthier: 2
+    cecli/commands.py:
+      Paul Gauthier: 1
+    cecli/exceptions.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 7
+    cecli/history.py:
+      Paul Gauthier (cecli): 1
+    cecli/io.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 20
+    cecli/llm.py:
+      Paul Gauthier: 3
+    cecli/main.py:
+      Paul Gauthier: 21
+      Paul Gauthier (cecli): 25
+    cecli/models.py:
+      Paul Gauthier: 104
+      Paul Gauthier (cecli): 77
+    cecli/repo.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 2
+      "Viktor Sz\xE9pe": 3
+    cecli/resources/model-settings.yml:
+      Paul Gauthier: 24
+    cecli/watch.py:
+      Paul Gauthier (cecli): 45
+    benchmark/docker.sh:
+      Paul Gauthier: 2
+    docker/Dockerfile:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 4
+    tests/basic/test_editblock.py:
+      Paul Gauthier: 21
+    tests/basic/test_history.py:
+      Paul Gauthier (cecli): 13
+    tests/basic/test_io.py:
+      Paul Gauthier (cecli): 68
+    tests/basic/test_main.py:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 1
+    tests/basic/test_models.py:
+      Paul Gauthier (cecli): 298
+    tests/basic/test_repo.py:
+      Paul Gauthier (cecli): 11
+    tests/basic/test_sendchat.py:
+      Paul Gauthier (cecli): 7
+    tests/basic/test_watch.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 47
+  grand_total:
+    Paul Gauthier: 234
+    Paul Gauthier (cecli): 635
+    "Viktor Sz\xE9pe": 3
+  start_tag: v0.73.0
+  total_lines: 872
+- aider_percentage: 43.8
+  aider_total: 166
+  end_date: '2025-02-24'
+  end_tag: v0.75.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 7
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 4
+    cecli/commands.py:
+      FeepingCreature (cecli): 6
+    cecli/editor.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 5
+    cecli/io.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 4
+    cecli/linter.py:
+      Paul Gauthier: 1
+    cecli/main.py:
+      Paul Gauthier: 20
+    cecli/models.py:
+      Paul Gauthier: 4
+    cecli/queries/tree-sitter-language-pack/javascript-tags.scm:
+      Paul Gauthier: 5
+    cecli/queries/tree-sitter-languages/hcl-tags.scm:
+      Paul Gauthier: 3
+      Warren Krewenki: 74
+    cecli/queries/tree-sitter-languages/javascript-tags.scm:
+      Paul Gauthier: 5
+    cecli/repomap.py:
+      Paul Gauthier: 43
+      Paul Gauthier (cecli): 11
+    cecli/resources/model-settings.yml:
+      Paul Gauthier: 20
+    cecli/special.py:
+      Lucas Shadler: 1
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    benchmark/Dockerfile:
+      Paul Gauthier (cecli): 1
+    benchmark/benchmark.py:
+      Paul Gauthier: 4
+    benchmark/cpp-test.sh:
+      Paul Gauthier: 1
+    scripts/blame.py:
+      Paul Gauthier (cecli): 2
+    scripts/issues.py:
+      Paul Gauthier (cecli): 19
+    tests/basic/test_coder.py:
+      Paul Gauthier (cecli): 19
+    tests/basic/test_editor.py:
+      Antti Kaihola: 1
+      Paul Gauthier (cecli): 41
+    tests/basic/test_models.py:
+      Paul Gauthier (cecli): 1
+    tests/basic/test_repomap.py:
+      Paul Gauthier (cecli): 1
+    tests/fixtures/languages/hcl/test.tf:
+      Paul Gauthier (cecli): 52
+  grand_total:
+    Antti Kaihola: 1
+    FeepingCreature (cecli): 6
+    Lucas Shadler: 1
+    Paul Gauthier: 137
+    Paul Gauthier (cecli): 160
+    Warren Krewenki: 74
+  start_tag: v0.74.0
+  total_lines: 379
+- aider_percentage: 82.52
+  aider_total: 1667
+  end_date: '2025-03-10'
+  end_tag: v0.76.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 25
+    cecli/args_formatter.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 3
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 57
+      Paul Gauthier (cecli): 30
+    cecli/deprecated.py:
+      Paul Gauthier (cecli): 125
+    cecli/io.py:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 130
+    cecli/main.py:
+      Akira Komamura: 2
+      Mattias: 1
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 16
+    cecli/models.py:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 72
+    cecli/queries/tree-sitter-language-pack/csharp-tags.scm:
+      Paul Gauthier: 14
+      Paul Gauthier (cecli): 12
+    cecli/reasoning_tags.py:
+      Paul Gauthier: 14
+      Paul Gauthier (cecli): 68
+    cecli/repo.py:
+      Akira Komamura: 1
+      Paul Gauthier (cecli): 5
+    cecli/repomap.py:
+      Paul Gauthier: 9
+    cecli/resources/model-settings.yml:
+      Paul Gauthier: 105
+      Paul Gauthier (cecli): 51
+      gmoz22: 12
+    bright_vision_core/website/_includes/leaderboard.js:
+      Paul Gauthier (cecli): 48
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 2
+    benchmark/benchmark.py:
+      Paul Gauthier: 1
+    benchmark/problem_stats.py:
+      Paul Gauthier (cecli): 2
+    docker/Dockerfile:
+      Paul Gauthier: 1
+    scripts/blame.py:
+      Paul Gauthier: 1
+    scripts/pip-compile.sh:
+      Claudia Pellegrino: 12
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 11
+    scripts/update-history.py:
+      Paul Gauthier: 1
+    scripts/versionbump.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 64
+    tests/basic/test_deprecated.py:
+      Paul Gauthier: 10
+      Paul Gauthier (cecli): 125
+    tests/basic/test_io.py:
+      Paul Gauthier (cecli): 54
+    tests/basic/test_main.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 97
+    tests/basic/test_model_info_manager.py:
+      Paul Gauthier (cecli): 80
+    tests/basic/test_models.py:
+      Paul Gauthier: 31
+      Paul Gauthier (cecli): 38
+    tests/basic/test_reasoning.py:
+      Paul Gauthier: 33
+      Paul Gauthier (cecli): 534
+    tests/basic/test_repomap.py:
+      Paul Gauthier: 2
+    tests/basic/test_ssl_verification.py:
+      Paul Gauthier (cecli): 77
+  grand_total:
+    Akira Komamura: 3
+    Claudia Pellegrino: 12
+    Mattias: 1
+    Paul Gauthier: 325
+    Paul Gauthier (cecli): 1667
+    gmoz22: 12
+  start_tag: v0.75.0
+  total_lines: 2020
+- aider_percentage: 68.94
+  aider_total: 1447
+  end_date: '2025-03-13'
+  end_tag: v0.77.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier (cecli): 7
+    cecli/coders/architect_coder.py:
+      Paul Gauthier (cecli): 2
+    cecli/coders/base_coder.py:
+      Paul Gauthier (cecli): 14
+    cecli/commands.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 73
+    cecli/deprecated.py:
+      Paul Gauthier: 2
+    cecli/io.py:
+      Paul Gauthier (cecli): 5
+    cecli/main.py:
+      Paul Gauthier (cecli): 12
+    cecli/models.py:
+      Paul Gauthier (cecli): 83
+    cecli/queries/tree-sitter-language-pack/arduino-tags.scm:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 2
+    cecli/queries/tree-sitter-language-pack/c-tags.scm:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 5
+    cecli/queries/tree-sitter-language-pack/chatito-tags.scm:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 5
+    cecli/queries/tree-sitter-language-pack/commonlisp-tags.scm:
+      Paul Gauthier: 116
+      Paul Gauthier (cecli): 6
+    cecli/queries/tree-sitter-language-pack/cpp-tags.scm:
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 8
+    cecli/queries/tree-sitter-language-pack/d-tags.scm:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 17
+    cecli/queries/tree-sitter-language-pack/dart-tags.scm:
+      Paul Gauthier: 65
+      Paul Gauthier (cecli): 19
+    cecli/queries/tree-sitter-language-pack/elisp-tags.scm:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 2
+    cecli/queries/tree-sitter-language-pack/elixir-tags.scm:
+      Paul Gauthier: 35
+      Paul Gauthier (cecli): 8
+    cecli/queries/tree-sitter-language-pack/elm-tags.scm:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 6
+    cecli/queries/tree-sitter-language-pack/gleam-tags.scm:
+      Paul Gauthier: 26
+      Paul Gauthier (cecli): 15
+    cecli/queries/tree-sitter-language-pack/go-tags.scm:
+      Paul Gauthier: 28
+      Paul Gauthier (cecli): 10
+    cecli/queries/tree-sitter-language-pack/java-tags.scm:
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 7
+    cecli/queries/tree-sitter-language-pack/lua-tags.scm:
+      Paul Gauthier: 25
+      Paul Gauthier (cecli): 9
+    cecli/queries/tree-sitter-language-pack/pony-tags.scm:
+      Paul Gauthier: 20
+      Paul Gauthier (cecli): 19
+    cecli/queries/tree-sitter-language-pack/properties-tags.scm:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 2
+    cecli/queries/tree-sitter-language-pack/python-tags.scm:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 5
+    cecli/queries/tree-sitter-language-pack/r-tags.scm:
+      Paul Gauthier: 17
+      Paul Gauthier (cecli): 4
+    cecli/queries/tree-sitter-language-pack/racket-tags.scm:
+      Paul Gauthier: 10
+      Paul Gauthier (cecli): 2
+    cecli/queries/tree-sitter-language-pack/ruby-tags.scm:
+      Paul Gauthier: 52
+      Paul Gauthier (cecli): 12
+    cecli/queries/tree-sitter-language-pack/rust-tags.scm:
+      Paul Gauthier: 46
+      Paul Gauthier (cecli): 14
+    cecli/queries/tree-sitter-language-pack/solidity-tags.scm:
+      Paul Gauthier: 30
+      Paul Gauthier (cecli): 13
+    cecli/queries/tree-sitter-language-pack/swift-tags.scm:
+      Paul Gauthier: 39
+      Paul Gauthier (cecli): 12
+    cecli/queries/tree-sitter-language-pack/udev-tags.scm:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 5
+    cecli/resources/model-settings.yml:
+      Paul Gauthier: 12
+    cecli/watch.py:
+      Yutaka Matsubara: 4
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 8
+    scripts/redact-cast.py:
+      Paul Gauthier: 27
+      Paul Gauthier (cecli): 98
+    scripts/tsl_pack_langs.py:
+      Paul Gauthier (cecli): 145
+    scripts/versionbump.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 1
+    tests/basic/test_coder.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 109
+    tests/basic/test_commands.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 222
+    tests/basic/test_models.py:
+      Paul Gauthier (cecli): 45
+    tests/basic/test_repomap.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 132
+    tests/fixtures/languages/arduino/test.ino:
+      Paul Gauthier (cecli): 21
+    tests/fixtures/languages/c/test.c:
+      Paul Gauthier (cecli): 15
+    tests/fixtures/languages/chatito/test.chatito:
+      Paul Gauthier (cecli): 20
+    tests/fixtures/languages/commonlisp/test.lisp:
+      Paul Gauthier (cecli): 17
+    tests/fixtures/languages/d/test.d:
+      Paul Gauthier (cecli): 26
+    tests/fixtures/languages/dart/test.dart:
+      Paul Gauthier (cecli): 21
+    tests/fixtures/languages/elm/test.elm:
+      Paul Gauthier (cecli): 21
+    tests/fixtures/languages/gleam/test.gleam:
+      Paul Gauthier (cecli): 10
+    tests/fixtures/languages/lua/test.lua:
+      Paul Gauthier (cecli): 25
+    tests/fixtures/languages/pony/test.pony:
+      Paul Gauthier (cecli): 8
+    tests/fixtures/languages/properties/test.properties:
+      Paul Gauthier (cecli): 14
+    tests/fixtures/languages/r/test.r:
+      Paul Gauthier (cecli): 17
+    tests/fixtures/languages/racket/test.rkt:
+      Paul Gauthier (cecli): 8
+    tests/fixtures/languages/solidity/test.sol:
+      Paul Gauthier (cecli): 21
+    tests/fixtures/languages/swift/test.swift:
+      Paul Gauthier (cecli): 18
+    tests/fixtures/languages/udev/test.rules:
+      Paul Gauthier (cecli): 22
+  grand_total:
+    Paul Gauthier: 648
+    Paul Gauthier (cecli): 1447
+    Yutaka Matsubara: 4
+  start_tag: v0.76.0
+  total_lines: 2099
+- aider_percentage: 91.82
+  aider_total: 2682
+  end_date: '2025-03-21'
+  end_tag: v0.78.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier (cecli): 24
+      Yutaka Matsubara: 2
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 6
+    cecli/commands.py:
+      Carles Sala (cecli): 30
+      Paul Gauthier (cecli): 10
+    cecli/help_pats.py:
+      Paul Gauthier: 6
+    cecli/io.py:
+      Marco Mayer: 2
+      Paul Gauthier (cecli): 17
+    cecli/main.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 29
+    cecli/mdstream.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 22
+    cecli/models.py:
+      Paul Gauthier (cecli): 41
+      lentil32 (cecli): 15
+    cecli/repo.py:
+      Paul Gauthier (cecli): 5
+    cecli/resources/model-settings.yml:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 22
+    bright_vision_core/website/_includes/head_custom.html:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 53
+    bright_vision_core/website/_includes/recording.js:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 424
+    bright_vision_core/website/assets/asciinema/asciinema-player.min.js:
+      Paul Gauthier: 1
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    bright_vision_core/website/index.html:
+      Paul Gauthier: 173
+      Paul Gauthier (cecli): 371
+    scripts/badges.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 496
+    scripts/blame.py:
+      Paul Gauthier: 2
+    scripts/jekyll_run.sh:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 5
+    scripts/logo_svg.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 169
+    scripts/recording_audio.py:
+      Paul Gauthier (cecli): 338
+    scripts/redact-cast.py:
+      Paul Gauthier: 22
+      Paul Gauthier (cecli): 37
+    scripts/tmux_record.sh:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 17
+    scripts/update-docs.sh:
+      Paul Gauthier: 1
+    scripts/update-history.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 52
+    tests/basic/test_aws_credentials.py:
+      lentil32 (cecli): 169
+    tests/basic/test_commands.py:
+      Carles Sala (cecli): 40
+    tests/basic/test_main.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 193
+    tests/basic/test_repo.py:
+      Paul Gauthier (cecli): 48
+    tests/help/test_help.py:
+      Paul Gauthier (cecli): 49
+  grand_total:
+    Carles Sala (cecli): 70
+    Marco Mayer: 2
+    Paul Gauthier: 235
+    Paul Gauthier (cecli): 2428
+    Yutaka Matsubara: 2
+    lentil32 (cecli): 184
+  start_tag: v0.77.0
+  total_lines: 2921
+- aider_percentage: 65.38
+  aider_total: 221
+  end_date: '2025-03-25'
+  end_tag: v0.79.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/__init__.py:
+      Paul Gauthier: 2
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 5
+    cecli/coders/context_coder.py:
+      Paul Gauthier: 45
+      Paul Gauthier (cecli): 8
+    cecli/commands.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 20
+    cecli/io.py:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 2
+    cecli/main.py:
+      Paul Gauthier (cecli): 4
+    cecli/models.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 1
+    cecli/repomap.py:
+      Paul Gauthier: 17
+    cecli/resources/model-settings.yml:
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 10
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    bright_vision_core/website/index.html:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 16
+    scripts/badges.py:
+      Paul Gauthier (cecli): 2
+    scripts/blame.py:
+      Paul Gauthier (cecli): 16
+    scripts/dl_icons.py:
+      Paul Gauthier (cecli): 60
+    scripts/tmux_record.sh:
+      Paul Gauthier: 1
+    tests/basic/test_coder.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 77
+  grand_total:
+    Paul Gauthier: 117
+    Paul Gauthier (cecli): 221
+  start_tag: v0.78.0
+  total_lines: 338
+- aider_percentage: 86.86
+  aider_total: 1837
+  end_date: '2025-03-31'
+  end_tag: v0.80.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 2
+    cecli/commands.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 20
+    cecli/exceptions.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 3
+    cecli/io.py:
+      Andrey Ivanov: 2
+      Matteo Landi (cecli): 11
+      Paul Gauthier (cecli): 38
+    cecli/linter.py:
+      Mir Adnan ALI: 2
+    cecli/main.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 21
+    cecli/mdstream.py:
+      Peter Schilling (cecli) (cecli): 25
+    cecli/models.py:
+      Paul Gauthier: 12
+      Paul Gauthier (cecli): 9
+    cecli/onboarding.py:
+      Paul Gauthier: 44
+      Paul Gauthier (cecli): 389
+    cecli/queries/tree-sitter-languages/scala-tags.scm:
+      Vasil Markoukin: 65
+    cecli/repo.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 7
+    cecli/repomap.py:
+      Paul Gauthier (cecli): 19
+    cecli/resources/model-settings.yml:
+      Paul Gauthier (cecli): 13
+    cecli/scrape.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 1
+    cecli/utils.py:
+      Paul Gauthier (cecli): 5
+    cecli/watch.py:
+      Matteo Landi (cecli): 2
+    bright_vision_core/website/_includes/leaderboard.js:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 2
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    bright_vision_core/website/index.html:
+      Paul Gauthier: 51
+      Paul Gauthier (cecli): 175
+    scripts/30k-image.py:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 227
+    scripts/homepage.py:
+      Paul Gauthier (cecli): 122
+    tests/basic/test_commands.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 48
+    tests/basic/test_exceptions.py:
+      Paul Gauthier (cecli): 17
+    tests/basic/test_io.py:
+      Paul Gauthier (cecli): 28
+    tests/basic/test_main.py:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 199
+    tests/basic/test_onboarding.py:
+      Paul Gauthier (cecli): 439
+    tests/basic/test_repomap.py:
+      Vasil Markoukin: 3
+    tests/basic/test_ssl_verification.py:
+      Paul Gauthier (cecli): 8
+    tests/basic/test_watch.py:
+      Matteo Landi (cecli): 9
+    tests/fixtures/languages/scala/test.scala:
+      Vasil Markoukin: 61
+  grand_total:
+    Andrey Ivanov: 2
+    Matteo Landi (cecli): 22
+    Mir Adnan ALI: 2
+    Paul Gauthier: 145
+    Paul Gauthier (cecli): 1790
+    Peter Schilling (cecli) (cecli): 25
+    Vasil Markoukin: 129
+  start_tag: v0.79.0
+  total_lines: 2115
+- aider_percentage: 85.55
+  aider_total: 225
+  end_date: '2025-04-04'
+  end_tag: v0.81.0
+  file_counts:
+    .github/workflows/check_pypi_version.yml:
+      Paul Gauthier: 11
+      Paul Gauthier (cecli): 75
+    .github/workflows/windows_check_pypi_version.yml:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 86
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier (cecli): 4
+    cecli/exceptions.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 12
+    cecli/main.py:
+      Paul Gauthier (cecli): 40
+    cecli/models.py:
+      Paul Gauthier (cecli): 2
+    cecli/resources/model-settings.yml:
+      Paul Gauthier: 9
+      Paul Gauthier (cecli): 1
+    bright_vision_core/website/_includes/leaderboard.js:
+      Paul Gauthier (cecli): 5
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    bright_vision_core/website/index.html:
+      Paul Gauthier: 3
+    tests/basic/test_exceptions.py:
+      Paul Gauthier: 3
+  grand_total:
+    Paul Gauthier: 38
+    Paul Gauthier (cecli): 225
+  start_tag: v0.80.0
+  total_lines: 263
+- aider_percentage: 91.85
+  aider_total: 1567
+  end_date: '2025-04-14'
+  end_tag: v0.82.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args_formatter.py:
+      Paul Gauthier (cecli): 4
+    cecli/coders/__init__.py:
+      Paul Gauthier (cecli): 4
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 5
+    cecli/coders/editor_diff_fenced_coder.py:
+      Paul Gauthier (cecli): 9
+    cecli/coders/patch_coder.py:
+      Paul Gauthier (cecli): 679
+    cecli/coders/search_replace.py:
+      Paul Gauthier (cecli): 1
+    cecli/main.py:
+      Paul Gauthier (cecli): 1
+    cecli/models.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 25
+    cecli/resources/model-settings.yml:
+      Felix Lisczyk: 13
+      Paul Gauthier: 37
+      Paul Gauthier (cecli): 68
+    bright_vision_core/website/_includes/leaderboard.js:
+      Paul Gauthier: 38
+      Paul Gauthier (cecli): 6
+    bright_vision_core/website/_includes/leaderboard_table.js:
+      Paul Gauthier (cecli): 518
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 15
+      Paul Gauthier (cecli): 209
+    bright_vision_core/website/index.html:
+      Paul Gauthier: 28
+    scripts/homepage.py:
+      Paul Gauthier (cecli): 2
+    scripts/versionbump.py:
+      Paul Gauthier (cecli): 11
+    tests/basic/test_coder.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 25
+  grand_total:
+    Felix Lisczyk: 13
+    Paul Gauthier: 126
+    Paul Gauthier (cecli): 1567
+  start_tag: v0.81.0
+  total_lines: 1706
+- aider_percentage: 66.89
+  aider_total: 1735
+  end_date: '2025-05-09'
+  end_tag: v0.83.0
+  file_counts:
+    .github/workflows/check_pypi_version.yml:
+      Paul Gauthier (cecli): 1
+    .github/workflows/pre-commit.yml:
+      MDW: 48
+    .github/workflows/ubuntu-tests.yml:
+      Paul Gauthier (cecli): 1
+    .github/workflows/windows-tests.yml:
+      Paul Gauthier (cecli): 1
+    .github/workflows/windows_check_pypi_version.yml:
+      Paul Gauthier (cecli): 1
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Andrew Grigorev: 5
+      Andrew Grigorev (cecli): 21
+      Paul Gauthier (cecli): 38
+    cecli/coders/__init__.py:
+      Paul Gauthier (cecli): 2
+    cecli/coders/base_coder.py:
+      Andrew Grigorev (cecli): 2
+      Paul Gauthier: 60
+      Paul Gauthier (cecli): 104
+    cecli/coders/editblock_coder.py:
+      Paul Gauthier: 10
+      Paul Gauthier (cecli): 7
+      zjy1412: 2
+    cecli/coders/editblock_fenced_coder.py:
+      MDW: 1
+    cecli/coders/help_coder.py:
+      MDW: 1
+    cecli/coders/patch_coder.py:
+      Paul Gauthier (cecli): 38
+    cecli/coders/shell.py:
+      Paul Gauthier: 37
+    cecli/coders/udiff_coder.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 9
+    cecli/coders/udiff_simple.py:
+      Paul Gauthier (cecli): 14
+    cecli/commands.py:
+      Andrew Grigorev (cecli): 10
+      Paul Gauthier: 7
+      Paul Gauthier (cecli): 1
+    cecli/gui.py:
+      Jon Keys: 2
+    cecli/io.py:
+      Kay Gosho: 1
+      Paul Gauthier (cecli): 5
+    cecli/linter.py:
+      Paul Gauthier: 1
+      Titusz Pan: 1
+    cecli/main.py:
+      Paul Gauthier (cecli): 9
+    cecli/mdstream.py:
+      Paul Gauthier (cecli): 11
+    cecli/models.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 66
+      Stefan Hladnik: 4
+      Stefan Hladnik (cecli): 41
+    cecli/queries/tree-sitter-language-pack/ocaml_interface-tags.scm:
+      Andrey Popp: 98
+    cecli/queries/tree-sitter-languages/ocaml_interface-tags.scm:
+      Andrey Popp: 98
+    cecli/repo.py:
+      Andrew Grigorev (cecli): 136
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 33
+    cecli/repomap.py:
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 6
+    cecli/resources/model-settings.yml:
+      Paul Gauthier: 183
+      Paul Gauthier (cecli): 175
+      cantalupo555: 1
+    cecli/scrape.py:
+      Jon Keys: 12
+    cecli/utils.py:
+      Paul Gauthier: 13
+      Paul Gauthier (cecli): 131
+      Titusz Pan: 1
+    cecli/waiting.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 54
+    cecli/watch.py:
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 7
+    bright_vision_core/website/_includes/leaderboard_table.js:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 18
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 2
+    bright_vision_core/website/index.html:
+      Paul Gauthier: 13
+    benchmark/benchmark.py:
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 42
+    benchmark/docker.sh:
+      Paul Gauthier: 2
+    benchmark/refactor_tools.py:
+      MDW: 1
+    scripts/30k-image.py:
+      MDW: 1
+    scripts/clean_metadata.py:
+      Paul Gauthier (cecli): 258
+    scripts/update-history.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 7
+    tests/basic/test_coder.py:
+      Paul Gauthier (cecli): 3
+    tests/basic/test_commands.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 90
+    tests/basic/test_editblock.py:
+      Paul Gauthier: 10
+      zjy1412: 52
+    tests/basic/test_io.py:
+      Paul Gauthier (cecli): 132
+    tests/basic/test_linter.py:
+      Paul Gauthier: 22
+      Titusz Pan: 10
+    tests/basic/test_repo.py:
+      Andrew Grigorev: 1
+      Andrew Grigorev (cecli): 139
+      Paul Gauthier: 79
+      Paul Gauthier (cecli): 6
+    tests/basic/test_repomap.py:
+      Andrey Popp: 7
+    tests/basic/test_watch.py:
+      MDW: 1
+    tests/fixtures/languages/ocaml_interface/test.mli:
+      Andrey Popp: 14
+    tests/scrape/test_playwright_disable.py:
+      Andrew Grigorev (cecli): 111
+      Paul Gauthier: 25
+      Paul Gauthier (cecli): 3
+  grand_total:
+    Andrew Grigorev: 6
+    Andrew Grigorev (cecli): 419
+    Andrey Popp: 217
+    Jon Keys: 14
+    Kay Gosho: 1
+    MDW: 53
+    Paul Gauthier: 497
+    Paul Gauthier (cecli): 1275
+    Stefan Hladnik: 4
+    Stefan Hladnik (cecli): 41
+    Titusz Pan: 12
+    cantalupo555: 1
+    zjy1412: 54
+  start_tag: v0.82.0
+  total_lines: 2594
+- aider_percentage: 78.92
+  aider_total: 655
+  end_date: '2025-05-30'
+  end_tag: v0.84.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/args.py:
+      Paul Gauthier (cecli): 27
+      saviour: 2
+    cecli/args_formatter.py:
+      Paul Gauthier: 1
+    cecli/coders/base_coder.py:
+      Paul Gauthier: 4
+      Paul Gauthier (cecli): 10
+    cecli/commands.py:
+      Paul Gauthier (cecli): 23
+      wangboxue: 1
+    cecli/models.py:
+      Lih Chen: 15
+      Paul Gauthier: 16
+      Paul Gauthier (cecli): 12
+    cecli/onboarding.py:
+      Paul Gauthier: 2
+    cecli/openrouter.py:
+      Paul Gauthier (cecli): 120
+    cecli/repo.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 10
+    cecli/repomap.py:
+      Paul Gauthier (cecli): 1
+    cecli/resources/model-settings.yml:
+      Paul Gauthier: 71
+      Paul Gauthier (cecli): 193
+      Trung Dinh: 11
+    cecli/utils.py:
+      Paul Gauthier (cecli): 1
+    cecli/waiting.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 6
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    bright_vision_core/website/index.html:
+      Paul Gauthier: 43
+    scripts/update-history.py:
+      Paul Gauthier: 2
+    tests/basic/test_coder.py:
+      Paul Gauthier: 2
+      Paul Gauthier (cecli): 144
+    tests/basic/test_main.py:
+      Paul Gauthier (cecli): 28
+    tests/basic/test_models.py:
+      Paul Gauthier (cecli): 2
+    tests/basic/test_onboarding.py:
+      Paul Gauthier (cecli): 5
+    tests/basic/test_openrouter.py:
+      Paul Gauthier (cecli): 73
+  grand_total:
+    Lih Chen: 15
+    Paul Gauthier: 146
+    Paul Gauthier (cecli): 655
+    Trung Dinh: 11
+    saviour: 2
+    wangboxue: 1
+  start_tag: v0.83.0
+  total_lines: 830
+- aider_percentage: 22.79
+  aider_total: 139
+  end_date: '2025-06-27'
+  end_tag: v0.85.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/analytics.py:
+      Paul Gauthier: 5
+      Vasil Markoukin (cecli): 6
+    cecli/args.py:
+      Kyosuke Takayama: 6
+      Paul Gauthier: 5
+      Paul Gauthier (cecli): 2
+      Vasil Markoukin (cecli): 9
+      omarcinkonis: 6
+    cecli/coders/base_coder.py:
+      Kyosuke Takayama: 3
+      omarcinkonis: 3
+    cecli/coders/editblock_coder.py:
+      Mathis Beer (cecli): 1
+    cecli/coders/search_replace.py:
+      Emmanuel Ferdman: 1
+    cecli/commands.py:
+      Ali Ayas (claude-sonnet-4-20250514): 6
+      Matteo Landi: 16
+      Paul Gauthier: 4
+      omarcinkonis: 5
+    cecli/history.py:
+      jayeshthk: 18
+    cecli/io.py:
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 14
+      Vamsi Talupula: 5
+    cecli/main.py:
+      Kyosuke Takayama: 1
+      Makar Ivashko: 1
+      Paul Gauthier: 3
+      Vasil Markoukin (cecli): 5
+      omarcinkonis: 1
+    cecli/models.py:
+      Ali Ayas (claude-sonnet-4-20250514): 11
+      Nimesh Ghelani: 3
+      Paul Gauthier: 1
+      Sebastian Estrella: 11
+      Vincent Taverna: 32
+    cecli/queries/tree-sitter-language-pack/clojure-tags.scm:
+      Garrett Hopper: 7
+    cecli/queries/tree-sitter-language-pack/matlab-tags.scm:
+      Matthew Tofano: 4
+    cecli/queries/tree-sitter-languages/matlab-tags.scm:
+      Matthew Tofano: 4
+    cecli/repo.py:
+      Kyosuke Takayama: 3
+      Luke Reeves: 13
+      Paul Gauthier: 2
+      muravvv: 12
+    cecli/repomap.py:
+      Garrett Hopper: 2
+    cecli/resources/model-settings.yml:
+      Andrew Grigorev: 7
+      Leon Mergen: 20
+      Nimesh Ghelani: 15
+      Paul Gauthier: 1
+      Paul Gauthier (cecli): 21
+      Trung Dinh: 8
+      Wietse Venema: 9
+      therealmarv: 14
+    cecli/utils.py:
+      Paul Gauthier (cecli): 7
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    bright_vision_core/website/index.html:
+      Paul Gauthier: 8
+      Paul Gauthier (cecli): 1
+    benchmark/benchmark.py:
+      Paul Gauthier: 1
+    tests/basic/test_commands.py:
+      Matteo Landi: 22
+    tests/basic/test_history.py:
+      Paul Gauthier: 15
+    tests/basic/test_main.py:
+      Kyosuke Takayama: 10
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 64
+      omarcinkonis: 41
+    tests/basic/test_repo.py:
+      Luke Reeves: 31
+      Paul Gauthier: 2
+      muravvv: 22
+    tests/basic/test_repomap.py:
+      Matthew Tofano: 3
+      Paul Gauthier (cecli): 3
+    tests/fixtures/languages/clojure/test.clj:
+      Paul Gauthier (cecli): 6
+    tests/fixtures/languages/matlab/test.m:
+      Matthew Tofano: 42
+  grand_total:
+    Ali Ayas (claude-sonnet-4-20250514): 17
+    Andrew Grigorev: 7
+    Emmanuel Ferdman: 1
+    Garrett Hopper: 9
+    Kyosuke Takayama: 23
+    Leon Mergen: 20
+    Luke Reeves: 44
+    Makar Ivashko: 1
+    Mathis Beer (cecli): 1
+    Matteo Landi: 38
+    Matthew Tofano: 53
+    Nimesh Ghelani: 18
+    Paul Gauthier: 53
+    Paul Gauthier (cecli): 118
+    Sebastian Estrella: 11
+    Trung Dinh: 8
+    Vamsi Talupula: 5
+    Vasil Markoukin (cecli): 20
+    Vincent Taverna: 32
+    Wietse Venema: 9
+    jayeshthk: 18
+    muravvv: 34
+    omarcinkonis: 56
+    therealmarv: 14
+  start_tag: v0.84.0
+  total_lines: 610
+- aider_percentage: 87.75
+  aider_total: 222
+  end_date: '2025-08-09'
+  end_tag: v0.86.0
+  file_counts:
+    cecli/__init__.py:
+      Paul Gauthier: 1
+    cecli/analytics.py:
+      Paul Gauthier (cecli): 1
+    cecli/commands.py:
+      Paul Gauthier (cecli): 7
+      Zexin Yuan: 1
+    cecli/models.py:
+      Andrew Grigorev (cecli): 3
+      Paul Gauthier: 3
+      Paul Gauthier (cecli): 5
+    cecli/resources/model-settings.yml:
+      Jack Harrington: 7
+      Paul Gauthier: 6
+      Paul Gauthier (cecli): 199
+      Tamir Zahavi-Brunner: 7
+    bright_vision_core/website/_includes/leaderboard_table.js:
+      Paul Gauthier: 1
+    bright_vision_core/website/docs/leaderboards/index.md:
+      Paul Gauthier: 1
+    bright_vision_core/website/index.html:
+      Paul Gauthier: 3
+    scripts/blame.py:
+      Paul Gauthier (cecli): 7
+    scripts/update-history.py:
+      Paul Gauthier: 1
+  grand_total:
+    Andrew Grigorev (cecli): 3
+    Jack Harrington: 7
+    Paul Gauthier: 16
+    Paul Gauthier (cecli): 219
+    Tamir Zahavi-Brunner: 7
+    Zexin Yuan: 1
+  start_tag: v0.85.0
+  total_lines: 253

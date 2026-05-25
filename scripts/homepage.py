@@ -276,8 +276,8 @@ def generate_badges_md(downloads, stars, cecli_percentage):
     # Format downloads to 1 decimal place with M suffix
     downloads_formatted = format_number(downloads)
 
-    markdown = f"""  <a href="https://github.com/Aider-AI/cecli/stargazers"><img alt="GitHub Stars" title="{GITHUB_STARS_TOOLTIP}"
-src="https://img.shields.io/github/stars/Aider-AI/cecli?style=flat-square&logo=github&color=f1c40f&labelColor=555555"/></a>
+    markdown = f"""  <a href="https://github.com/Aider-AI/aider/stargazers"><img alt="GitHub Stars" title="{GITHUB_STARS_TOOLTIP}"
+src="https://img.shields.io/github/stars/Aider-AI/aider?style=flat-square&logo=github&color=f1c40f&labelColor=555555"/></a>
   <a href="https://pypi.org/project/cecli-dev/"><img alt="PyPI Downloads" title="{PYPI_DOWNLOADS_TOOLTIP}"
 src="https://img.shields.io/badge/📦%20Installs-{downloads_formatted}-2ecc71?style=flat-square&labelColor=555555"/></a>
   <a href="https://openrouter.ai/#options-menu">"""  # noqa
@@ -371,7 +371,7 @@ def get_badges_html():
         stars_formatted = str(int(round(stars)))
 
     # Generate HTML badges
-    html = f"""<a href="https://github.com/Aider-AI/cecli" class="github-badge badge-stars" title="{GITHUB_STARS_TOOLTIP}">
+    html = f"""<a href="https://github.com/Aider-AI/aider" class="github-badge badge-stars" title="{GITHUB_STARS_TOOLTIP}">
     <span class="badge-label">⭐ GitHub Stars</span>
     <span class="badge-value">{stars_formatted}</span>
 </a>

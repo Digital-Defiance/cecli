@@ -1,12 +1,14 @@
 [project]
-name = "cecli-dev"
-description = "we also can't pronounce cecli"
+name = "bright-vision-core"
+description = "Bright Vision Core — cecli engine + headless HTTP API for the Bright Vision desktop app"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE.txt"]
+keywords = ["bright-vision", "cecli", "coding-agent", "ollama", "llm", "aider"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -18,14 +20,15 @@ requires-python = ">=3.10"
 dynamic = ["dependencies", "optional-dependencies", "version"]
 
 [project.urls]
-Homepage = "https://github.com/dwash96/cecli"
-Documentation = "https://github.com/dwash96/cecli"
-Repository = "https://github.com/dwash96/cecli"
+Homepage = "https://github.com/Digital-Defiance/bright-vision-core"
+Documentation = "https://github.com/Digital-Defiance/bright-vision-core"
+Repository = "https://github.com/Digital-Defiance/bright-vision-core"
 
 [project.scripts]
 aider-ce = "cecli.main:main"
 "cecli" = "cecli.main:main"
 "ce.cli" = "cecli.main:main"
+bright-vision-core-serve = "bright_vision_core.cli_serve:main"
 
 [tool.setuptools.dynamic]
 dependencies = { file = "requirements/requirements.in" }
@@ -39,7 +42,7 @@ playwright = { file = "requirements/requirements-playwright.in" }
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["cecli*"]
+include = ["cecli*", "bright_vision_core*"]
 
 [build-system]
 requires = ["setuptools>=68", "setuptools_scm[toml]>=8"]
