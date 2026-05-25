@@ -23,3 +23,6 @@ recursive-exclude cecli/website/assets *
 recursive-exclude cecli/website *.js
 recursive-exclude cecli/website *.html
 recursive-exclude cecli/website *.yml
+
+# Bright Vision Core marketing/docs site (deploy via GitHub Pages, not PyPI)
+recursive-exclude bright_vision_core/website *

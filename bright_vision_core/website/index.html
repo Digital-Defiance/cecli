@@ -1,0 +1,341 @@
+---
+layout: none
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Bright Vision Core — biforkation (Cecli → Cecli → Bright Vision Core): headless HTTP API, git submodule workspaces, and the Bright Vision desktop engine.">
+    <title>Bright Vision Core — headless engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap&text=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,/()%25&display=fallback">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap&display=fallback">
+    <link rel="stylesheet" href="/assets/home.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.2.96/css/materialdesignicons.min.css">
+    <link rel="icon" href="https://bright-vision.digitaldefiance.org/favicon.ico" type="image/svg+xml" />
+    <style type="text/css">
+        .fork {
+            vertical-align: middle; margin: 0 4px;
+            height: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="upstream-banner" role="note">
+        <div class="container upstream-banner-inner">
+            <p>
+                <strong>Bright Vision Core</strong> is a <em>biforkation</em> (fork²):
+                <a href="https://github.com/Aider-AI/Aider">Aider</a> →
+                <a href="https://github.com/cecli-dev/cecli">Cecli</a> → this package, with
+                <code>bright_vision_core/</code> ported from our earlier engine.
+                Product support:
+                <a href="https://bright-vision.digitaldefiance.org/">Bright Vision</a>.
+                Terminal-agent community:
+                <a href="https://cecli.dev/">cecli.dev</a>.
+                <code>cecli/website/</code> in the repo stays upstream Cecli docs — this site is ours.
+            </p>
+        </div>
+    </div>
+
+    <header>
+        <div class="container">
+            <nav>
+                <a href="https://bright-vision.digitaldefiance.org/" class="logo" id="logo-container">bright vision core</a>
+                <div class="nav-links">
+                    <a href="https://bright-vision.digitaldefiance.org/">Bright Vision</a>
+                    <a href="#vision-core">Vision Core</a>
+                    <a href="#engine">Engine</a>
+                    <a href="#getting-started">Install</a>
+                    <a href="/docs/">Docs</a>
+                    <a href="https://cecli.dev/">Upstream Cecli</a>
+                    <a href="https://github.com/Digital-Defiance/bright-vision-core">GitHub</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-grid">
+                <div class="hero-content">
+                    <h1>Headless Cecli engine for Vision</h1>
+                    <p>
+                        This repository is the <em>core</em> of Bright Vision: a beheaded, API-first
+                        biforkation (Cecli → Cecli → Bright Vision Core) that powers the native desktop app. It is not another VS Code
+                        clone — the UI lives in React and Tauri; this package is the pair-programming
+                        brain you run locally or embed via HTTP.
+                    </p>
+                    <p class="hero-secondary">
+                        We track upstream Cecli closely and add only what Vision needs: structured
+                        sessions, submodule-aware git workspaces, and reliable headless operation.
+                    </p>
+                    <div class="buttons">
+                        <a href="#getting-started" class="btn btn-primary">Install &amp; serve</a>
+                        <a href="https://bright-vision.digitaldefiance.org/" class="btn btn-secondary">Get Bright Vision</a>
+                        <a href="/docs/" class="btn btn-secondary">Core docs</a>
+                    </div>
+                </div>
+
+                <div class="hero-video">
+                    <div class="video-container">
+                        <img 
+                            alt="Screenshot" 
+                            src="https://github.com/user-attachments/assets/646e3140-72c5-4760-84ae-24b4b9015434" 
+                            style="width: 100%; display: block;"
+                        >
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="distinction" id="who-does-what">
+        <div class="container">
+            <h2 class="section-title">Who builds what</h2>
+            <div class="distinction-grid">
+                <article class="distinction-card distinction-card-product">
+                    <h3>Bright Vision</h3>
+                    <p>
+                        The product we support: a ground-up desktop GUI (Rust + React), not an IDE
+                        skin. Install, settings, chat UX, and day-to-day help —
+                        <a href="https://bright-vision.digitaldefiance.org/">bright-vision.digitaldefiance.org</a>.
+                    </p>
+                </article>
+                <article class="distinction-card distinction-card-core">
+                    <h3>Bright Vision Core (this repo)</h3>
+                    <p>
+                        Python engine fork: CLI, HTTP API, git/submodule logic, and docs for
+                        integrators. Issues here should be engine or API bugs; praise and roadmap
+                        belong upstream or on the Vision site.
+                    </p>
+                </article>
+                <article class="distinction-card distinction-card-upstream">
+                    <h3>Cecli (engine upstream)</h3>
+                    <p>
+                        First fork after <a href="https://github.com/Aider-AI/aider">Aider</a>.
+                        <a href="https://cecli.dev/">cecli.dev</a> —
+                        <a href="https://github.com/cecli-dev/cecli">cecli-dev/cecli</a>.
+                        We bundle <code>cecli/</code> and merge by file tier.
+                    </p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="features vision-core-features" id="vision-core">
+        <div class="container">
+            <h2 class="section-title">Vision Core additions</h2>
+            <p class="section-lead">
+                Capabilities added for Bright Vision and other headless clients. Everything else in
+                the docs below still describes the shared Cecli engine unless noted.
+            </p>
+            <div class="feature-grid">
+                <a href="/docs/scripting.html" class="feature-card">
+                    <div class="feature-card-header">
+                        <i class="mdi mdi-api feature-icon"></i>
+                        <h3 class="feature-title">HTTP API &amp; SSE</h3>
+                    </div>
+                    <p>
+                        Run <code>bright-vision-core-serve</code> and drive sessions from the Vision
+                        app, Tauri, or any client. JSONL-style events over Server-Sent Events; optional
+                        bearer auth for local serve.
+                    </p>
+                </a>
+                <div class="feature-card feature-card-static">
+                    <div class="feature-card-header">
+                        <i class="mdi mdi-console feature-icon"></i>
+                        <h3 class="feature-title">Headless runtime</h3>
+                    </div>
+                    <p>
+                        Non-interactive stdio and confirmation flows suited to GUI confirm/cancel
+                        instead of terminal prompts — the default path when Vision owns the UI.
+                    </p>
+                </div>
+                <a href="/docs/git.html" class="feature-card">
+                    <div class="feature-card-header">
+                        <i class="mdi mdi-source-fork feature-icon"></i>
+                        <h3 class="feature-title">Git submodule workspaces</h3>
+                    </div>
+                    <p>
+                        Superproject roots with nested submodules: discover repos, track files across
+                        submodules, and commit pointer updates from a single workspace root.
+                    </p>
+                </a>
+                <div class="feature-card feature-card-static">
+                    <div class="feature-card-header">
+                        <i class="mdi mdi-sync feature-icon"></i>
+                        <h3 class="feature-title">Upstream alignment</h3>
+                    </div>
+                    <p>
+                        We merge from <a href="https://github.com/dwash96/cecli">dwash96/cecli</a>
+                        regularly. Engine behavior, models, and edit formats follow upstream; Vision-only
+                        deltas stay small and documented here.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features engine-features" id="engine">
+        <div class="container">
+            <h2 class="section-title">Bundled Cecli engine</h2>
+            <p class="section-lead">
+                Inherited from <a href="https://github.com/dwash96/cecli">Cecli</a> — tutorials on
+                <a href="https://cecli.dev/docs/">cecli.dev/docs</a> (and legacy
+                <a href="https://cecli.chat/docs/">cecli.chat/docs</a> where concepts overlap).
+            </p>
+            <div class="feature-grid">
+                <a href="/docs/llms.html" class="feature-card">
+                    <div class="feature-card-header">
+                        <i class="mdi mdi-brain feature-icon"></i>
+                        <h3 class="feature-title">Cloud and local LLMs</h3>
+                    </div>
+                    <p>Connect to Claude, GPT, DeepSeek, local models, and most OpenAI-compatible APIs.</p>
+                </a>
+                <a href="/docs/repomap.html" class="feature-card">
+                    <div class="feature-card-header">
+                        <i class="mdi mdi-map-outline feature-icon"></i>
+                        <h3 class="feature-title">Codebase map</h3>
+                    </div>
+                    <p>Repo map for larger projects so the model sees the right context.</p>
+                </a>
+                <a href="/docs/languages.html" class="feature-card">
+                    <div class="feature-card-header">
+                        <i class="mdi mdi-code-tags feature-icon"></i>
+                        <h3 class="feature-title">100+ languages</h3>
+                    </div>
+                    <p>Python, JavaScript, Rust, Go, C++, and dozens more via tree-sitter.</p>
+                </a>
+                <a href="/docs/git.html" class="feature-card">
+                    <div class="feature-card-header">
+                        <i class="mdi mdi-source-branch feature-icon"></i>
+                        <h3 class="feature-title">Git integration</h3>
+                    </div>
+                    <p>Automatic commits with sensible messages; diff and undo with normal git tools.</p>
+                </a>
+                <a href="/docs/usage/lint-test.html" class="feature-card">
+                    <div class="feature-card-header">
+                        <i class="mdi mdi-check-all feature-icon"></i>
+                        <h3 class="feature-title">Linting &amp; testing</h3>
+                    </div>
+                    <p>Run linters and tests on changes; the model can fix reported problems.</p>
+                </a>
+                <a href="https://cecli.dev/docs/usage/watch.html" class="feature-card">
+                    <div class="feature-card-header">
+                        <i class="mdi mdi-monitor feature-icon"></i>
+                        <h3 class="feature-title">Editor watch mode</h3>
+                    </div>
+                    <p>
+                        Upstream supports IDE-style watch mode in a terminal workflow. Bright Vision
+                        uses the HTTP API instead of copying that UX.
+                    </p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="models" id="getting-started">
+        <div class="container">
+            <h2 class="section-title">Getting started (engine)</h2>
+            <p class="section-lead">
+                For the desktop app, use
+                <a href="https://bright-vision.digitaldefiance.org/">Bright Vision</a>.
+                To run or integrate the core directly:
+            </p>
+            <div class="info-content">
+                <div class="code-block">
+                    <pre><code class="language-bash"># Install the engine package
+python -m pip install -U bright-vision-core
+
+# Headless HTTP server (default http://127.0.0.1:8741)
+bright-vision-core-serve --workspace /path/to/git/repo
+
+# Classic CLI (cecli, also installed as aider-ce)
+cd /path/to/your/project
+cecli --model sonnet --api-key anthropic=&lt;key&gt;</code></pre>
+                </div>
+                <div class="cta-container">
+                    <p class="cta-text">Documentation on this site covers the fork; upstream guides apply to most usage.</p>
+                    <div class="cta-buttons">
+                        <a href="/docs/install.html" class="btn btn-secondary">Install</a>
+                        <a href="/docs/scripting.html" class="btn btn-secondary">API &amp; scripting</a>
+                        <a href="https://cecli.dev/docs/usage.html" class="btn btn-secondary">Upstream usage</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="info-section" id="more-info">
+        <div class="container">
+            <h2 class="section-title">Links</h2>
+            <div class="info-columns">
+                <div class="info-column">
+                    <h3 class="info-column-title">Vision Core (this site)</h3>
+                    <p class="info-column-desc">Install, API, and fork-specific behavior</p>
+                    <ul class="info-list">
+                        <li><a href="/docs/install.html">Installation</a></li>
+                        <li><a href="/docs/scripting.html">HTTP API &amp; headless</a></li>
+                        <li><a href="/docs/git.html">Git &amp; submodules</a></li>
+                        <li><a href="/docs/config.html">Configuration</a></li>
+                        <li><a href="/docs/troubleshooting.html">Troubleshooting</a></li>
+                        <li><a href="/HISTORY.html">Release notes</a></li>
+                        <li><a href="https://github.com/Digital-Defiance/bright-vision-core">GitHub (fork)</a></li>
+                    </ul>
+                </div>
+                <div class="info-column">
+                    <h3 class="info-column-title">Product &amp; upstream</h3>
+                    <p class="info-column-desc">Support, community, and the main Cecli project</p>
+                    <ul class="info-list">
+                        <li><a href="https://bright-vision.digitaldefiance.org/">Bright Vision (app)</a></li>
+                        <li><a href="https://cecli.dev/">Cecli (upstream)</a></li>
+                        <li><a href="https://cecli.dev/docs/">Upstream documentation</a></li>
+                        <li><a href="https://github.com/dwash96/cecli">dwash96/cecli</a></li>
+                        <li><a href="https://discord.gg/Y7X7bhMQFV">Cecli Discord</a></li>
+                        <li><a href="https://cecli.dev/blog/">Cecli changelog</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p class="footer-tagline">
+                "Biforkation" by Digital Defiance for
+                <a href="https://bright-vision.digitaldefiance.org/">Bright Vision</a>.
+                Lineage: <a href="https://github.com/Aider-AI/aider">Aider</a> <svg class="fork" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Pro 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2026 Fonticons, Inc.--><path d="M476.4 69.9C481.6 76.3 481.2 85.5 475.3 91.4L384 182.6C378.8 187.8 378.8 196.2 384 201.4C388.9 206.3 396.8 206.6 402.1 202L501.5 115.9C507.8 110.4 517.4 110.7 523.3 116.7C529.2 122.7 529.6 132.1 524.1 138.5L438 237.9C433.4 243.2 433.7 251.1 438.6 256C443.8 261.2 452.2 261.2 457.4 256L548.7 164.7C554.5 158.9 563.8 158.4 570.2 163.6C576.6 168.8 577.9 178 573.4 184.8L502.4 291.3C483.8 319.2 452.5 335.9 419 335.9C399.7 335.9 381.1 330.4 365.1 320.2L118.6 566.6C106.1 579.1 85.8 579.1 73.3 566.6C60.8 554.1 60.8 533.8 73.3 521.3L319.7 275C309.5 259 304 240.3 304 221.1C304 187.6 320.8 156.3 348.6 137.7L455.1 66.7C461.9 62.1 471.1 63.5 476.3 69.9z"/></svg>
+                <a href="https://github.com/cecli-dev/cecli">Cecli</a>.
+            </p>
+            <div class="footer-links">
+                <a href="/docs/install.html">Docs</a>
+                <a href="https://bright-vision.digitaldefiance.org/">Bright Vision</a>
+                <a href="https://cecli.dev/">cecli.dev</a>
+                <a href="https://github.com/Digital-Defiance/bright-vision-core">GitHub</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoContainer = document.getElementById('logo-container');
+            const logoImg = new Image();
+            logoImg.src = 'https://bright-vision.digitaldefiance.org/bright-vision-horiz-white.svg';
+            logoImg.alt = 'Bright Vision';
+            logoImg.style.height = '1.8rem';
+            logoImg.style.verticalAlign = 'middle';
+            logoImg.onload = function() {
+                logoContainer.textContent = '';
+                logoContainer.appendChild(logoImg);
+            };
+        });
+    </script>
+</body>
+</html>

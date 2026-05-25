@@ -303,7 +303,7 @@ These changes replace the `subprocess.run` patches with `subprocess.check_output
         assert result == expected_output
 
     async def test_create_new_file_with_other_file_in_chat(self):
-        # https://github.com/Aider-AI/cecli/issues/2258
+        # https://github.com/Aider-AI/aider/issues/2258
         with ChdirTemporaryDirectory():
             # Create a few temporary files
             file1 = "file.txt"
@@ -512,7 +512,7 @@ Hope you like it!
         ]
 
     def test_find_original_update_blocks_quad_backticks_with_triples_in_LLM_reply(self):
-        # https://github.com/Aider-AI/cecli/issues/2879
+        # https://github.com/Aider-AI/aider/issues/2879
         edit = """
 Here's the change:
 
@@ -534,7 +534,7 @@ Hope you like it!
 
     # Test for shell script blocks with sh language identifier (issue #3785)
     def test_find_original_update_blocks_with_sh_language_identifier(self):
-        # https://github.com/Aider-AI/cecli/issues/3785
+        # https://github.com/Aider-AI/aider/issues/3785
         edit = """
 Here's a shell script:
 

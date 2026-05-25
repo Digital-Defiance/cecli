@@ -193,7 +193,7 @@ def generate_celebration_svg(output_path=None, width=DEFAULT_WIDTH, height=DEFAU
     <text x="{width/2}" y="{height/2 - 100}" class="cecli-logo">cecli</text>
     <text x="{width/2}" y="{height/2 + 20}" class="stars-text">30,000 GitHub stars!</text>
     <text x="{width/2}" y="{height/2 + 100}" class="tagline">Thank you to our amazing community!</text>
-    <text x="{width/2}" y="{height - 50}" class="footer">github.com/Aider-AI/cecli</text>
+    <text x="{width/2}" y="{height - 50}" class="footer">github.com/Aider-AI/aider</text>
 
   </g>
 </svg>
