@@ -300,6 +300,17 @@ class CommandListResponse(BaseModel):
     commands: list[CommandInfo]
 
 
+class SubAgentInfo(BaseModel):
+    name: str
+    model: str | None = None
+    prompt_preview: str = ""
+
+
+class SubAgentListResponse(BaseModel):
+    subagents: list[SubAgentInfo]
+    agent_mode_available: bool = False
+
+
 def _sse_pack(event: dict[str, Any]) -> str:
     return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
@@ -392,6 +403,41 @@ def list_commands(session_id: str):
             summary = method.__doc__.strip().split("\n")[0]
         items.append(CommandInfo(name=cmd, summary=summary))
     return CommandListResponse(commands=items)
+
+
+def _subagent_paths_for_coder(coder) -> list[str]:
+    paths: list[str] = []
+    raw_paths = getattr(coder, "sub_agent_paths", None)
+    if raw_paths:
+        paths.extend(list(raw_paths))
+    agent_config = getattr(coder, "agent_config", None)
+    if isinstance(agent_config, dict):
+        extra = agent_config.get("subagent_paths") or agent_config.get("sub_agent_paths")
+        if extra:
+            paths.extend(list(extra))
+    return paths
+
+
+@app.get("/sessions/{session_id}/subagents", response_model=SubAgentListResponse)
+def list_subagents(session_id: str):
+    """List registered sub-agents from cecli AgentService (after scanning subagent_paths)."""
+    session = _get_session(session_id)
+    from cecli.helpers.agents.service import AgentService
+
+    paths = _subagent_paths_for_coder(session.coder)
+    if paths:
+        AgentService.build_registry(paths)
+
+    items: list[SubAgentInfo] = []
+    for name, cfg in sorted(AgentService.get_registry().items()):
+        model = getattr(cfg, "model", None)
+        prompt = (getattr(cfg, "prompt", None) or "").strip().replace("\n", " ")
+        preview = prompt[:160] + ("…" if len(prompt) > 160 else "")
+        items.append(SubAgentInfo(name=str(name), model=model, prompt_preview=preview))
+
+    coder_type = type(session.coder).__name__
+    agent_mode_available = "Agent" in coder_type or bool(getattr(session.coder, "agent_config", None))
+    return SubAgentListResponse(subagents=items, agent_mode_available=agent_mode_available)
 
 
 def _workspace_todos(session: Session) -> WorkspaceTodos:
