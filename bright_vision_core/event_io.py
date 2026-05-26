@@ -124,17 +124,44 @@ class EventIO(InputOutput):
             event.set()
         return True
 
-    def confirm_ask(self, question, subject=None, explicit_yes=None, group=None, allow_never=False):
-        default = explicit_yes if explicit_yes is not None else bool(self.yes)
-        if self.yes:
+    async def confirm_ask(
+        self,
+        question,
+        default="y",
+        subject=None,
+        explicit_yes=None,
+        explicit_yes_required=False,
+        group=None,
+        group_response=None,
+        allow_never=False,
+        allow_tweak=False,
+        acknowledge=False,
+        **kwargs,
+    ):
+        """
+        Headless confirm API compatible with cecli ``InputOutput._confirm_ask``.
+
+        Unknown kwargs are ignored so newer cecli call sites do not break the HTTP UI.
+        """
+        _ = (default, group, allow_never, allow_tweak, acknowledge, kwargs)
+
+        if group_response and group_response in self.group_responses:
+            return self.group_responses[group_response]
+
+        use_yes = explicit_yes if explicit_yes is not None else bool(self.yes)
+        auto_yes = self.yes is True and not explicit_yes_required
+
+        if auto_yes:
             self.emit(
                 "confirm",
                 confirm_id=None,
                 question=str(question),
                 subject=subject,
-                default=default,
+                default=use_yes,
                 auto_answered=True,
             )
+            if group_response:
+                self.group_responses[group_response] = True
             return True
 
         confirm_id = uuid.uuid4().hex
@@ -147,7 +174,7 @@ class EventIO(InputOutput):
             confirm_id=confirm_id,
             question=str(question),
             subject=subject,
-            default=default,
+            default=use_yes,
             auto_answered=False,
         )
 
@@ -160,6 +187,10 @@ class EventIO(InputOutput):
         with self._confirm_lock:
             self._confirm_events.pop(confirm_id, None)
             answer = self._confirm_answers.pop(confirm_id, False)
+
+        if group_response:
+            self.group_responses[group_response] = answer
+
         return answer
 
     def get_input(self, root, rel_fnames, addable_rel_fnames, commands, abs_read_only_fnames, edit_format=""):
