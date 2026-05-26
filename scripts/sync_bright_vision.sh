@@ -54,6 +54,19 @@ confirm() {
   [[ "$ans" == "y" || "$ans" == "yes" ]]
 }
 
+# Parent app may mount the submodule as BrightVision-core/ or bright-vision-core/.
+resolve_engine_submodule_dir() {
+  local vision_root="$1"
+  local name
+  for name in BrightVision-core bright-vision-core; do
+    if [[ -d "${vision_root}/${name}" ]]; then
+      echo "${vision_root}/${name}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 resolve_vision_root() {
   if [[ -n "${BRIGHT_VISION_ROOT:-}" ]]; then
     echo "$(cd "$BRIGHT_VISION_ROOT" && pwd)"
@@ -65,11 +78,11 @@ resolve_vision_root() {
   fi
   local parent
   parent="$(cd "${CORE_ROOT}/.." && pwd)"
-  if [[ -f "${parent}/.gitmodules" ]] && [[ -d "${parent}/bright-vision-core" ]]; then
+  if [[ -f "${parent}/.gitmodules" ]] && resolve_engine_submodule_dir "$parent" >/dev/null; then
     echo "$parent"
     return
   fi
-  die "could not find BrightVision parent (set BRIGHT_VISION_ROOT)"
+  die "could not find BrightVision parent (set BRIGHT_VISION_ROOT to the app repo root)"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -105,8 +118,10 @@ fi
 
 VISION_ROOT="$(resolve_vision_root)"
 REQ_FILE="${VISION_ROOT}/requirements-core.txt"
-SUBMODULE="${VISION_ROOT}/bright-vision-core"
+SUBMODULE="$(resolve_engine_submodule_dir "$VISION_ROOT")" \
+  || die "no engine submodule under ${VISION_ROOT} (expected BrightVision-core/ or bright-vision-core/)"
 VENV="${VISION_ROOT}/.venv"
+SUBMODULE_GIT_PATH="${SUBMODULE#${VISION_ROOT}/}"
 
 echo "Parent app: ${VISION_ROOT}"
 echo "Pin: bright-vision-core==${PEP440_VERSION}"
@@ -185,7 +200,7 @@ if (( DO_COMMIT )); then
   MSG="chore: pin bright-vision-core==${PEP440_VERSION}"
   git -C "$VISION_ROOT" add requirements-core.txt
   if [[ -d "$SUBMODULE/.git" ]]; then
-    git -C "$VISION_ROOT" add bright-vision-core
+    git -C "$VISION_ROOT" add "$SUBMODULE_GIT_PATH"
   fi
   if git -C "$VISION_ROOT" diff --cached --quiet; then
     echo "Nothing to commit in parent app."
