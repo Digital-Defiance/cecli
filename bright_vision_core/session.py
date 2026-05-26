@@ -445,6 +445,7 @@ class Session:
         workspace = Path(self.coder.root).resolve()
         quoted: list[str] = []
         for raw in paths:
+            raw = raw.strip().lstrip("@")
             p = Path(raw)
             if not p.is_absolute():
                 p = workspace / p

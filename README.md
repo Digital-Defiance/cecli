@@ -1,6 +1,6 @@
 # BrightVision Core
 
-**PyPI:** [`bright-vision-core`](https://pypi.org/project/bright-vision-core/) — cecli engine + headless HTTP API for the [BrightVision](https://github.com/Digital-Defiance/bright-vision) desktop IDE.
+**PyPI:** [`bright-vision-core`](https://pypi.org/project/bright-vision-core/) — cecli engine + headless HTTP API for the [BrightVision](https://github.com/Digital-Defiance/BrightVision) desktop IDE.
 
 | Piece | Role |
 |-------|------|

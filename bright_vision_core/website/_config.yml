@@ -35,9 +35,9 @@ aux_links:
   "Cecli":
     - "https://cecli.dev/"
   "GitHub":
-    - "https://github.com/Digital-Defiance/bright-vision-core"
+    - "https://github.com/Digital-Defiance/BrightVision-core"
   "Lineage":
-    - "https://github.com/Digital-Defiance/bright-vision-core/blob/main/docs/LINEAGE.md"
+    - "https://github.com/Digital-Defiance/BrightVision-core/blob/main/docs/LINEAGE.md"
 
 nav_external_links:
   - title: "BrightVision"
@@ -45,9 +45,9 @@ nav_external_links:
   - title: "cecli.dev"
     url: "https://cecli.dev/"
   - title: "GitHub"
-    url: "https://github.com/Digital-Defiance/bright-vision-core"
+    url: "https://github.com/Digital-Defiance/BrightVision-core"
 
-repository: Digital-Defiance/bright-vision-core
+repository: Digital-Defiance/BrightVision-core
 
 callouts:
   tip:

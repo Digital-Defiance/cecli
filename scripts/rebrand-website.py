@@ -16,7 +16,7 @@ REPLACEMENTS: list[tuple[str, str]] = [
     ("Aider Vision", "BrightVision"),
     ("aider-vision.digitaldefiance.org", "bright-vision.digitaldefiance.org"),
     ("aider-vision-black.svg", "bright-vision.svg"),
-    ("Digital-Defiance/aider-vision", "Digital-Defiance/bright-vision"),
+    ("Digital-Defiance/aider-vision", "Digital-Defiance/BrightVision"),
     ("aider-vision", "bright-vision"),
     ("vision-notice.md", "bright-vision-notice.md"),
     ("Upstream Aider", "Upstream Cecli"),
