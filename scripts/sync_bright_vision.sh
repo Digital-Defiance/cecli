@@ -92,17 +92,15 @@ done
 
 [[ -n "$VERSION_ARG" ]] || usage
 
-VERSION_TAG="$VERSION_ARG"
-PEP440_VERSION="${VERSION_TAG#v}"
-# v0.111.1.bright0 -> 0.111.1+bright0 for pip/PyPI
+GIT_TAG="$VERSION_ARG"
+[[ "$GIT_TAG" == v* ]] || GIT_TAG="v${VERSION_ARG}"
+PEP440_VERSION="${GIT_TAG#v}"
+# v0.111.1.bright0 -> 0.111.1.post0 for pip/PyPI (git tag keeps .brightN)
 if [[ "$PEP440_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.bright([0-9]+)$ ]]; then
-  PEP440_VERSION="${BASH_REMATCH[1]}+bright${BASH_REMATCH[2]}"
+  PEP440_VERSION="${BASH_REMATCH[1]}.post${BASH_REMATCH[2]}"
 fi
 if [[ ! "$PEP440_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.+][0-9A-Za-z.+-]+)?$ ]]; then
   die "invalid version: ${VERSION_ARG}"
-fi
-if [[ "$VERSION_TAG" != v* ]]; then
-  VERSION_TAG="v${PEP440_VERSION}"
 fi
 
 VISION_ROOT="$(resolve_vision_root)"
@@ -119,7 +117,7 @@ write_requirements() {
     cat >"$REQ_FILE" <<EOF
 # Pinned PyPI release (bright-vision-core/scripts/sync_bright_vision.sh).
 # Dev default: editable submodule via \`source activate.sh\` in Bright Vision.
-# After a core release: cd bright-vision-core && ./build.sh ${VERSION_TAG} --sync-vision
+# After a core release: cd bright-vision-core && ./build.sh ${GIT_TAG} --sync-vision
 bright-vision-core==${PEP440_VERSION}
 EOF
   else
@@ -135,12 +133,12 @@ write_requirements 1
 echo "Wrote ${REQ_FILE}"
 
 if [[ -d "$SUBMODULE/.git" ]]; then
-  echo "Checking out submodule at tag ${VERSION_TAG}..."
-  git -C "$SUBMODULE" fetch origin tag "$VERSION_TAG" 2>/dev/null || true
-  if git -C "$SUBMODULE" rev-parse "$VERSION_TAG" >/dev/null 2>&1; then
-    git -C "$SUBMODULE" checkout "$VERSION_TAG"
+  echo "Checking out submodule at tag ${GIT_TAG} (PyPI pin ${PEP440_VERSION})..."
+  git -C "$SUBMODULE" fetch origin tag "$GIT_TAG" 2>/dev/null || true
+  if git -C "$SUBMODULE" rev-parse "$GIT_TAG" >/dev/null 2>&1; then
+    git -C "$SUBMODULE" checkout "$GIT_TAG"
   else
-    echo "warning: tag ${VERSION_TAG} not found in submodule; requirements pin still updated" >&2
+    echo "warning: tag ${GIT_TAG} not found in submodule; requirements pin still updated" >&2
   fi
 fi
 
@@ -150,7 +148,7 @@ elif ! (( FORCE_PIP )) && ! pypi_has_release "bright-vision-core" "$PEP440_VERSI
   echo "bright-vision-core==${PEP440_VERSION} is not on PyPI yet — skipping pip install."
   write_requirements 0
   echo "Updated ${REQ_FILE} (pin commented). Use: cd ${VISION_ROOT} && source activate.sh"
-  echo "After ./build.sh ${VERSION_TAG} uploads to PyPI, re-run: $0 ${VERSION_ARG} --force-pip"
+  echo "After ./build.sh ${GIT_TAG} uploads to PyPI, re-run: $0 ${VERSION_ARG} --force-pip"
 else
   PYTHON="${VISION_PYTHON:-python3}"
   if [[ ! -d "$VENV" ]]; then
