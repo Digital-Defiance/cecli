@@ -9,11 +9,11 @@ ROOT = Path(__file__).resolve().parents[1] / "bright_vision_core" / "website"
 
 # Longer phrases first to avoid partial replacements.
 REPLACEMENTS: list[tuple[str, str]] = [
-    ("Aider Vision Core", "Bright Vision Core"),
+    ("Aider Vision Core", "BrightVision Core"),
     ("aider-vision-core-serve", "bright-vision-core-serve"),
     ("aider-vision-core", "bright-vision-core"),
     ("aider_vision_core", "bright_vision_core"),
-    ("Aider Vision", "Bright Vision"),
+    ("Aider Vision", "BrightVision"),
     ("aider-vision.digitaldefiance.org", "bright-vision.digitaldefiance.org"),
     ("aider-vision-black.svg", "bright-vision.svg"),
     ("Digital-Defiance/aider-vision", "Digital-Defiance/bright-vision"),
@@ -34,9 +34,9 @@ REPLACEMENTS: list[tuple[str, str]] = [
     ("Aider Discord", "Cecli Discord"),
     ("Aider blog", "Cecli changelog"),
     ("Headless Aider", "Headless Cecli"),
-    ("fork of Aider", "biforkation (Aider → Cecli → Bright Vision Core)"),
+    ("fork of Aider", "biforkation (Aider → Cecli → BrightVision Core)"),
     ("maintained fork of", "biforkation of"),
-    ("aider vision core", "bright vision core"),
+    ("aider vision core", "brightvision core"),
 ]
 
 TEXT_SUFFIXES = {

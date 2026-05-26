@@ -2,11 +2,11 @@
 nav_exclude: true
 ---
 
-# Bright Vision Core documentation
+# BrightVision Core documentation
 
 {% include bright-vision-notice.md %}
 
-Documentation for the **headless engine** package (`bright-vision-core`). For the desktop app, see [Bright Vision](https://bright-vision.digitaldefiance.org/). For upstream tutorials and leaderboards, see [cecli.dev/docs](https://cecli.dev/docs/).
+Documentation for the **headless engine** package (`bright-vision-core`). For the desktop app, see [BrightVision](https://bright-vision.digitaldefiance.org/). For upstream tutorials and leaderboards, see [cecli.dev/docs](https://cecli.dev/docs/).
 
 ## Start here
 

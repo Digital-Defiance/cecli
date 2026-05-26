@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pin Bright Vision parent app to a released bright-vision-core version on PyPI and
+# Pin BrightVision parent app to a released bright-vision-core version on PyPI and
 # install into the parent .venv (not bright-vision-core/.venv).
 #
 # Usage:
@@ -69,7 +69,7 @@ resolve_vision_root() {
     echo "$parent"
     return
   fi
-  die "could not find Bright Vision parent (set BRIGHT_VISION_ROOT)"
+  die "could not find BrightVision parent (set BRIGHT_VISION_ROOT)"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -116,14 +116,14 @@ write_requirements() {
   if (( active )); then
     cat >"$REQ_FILE" <<EOF
 # Pinned PyPI release (bright-vision-core/scripts/sync_bright_vision.sh).
-# Dev default: editable submodule via \`source activate.sh\` in Bright Vision.
+# Dev default: editable submodule via \`source activate.sh\` in BrightVision.
 # After a core release: cd bright-vision-core && ./build.sh ${GIT_TAG} --sync-vision
 bright-vision-core==${PEP440_VERSION}
 EOF
   else
     cat >"$REQ_FILE" <<EOF
 # Pinned PyPI release (bright-vision-core/scripts/sync_bright_vision.sh).
-# Dev default: editable submodule via \`source activate.sh\` in Bright Vision.
+# Dev default: editable submodule via \`source activate.sh\` in BrightVision.
 # bright-vision-core==${PEP440_VERSION}  # not on PyPI yet — publish, then re-run sync
 EOF
   fi
@@ -155,7 +155,7 @@ else
     echo "Creating ${VENV}..."
     "$PYTHON" -m venv "$VENV"
   fi
-  echo "Installing into Bright Vision .venv (not core/.venv)..."
+  echo "Installing into BrightVision .venv (not core/.venv)..."
   # Subshell: never source activate in this script (sourcing + set -e kills parent shells).
   (
     set +e

@@ -178,7 +178,7 @@ def rebrand_text(text: str) -> str:
     # Fix double-fixes
     text = text.replace("cecli-dev-dev", "cecli-dev")
     text = text.replace("pip install bright-vision-core using", "installing cecli using")
-    text = text.replace("Cecli Vision", "Bright Vision")
+    text = text.replace("Cecli Vision", "BrightVision")
     text = text.replace("bright-vision-core-serve", "bright-vision-core-serve")  # noop guard
     return text
 
@@ -242,10 +242,10 @@ def add_history_banner() -> None:
         return
     banner = (
         "{: .note }\n"
-        "**Bright Vision Core** site changelog. Older entries refer to **Aider** / **Cecli** "
+        "**BrightVision Core** site changelog. Older entries refer to **Aider** / **Cecli** "
         "upstream names; current CLI is `cecli`, HTTP serve is `bright-vision-core-serve`.\n\n"
     )
-    if "Bright Vision Core** site changelog" in path.read_text(encoding="utf-8")[:500]:
+    if "BrightVision Core** site changelog" in path.read_text(encoding="utf-8")[:500]:
         return
     body = path.read_text(encoding="utf-8")
     if body.startswith("---"):

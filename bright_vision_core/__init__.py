@@ -1,4 +1,4 @@
-"""Bright Vision integration layer on top of cecli."""
+"""BrightVision integration layer on top of cecli."""
 
 __all__ = ["__version__"]
 

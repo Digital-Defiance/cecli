@@ -1,6 +1,6 @@
 [project]
 name = "bright-vision-core"
-description = "Bright Vision Core — cecli engine + headless HTTP API for the Bright Vision desktop app"
+description = "BrightVision Core — cecli engine + headless HTTP API for the BrightVision desktop app"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE.txt"]
