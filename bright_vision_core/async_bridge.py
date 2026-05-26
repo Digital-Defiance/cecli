@@ -5,10 +5,24 @@ from __future__ import annotations
 import asyncio
 import queue
 import threading
-from collections.abc import AsyncIterator, Coroutine, Iterator
+from collections.abc import AsyncIterator, Callable, Coroutine, Iterator
 from typing import Any, TypeVar
 
 T = TypeVar("T")
+
+
+def rebind_coder_loop_primitives(coder: Any) -> None:
+    """
+    Replace asyncio primitives that were bound to a closed event loop.
+
+    Headless sessions call ``asyncio.run()`` for setup/preproc, then stream
+    ``send_message`` on a dedicated loop in a worker thread. Reusing the same
+    ``asyncio.Event`` across those loops raises "bound to a different event loop".
+    """
+    coder.interrupt_event = asyncio.Event()
+    linter = getattr(coder, "linter", None)
+    if linter is not None:
+        linter.interrupt_event = coder.interrupt_event
 
 _DONE = object()
 # Yielded to the sync iterator so Session.run_message can flush io.events to SSE.
@@ -39,15 +53,19 @@ def iterate_async(agen: AsyncIterator[T]) -> Iterator[T]:
 
 
 def iterate_async_with_heartbeats(
-    agen: AsyncIterator[T],
+    make_agen: Callable[[], AsyncIterator[T]],
     io: Any,
     *,
+    coder: Any | None = None,
     label: str = "LLM",
     message: str = "Waiting for model response…",
     interval_s: float = 8.0,
 ) -> Iterator[T | object]:
     """
     Bridge an async iterator and emit ``progress`` events while blocked on the next chunk.
+
+    ``make_agen`` is invoked inside the worker loop (not on the caller thread) so async
+    generators and ``asyncio.Event`` on ``coder`` are created/bound to that loop.
 
     Yields :data:`HEARTBEAT_PULSE` between pulses so callers flush ``io.events`` to SSE.
     """
@@ -57,11 +75,14 @@ def iterate_async_with_heartbeats(
 
     def producer() -> None:
         loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
-            ait = agen.__aiter__()
 
             async def consume() -> None:
-                async for item in ait:
+                if coder is not None:
+                    rebind_coder_loop_primitives(coder)
+                agen = make_agen()
+                async for item in agen:
                     out.put(item)
 
             loop.run_until_complete(consume())

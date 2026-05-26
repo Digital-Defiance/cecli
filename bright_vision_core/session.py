@@ -21,6 +21,7 @@ from cecli.commands import Commands
 from bright_vision_core.async_bridge import (
     HEARTBEAT_PULSE,
     iterate_async_with_heartbeats,
+    rebind_coder_loop_primitives,
     run,
 )
 from bright_vision_core.gui_progress import emit_progress
@@ -175,6 +176,7 @@ class Session:
                 )
             )
             commands.coder = coder
+            rebind_coder_loop_primitives(coder)
             return cls(coder, io)
         finally:
             os.chdir(prev_cwd)
@@ -223,7 +225,12 @@ class Session:
                 yield from _drain_io_events(self.io)
 
                 def _preproc() -> str | None:
-                    return run(self.coder.preproc_user_input(user_text))
+                    rebind_coder_loop_primitives(self.coder)
+
+                    async def _preproc_coro():
+                        return await self.coder.preproc_user_input(user_text)
+
+                    return run(_preproc_coro())
 
                 for item in _run_blocking_with_sse_pulses(
                     self.io,
@@ -250,8 +257,9 @@ class Session:
                 yield event
 
             for piece in iterate_async_with_heartbeats(
-                self.coder.send_message(user_msg),
+                lambda: self.coder.send_message(user_msg),
                 self.io,
+                coder=self.coder,
                 label="LLM",
                 message="Waiting for Ollama",
             ):
