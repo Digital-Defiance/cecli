@@ -14,4 +14,4 @@ cecli --model sonnet --api-key anthropic=<key>
 bright-vision-core-serve --workspace /path/to/your/project
 ```
 
-For the **Bright Vision** desktop app, use [bright-vision.digitaldefiance.org](https://bright-vision.digitaldefiance.org/) — it talks to this engine over HTTP.
+For the **BrightVision** desktop app, use [bright-vision.digitaldefiance.org](https://bright-vision.digitaldefiance.org/) — it talks to this engine over HTTP.

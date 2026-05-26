@@ -31,6 +31,14 @@ from bright_vision_core.git_workspace import create_git_workspace
 from bright_vision_core.headless_args import default_headless_args
 from bright_vision_core.todo_spec_generate import build_generate_message, parse_generated_layers
 from bright_vision_core.slash_helpers import is_switch_coder_signal, run_slash_command_sync
+from bright_vision_core.model_router import (
+    ModelRouterConfig,
+    RouteDecision,
+    classify_prompt,
+    estimate_prompt_tokens,
+    should_escalate_fast_turn,
+)
+from bright_vision_core.model_router_apply import apply_route_to_coder
 from bright_vision_core.workspace_todos import WorkspaceTodos, format_todo_context
 
 
@@ -99,9 +107,18 @@ def _run_blocking_with_sse_pulses(
 class Session:
     """A headless coder session with event-streaming support."""
 
-    def __init__(self, coder: Coder, io: EventIO):
+    def __init__(
+        self,
+        coder: Coder,
+        io: EventIO,
+        *,
+        model_router: ModelRouterConfig | None = None,
+    ):
         self.coder = coder
         self.io = io
+        self._model_router = model_router
+        self._router_heavy_model_name = coder.main_model.name
+        self._last_route: RouteDecision | None = None
         self.coder.yield_stream = True
         self.coder.stream = bool(coder.stream)
         self.coder.pretty = False
@@ -123,6 +140,7 @@ class Session:
         map_tokens: int | None = None,
         on_event=None,
         echo_to_console: bool = False,
+        model_router: ModelRouterConfig | dict[str, Any] | None = None,
     ) -> Session:
         workspace = Path(workspace_dir).resolve()
         if not workspace.is_dir():
@@ -138,8 +156,18 @@ class Session:
         try:
             io = EventIO(yes=yes, pretty=False, on_event=on_event, echo_to_console=echo_to_console)
             model_name = model or models.DEFAULT_MODEL_NAME
+            router_cfg = (
+                ModelRouterConfig.from_payload(model_router)
+                if isinstance(model_router, dict)
+                else model_router
+            )
+            if router_cfg is None:
+                router_cfg = ModelRouterConfig.from_env()
+            if router_cfg and router_cfg.enabled and not router_cfg.heavy_model:
+                router_cfg.heavy_model = model_name
+
             main_model = models.Model(model_name)
-            if main_model.is_ollama():
+            if main_model.is_ollama() and not (router_cfg and router_cfg.enabled):
                 main_model._ensure_extra_params_dict()
                 main_model.extra_params.setdefault("keep_alive", -1)
 
@@ -178,9 +206,63 @@ class Session:
             )
             commands.coder = coder
             rebind_coder_loop_primitives(coder)
-            return cls(coder, io)
+            return cls(coder, io, model_router=router_cfg if router_cfg and router_cfg.enabled else None)
         finally:
             os.chdir(prev_cwd)
+
+    def _estimate_turn_tokens(self, user_message: str) -> int:
+        files_n = len(self.coder.get_inchat_relative_files())
+        try:
+            cur = self.coder.get_cur_messages()
+            if cur:
+                return self.coder.main_model.token_count(cur)
+        except Exception:
+            pass
+        return estimate_prompt_tokens(user_message, files_in_chat=files_n)
+
+    def _emit_model_route(
+        self,
+        decision: RouteDecision,
+        *,
+        escalated: bool = False,
+        load_ms: int | None = None,
+        swapped: bool | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "tier": decision.tier,
+            "model": decision.model_name,
+            "estimated_tokens": decision.estimated_tokens,
+            "reasons": decision.reasons,
+            "escalated": escalated,
+        }
+        if load_ms is not None:
+            payload["load_ms"] = load_ms
+        if swapped is not None:
+            payload["swapped"] = swapped
+        return self.io.emit("model_route", **payload)
+
+    def _route_and_apply(
+        self,
+        user_message: str,
+        *,
+        force_tier: str | None = None,
+    ) -> RouteDecision | None:
+        router = self._model_router
+        if not router or not router.enabled:
+            return None
+        heavy = router.heavy_model or self._router_heavy_model_name
+        estimated = self._estimate_turn_tokens(user_message)
+        tier_force = force_tier if force_tier in ("fast", "heavy") else None
+        decision = classify_prompt(
+            user_message,
+            estimated_tokens=estimated,
+            router=router,
+            heavy_model_name=heavy,
+            force_tier=tier_force,
+        )
+        apply_route_to_coder(self.coder, decision, router)
+        self._last_route = decision
+        return decision
 
     def run_message(
         self,
@@ -189,6 +271,8 @@ class Session:
         preproc: bool = True,
         active_todo_id: str | None = None,
         inject_todo_spec: bool = False,
+        force_tier: str | None = None,
+        escalate_from_last: bool = False,
     ) -> Iterator[dict[str, Any]]:
         turn_todo_id: str | None = None
         user_text = message
@@ -253,26 +337,74 @@ class Session:
             for event in self.io.drain_events():
                 yield event
 
-            emit_progress(self.io, label="LLM", message="Waiting for Ollama…")
-            for event in self.io.drain_events():
-                yield event
+            route_decision: RouteDecision | None = None
+            if escalate_from_last and self._model_router and self._model_router.enabled:
+                route_decision = self._route_and_apply(user_msg, force_tier="heavy")
+                if route_decision:
+                    yield self._emit_model_route(route_decision, escalated=True)
+                    for event in self.io.drain_events():
+                        yield event
+            elif self._model_router and self._model_router.enabled:
+                route_decision = self._route_and_apply(user_msg, force_tier=force_tier)
+                if route_decision:
+                    yield self._emit_model_route(route_decision)
+                    for event in self.io.drain_events():
+                        yield event
 
-            for piece in iterate_async_with_heartbeats(
-                lambda: self.coder.send_message(user_msg),
-                self.io,
-                coder=self.coder,
-                label="LLM",
-                message="Waiting for Ollama",
-            ):
-                yield from _drain_io_events(self.io)
-                if piece is HEARTBEAT_PULSE:
+            turn_had_tool_error = False
+            max_attempts = 2 if self._model_router and self._model_router.escalate_on_failure else 1
+            for attempt in range(max_attempts):
+                if attempt > 0 and route_decision:
+                    route_decision = self._route_and_apply(user_msg, force_tier="heavy")
+                    yield self._emit_model_route(route_decision, escalated=True)
+                    for event in self.io.drain_events():
+                        yield event
+
+                emit_progress(self.io, label="LLM", message="Waiting for Ollama…")
+                for event in self.io.drain_events():
+                    yield event
+
+                attempt_text: list[str] = []
+                for piece in iterate_async_with_heartbeats(
+                    lambda: self.coder.send_message(user_msg),
+                    self.io,
+                    coder=self.coder,
+                    label="LLM",
+                    message="Waiting for Ollama",
+                ):
+                    for event in self.io.drain_events():
+                        if event.get("type") == "tool_error":
+                            turn_had_tool_error = True
+                        yield event
+                    if piece is HEARTBEAT_PULSE:
+                        continue
+                    if piece:
+                        attempt_text.append(piece)
+                        assistant_text.append(piece)
+                        yield self.io.emit("token", text=piece)
+
+                for event in self.io.drain_events():
+                    if event.get("type") == "tool_error":
+                        turn_had_tool_error = True
+                    yield event
+
+                edited = _edited_files(self.coder)
+                if (
+                    attempt == 0
+                    and route_decision
+                    and self._model_router
+                    and should_escalate_fast_turn(
+                        route_decision,
+                        router=self._model_router,
+                        user_message=user_msg,
+                        edited_files=edited,
+                        assistant_text="".join(attempt_text),
+                        had_tool_error=turn_had_tool_error,
+                    )
+                ):
+                    assistant_text.clear()
                     continue
-                if piece:
-                    assistant_text.append(piece)
-                    yield self.io.emit("token", text=piece)
-
-            for event in self.io.drain_events():
-                yield event
+                break
 
             edited = _edited_files(self.coder)
             payload: dict[str, Any] = {

@@ -1,5 +1,5 @@
 """
-Integration checks for Bright Vision superproject + bright-vision-core submodule.
+Integration checks for BrightVision superproject + bright-vision-core submodule.
 
 Skipped unless the parent repo layout exists (dev checkout).
 """

@@ -80,10 +80,39 @@ _lock = threading.Lock()
 _sessions: dict[str, Session] = {}
 
 
+class ModelPoolEntryModel(BaseModel):
+    model: str = ""
+    tier: str = Field(description="fast | heavy")
+    enabled: bool = True
+    label: str = ""
+
+
+class ModelRouterRequest(BaseModel):
+    enabled: bool = False
+    fast_model: str = Field(default="", description="Resolved fast tier (from hopper)")
+    heavy_model: str | None = Field(
+        default=None,
+        description="Resolved heavy tier; defaults to session model",
+    )
+    model_pool: list[ModelPoolEntryModel] = Field(
+        default_factory=list,
+        description="Settings hopper: enabled models + tier",
+    )
+    token_fast_max: int = 4_096
+    token_heavy_min: int = 12_000
+    keep_alive_fast: int | str = 300
+    keep_alive_heavy: int | str = 0
+    escalate_on_failure: bool = True
+
+
 class CreateSessionRequest(BaseModel):
     workspace: str = Field(..., description="Absolute path to git workspace root")
     files: list[str] = Field(default_factory=list, description="Files to add to the chat")
     model: str | None = Field(default=None, description="LLM model name")
+    model_router: ModelRouterRequest | None = Field(
+        default=None,
+        description="Optional local model tiering (fast vs heavy Ollama)",
+    )
     stream: bool = True
     auto_yes: bool = Field(
         False,
@@ -109,6 +138,14 @@ class MessageRequest(BaseModel):
     inject_todo_spec: bool = Field(
         False,
         description="When true with active_todo_id, prepend task spec to the message",
+    )
+    force_tier: str | None = Field(
+        default=None,
+        description="Override router: fast | heavy",
+    )
+    escalate_from_last: bool = Field(
+        default=False,
+        description="Force heavy tier (e.g. user clicked Escalate after a fast attempt)",
     )
 
 
@@ -296,6 +333,9 @@ def health():
 @app.post("/sessions", response_model=SessionInfo)
 def create_session(body: CreateSessionRequest):
     try:
+        router_payload = (
+            body.model_router.model_dump() if body.model_router is not None else None
+        )
         session = Session.create(
             body.workspace,
             files=body.files or None,
@@ -305,6 +345,7 @@ def create_session(body: CreateSessionRequest):
             auto_commits=body.auto_commits,
             dirty_commits=body.dirty_commits,
             dry_run=body.dry_run,
+            model_router=router_payload,
         )
     except FileNotFoundError as err:
         raise HTTPException(status_code=404, detail=str(err)) from err
@@ -724,6 +765,8 @@ def post_message(session_id: str, body: MessageRequest):
                 preproc=body.preproc,
                 active_todo_id=body.active_todo_id,
                 inject_todo_spec=body.inject_todo_spec,
+                force_tier=body.force_tier,
+                escalate_from_last=body.escalate_from_last,
             ):
                 yield _sse_pack(event)
         except (BrokenPipeError, ConnectionResetError) as err:

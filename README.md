@@ -1,6 +1,6 @@
-# Bright Vision Core
+# BrightVision Core
 
-**PyPI:** [`bright-vision-core`](https://pypi.org/project/bright-vision-core/) — cecli engine + headless HTTP API for the [Bright Vision](https://github.com/Digital-Defiance/bright-vision) desktop IDE.
+**PyPI:** [`bright-vision-core`](https://pypi.org/project/bright-vision-core/) — cecli engine + headless HTTP API for the [BrightVision](https://github.com/Digital-Defiance/bright-vision) desktop IDE.
 
 | Piece | Role |
 |-------|------|
@@ -19,7 +19,7 @@ bright-vision-core-serve    # HTTP API at http://127.0.0.1:8741
 curl -s http://127.0.0.1:8741/health
 ```
 
-Editable dev install (Bright Vision monorepo submodule):
+Editable dev install (BrightVision monorepo submodule):
 
 ```bash
 pip install -e ./bright-vision-core
@@ -27,7 +27,7 @@ pip install -e ./bright-vision-core
 
 The same wheel also provides the **`cecli`** CLI (`cecli`, `aider-ce`, `ce.cli`) for terminal use.
 
-**Bright Vision desktop** manages Ollama locally (Terminal → Local LLM) and spawns this core on **Terminal → Start**. You do not need a separate `local-llm.sh` repo for the app.
+**BrightVision desktop** manages Ollama locally (Terminal → Local LLM) and spawns this core on **Terminal → Start**. You do not need a separate `local-llm.sh` repo for the app.
 
 Release: [docs/PUBLISHING.md](docs/PUBLISHING.md). Lineage: [docs/LINEAGE.md](docs/LINEAGE.md). Vision API: [bright_vision_core/README.md](bright_vision_core/README.md). **Website:** [bright_vision_core/website/](bright_vision_core/website/) → [bright-vision-core.digitaldefiance.org](https://bright-vision-core.digitaldefiance.org) (not `cecli/website/`).
 
@@ -70,7 +70,7 @@ This project can be installed using several methods:
 
 ### Package Installation
 
-**Bright Vision Core** (cecli + `bright_vision_core` + `bright-vision-core-serve`):
+**BrightVision Core** (cecli + `bright_vision_core` + `bright-vision-core-serve`):
 
 ```bash
 pip install bright-vision-core

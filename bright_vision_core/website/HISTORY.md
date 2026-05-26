@@ -6,7 +6,7 @@ description: Release notes and stats on cecli writing its own code.
 ---
 
 {: .note }
-**Bright Vision Core** site changelog. Older entries refer to **Cecli** / **Cecli** upstream names; current CLI is `cecli`, HTTP serve is `bright-vision-core-serve`.
+**BrightVision Core** site changelog. Older entries refer to **Cecli** / **Cecli** upstream names; current CLI is `cecli`, HTTP serve is `bright-vision-core-serve`.
 
 # Release history
 

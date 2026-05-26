@@ -10,7 +10,7 @@ description: CLI scripting, Python API, and bright-vision-core-serve HTTP API.
 
 ## HTTP API (Vision Core)
 
-Run the local server for [Bright Vision](https://bright-vision.digitaldefiance.org/) or other clients:
+Run the local server for [BrightVision](https://bright-vision.digitaldefiance.org/) or other clients:
 
 ```bash
 bright-vision-core-serve --workspace /path/to/git/repo

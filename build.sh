@@ -62,7 +62,7 @@ rebuild_from_existing_tag() {
   echo "  pyproject name: ${pkg_name:-unknown}"
   if [[ "${pkg_name}" != "bright-vision-core" ]]; then
     echo "warning: tag ${VERSION} does not package bright-vision-core (got: ${pkg_name})" >&2
-    echo "  To ship Bright Vision Core as 0.100.0, move the tag to the bright-vision commit, e.g.:" >&2
+    echo "  To ship BrightVision Core as 0.100.0, move the tag to the bright-vision commit, e.g.:" >&2
     echo "    git tag -f v0.100.0 9e57750c5 && git push origin v0.100.0 --force" >&2
     confirm "Continue building ${pkg_name} anyway?" || die "aborted"
   fi

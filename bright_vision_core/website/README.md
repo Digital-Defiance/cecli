@@ -1,6 +1,6 @@
-# Bright Vision Core site (Jekyll)
+# BrightVision Core site (Jekyll)
 
-Marketing and docs for **Bright Vision Core** — separate from upstream **`cecli/website/`** (left untouched).
+Marketing and docs for **BrightVision Core** — separate from upstream **`cecli/website/`** (left untouched).
 
 | | |
 |--|--|
