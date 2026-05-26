@@ -1206,9 +1206,12 @@ class Model(ModelSettings):
             kwargs["max_tokens"] = max_tokens
         if "max_tokens" in kwargs and kwargs["max_tokens"]:
             kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
-        if self.is_ollama() and "num_ctx" not in kwargs:
-            num_ctx = int(self.token_count(messages) * 1.25) + 8192
-            kwargs["num_ctx"] = num_ctx
+        if self.is_ollama():
+            # Ollama defaults to ~5m unload unless every request sets keep_alive (see Ollama API docs).
+            kwargs.setdefault("keep_alive", -1)
+            if "num_ctx" not in kwargs:
+                num_ctx = int(self.token_count(messages) * 1.25) + 8192
+                kwargs["num_ctx"] = num_ctx
         key = json.dumps(kwargs, sort_keys=True).encode()
         hash_object = hashlib.sha1(key)
         if "timeout" not in kwargs:
