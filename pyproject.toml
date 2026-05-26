@@ -51,6 +51,8 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 write_to = "cecli/_version.py"
 local_scheme = "no-local-version"
+# Git tags like v0.111.1.bright0 are not PEP 440; builds use SETUPTOOLS_SCM_PRETEND_VERSION
+# (see scripts/scm_pep440.sh) -> 0.111.1+bright0 for PyPI and editable installs.
 
 [tool.codespell]
 skip = "*.svg,*.scss,Gemfile.lock,tests/fixtures/*,cecli/website/assets/*"

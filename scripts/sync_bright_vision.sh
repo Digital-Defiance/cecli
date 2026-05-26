@@ -9,18 +9,33 @@
 
 set -euo pipefail
 
+# Never source this script — set -e would kill an interactive shell on failure.
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+  echo "error: run as ./scripts/sync_bright_vision.sh, do not source it" >&2
+  return 1 2>/dev/null || exit 1
+fi
+
 CORE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ASSUME_YES=0
 DO_COMMIT=0
 SKIP_PIP=0
+FORCE_PIP=0
 VERSION_ARG=""
 
 usage() {
-  echo "Usage: $0 <version> [--commit] [--yes] [--skip-pip]" >&2
+  echo "Usage: $0 <version> [--commit] [--yes] [--skip-pip] [--force-pip]" >&2
   echo "  version     PEP 440 or tag, e.g. 0.100.1.dev0 or v0.100.1.dev0" >&2
   echo "  --commit    commit requirements-core.txt + submodule pointer in parent app" >&2
+  echo "  --skip-pip  update pin + submodule only (no pip)" >&2
+  echo "  --force-pip fail if PyPI has no wheel (default: skip pip when not published)" >&2
   echo "  BRIGHT_VISION_ROOT  override parent app path (default: repo containing submodule)" >&2
   exit 1
+}
+
+pypi_has_release() {
+  local pkg="$1" ver="$2"
+  local url="https://pypi.org/pypi/${pkg}/${ver}/json"
+  curl -fsS --max-time 15 "$url" >/dev/null 2>&1
 }
 
 die() {
@@ -62,6 +77,7 @@ while [[ $# -gt 0 ]]; do
     --commit) DO_COMMIT=1; shift ;;
     --yes) ASSUME_YES=1; shift ;;
     --skip-pip) SKIP_PIP=1; shift ;;
+    --force-pip) FORCE_PIP=1; shift ;;
     -h|--help) usage ;;
     -*)
       die "unknown option: $1"
@@ -78,7 +94,11 @@ done
 
 VERSION_TAG="$VERSION_ARG"
 PEP440_VERSION="${VERSION_TAG#v}"
-if [[ ! "$PEP440_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.]+)?$ ]]; then
+# v0.111.1.bright0 -> 0.111.1+bright0 for pip/PyPI
+if [[ "$PEP440_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.bright([0-9]+)$ ]]; then
+  PEP440_VERSION="${BASH_REMATCH[1]}+bright${BASH_REMATCH[2]}"
+fi
+if [[ ! "$PEP440_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.+][0-9A-Za-z.+-]+)?$ ]]; then
   die "invalid version: ${VERSION_ARG}"
 fi
 if [[ "$VERSION_TAG" != v* ]]; then
@@ -93,12 +113,25 @@ VENV="${VISION_ROOT}/.venv"
 echo "Parent app: ${VISION_ROOT}"
 echo "Pin: bright-vision-core==${PEP440_VERSION}"
 
-cat >"$REQ_FILE" <<EOF
-# Pinned PyPI release of the engine (updated by bright-vision-core/scripts/sync_bright_vision.sh).
+write_requirements() {
+  local active="$1"
+  if (( active )); then
+    cat >"$REQ_FILE" <<EOF
+# Pinned PyPI release (bright-vision-core/scripts/sync_bright_vision.sh).
 # Dev default: editable submodule via \`source activate.sh\` in Bright Vision.
 # After a core release: cd bright-vision-core && ./build.sh ${VERSION_TAG} --sync-vision
 bright-vision-core==${PEP440_VERSION}
 EOF
+  else
+    cat >"$REQ_FILE" <<EOF
+# Pinned PyPI release (bright-vision-core/scripts/sync_bright_vision.sh).
+# Dev default: editable submodule via \`source activate.sh\` in Bright Vision.
+# bright-vision-core==${PEP440_VERSION}  # not on PyPI yet — publish, then re-run sync
+EOF
+  fi
+}
+
+write_requirements 1
 echo "Wrote ${REQ_FILE}"
 
 if [[ -d "$SUBMODULE/.git" ]]; then
@@ -113,25 +146,38 @@ fi
 
 if (( SKIP_PIP )); then
   echo "Skipping pip install (--skip-pip)."
+elif ! (( FORCE_PIP )) && ! pypi_has_release "bright-vision-core" "$PEP440_VERSION"; then
+  echo "bright-vision-core==${PEP440_VERSION} is not on PyPI yet — skipping pip install."
+  write_requirements 0
+  echo "Updated ${REQ_FILE} (pin commented). Use: cd ${VISION_ROOT} && source activate.sh"
+  echo "After ./build.sh ${VERSION_TAG} uploads to PyPI, re-run: $0 ${VERSION_ARG} --force-pip"
 else
   PYTHON="${VISION_PYTHON:-python3}"
   if [[ ! -d "$VENV" ]]; then
     echo "Creating ${VENV}..."
     "$PYTHON" -m venv "$VENV"
   fi
-  # shellcheck disable=SC1091
-  source "${VENV}/bin/activate"
   echo "Installing into Bright Vision .venv (not core/.venv)..."
-  python -m pip install -q -U pip "uvicorn[standard]"
-  python -m pip install -q -U -r "$REQ_FILE"
-  python -c "
+  # Subshell: never source activate in this script (sourcing + set -e kills parent shells).
+  (
+    set +e
+    # shellcheck disable=SC1091
+    source "${VENV}/bin/activate"
+    python -m pip install -q -U pip "uvicorn[standard]" || exit 1
+    if ! python -m pip install -q -U -r "$REQ_FILE"; then
+      echo "error: pip could not install bright-vision-core==${PEP440_VERSION}" >&2
+      echo "  Publish to PyPI first, or use: source activate.sh (editable submodule)" >&2
+      echo "  zsh users: if ERR_EXIT is on, a failing ./build.sh closes the tab — run: set +o errexit" >&2
+      exit 1
+    fi
+    python -c "
 import bright_vision_core as bvc
 from cecli import __version__ as cecli_version
 print('bright_vision_core', getattr(bvc, '__version__', '?'), 'at', bvc.__file__)
 print('cecli', cecli_version)
 "
-  command -v bright-vision-core-serve >/dev/null && echo "bright-vision-core-serve: $(command -v bright-vision-core-serve)"
-  deactivate 2>/dev/null || true
+    command -v bright-vision-core-serve >/dev/null && echo "bright-vision-core-serve: $(command -v bright-vision-core-serve)"
+  ) || exit 1
 fi
 
 if (( DO_COMMIT )); then
