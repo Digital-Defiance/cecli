@@ -58,6 +58,7 @@ rebuild_from_existing_tag() {
   local pkg_name
   pkg_name="$(git show "${VERSION}:pyproject.toml" 2>/dev/null | sed -n 's/^name = "\(.*\)"/\1/p' | head -1)"
   echo "Building from tag ${VERSION} (${tag_commit})..."
+  warn_ambiguous_bright_tags "$tag_commit"
   echo "  pyproject name: ${pkg_name:-unknown}"
   if [[ "${pkg_name}" != "bright-vision-core" ]]; then
     echo "warning: tag ${VERSION} does not package bright-vision-core (got: ${pkg_name})" >&2
@@ -72,7 +73,7 @@ rebuild_from_existing_tag() {
   (
     cd "$wt"
     rm -rf dist build *.egg-info cecli_dev.egg-info bright_vision_core.egg-info
-    apply_scm_pep440 "$wt"
+    apply_scm_pep440 "$wt" "$VERSION"
     "$PYTHON" -m pip install -q build
     "$PYTHON" -m build
     cp -f dist/* "${ROOT}/dist/"
@@ -109,12 +110,32 @@ rebuild_from_existing_tag() {
 
 apply_scm_pep440() {
   local dir="${1:-$ROOT}"
+  local tag="${2:-${VERSION:-}}"
   if [[ -f "${ROOT}/scripts/scm_pep440.sh" ]]; then
     # shellcheck disable=SC1091
-    eval "$(sh "${ROOT}/scripts/scm_pep440.sh" "$dir")"
+    if [[ -n "$tag" ]]; then
+      eval "$(sh "${ROOT}/scripts/scm_pep440.sh" "$dir" "$tag")"
+    else
+      eval "$(sh "${ROOT}/scripts/scm_pep440.sh" "$dir")"
+    fi
     if [[ -n "${SETUPTOOLS_SCM_PRETEND_VERSION:-}" ]]; then
       echo "  setuptools-scm pretend: ${SETUPTOOLS_SCM_PRETEND_VERSION}"
     fi
+  fi
+}
+
+warn_ambiguous_bright_tags() {
+  local commit="$1"
+  local tags
+  tags="$(git tag --points-at "$commit" 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+\.bright[0-9]+$' || true)"
+  local count=0
+  if [[ -n "$tags" ]]; then
+    count="$(printf '%s\n' "$tags" | wc -l | tr -d ' ')"
+  fi
+  if (( count > 1 )); then
+    echo "warning: ${count} .brightN tags point at ${commit}; git describe alone is ambiguous." >&2
+    printf '  %s\n' $tags >&2
+    echo "  build.sh uses the tag you passed (${VERSION}) for PyPI version." >&2
   fi
 }
 

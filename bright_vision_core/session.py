@@ -30,6 +30,7 @@ from bright_vision_core.git_undo import undo_last_aider_commit_for_coder
 from bright_vision_core.git_workspace import create_git_workspace
 from bright_vision_core.headless_args import default_headless_args
 from bright_vision_core.todo_spec_generate import build_generate_message, parse_generated_layers
+from bright_vision_core.slash_helpers import is_switch_coder_signal, run_slash_command_sync
 from bright_vision_core.workspace_todos import WorkspaceTodos, format_todo_context
 
 
@@ -289,12 +290,21 @@ class Session:
                 WorkspaceTodos(self.coder.root).append_links(links, todo_id=turn_todo_id)
 
             yield self.io.emit("done", **payload)
-        except BrokenPipeError as err:
-            yield self.io.emit("error", text=str(err))
-            yield self.io.emit("done", assistant_text="".join(assistant_text), error=True)
-        except Exception as err:
-            yield self.io.emit("error", text=str(err))
-            yield self.io.emit("done", assistant_text="".join(assistant_text), error=True)
+        except BaseException as err:
+            if is_switch_coder_signal(err):
+                for event in self.io.drain_events():
+                    yield event
+                yield self.io.emit("done", assistant_text="".join(assistant_text))
+                return
+            if isinstance(err, BrokenPipeError):
+                yield self.io.emit("error", text=str(err))
+                yield self.io.emit("done", assistant_text="".join(assistant_text), error=True)
+                return
+            if isinstance(err, Exception):
+                yield self.io.emit("error", text=str(err))
+                yield self.io.emit("done", assistant_text="".join(assistant_text), error=True)
+                return
+            raise
 
     def add_files(self, paths: list[str]) -> list[dict[str, Any]]:
         if not paths:
@@ -317,7 +327,7 @@ class Session:
                 quoted.append(shlex.quote(str(p)))
 
         if quoted:
-            run(self.coder.commands.execute("add", " ".join(quoted), coder=self.coder))
+            run_slash_command_sync(self.coder, "add", " ".join(quoted))
 
         return self.io.drain_events()
 

@@ -267,9 +267,30 @@ def _sse_pack(event: dict[str, Any]) -> str:
     return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
 
+def _engine_versions() -> dict[str, str]:
+    versions: dict[str, str] = {}
+    try:
+        import bright_vision_core as bvc
+
+        versions["bright_vision_core"] = str(getattr(bvc, "__version__", "unknown"))
+    except Exception:
+        versions["bright_vision_core"] = "unknown"
+    try:
+        from cecli._version import version as cecli_version
+
+        versions["cecli"] = str(cecli_version)
+    except Exception:
+        versions["cecli"] = "unknown"
+    return versions
+
+
 @app.get("/health")
 def health():
-    return {"status": "ok", "auth_required": auth_enabled()}
+    return {
+        "status": "ok",
+        "auth_required": auth_enabled(),
+        "versions": _engine_versions(),
+    }
 
 
 @app.post("/sessions", response_model=SessionInfo)
