@@ -1378,6 +1378,11 @@ class Model(ModelSettings):
                 continue
             except AttributeError:
                 return None
+            except KeyboardInterrupt:
+                # An interrupt was not caught within the async run loop.
+                # We'll just pass to allow the thread to exit gracefully
+                # without a scary traceback.
+                pass
 
     def model_error_response(self):
         return litellm.ModelResponse(
