@@ -371,6 +371,24 @@ def get_parser(default_config_files, git_root):
         ),
     )
     group.add_argument(
+        "--session-encrypt",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Encrypt saved sessions on disk (AES-256-GCM). Requires CECLI_SESSION_KEY or"
+            " --session-key-file (default: False)"
+        ),
+    )
+    group.add_argument(
+        "--session-key-file",
+        metavar="SESSION_KEY_FILE",
+        default=None,
+        help=(
+            "File containing a urlsafe-base64 32-byte session encryption key"
+            " (default: use CECLI_SESSION_KEY only)"
+        ),
+    ).complete = shtab.FILE
+    group.add_argument(
         "--mcp-servers",
         metavar="MCP_CONFIG_JSON",
         help="Specify MCP server configurations as a JSON string",
