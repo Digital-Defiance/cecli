@@ -311,7 +311,7 @@ pathspec==0.12.1
     # via -r requirements/requirements.in
 pexpect==4.9.0
     # via -r requirements/requirements.in
-pillow==12.0.0
+pillow==12.2.0
     # via
     #   -r requirements/requirements.in
     #   llama-index-core
