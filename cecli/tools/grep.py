@@ -7,7 +7,7 @@ import oslex
 from cecli.helpers.hashline import strip_hashline
 from cecli.run_cmd import run_cmd_subprocess
 from cecli.tools.utils.base_tool import BaseTool
-from cecli.tools.utils.helpers import ToolError, normalize_search_operations
+from cecli.tools.utils.helpers import ToolError, grep_error_hint, normalize_search_operations
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
 
 
@@ -202,7 +202,11 @@ class Tool(BaseTool):
                 elif exit_status == 1:
                     all_results.append(f"No matches found for '{pattern}'.")
                 else:
-                    all_results.append(f"Error searching for '{pattern}': {output_content}")
+                    msg = f"Error searching for '{pattern}': {output_content}"
+                    hint = grep_error_hint(pattern, output_content)
+                    if hint:
+                        msg = f"{msg.rstrip()}{hint}"
+                    all_results.append(msg)
 
             except Exception as e:
                 all_results.append(f"Error executing search for '{pattern}': {str(e)}")
