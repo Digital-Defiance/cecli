@@ -184,3 +184,13 @@ def test_format_output_accepts_show_as_json_string(coder_with_file):
     assert "example.txt" in output_text
     assert "alpha" in output_text
     coder.io.tool_error.assert_not_called()
+
+
+def test_normalize_show_ops_joins_char_split_json_list():
+    show_json = json.dumps(
+        [{"file_path": "docs/ROADMAP.md", "start_text": "@000", "end_text": "\\n"}]
+    )
+    ops = normalize_show_ops(list(show_json))
+    assert len(ops) == 1
+    assert ops[0]["file_path"] == "docs/ROADMAP.md"
+    assert ops[0]["start_text"] == "@000"

@@ -346,12 +346,46 @@ def format_tool_result(
         return result_for_llm
 
 
+def _try_join_char_split_json_array(items: list) -> list | None:
+    """
+    Some local models emit a JSON array as one string per character in tool args.
+
+    Example: tasks=["[", "{", "\\"", "t", "a", "s", "k", "\\"", ...] instead of
+    tasks='[{"task": "...", "done": false}]'.
+    """
+    if len(items) < 8:
+        return None
+    if not all(isinstance(x, str) for x in items):
+        return None
+    joined = "".join(items).strip()
+    if not joined.startswith(("[", "{")):
+        return None
+    try:
+        parsed = json.loads(joined)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(parsed, dict):
+        return [parsed]
+    if isinstance(parsed, list):
+        return parsed
+    return None
+
+
 def normalize_json_array(value, *, param_name: str = "items", allow_empty: bool = False) -> list:
     """
     Coerce tool args that should be arrays but sometimes arrive as JSON strings.
 
-    Local models occasionally double-encode array parameters as JSON text.
+    Local models occasionally double-encode array parameters as JSON text, or emit
+    arrays as per-character string lists (see ``_try_join_char_split_json_array``).
     """
+    if isinstance(value, list):
+        coerced = _try_join_char_split_json_array(value)
+        if coerced is not None:
+            value = coerced
+        elif len(value) == 1 and isinstance(value[0], str):
+            # Single element wrapping the whole JSON array/object as a string.
+            value = value[0]
+
     if isinstance(value, str):
         text = value.strip()
         if not text:

@@ -50,6 +50,35 @@ def test_normalize_task_items_accepts_list_of_json_strings():
     assert items[1]["task"] == "Second"
 
 
+def test_normalize_json_array_joins_char_split_json_list():
+    """Ollama sometimes sends tasks as a list of single-character strings."""
+    chars = list(
+        '[{"task": "Explore the codebase", "done": false, "current": true},'
+        '{"task": "Draft roadmap", "done": false}]'
+    )
+    items = normalize_json_array(chars, param_name="tasks")
+    assert len(items) == 2
+    assert items[0]["task"] == "Explore the codebase"
+    assert items[1]["task"] == "Draft roadmap"
+
+
+def test_normalize_json_array_unwraps_single_element_json_string_list():
+    wrapped = [
+        '[{"task": "Only task", "done": false}]',
+    ]
+    items = normalize_json_array(wrapped, param_name="tasks")
+    assert len(items) == 1
+    assert items[0]["task"] == "Only task"
+
+
+def test_normalize_task_items_from_char_split_list():
+    chars = list(json.dumps([{"task": "Ship tests", "done": True}]))
+    items = normalize_task_items(chars)
+    assert len(items) == 1
+    assert items[0]["task"] == "Ship tests"
+    assert items[0]["done"] is True
+
+
 def test_normalize_task_items_does_not_split_characters():
     tasks_json = json.dumps([{"task": "Only one task", "done": False}])
     items = normalize_task_items(tasks_json)
@@ -100,6 +129,32 @@ def test_format_output_accepts_tasks_as_json_string():
     assert output_text.count("○ ") == 1
     assert "○ Draft roadmap items" in output_text
     assert "✓ Write tests" in output_text
+    coder.io.tool_error.assert_not_called()
+
+
+def test_format_output_accepts_char_split_tasks_list():
+    """Reproduces BrightVision bug: tasks array is one JSON character per element."""
+    coder = DummyCoder()
+    tasks_json = (
+        '[{"task": "Explore the codebase", "done": false, "current": true},'
+        '{"task": "Draft roadmap items", "done": false}]'
+    )
+    args = json.dumps({"tasks": list(tasks_json)})
+    tool_response = SimpleNamespace(function=SimpleNamespace(name="UpdateTodoList", arguments=args))
+
+    update_todo_list.Tool.format_output(
+        coder,
+        mcp_server=SimpleNamespace(name="test"),
+        tool_response=tool_response,
+    )
+
+    output_text = "\n".join(call.args[0] for call in coder.io.tool_output.call_args_list)
+    assert "Explore the codebase" in output_text
+    assert "Draft roadmap items" in output_text
+    assert output_text.count("○ ") == 1
+    assert "→ Explore the codebase" in output_text
+    assert "○ Draft roadmap items" in output_text
+    assert all(len(line.strip()) > 3 for line in output_text.splitlines() if line.startswith("○ "))
     coder.io.tool_error.assert_not_called()
 
 
