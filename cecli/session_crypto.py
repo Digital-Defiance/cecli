@@ -98,7 +98,9 @@ def decrypt_session_bytes(data: bytes, key: bytes) -> dict[str, Any]:
     try:
         plaintext = AESGCM(key).decrypt(nonce, ciphertext, None)
     except Exception as err:
-        raise SessionCryptoError("Could not decrypt session (wrong key or corrupted file).") from err
+        raise SessionCryptoError(
+            "Could not decrypt session (wrong key or corrupted file)."
+        ) from err
     try:
         parsed = json.loads(plaintext.decode("utf-8"))
     except json.JSONDecodeError as err:
