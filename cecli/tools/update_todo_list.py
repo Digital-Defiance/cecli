@@ -1,3 +1,5 @@
+import json
+
 from cecli.tools.utils.base_tool import BaseTool
 from cecli.tools.utils.helpers import (
     ToolError,
@@ -59,7 +61,10 @@ class Tool(BaseTool):
                         "items": {
                             "type": "object",
                             "properties": {
-                                "task": {"type": "string", "description": "The task description."},
+                                "task": {
+                                    "type": "string",
+                                    "description": "The task description.",
+                                },
                                 "done": {
                                     "type": "boolean",
                                     "description": "Whether the task is completed.",
@@ -208,16 +213,19 @@ class Tool(BaseTool):
 
     @classmethod
     def format_output(cls, coder, mcp_server, tool_response):
-        import json
-
         from cecli.tools.utils.output import color_markers
 
         color_start, color_end = color_markers(coder)
 
         tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
 
-        # Parse the parameters to display formatted todo list
-        params = json.loads(tool_response.function.arguments)
+        try:
+            params = json.loads(tool_response.function.arguments)
+        except json.JSONDecodeError:
+            coder.io.tool_error("Invalid Tool JSON")
+            tool_footer(coder=coder, tool_response=tool_response)
+            return
+
         tasks = params.get("tasks", [])
 
         if tasks:
