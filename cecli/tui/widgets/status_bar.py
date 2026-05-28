@@ -126,6 +126,7 @@ class StatusBar(Widget, can_focus=True):
         """Initialize status bar."""
         super().__init__(**kwargs)
         self._text = ""
+        self._agent_name: str | None = None
         self._severity = "info"
         self._show_all = False
         self._allow_tweak = False
@@ -133,7 +134,6 @@ class StatusBar(Widget, can_focus=True):
         self._default = "y"
         self._explicit_yes_required = False
         self._timer = None
-
     def compose(self) -> ComposeResult:
         """Create empty container - content added dynamically."""
         yield Horizontal(classes="status-content")
@@ -153,9 +153,11 @@ class StatusBar(Widget, can_focus=True):
         container.remove_children()
 
         if self.mode == "notification":
-            container.mount(Static(self._text, classes=f"notification-text {self._severity}"))
+            display_text = f"({self._agent_name}) {self._text}" if self._agent_name else self._text
+            container.mount(Static(display_text, classes=f"notification-text {self._severity}"))
         elif self.mode == "confirm":
-            container.mount(Static(self._text, classes="confirm-question"))
+            display_text = f"({self._agent_name}) {self._text}" if self._agent_name else self._text
+            container.mount(Static(display_text, classes="confirm-question"))
             hints = Horizontal(classes="confirm-hints")
             container.mount(hints)
             hints.mount(Static("\\[y]es", classes="hint hint-yes"))
@@ -169,7 +171,8 @@ class StatusBar(Widget, can_focus=True):
                 hints.mount(Static("\\[d]on't ask again", classes="hint hint-never"))
 
     def show_notification(
-        self, text: str, severity: str = "info", timeout: float | None = 3.0
+        self, text: str, severity: str = "info", timeout: float | None = 3.0,
+        agent_name: str | None = None,
     ) -> None:
         """Show a transient notification message.
 
@@ -184,6 +187,7 @@ class StatusBar(Widget, can_focus=True):
             self._timer = None
 
         self._text = text
+        self._agent_name = agent_name
         self._severity = severity
         self.mode = "notification"
         self._rebuild_content()
@@ -199,6 +203,7 @@ class StatusBar(Widget, can_focus=True):
         allow_never: bool = False,
         default: str = "y",
         explicit_yes_required: bool = False,
+        agent_name: str | None = None,
     ) -> None:
         """Show a confirmation prompt.
 
@@ -216,6 +221,7 @@ class StatusBar(Widget, can_focus=True):
             self._timer = None
 
         self._text = question
+        self._agent_name = agent_name
         self._show_all = show_all
         self._allow_tweak = allow_tweak
         self._allow_never = allow_never

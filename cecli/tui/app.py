@@ -502,9 +502,10 @@ class TUI(App):
             pass
 
     def handle_output_message(self, msg):
-        """Route output messages to appropriate handlers."""
         msg_type = msg["type"]
 
+        # Resolve agent_name from coder_uuid for agent-specific status messages
+        agent_name = self._resolve_agent_name(msg.get("coder_uuid"))
         if msg_type == "output":
             container = self._get_output_container(msg)
             container.add_output(msg["text"], msg.get("task_id"))
@@ -532,15 +533,15 @@ class TUI(App):
             container = self._get_output_container(msg)
             container.start_task(msg["task_id"], msg["title"], msg.get("task_type"))
         elif msg_type == "confirmation":
-            self.show_confirmation(msg)
+            self.show_confirmation(msg, agent_name=agent_name)
         elif msg_type == "spinner":
-            self.update_spinner(msg)
+            self.update_spinner(msg, agent_name=agent_name)
         elif msg_type == "ready_for_input":
             self.enable_input(msg)
             footer = self.query_one(MainFooter)
             footer.stop_spinner()
         elif msg_type == "error":
-            self.show_error(msg["message"])
+            self.show_error(msg["message"], agent_name=agent_name)
         elif msg_type == "cost_update":
             footer = self.query_one(MainFooter)
             footer.update_cost(msg.get("cost", 0))
@@ -563,6 +564,28 @@ class TUI(App):
             else:
                 self._switch_to_container(target_uuid)
 
+
+    def _resolve_agent_name(self, coder_uuid: str | None) -> str | None:
+        """Resolve an agent display name from a coder_uuid.
+
+        Returns the sub-agent's name if the coder_uuid belongs to a known
+        sub-agent, otherwise None (primary agent uses no prefix).
+        """
+        if not coder_uuid:
+            return None
+        try:
+            from cecli.helpers.agents.service import AgentService
+
+            agent_service = AgentService.get_instance(self.worker.coder)
+            primary_uuid = str(agent_service.coder.uuid)
+            if coder_uuid == primary_uuid:
+                return None  # Primary agent gets no prefix
+            for info in agent_service.sub_agents.values():
+                if str(info.coder.uuid) == coder_uuid:
+                    return info.name
+        except Exception:
+            pass
+        return None
     def add_output(self, text, task_id=None):
         """Add output to the output container."""
         output_container = self.query_one("#output", OutputContainer)
@@ -601,7 +624,7 @@ class TUI(App):
         output_container = self.query_one("#output", OutputContainer)
         output_container.start_task(task_id, title, task_type)
 
-    def show_confirmation(self, msg):
+    def show_confirmation(self, msg, agent_name: str | None = None):
         """Show inline confirmation bar."""
         # Disable input while confirm bar is active
         input_area = self.query_one("#input", InputArea)
@@ -623,6 +646,7 @@ class TUI(App):
             allow_never=allow_never,
             default=options.get("default", "y"),
             explicit_yes_required=options.get("explicit_yes_required", False),
+            agent_name=agent_name,
         )
 
     def enable_input(self, msg, coder=None):
@@ -657,13 +681,13 @@ class TUI(App):
 
         input_area.focus()
 
-    def update_spinner(self, msg):
+    def update_spinner(self, msg, agent_name: str | None = None):
         """Update spinner in footer."""
         footer = self.query_one(MainFooter)
         action = msg.get("action", "start")
 
         if action == "start":
-            footer.start_spinner(msg.get("text", ""))
+            footer.start_spinner(msg.get("text", ""), agent_name=agent_name)
         elif action == "update":
             footer.spinner_text = msg.get("text", "")
         elif action == "update_suffix":
@@ -671,10 +695,11 @@ class TUI(App):
         elif action == "stop":
             footer.stop_spinner()
 
-    def show_error(self, message):
-        """Show error notification."""
-        status_bar = self.query_one("#status-bar", StatusBar)
-        status_bar.show_notification(f"Error: {message}", severity="error", timeout=10)
+    def show_error(self, message, agent_name: str | None = None):
+        """Show an error message in the status bar."""
+        self.status_bar.show_notification(
+            message, severity="error", timeout=5, agent_name=agent_name
+        )
 
     def on_resize(self) -> None:
         file_list = self.query_one("#file-list", FileList)
