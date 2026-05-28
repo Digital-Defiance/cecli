@@ -368,11 +368,41 @@ def _try_parse_json_value(text: str):
             return json.loads(candidate)
         except json.JSONDecodeError:
             continue
+    if "}{" in text:
+        from cecli import utils as cecli_utils
+
+        chunks = cecli_utils.split_concatenated_json(text)
+        if len(chunks) == 1:
+            try:
+                return json.loads(chunks[0])
+            except json.JSONDecodeError:
+                pass
+        elif len(chunks) > 1:
+            parsed = []
+            for chunk in chunks:
+                try:
+                    parsed.append(json.loads(chunk))
+                except json.JSONDecodeError:
+                    parsed = None
+                    break
+            if parsed is not None:
+                return parsed
     if len(text) >= 8:
         coerced = _try_join_char_split_json_array(list(text))
         if coerced is not None:
             return coerced
     return None
+
+
+def grep_error_hint(pattern: str, grep_output: str) -> str:
+    """Actionable hint when BSD grep rejects a regex pattern."""
+    combined = f"{pattern}\n{grep_output}"
+    if "(?" in pattern or "repetition-operator operand invalid" in combined:
+        return (
+            " Hint: BSD grep does not support PCRE lookahead (e.g. `(?!…)`). "
+            "Use a simpler pattern, set use_regex=false, or install ripgrep (rg)."
+        )
+    return ""
 
 
 def _try_join_char_split_json_array(items: list) -> list | None:

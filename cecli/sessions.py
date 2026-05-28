@@ -88,7 +88,7 @@ class SessionManager:
 
         return sessions
 
-    async def load_session(self, session_identifier: str, switch=True) -> bool:
+    async def load_session(self, session_identifier: str, switch=True, quiet: bool = False) -> bool:
         """Load a saved session by name or file path."""
         if not session_identifier:
             self.io.tool_error("Please provide a session name or file path.")
@@ -103,12 +103,14 @@ class SessionManager:
             with open(session_file, "r", encoding="utf-8") as f:
                 session_data = json.load(f)
         except Exception as e:
-            self.io.tool_error(f"Error loading session: {e}")
+            if not quiet:
+                self.io.tool_error(f"Error loading session: {e}")
             return False
 
         # Verify session format
         if not isinstance(session_data, dict) or "version" not in session_data:
-            self.io.tool_error("Invalid session format.")
+            if not quiet:
+                self.io.tool_error("Invalid session format.")
             return False
 
         # Apply session data

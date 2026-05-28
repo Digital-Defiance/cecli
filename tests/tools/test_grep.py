@@ -108,3 +108,14 @@ def test_bare_string_search_pattern(tmp_path, monkeypatch):
 
     assert "findme" in result
     coder.io.tool_error.assert_not_called()
+
+
+def test_grep_error_hint_for_bsd_lookahead_failure():
+    from cecli.tools.utils.helpers import grep_error_hint
+
+    hint = grep_error_hint(
+        r"\| \*\*\d+\*\* \| (?!\*\*Done\*\*)",
+        "grep: repetition-operator operand invalid\n",
+    )
+    assert "lookahead" in hint
+    assert "ripgrep" in hint

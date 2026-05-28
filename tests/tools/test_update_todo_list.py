@@ -71,6 +71,14 @@ def test_normalize_json_array_unwraps_single_element_json_string_list():
     assert items[0]["task"] == "Only task"
 
 
+def test_normalize_json_array_parses_concatenated_json_objects():
+    glued = '{"path": "."}{"path": "docs"}'
+    items = normalize_json_array(glued, param_name="paths")
+    assert len(items) == 2
+    assert items[0]["path"] == "."
+    assert items[1]["path"] == "docs"
+
+
 def test_normalize_json_array_repairs_literal_newline_after_colon():
     """ReadRange/Grep: local models break JSON with a newline between ':' and '\"'."""
     broken = '[{"end_text":\n", "file_path": "docs/ROADMAP.md", "start_text": "@000"}]'
