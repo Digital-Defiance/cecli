@@ -6,11 +6,21 @@ from cecli.helpers.hashline import hashline, strip_hashline
 from cecli.tools.utils.base_tool import BaseTool
 from cecli.tools.utils.helpers import (
     ToolError,
+    coerce_dict_item,
     handle_tool_error,
     is_provided,
+    normalize_json_array,
     resolve_paths,
 )
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
+
+
+def normalize_show_ops(show) -> List[dict]:
+    """Accept show as list, dict, JSON string, or list of JSON strings (LLM quirk)."""
+    return [
+        coerce_dict_item(op, param_name="show operation")
+        for op in normalize_json_array(show, param_name="show")
+    ]
 
 
 class Tool(BaseTool):
@@ -89,12 +99,8 @@ class Tool(BaseTool):
         error_outputs = []
 
         try:
-            # 1. Validate show parameter
-            if not isinstance(show, list):
-                show = [show] if isinstance(show, dict) else show
-
-            if len(show) == 0:
-                raise ToolError("show array cannot be empty")
+            # 1. Validate show parameter (models sometimes double-encode show as JSON text)
+            show = normalize_show_ops(show)
 
             all_outputs = []
             already_up_to_details = []
@@ -579,7 +585,14 @@ class Tool(BaseTool):
 
         tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
 
-        show_ops = params.get("show", [])
+        raw_show = params.get("show", [])
+        try:
+            show_ops = normalize_show_ops(raw_show) if raw_show else []
+        except ToolError as err:
+            coder.io.tool_error(str(err))
+            tool_footer(coder=coder, tool_response=tool_response)
+            return
+
         if show_ops:
             coder.io.tool_output("")
             for i, show_op in enumerate(show_ops):

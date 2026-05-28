@@ -1,6 +1,42 @@
 from cecli.tools.utils.base_tool import BaseTool
-from cecli.tools.utils.helpers import ToolError, format_tool_result, handle_tool_error
+from cecli.tools.utils.helpers import (
+    ToolError,
+    coerce_dict_item,
+    format_tool_result,
+    handle_tool_error,
+    normalize_json_array,
+)
 from cecli.tools.utils.output import tool_footer, tool_header
+
+
+def normalize_task_items(tasks) -> list[dict]:
+    """Accept tasks as list, dict, JSON string, or list of JSON strings (LLM quirk)."""
+    normalized = normalize_json_array(tasks, param_name="tasks", allow_empty=True)
+    result: list[dict] = []
+    for item in normalized:
+        if isinstance(item, dict):
+            result.append(item)
+        else:
+            result.append(
+                coerce_dict_item(item, param_name="task")
+                if isinstance(item, str) and item.strip().startswith("{")
+                else {"task": str(item), "done": False, "current": False}
+            )
+    return result
+
+
+def format_task_lines(tasks) -> tuple[list[str], list[str]]:
+    """Return (done_tasks, remaining_tasks) display lines for todo items."""
+    done_tasks: list[str] = []
+    remaining_tasks: list[str] = []
+    for task_item in normalize_task_items(tasks):
+        if task_item.get("done", False):
+            done_tasks.append(f"✓ {task_item['task']}")
+        elif task_item.get("current", False):
+            remaining_tasks.append(f"→ {task_item['task']}")
+        else:
+            remaining_tasks.append(f"○ {task_item['task']}")
+    return done_tasks, remaining_tasks
 
 
 class Tool(BaseTool):
@@ -71,26 +107,7 @@ class Tool(BaseTool):
             todo_file_path = coder.local_agent_folder("todo.txt")
             abs_path = coder.abs_root_path(todo_file_path)
 
-            # Format tasks into string
-            done_tasks = []
-            remaining_tasks = []
-
-            for task_item in tasks:
-                if not isinstance(task_item, dict):
-                    task_item = {
-                        "task": str(task_item),
-                        "done": False,
-                        "current": False,
-                    }
-
-                if task_item.get("done", False):
-                    done_tasks.append(f"✓ {task_item['task']}")
-                else:
-                    # Check if this is the current task
-                    if task_item.get("current", False):
-                        remaining_tasks.append(f"→ {task_item['task']}")
-                    else:
-                        remaining_tasks.append(f"○ {task_item['task']}")
+            done_tasks, remaining_tasks = format_task_lines(tasks)
 
             # Build formatted content
             content_lines = []
@@ -199,26 +216,7 @@ class Tool(BaseTool):
         tasks = params.get("tasks", [])
 
         if tasks:
-            # Format tasks for display
-            done_tasks = []
-            remaining_tasks = []
-
-            for task_item in tasks:
-                if not isinstance(task_item, dict):
-                    task_item = {
-                        "task": str(task_item),
-                        "done": False,
-                        "current": False,
-                    }
-
-                if task_item.get("done", False):
-                    done_tasks.append(f"✓ {task_item['task']}")
-                else:
-                    # Check if this is the current task
-                    if task_item.get("current", False):
-                        remaining_tasks.append(f"→ {task_item['task']}")
-                    else:
-                        remaining_tasks.append(f"○ {task_item['task']}")
+            done_tasks, remaining_tasks = format_task_lines(tasks)
 
             # Display formatted todo list
             if done_tasks:
