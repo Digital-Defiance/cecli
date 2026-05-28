@@ -1,4 +1,5 @@
 import difflib
+import json
 import os
 import re
 import traceback
@@ -336,6 +337,53 @@ def format_tool_result(
         if diff_snippet:
             result_for_llm += f" Diff snippet:\n{diff_snippet}"
         return result_for_llm
+
+
+def normalize_json_array(value, *, param_name: str = "items", allow_empty: bool = False) -> list:
+    """
+    Coerce tool args that should be arrays but sometimes arrive as JSON strings.
+
+    Local models occasionally double-encode array parameters as JSON text.
+    """
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            if allow_empty:
+                return []
+            raise ToolError(f"{param_name} array cannot be empty")
+        try:
+            value = json.loads(text)
+        except json.JSONDecodeError as err:
+            raise ToolError(f"Invalid {param_name} parameter JSON: {err}") from err
+
+    if isinstance(value, dict):
+        value = [value]
+
+    if not isinstance(value, list):
+        raise ToolError(f"{param_name} must be an array, got {type(value).__name__}")
+
+    if len(value) == 0 and not allow_empty:
+        raise ToolError(f"{param_name} array cannot be empty")
+
+    return value
+
+
+def coerce_dict_item(item, *, param_name: str = "item") -> dict:
+    """Coerce one array element to a dict (object items may also be JSON strings)."""
+    if isinstance(item, dict):
+        return item
+    if isinstance(item, str):
+        text = item.strip()
+        if not text:
+            raise ToolError(f"{param_name} cannot be empty")
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError as err:
+            raise ToolError(f"Invalid {param_name} JSON: {err}") from err
+        if isinstance(parsed, dict):
+            return parsed
+        raise ToolError(f"Each {param_name} must be an object")
+    raise ToolError(f"Invalid {param_name} type: {type(item).__name__}")
 
 
 # Example usage within a hypothetical tool:
