@@ -273,7 +273,14 @@ def parse_arg_as_list(arg):
 
 
 def apply_change(
-    coder, abs_path, rel_path, original_content, new_content, change_type, metadata, change_id=None
+    coder,
+    abs_path,
+    rel_path,
+    original_content,
+    new_content,
+    change_type,
+    metadata,
+    change_id=None,
 ):
     """
     Writes the new content, tracks the change, and updates coder state.

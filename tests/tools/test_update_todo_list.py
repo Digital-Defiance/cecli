@@ -39,6 +39,17 @@ def test_format_task_lines_accepts_json_string():
     assert all(len(line) > 5 for line in remaining + done)
 
 
+def test_normalize_task_items_accepts_list_of_json_strings():
+    tasks = [
+        '{"task": "First", "done": false}',
+        {"task": "Second", "done": True},
+    ]
+    items = normalize_task_items(tasks)
+    assert len(items) == 2
+    assert items[0]["task"] == "First"
+    assert items[1]["task"] == "Second"
+
+
 def test_normalize_task_items_does_not_split_characters():
     tasks_json = json.dumps([{"task": "Only one task", "done": False}])
     items = normalize_task_items(tasks_json)
@@ -75,9 +86,7 @@ def test_format_output_accepts_tasks_as_json_string():
             )
         }
     )
-    tool_response = SimpleNamespace(
-        function=SimpleNamespace(name="UpdateTodoList", arguments=args)
-    )
+    tool_response = SimpleNamespace(function=SimpleNamespace(name="UpdateTodoList", arguments=args))
 
     update_todo_list.Tool.format_output(
         coder,
@@ -94,12 +103,26 @@ def test_format_output_accepts_tasks_as_json_string():
     coder.io.tool_error.assert_not_called()
 
 
+def test_format_output_reports_invalid_tool_arguments_json():
+    coder = DummyCoder()
+    tool_response = SimpleNamespace(
+        function=SimpleNamespace(name="UpdateTodoList", arguments="not json")
+    )
+
+    update_todo_list.Tool.format_output(
+        coder,
+        mcp_server=SimpleNamespace(name="test"),
+        tool_response=tool_response,
+    )
+
+    coder.io.tool_error.assert_called_once()
+    assert coder.io.tool_error.call_args.args[0] == "Invalid Tool JSON"
+
+
 def test_format_output_reports_invalid_tasks_json():
     coder = DummyCoder()
     args = json.dumps({"tasks": "not json"})
-    tool_response = SimpleNamespace(
-        function=SimpleNamespace(name="UpdateTodoList", arguments=args)
-    )
+    tool_response = SimpleNamespace(function=SimpleNamespace(name="UpdateTodoList", arguments=args))
 
     update_todo_list.Tool.format_output(
         coder,

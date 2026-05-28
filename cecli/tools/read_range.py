@@ -330,12 +330,19 @@ class Tool(BaseTool):
                 # first, falling back to 20 equally-spaced lines for non-code files
                 if (start_text == "@000" or end_text == "000@") and (e_idx - s_idx > 200):
                     preview = cls._get_range_preview(
-                        abs_path, coder.io, start_idx=s_idx, end_idx=e_idx, line_numbers=True
+                        abs_path,
+                        coder.io,
+                        start_idx=s_idx,
+                        end_idx=e_idx,
+                        line_numbers=True,
                     )
                     if show_index > 0:
                         all_outputs.append("")
                     all_outputs.append(preview)
-                    cls._last_invocation[abs_path] = {"start_idx": s_idx, "end_idx": e_idx}
+                    cls._last_invocation[abs_path] = {
+                        "start_idx": s_idx,
+                        "end_idx": e_idx,
+                    }
                     continue
 
                 # Store the found indices for future disambiguation
@@ -661,7 +668,11 @@ class Tool(BaseTool):
         from cecli.repomap import RepoMap
 
         stub = RepoMap.get_file_stub(
-            abs_path, io, start_line=start_idx, end_line=end_idx, line_numbers=line_numbers
+            abs_path,
+            io,
+            start_line=start_idx,
+            end_line=end_idx,
+            line_numbers=line_numbers,
         )
 
         # If get_file_stub returned a useful structural outline, wrap it with headers
