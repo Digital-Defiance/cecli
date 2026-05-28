@@ -54,3 +54,57 @@ def test_dash_prefixed_pattern_is_searched_literally(search_term, tmp_path, monk
     assert "Matches for" in result
     assert search_term in result
     coder.io.tool_error.assert_not_called()
+
+
+def test_normalize_char_split_searches_array(tmp_path, monkeypatch):
+    sample = tmp_path / "example.txt"
+    sample.write_text("hello world\n")
+
+    coder = SimpleNamespace(
+        repo=SimpleNamespace(root=str(tmp_path)),
+        io=SimpleNamespace(
+            tool_error=Mock(),
+            tool_output=Mock(),
+            tool_warning=Mock(),
+        ),
+        verbose=False,
+        root=str(tmp_path),
+        tui=lambda: None,
+    )
+
+    monkeypatch.setattr(grep.Tool, "_find_search_tool", lambda: ("rg", shutil.which("rg")))
+    if shutil.which("rg") is None:
+        pytest.skip("rg is required")
+
+    char_split = list('{"pattern": "hello", "file_pattern": "*.txt"}')
+
+    result = grep.Tool.execute(coder, searches=char_split)
+
+    assert "hello" in result
+    coder.io.tool_error.assert_not_called()
+
+
+def test_bare_string_search_pattern(tmp_path, monkeypatch):
+    sample = tmp_path / "example.txt"
+    sample.write_text("findme here\n")
+
+    coder = SimpleNamespace(
+        repo=SimpleNamespace(root=str(tmp_path)),
+        io=SimpleNamespace(
+            tool_error=Mock(),
+            tool_output=Mock(),
+            tool_warning=Mock(),
+        ),
+        verbose=False,
+        root=str(tmp_path),
+        tui=lambda: None,
+    )
+
+    monkeypatch.setattr(grep.Tool, "_find_search_tool", lambda: ("rg", shutil.which("rg")))
+    if shutil.which("rg") is None:
+        pytest.skip("rg is required")
+
+    result = grep.Tool.execute(coder, searches=["findme"])
+
+    assert "findme" in result
+    coder.io.tool_error.assert_not_called()

@@ -427,6 +427,37 @@ def coerce_dict_item(item, *, param_name: str = "item") -> dict:
     raise ToolError(f"Invalid {param_name} type: {type(item).__name__}")
 
 
+def normalize_search_operations(searches, *, param_name: str = "searches") -> list[dict]:
+    """
+    Coerce Grep ``searches`` arrays from local-model quirks (JSON strings, char-split).
+
+    Each element becomes a dict with a non-empty ``pattern``.
+    """
+    if isinstance(searches, list) and len(searches) == 1 and isinstance(searches[0], str):
+        lone = searches[0].strip()
+        if lone and not lone.startswith(("[", "{")):
+            searches = [{"pattern": lone}]
+    raw = normalize_json_array(searches, param_name=param_name, allow_empty=False)
+    out: list[dict] = []
+    for i, item in enumerate(raw):
+        label = f"{param_name}[{i}]"
+        if isinstance(item, str):
+            text = item.strip()
+            if not text:
+                raise ToolError(f"{label} cannot be empty")
+            if text.startswith("{"):
+                item = coerce_dict_item(text, param_name=label)
+            else:
+                out.append({"pattern": text})
+                continue
+        op = coerce_dict_item(item, param_name=label)
+        pattern = op.get("pattern")
+        if pattern is None or (isinstance(pattern, str) and not pattern.strip()):
+            raise ToolError(f"{label} missing pattern")
+        out.append(op)
+    return out
+
+
 # Example usage within a hypothetical tool:
 # try:
 #     abs_path, rel_path, original_content = validate_file_for_edit(coder, file_path)
