@@ -71,6 +71,16 @@ def test_normalize_json_array_unwraps_single_element_json_string_list():
     assert items[0]["task"] == "Only task"
 
 
+def test_normalize_json_array_repairs_literal_newline_after_colon():
+    """ReadRange/Grep: local models break JSON with a newline between ':' and '\"'."""
+    broken = '[{"end_text":\n", "file_path": "docs/ROADMAP.md", "start_text": "@000"}]'
+    items = normalize_json_array(broken, param_name="show")
+    assert len(items) == 1
+    assert items[0]["file_path"] == "docs/ROADMAP.md"
+    assert items[0]["start_text"] == "@000"
+    assert items[0]["end_text"] == ""
+
+
 def test_normalize_task_items_from_char_split_list():
     chars = list(json.dumps([{"task": "Ship tests", "done": True}]))
     items = normalize_task_items(chars)

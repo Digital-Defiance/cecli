@@ -346,6 +346,35 @@ def format_tool_result(
         return result_for_llm
 
 
+def _repair_local_model_json_text(text: str) -> str:
+    """
+    Repair common local-model breakage in double-encoded tool JSON.
+
+    Models sometimes emit a literal newline between ``:`` and the opening quote
+    of a string value (e.g. ``"end_text":\\n",`` instead of ``"end_text": "",``).
+    """
+    repaired = re.sub(r':\s*\n\s*",', ': "",', text)
+    repaired = re.sub(r':\s*\n\s*"}', ': ""}', repaired)
+    return repaired
+
+
+def _try_parse_json_value(text: str):
+    """Parse JSON text, including repairs for common local-model tool-arg quirks."""
+    text = text.strip()
+    if not text:
+        return None
+    for candidate in (text, _repair_local_model_json_text(text)):
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+    if len(text) >= 8:
+        coerced = _try_join_char_split_json_array(list(text))
+        if coerced is not None:
+            return coerced
+    return None
+
+
 def _try_join_char_split_json_array(items: list) -> list | None:
     """
     Some local models emit a JSON array as one string per character in tool args.
@@ -392,10 +421,13 @@ def normalize_json_array(value, *, param_name: str = "items", allow_empty: bool 
             if allow_empty:
                 return []
             raise ToolError(f"{param_name} array cannot be empty")
-        try:
-            value = json.loads(text)
-        except json.JSONDecodeError as err:
-            raise ToolError(f"Invalid {param_name} parameter JSON: {err}") from err
+        parsed = _try_parse_json_value(text)
+        if parsed is None:
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError as err:
+                raise ToolError(f"Invalid {param_name} parameter JSON: {err}") from err
+        value = parsed
 
     if isinstance(value, dict):
         value = [value]
@@ -417,10 +449,12 @@ def coerce_dict_item(item, *, param_name: str = "item") -> dict:
         text = item.strip()
         if not text:
             raise ToolError(f"{param_name} cannot be empty")
-        try:
-            parsed = json.loads(text)
-        except json.JSONDecodeError as err:
-            raise ToolError(f"Invalid {param_name} JSON: {err}") from err
+        parsed = _try_parse_json_value(text)
+        if parsed is None:
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError as err:
+                raise ToolError(f"Invalid {param_name} JSON: {err}") from err
         if isinstance(parsed, dict):
             return parsed
         raise ToolError(f"Each {param_name} must be an object")

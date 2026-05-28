@@ -194,3 +194,39 @@ def test_normalize_show_ops_joins_char_split_json_list():
     assert len(ops) == 1
     assert ops[0]["file_path"] == "docs/ROADMAP.md"
     assert ops[0]["start_text"] == "@000"
+
+
+def _broken_readrange_show_json(*, file_path: str, start_text: str) -> str:
+    """BrightVision dogfood: ReadRange show double-encoded with a newline after ':' ."""
+    return (
+        f'[{{"end_text":\n'
+        f'", "file_path": "{file_path}", "start_text": "{start_text}"}}]'
+    )
+
+
+def test_normalize_show_ops_repairs_literal_newline_after_colon():
+    broken = _broken_readrange_show_json(file_path="docs/ROADMAP.md", start_text="@000")
+    ops = normalize_show_ops(broken)
+    assert len(ops) == 1
+    assert ops[0]["file_path"] == "docs/ROADMAP.md"
+    assert ops[0]["start_text"] == "@000"
+    assert ops[0]["end_text"] == ""
+
+
+def test_format_output_repairs_broken_show_json_string(coder_with_file):
+    """format_output must not fail JSON coercion when show is a broken JSON string."""
+    coder, _file_path = coder_with_file
+    broken_show = _broken_readrange_show_json(file_path="example.txt", start_text="alpha")
+    args = json.dumps({"show": broken_show})
+    tool_response = SimpleNamespace(function=SimpleNamespace(name="ReadRange", arguments=args))
+
+    read_range.Tool.format_output(
+        coder,
+        mcp_server=SimpleNamespace(name="test"),
+        tool_response=tool_response,
+    )
+
+    output_text = "\n".join(call.args[0] for call in coder.io.tool_output.call_args_list)
+    assert "example.txt" in output_text
+    assert "alpha" in output_text
+    coder.io.tool_error.assert_not_called()
