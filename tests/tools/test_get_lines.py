@@ -159,9 +159,7 @@ def test_normalize_show_ops_accepts_json_string():
 
 def test_execute_accepts_show_as_json_string(coder_with_file):
     coder, _file_path = coder_with_file
-    show_json = json.dumps(
-        [{"file_path": "example.txt", "start_text": "beta", "end_text": "beta"}]
-    )
+    show_json = json.dumps([{"file_path": "example.txt", "start_text": "beta", "end_text": "beta"}])
 
     result = read_range.Tool.execute(coder, show=show_json)
 
@@ -172,15 +170,9 @@ def test_execute_accepts_show_as_json_string(coder_with_file):
 def test_format_output_accepts_show_as_json_string(coder_with_file):
     coder, _file_path = coder_with_file
     args = json.dumps(
-        {
-            "show": (
-                '[{"file_path": "example.txt", "start_text": "alpha", "end_text": "gamma"}]'
-            )
-        }
+        {"show": '[{"file_path": "example.txt", "start_text": "alpha", "end_text": "gamma"}]'}
     )
-    tool_response = SimpleNamespace(
-        function=SimpleNamespace(name="ReadRange", arguments=args)
-    )
+    tool_response = SimpleNamespace(function=SimpleNamespace(name="ReadRange", arguments=args))
 
     read_range.Tool.format_output(
         coder,
