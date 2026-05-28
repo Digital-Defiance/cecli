@@ -1,10 +1,12 @@
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
+import json
 
 import pytest
 
 from cecli.tools import read_range
+from cecli.tools.read_range import normalize_show_ops
 
 
 class DummyIO:
@@ -25,6 +27,8 @@ class DummyCoder:
         self.root = str(root)
         self.repo = SimpleNamespace(root=str(root))
         self.io = DummyIO()
+        self.pretty = False
+        self.verbose = False
         import uuid
 
         self.uuid = str(uuid.uuid4())  # Generate unique UUID for each instance
@@ -141,4 +145,50 @@ def test_multiline_pattern_search(coder_with_file):
     )
 
     assert "Retrieved context for 1 operation(s)" in result
+    coder.io.tool_error.assert_not_called()
+
+
+def test_normalize_show_ops_accepts_json_string():
+    ops = normalize_show_ops(
+        '[{"file_path": "docs/ROADMAP.md", "start_text": "@000", "end_text": "\\n"}]'
+    )
+    assert len(ops) == 1
+    assert ops[0]["file_path"] == "docs/ROADMAP.md"
+    assert ops[0]["start_text"] == "@000"
+
+
+def test_execute_accepts_show_as_json_string(coder_with_file):
+    coder, _file_path = coder_with_file
+    show_json = json.dumps(
+        [{"file_path": "example.txt", "start_text": "beta", "end_text": "beta"}]
+    )
+
+    result = read_range.Tool.execute(coder, show=show_json)
+
+    assert "Retrieved context for 1 operation(s)" in result
+    coder.io.tool_error.assert_not_called()
+
+
+def test_format_output_accepts_show_as_json_string(coder_with_file):
+    coder, _file_path = coder_with_file
+    args = json.dumps(
+        {
+            "show": (
+                '[{"file_path": "example.txt", "start_text": "alpha", "end_text": "gamma"}]'
+            )
+        }
+    )
+    tool_response = SimpleNamespace(
+        function=SimpleNamespace(name="ReadRange", arguments=args)
+    )
+
+    read_range.Tool.format_output(
+        coder,
+        mcp_server=SimpleNamespace(name="test"),
+        tool_response=tool_response,
+    )
+
+    output_text = "\n".join(call.args[0] for call in coder.io.tool_output.call_args_list)
+    assert "example.txt" in output_text
+    assert "alpha" in output_text
     coder.io.tool_error.assert_not_called()
