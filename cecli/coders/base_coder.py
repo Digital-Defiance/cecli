@@ -2645,7 +2645,16 @@ class Coder(metaclass=UsageMeta):
                 expanded_tool_calls.append(tool_call)
                 continue
 
-            # We have concatenated JSON, so expand it into multiple tool calls.
+            from cecli.tools.utils.helpers import merge_glued_json_objects
+
+            merged = merge_glued_json_objects(json_chunks)
+            if merged is not None:
+                new_tool_call = copy_tool_call(tool_call)
+                new_tool_call.function.arguments = json.dumps(merged)
+                expanded_tool_calls.append(new_tool_call)
+                continue
+
+            # Non-object glued JSON: expand into multiple tool calls (legacy).
             for i, chunk in enumerate(json_chunks):
                 if not chunk.strip():
                     continue

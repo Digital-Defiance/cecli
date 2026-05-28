@@ -727,25 +727,9 @@ class AgentCoder(Coder):
                     continue
 
                 if args_string:
-                    json_chunks = utils.split_concatenated_json(args_string)
-                    for chunk in json_chunks:
-                        try:
-                            parsed_args_list.append(json.loads(chunk))
-                        except json.JSONDecodeError as e:
-                            self.model_kwargs = {}
-                            self.io.tool_warning(
-                                f"Malformed JSON arguments in tool {tool_name}: {chunk}"
-                            )
-                            tool_responses.append(
-                                {
-                                    "role": "tool",
-                                    "tool_call_id": tool_call.id,
-                                    "content": (
-                                        f"Malformed JSON arguments in tool {tool_name}: {str(e)}"
-                                    ),
-                                }
-                            )
-                            continue
+                    from cecli.tools.utils.helpers import parse_tool_arguments
+
+                    parsed_args_list = [parse_tool_arguments(args_string)]
                 if not parsed_args_list and not args_string:
                     parsed_args_list.append({})
                 all_results_content = []

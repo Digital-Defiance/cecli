@@ -7,7 +7,12 @@ import oslex
 from cecli.helpers.hashline import strip_hashline
 from cecli.run_cmd import run_cmd_subprocess
 from cecli.tools.utils.base_tool import BaseTool
-from cecli.tools.utils.helpers import ToolError, grep_error_hint, normalize_search_operations
+from cecli.tools.utils.helpers import (
+    ToolError,
+    grep_error_hint,
+    normalize_search_operations,
+    parse_tool_arguments,
+)
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
 
 
@@ -242,9 +247,8 @@ class Tool(BaseTool):
         """Format output for Grep tool."""
         color_start, color_end = color_markers(coder)
 
-        try:
-            params = json.loads(tool_response.function.arguments)
-        except json.JSONDecodeError:
+        params = parse_tool_arguments(tool_response.function.arguments or "")
+        if not params and (tool_response.function.arguments or "").strip():
             coder.io.tool_error("Invalid Tool JSON")
             return
 
@@ -255,7 +259,7 @@ class Tool(BaseTool):
             searches = normalize_search_operations(params.get("searches", []))
         except ToolError as err:
             coder.io.tool_error(str(err))
-            tool_footer(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+            tool_footer(coder=coder, tool_response=tool_response)
             return
 
         if searches:

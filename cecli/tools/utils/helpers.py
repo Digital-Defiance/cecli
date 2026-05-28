@@ -358,6 +358,74 @@ def _repair_local_model_json_text(text: str) -> str:
     return repaired
 
 
+def merge_glued_json_objects(chunks: list[str]) -> dict | None:
+    """
+    Merge consecutive JSON object strings from glued local-model tool args.
+
+    Example: ``{"limit": 15}{}{"path": "."}`` → ``{"limit": 15, "path": "."}``.
+    Returns ``None`` when chunks are not all mergeable objects (caller may split).
+    """
+    merged: dict = {}
+    saw_non_empty = False
+    for chunk in chunks:
+        text = chunk.strip()
+        if not text:
+            continue
+        obj = _try_parse_json_value(text)
+        if obj is None:
+            try:
+                obj = json.loads(text)
+            except json.JSONDecodeError:
+                return None
+        if isinstance(obj, list):
+            return None
+        if not isinstance(obj, dict):
+            return None
+        if obj:
+            merged.update(obj)
+            saw_non_empty = True
+    if saw_non_empty or merged == {}:
+        return merged
+    return None
+
+
+def parse_tool_arguments(args_string: str) -> dict:
+    """Parse tool-call arguments, merging glued ``{…}{} {…}`` object fragments."""
+    text = (args_string or "").strip()
+    if not text:
+        return {}
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+
+    parsed = _try_parse_json_value(text)
+    if isinstance(parsed, dict):
+        return parsed
+
+    from cecli import utils as cecli_utils
+
+    chunks = cecli_utils.split_concatenated_json(text)
+    if len(chunks) <= 1:
+        if not chunks:
+            return {}
+        lone = _try_parse_json_value(chunks[0])
+        if isinstance(lone, dict):
+            return lone
+        try:
+            single = json.loads(chunks[0])
+        except json.JSONDecodeError:
+            return {}
+        return single if isinstance(single, dict) else {}
+
+    merged = merge_glued_json_objects(chunks)
+    if merged is not None:
+        return merged
+    return {}
+
+
 def _try_parse_json_value(text: str):
     """Parse JSON text, including repairs for common local-model tool-arg quirks."""
     text = text.strip()
