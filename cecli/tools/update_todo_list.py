@@ -9,20 +9,25 @@ from cecli.tools.utils.helpers import (
 from cecli.tools.utils.output import tool_footer, tool_header
 
 
+def coerce_task_item(item) -> dict:
+    """Coerce one task entry to a dict; JSON strings fall back to plain task text on parse failure."""
+    if isinstance(item, dict):
+        return item
+    if isinstance(item, str):
+        text = item.strip()
+        if text.startswith("{"):
+            try:
+                return coerce_dict_item(item, param_name="task")
+            except ToolError:
+                pass
+        return {"task": str(item), "done": False, "current": False}
+    return {"task": str(item), "done": False, "current": False}
+
+
 def normalize_task_items(tasks) -> list[dict]:
     """Accept tasks as list, dict, JSON string, or list of JSON strings (LLM quirk)."""
     normalized = normalize_json_array(tasks, param_name="tasks", allow_empty=True)
-    result: list[dict] = []
-    for item in normalized:
-        if isinstance(item, dict):
-            result.append(item)
-        else:
-            result.append(
-                coerce_dict_item(item, param_name="task")
-                if isinstance(item, str) and item.strip().startswith("{")
-                else {"task": str(item), "done": False, "current": False}
-            )
-    return result
+    return [coerce_task_item(item) for item in normalized]
 
 
 def format_task_lines(tasks) -> tuple[list[str], list[str]]:
@@ -216,7 +221,12 @@ class Tool(BaseTool):
         tasks = params.get("tasks", [])
 
         if tasks:
-            done_tasks, remaining_tasks = format_task_lines(tasks)
+            try:
+                done_tasks, remaining_tasks = format_task_lines(tasks)
+            except ToolError as err:
+                coder.io.tool_error(str(err))
+                tool_footer(coder=coder, tool_response=tool_response)
+                return
 
             # Display formatted todo list
             if done_tasks:
