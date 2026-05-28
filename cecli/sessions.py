@@ -5,8 +5,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from cecli import models
-from cecli import session_crypto
+from cecli import models, session_crypto
 from cecli.helpers.conversation import ConversationService, MessageTag
 
 
@@ -70,9 +69,7 @@ class SessionManager:
                         f"({session_crypto.KEY_ENV} or --session-key-file)."
                     )
                     return False
-                session_file.write_bytes(
-                    session_crypto.encrypt_session_dict(session_data, key)
-                )
+                session_file.write_bytes(session_crypto.encrypt_session_dict(session_data, key))
             else:
                 with open(session_file, "w", encoding="utf-8") as f:
                     json.dump(session_data, f, indent=2)

@@ -72,7 +72,11 @@ def test_empty_encrypted_body_raises(session_key32):
 
 def test_encrypted_file_roundtrip_on_disk(tmp_path, session_key32):
     path = tmp_path / "sess.json"
-    payload = {"version": 1, "session_name": "disk", "chat_history": {"done_messages": [], "cur_messages": []}}
+    payload = {
+        "version": 1,
+        "session_name": "disk",
+        "chat_history": {"done_messages": [], "cur_messages": []},
+    }
     path.write_bytes(session_crypto.encrypt_session_dict(payload, session_key32))
     raw = path.read_bytes()
     assert session_crypto.is_encrypted_payload(raw)
