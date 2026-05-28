@@ -29,11 +29,15 @@ class SessionManager:
         key_file = getattr(args, "session_key_file", None)
         return True, session_crypto.resolve_key(key_file=key_file)
 
-    def _read_session_file(self, session_file: Path) -> dict | None:
+    def _read_session_file(self, session_file: Path, quiet: bool = False) -> dict | None:
+        def _err(msg: str) -> None:
+            if not quiet:
+                self.io.tool_error(msg)
+
         try:
             data = session_file.read_bytes()
         except OSError as e:
-            self.io.tool_error(f"Error reading session: {e}")
+            _err(f"Error reading session: {e}")
             return None
         try:
             if session_crypto.is_encrypted_payload(data):
@@ -41,7 +45,7 @@ class SessionManager:
                 key_file = getattr(args, "session_key_file", None) if args else None
                 key = session_crypto.resolve_key(key_file=key_file)
                 if not key:
-                    self.io.tool_error(
+                    _err(
                         "Session is encrypted but no key is configured "
                         f"({session_crypto.KEY_ENV} or --session-key-file)."
                     )
@@ -49,14 +53,14 @@ class SessionManager:
                 return session_crypto.decrypt_session_bytes(data, key)
             parsed = json.loads(data.decode("utf-8"))
             if not isinstance(parsed, dict):
-                self.io.tool_error("Invalid session format.")
+                _err("Invalid session format.")
                 return None
             return parsed
         except session_crypto.SessionCryptoError as e:
-            self.io.tool_error(str(e))
+            _err(str(e))
             return None
         except json.JSONDecodeError as e:
-            self.io.tool_error(f"Error loading session: {e}")
+            _err(f"Error loading session: {e}")
             return None
 
     def _write_session_file(self, session_file: Path, session_data: dict) -> bool:
@@ -168,7 +172,7 @@ class SessionManager:
 
         return sessions
 
-    async def load_session(self, session_identifier: str, switch=True) -> bool:
+    async def load_session(self, session_identifier: str, switch=True, quiet: bool = False) -> bool:
         """Load a saved session by name or file path."""
         if not session_identifier:
             self.io.tool_error("Please provide a session name or file path.")
@@ -179,13 +183,14 @@ class SessionManager:
         if not session_file:
             return False
 
-        session_data = self._read_session_file(session_file)
+        session_data = self._read_session_file(session_file, quiet=quiet)
         if session_data is None:
             return False
 
         # Verify session format
         if "version" not in session_data:
-            self.io.tool_error("Invalid session format.")
+            if not quiet:
+                self.io.tool_error("Invalid session format.")
             return False
 
         # Apply session data
