@@ -10,6 +10,7 @@ class MainFooter(Static):
 
     # Left side info
     coder_mode = reactive("code")
+    agent_name = reactive("")
     model_name = reactive("")
 
     # Right side info
@@ -46,6 +47,7 @@ class MainFooter(Static):
         self.project_name = project_name
         self.git_branch = git_branch
         self.coder_mode = coder_mode
+        self.agent_name = ""
         self._spinner_interval = None
 
     def on_mount(self):
@@ -100,6 +102,8 @@ class MainFooter(Static):
             left.append(f"{spinner_char} ")
             if self.spinner_text:
                 left.append(self.spinner_text)
+            if self.agent_name:
+                left.append(f"({self.agent_name}) ")
 
             # When a sub-agent is generating, show its model alongside the spinner
             # if self._has_running_sub_agent():
@@ -178,7 +182,9 @@ class MainFooter(Static):
 
     def start_spinner(self, text: str = ""):
         """Show spinner with optional text."""
+    def start_spinner(self, text: str = "", agent_name: str = ""):
         self.spinner_text = text
+        self.agent_name = agent_name
         self.spinner_visible = True
         self.refresh()
 

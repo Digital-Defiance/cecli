@@ -328,13 +328,15 @@ class TextualInputOutput(InputOutput):
 
         return False
 
-    def start_spinner(self, text, update_last_text=True):
+    def start_spinner(self, text, update_last_text=True, **kwargs):
         """Override start_spinner to send spinner state to TUI.
 
         Args:
             text: Spinner text
             update_last_text: Whether to update last_spinner_text
+            coder_uuid: Optional uuid string to include in the message
         """
+        coder_uuid = kwargs.get("coder_uuid", None)
         # Call parent to maintain state
         super().start_spinner(text, update_last_text)
 
@@ -344,23 +346,27 @@ class TextualInputOutput(InputOutput):
                 "type": "spinner",
                 "action": "start",
                 "text": text,
+                "coder_uuid": coder_uuid,
             }
         )
 
         self.output_queue.put(
             {
                 "type": "spinner",
+                "coder_uuid": coder_uuid,
                 "action": "update_suffix",
                 "text": "",
             }
         )
 
-    def update_spinner(self, text):
+    def update_spinner(self, text, **kwargs):
         """Override update_spinner to send updates to TUI.
 
         Args:
             text: New spinner text
+            coder_uuid: Optional uuid string to include in the message
         """
+        coder_uuid = kwargs.get("coder_uuid", None)
         # Call parent
         super().update_spinner(text)
 
@@ -370,15 +376,18 @@ class TextualInputOutput(InputOutput):
                 "type": "spinner",
                 "action": "update",
                 "text": text,
+                "coder_uuid": coder_uuid,
             }
         )
 
-    def update_spinner_suffix(self, text=None):
+    def update_spinner_suffix(self, text=None, **kwargs):
         """Override update_spinner_suffix to send updates to TUI.
 
         Args:
             text: New spinner suffix text
+            coder_uuid: Optional uuid string to include in the message
         """
+        coder_uuid = kwargs.get("coder_uuid", None)
         # Call parent
         super().update_spinner_suffix(text)
 
@@ -388,11 +397,13 @@ class TextualInputOutput(InputOutput):
                 "type": "spinner",
                 "action": "update_suffix",
                 "text": text,
+                "coder_uuid": coder_uuid,
             }
         )
 
-    def stop_spinner(self):
+    def stop_spinner(self, **kwargs):
         """Override stop_spinner to send stop state to TUI."""
+        coder_uuid = kwargs.get("coder_uuid", None)
         # Call parent
         super().stop_spinner()
 
@@ -402,6 +413,8 @@ class TextualInputOutput(InputOutput):
                 "type": "spinner",
                 "action": "stop",
             }
+                "coder_uuid": coder_uuid,
+                "coder_uuid": coder_uuid,
         )
 
     def interrupt_input(self):
