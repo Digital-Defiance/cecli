@@ -7,6 +7,7 @@ import oslex
 from cecli.helpers.hashline import strip_hashline
 from cecli.run_cmd import run_cmd_subprocess
 from cecli.tools.utils.base_tool import BaseTool
+from cecli.tools.utils.helpers import ToolError, normalize_search_operations
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
 
 
@@ -93,9 +94,11 @@ class Tool(BaseTool):
         Search for lines matching patterns in files within the project repository.
         Uses rg (ripgrep), ag (the silver searcher), or grep, whichever is available.
         """
-        if not isinstance(searches, list):
-            # Handle legacy single-search call if necessary, or just error
-            return "Error: 'searches' parameter must be an array."
+        try:
+            searches = normalize_search_operations(searches)
+        except ToolError as err:
+            coder.io.tool_error(str(err))
+            return f"Error: {err}"
 
         repo = coder.repo
         if not repo:
@@ -109,7 +112,7 @@ class Tool(BaseTool):
 
         all_results = []
         for search_op in searches:
-            pattern = strip_hashline(search_op.get("pattern"))
+            pattern = strip_hashline(str(search_op.get("pattern") or ""))
             file_pattern = search_op.get("file_pattern", "*")
             directory = search_op.get("directory", search_op.get("path", "."))
             use_regex = search_op.get("use_regex", False)
@@ -244,11 +247,17 @@ class Tool(BaseTool):
         tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
 
         # Output each search operation with the requested format
-        searches = params.get("searches", [])
+        try:
+            searches = normalize_search_operations(params.get("searches", []))
+        except ToolError as err:
+            coder.io.tool_error(str(err))
+            tool_footer(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+            return
+
         if searches:
             coder.io.tool_output("")
             for i, search_op in enumerate(searches):
-                pattern = search_op.get("pattern", "")
+                pattern = str(search_op.get("pattern") or "")
                 file_pattern = search_op.get("file_pattern", "*")
                 directory = search_op.get("directory", ".")
                 use_regex = search_op.get("use_regex", False)
