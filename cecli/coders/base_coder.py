@@ -2306,6 +2306,16 @@ class Coder(metaclass=UsageMeta):
     def get_active_model(self):
         return self.main_model
 
+    def empty_llm_tool_warning(self) -> str:
+        """Ollama-friendly copy for local models; cloud hint otherwise."""
+        name = str(getattr(getattr(self, "main_model", None), "name", "") or "")
+        if "ollama" in name.lower():
+            return (
+                "Empty response from the local model (Ollama). "
+                "The model may have timed out, unloaded, or hit context limits."
+            )
+        return "Empty response received from LLM. Check API keys, quota, or provider status."
+
     async def send_message(self, inp):
         # Notify IO that LLM processing is starting
         self.io.llm_started()
@@ -3372,7 +3382,7 @@ class Coder(metaclass=UsageMeta):
             and not len(self.partial_response_tool_calls)
             and not len(self.partial_response_reasoning_content)
         ):
-            self.io.tool_warning("Empty response received from LLM. Check your provider account?")
+            self.io.tool_warning(self.empty_llm_tool_warning())
 
         self.io.assistant_output(show_resp, pretty=self.show_pretty())
 
@@ -3529,7 +3539,7 @@ class Coder(metaclass=UsageMeta):
             return
 
         if not received_content and len(self.partial_response_tool_calls) == 0:
-            self.io.tool_warning("Empty response received from LLM. Check your provider account?")
+            self.io.tool_warning(self.empty_llm_tool_warning())
 
     def consolidate_chunks(self):
         if self.partial_response_consolidated:
