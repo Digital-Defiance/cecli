@@ -180,6 +180,7 @@ class StatusBar(Widget, can_focus=True):
             text: Message to display
             severity: One of "info", "warning", "error", "success"
             timeout: Auto-dismiss after this many seconds (None = no auto-dismiss)
+            agent_name: Optional agent name to prefix the message with
         """
         # Cancel any existing timer
         if self._timer:
@@ -214,6 +215,7 @@ class StatusBar(Widget, can_focus=True):
             allow_never: Whether to show "don't ask again" option
             default: Default response ("y" or "n")
             explicit_yes_required: Whether explicit yes is required
+            agent_name: Optional agent name to prefix the question with
         """
         # Cancel any existing timer
         if self._timer:

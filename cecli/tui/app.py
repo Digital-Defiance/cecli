@@ -583,7 +583,8 @@ class TUI(App):
             for info in agent_service.sub_agents.values():
                 if str(info.coder.uuid) == coder_uuid:
                     return info.name
-        except Exception:
+        except (AttributeError, ImportError, KeyError):
+            # Agent service not available or coder not yet initialized
             pass
         return None
     def add_output(self, text, task_id=None):
