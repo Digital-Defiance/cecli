@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-import oslex
+import shlex
 
 from cecli.dump import dump  # noqa: F401
 from cecli.waiting import Spinner
@@ -437,7 +437,7 @@ def printable_shell_command(cmd_list):
     Returns:
         str: Shell-escaped command string.
     """
-    return oslex.join(cmd_list)
+    return shlex.join(cmd_list)
 
 
 def split_concatenated_json(s: str) -> list[str]:
