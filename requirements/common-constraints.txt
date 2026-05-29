@@ -584,7 +584,7 @@ uc-micro-py==1.0.3
     # via linkify-it-py
 urllib3==2.5.0
     # via requests
-uv==0.9.11
+uv==0.11.15
     # via -r requirements/requirements-dev.in
 uvicorn==0.38.0
     # via mcp
