@@ -569,7 +569,11 @@ class TUI(App):
         """Resolve an agent display name from a coder_uuid.
 
         Returns the sub-agent's name if the coder_uuid belongs to a known
-        sub-agent, otherwise None (primary agent uses no prefix).
+        sub-agent. For the primary agent, returns "primary" if sub-agents
+        exist, otherwise None.
+
+        If multiple sub-agents share the same name, disambiguates by
+        appending the first 3 characters of the UUID in parentheses.
         """
         if not coder_uuid:
             return None
@@ -584,6 +588,15 @@ class TUI(App):
                 return None  # Primary agent gets no prefix
             for info in agent_service.sub_agents.values():
                 if str(info.coder.uuid) == coder_uuid:
+                    # Check for duplicate names among sub-agents
+                    name_count = sum(
+                        1 for i in agent_service.sub_agents.values()
+                        if i.name == info.name
+                    )
+                    if name_count > 1:
+                        # Disambiguate with first 3 UUID characters
+                        short_uuid = str(info.coder.uuid)[:3]
+                        return f"{info.name} ({short_uuid})"
                     return info.name
         except (AttributeError, ImportError, KeyError):
             # Agent service not available or coder not yet initialized
@@ -809,7 +822,7 @@ class TUI(App):
 
         # Update footer to show processing
         footer = self.query_one(MainFooter)
-        
+
         coder = self.worker.coder
         # Determine which coder is in the foreground for input routing
         foreground_coder = AgentService.get_instance(coder).foreground_coder
