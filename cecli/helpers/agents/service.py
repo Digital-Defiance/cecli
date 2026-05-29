@@ -307,7 +307,9 @@ class AgentService:
                 "Wait for one to finish or use /reap-agent to free resources."
             )
 
-    async def _create_sub_agent_coder(self, name: str) -> Tuple[Any, SubAgentInfo]:
+    async def _create_sub_agent_coder(
+        self, name: str, parent: Any = None
+    ) -> Tuple[Any, SubAgentInfo]:
         """Create a sub-agent coder, register it, and set up its container and prompt.
 
         Shared helper used by both ``invoke()`` and ``spawn()`` to eliminate
@@ -315,6 +317,10 @@ class AgentService:
 
         Args:
             name: Name of the sub-agent to create.
+            parent: Optional coder instance to use as the parent.
+                    If provided, the new sub-agent's ``parent_uuid`` will be
+                    ``parent.uuid`` instead of ``self.coder.uuid``, enabling
+                    nested sub-agent hierarchies. Defaults to ``self.coder``.
 
         Returns:
             Tuple of ``(new_coder, info)``.
@@ -333,7 +339,7 @@ class AgentService:
 
         from cecli.coders import Coder
 
-        parent_coder = self.coder
+        parent_coder = parent if parent is not None else self.coder
         new_uuid = str(uuid4())
 
         kwargs = dict(
@@ -371,7 +377,7 @@ class AgentService:
 
         # Notify TUI to create a container
         try:
-            tui = self._get_tui(parent_coder)
+            tui = self._get_tui(self.coder)
             if tui is not None:
                 tui.call_from_thread(tui.create_sub_agent_container, new_uuid, name)
         except Exception:
@@ -464,9 +470,19 @@ class AgentService:
         info.generate_task = task
         return task
 
-    async def invoke(self, name: str, prompt: str, blocking: bool = True) -> Optional[str]:
-        """Invoke a sub-agent by name with the given prompt (blocking by default)."""
-        new_coder, info = await self._create_sub_agent_coder(name)
+    async def invoke(
+        self, name: str, prompt: str, blocking: bool = True, parent: Any = None
+    ) -> Optional[str]:
+        """Invoke a sub-agent by name with the given prompt (blocking by default).
+
+        Args:
+            name: Name of the sub-agent to invoke.
+            prompt: The user message to pass to the sub-agent.
+            blocking: If True, waits for completion and returns summary.
+            parent: Optional coder instance to use as the parent for nested
+                   sub-agent hierarchies. Defaults to ``self.coder``.
+        """
+        new_coder, info = await self._create_sub_agent_coder(name, parent)
 
         if not blocking:
             return None
@@ -476,32 +492,58 @@ class AgentService:
         await task
         return info.summary
 
-    async def spawn(self, name: str) -> None:
-        """Spawn a sub-agent (non-blocking) that waits for user input."""
-        await self._create_sub_agent_coder(name)
+    async def spawn(
+        self, name: str, prompt: Optional[str] = None, parent: Any = None
+    ) -> Tuple[Any, SubAgentInfo]:
+        """Spawn a sub-agent (non-blocking) that waits for user input.
 
-    async def wait(self, name: str) -> Optional[str]:
-        """Wait for a sub-agent to finish and return its summary."""
-        # Find by name (allows multiple instances of the same agent type)
-        info = None
-        for candidate in self.sub_agents.values():
-            if candidate.name == name:
-                info = candidate
-                break
-        if not info:
-            raise ValueError(f"No sub-agent named '{name}' running.")
+        Args:
+            name: Name of the sub-agent to spawn.
+            prompt: Optional prompt. If provided, starts the generate task
+                    immediately with this prompt (fire-and-forget).
+            parent: Optional coder instance to use as the parent for nested
+                   sub-agent hierarchies. Defaults to ``self.coder``.
 
-        if info.status == SubAgentStatus.FINISHED:
-            return info.summary
+        Returns:
+            Tuple of ``(new_coder, info)`` so callers can further interact
+            with the sub-agent (e.g. call ``start_generate_task`` later).
+        """
+        new_coder, info = await self._create_sub_agent_coder(name, parent)
+        if prompt:
+            self.start_generate_task(info, prompt)
+        return new_coder, info
 
-        # Poll until finished
-        while info.status not in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR):
-            await asyncio.sleep(0.5)
+    async def wait(self, parent: Any) -> List[str]:
+        """Await all active sub-agents whose ``parent_uuid`` matches ``parent.uuid``.
 
-        if info.status == SubAgentStatus.ERROR:
-            raise RuntimeError(f"Sub-agent '{name}' failed: {info.error}")
+        Waits for every child's generate task to finish (via ``asyncio.gather``)
+        and returns their summaries as a list.
 
-        return info.summary
+        Args:
+            parent: A coder instance (with ``.uuid``) or a UUID string whose
+                    children should be awaited.
+
+        Returns:
+            ``List[str]`` — one summary per child sub-agent.  May be empty
+            if the parent has no active children.
+        """
+        uid = str(parent.uuid) if hasattr(parent, "uuid") else str(parent)
+        children = [info for info in self.sub_agents.values() if info.parent_uuid == uid]
+        if not children:
+            logger.debug("wait(%s): no children found", uid)
+            return []
+
+        # Collect all active generate tasks
+        tasks = []
+        for info in children:
+            if info.generate_task is not None and not info.generate_task.done():
+                tasks.append(info.generate_task)
+
+        if tasks:
+            logger.debug("wait(%s): awaiting %d generate task(s)", uid, len(tasks))
+            await asyncio.gather(*tasks)
+
+        return [info.summary for info in children]
 
     def get_active_agents(self) -> List[Dict[str, Any]]:
         """Return list of active sub-agents for display."""
@@ -514,6 +556,26 @@ class AgentService:
             }
             for info in self.sub_agents.values()
         ]
+
+    def get_children(self, coder_or_uuid: Any) -> List[SubAgentInfo]:
+        """Return sub-agents whose parent is the given coder or UUID.
+
+        Accepts either a coder instance (object with a ``uuid`` attribute)
+        or a plain UUID string.  Returns all ``SubAgentInfo`` entries whose
+        ``parent_uuid`` matches the resolved identifier.
+
+        Args:
+            coder_or_uuid: A coder instance (with ``.uuid``) or a UUID string.
+
+        Returns:
+            List of ``SubAgentInfo`` objects whose parent is the given coder.
+        """
+        if hasattr(coder_or_uuid, "uuid"):
+            uid = str(coder_or_uuid.uuid)
+        else:
+            uid = str(coder_or_uuid)
+
+        return [info for info in self.sub_agents.values() if info.parent_uuid == uid]
 
     # ------------------------------------------------------------------ #
     # Foreground agent tracking

@@ -5,21 +5,30 @@ from .utils.base_command import BaseCommand
 
 class SpawnAgentCommand(BaseCommand):
     NORM_NAME = "spawn-agent"
-    DESCRIPTION = "Spawn a sub-agent without a prompt (waits for user input)"
+    DESCRIPTION = "Spawn a sub-agent, optionally with a prompt"
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
-        """Spawn a sub-agent by name (non-blocking)."""
+        """Spawn a sub-agent by name, optionally with a prompt.
+
+        Syntax:
+            /spawn-agent <name>           — Spawn without prompt (waits for user input)
+            /spawn-agent <name> <prompt>  — Spawn and start processing the prompt immediately
+        """
         from cecli.helpers.agents.service import AgentService
 
-        name = args.strip()
-        if not name:
-            io.tool_error("Usage: /spawn-agent <name>")
+        parts = args.strip().split(maxsplit=1)
+        if not parts:
+            io.tool_error("Usage: /spawn-agent <name> [<prompt>]")
             return
+
+        name = parts[0]
+        prompt = parts[1] if len(parts) > 1 else None
 
         try:
             agent_service = AgentService.get_instance(coder)
-            await agent_service.spawn(name)
+            await agent_service.spawn(name, prompt, parent=coder)
+
             if coder.tui and coder.tui():
                 switch_key = coder.tui().get_keys_for("next_agent")
                 io.tool_output(f"Sub-agent '{name}' spawned. " f"Switch to it with {switch_key}")
@@ -32,7 +41,7 @@ class SpawnAgentCommand(BaseCommand):
 
     @classmethod
     def get_help(cls) -> str:
-        return "Spawn a sub-agent that waits for user input (/spawn-agent <name>)"
+        return "Spawn a sub-agent, optionally with a prompt (/spawn-agent <name> [<prompt>])"
 
     @classmethod
     def get_completions(cls, io, coder, args) -> list[str]:

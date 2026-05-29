@@ -67,21 +67,21 @@ agent-config:
 
 | Command | Description |
 |---------|-------------|
-| `/invoke-agent <name> <prompt>` | Invoke a sub-agent with a prompt (blocking — waits for completion) |
 | `/spawn-agent <name>` | Spawn a sub-agent without a prompt (non-blocking — waits for user input) |
+| `/spawn-agent <name> <prompt>` | Spawn a sub-agent with a prompt (non-blocking — starts processing immediately) |
 | `/reap-agent` | Force destroy the currently active sub-agent |
 
-> **Tip**: Both `/invoke-agent` and `/spawn-agent` support tab completion of sub-agent names.
+> **Tip**: `/spawn-agent` supports tab completion of sub-agent names.
 
-### Invoking a Sub-Agent (Blocking)
+### Spawning a Sub-Agent with a Prompt
 
-The most common way to use sub-agents. The primary agent waits for the sub-agent to finish:
+Spawns a sub-agent and immediately sends it a prompt to start processing (non-blocking):
 
 ```
-/invoke-agent reviewer Can you review the changes in editblock_func_coder.py?
+/spawn-agent reviewer Can you review the changes in editblock_func_coder.py?
 ```
 
-This sends the prompt to the reviewer sub-agent, which works autonomously and returns a summary when done.
+This spawns the reviewer sub-agent and sends it the prompt. The sub-agent begins working autonomously while you can continue interacting with the primary agent.
 
 ### Delegating from the Primary Agent
 
@@ -93,7 +93,7 @@ The primary agent can also delegate work using the `Delegate` tool. This enables
 4. Sub-agents work independently and return their summaries
 5. The primary agent synthesizes the results
 
-### Spawning a Sub-Agent (Non-Blocking)
+### Spawning a Sub-Agent Without a Prompt
 
 Creates a sub-agent that waits for you to interact with it directly:
 
@@ -174,7 +174,7 @@ and suggestions for improvement.
 ```
 
 ```
-/invoke-agent reviewer Please review the last 5 commits in this branch
+/spawn-agent reviewer Please review the last 5 commits in this branch
 ```
 
 ### Example 2: Test Writing Workflow
@@ -192,7 +192,7 @@ happy paths. Use the project's existing testing patterns and conventions.
 ```
 
 ```
-/invoke-agent tester Write unit tests for the new AgentService.invoke() method
+/spawn-agent tester Write unit tests for the new AgentService.invoke() method
 ```
 
 ### Example 3: Multi-Agent Review

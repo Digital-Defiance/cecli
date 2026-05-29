@@ -72,7 +72,7 @@ class Tool(BaseTool):
             """Run a single sub-agent and return a (success, formatted_message) tuple."""
             try:
                 agent_service._check_max_sub_agents()
-                summary = await agent_service.invoke(name, prompt, blocking=True)
+                summary = await agent_service.invoke(name, prompt, parent=coder, blocking=True)
                 if summary:
                     return True, f"Sub-agent '{name}' completed:\n{summary}"
                 return True, f"Sub-agent '{name}' completed (no summary)."
