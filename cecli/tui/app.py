@@ -579,6 +579,8 @@ class TUI(App):
             agent_service = AgentService.get_instance(self.worker.coder)
             primary_uuid = str(agent_service.coder.uuid)
             if coder_uuid == primary_uuid:
+                if agent_service.sub_agents:
+                    return "primary"
                 return None  # Primary agent gets no prefix
             for info in agent_service.sub_agents.values():
                 if str(info.coder.uuid) == coder_uuid:
