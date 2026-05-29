@@ -807,15 +807,18 @@ class TUI(App):
 
         # Update footer to show processing
         footer = self.query_one(MainFooter)
-        footer.start_spinner("Processing...")
-
+        
         coder = self.worker.coder
-
-        if coder:
-            coder.io.start_spinner("Processing...")
-
         # Determine which coder is in the foreground for input routing
         foreground_coder = AgentService.get_instance(coder).foreground_coder
+        coder_uuid = str(foreground_coder.uuid) if foreground_coder and hasattr(foreground_coder, "uuid") else None
+        agent_name = self._resolve_agent_name(coder_uuid)
+
+        footer.start_spinner("Processing...", agent_name=agent_name or "")
+
+        if coder:
+            coder.io.start_spinner("Processing...", coder_uuid=coder_uuid)
+
 
         if coder and is_active(getattr(coder.io, "output_task", None)):
             from cecli.helpers.conversation import ConversationService, MessageTag
