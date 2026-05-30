@@ -147,7 +147,7 @@ When the limit is reached:
 
 ### Cleanup
 
-- **Normal completion**: A sub-agent calls `Finished(summary="...")` which marks it as finished. Its container remains visible but its resources are eligible for lazy cleanup.
+- **Normal completion**: A sub-agent calls `Yield(summary="...")` which marks it as finished. Its container remains visible but its resources are eligible for lazy cleanup.
 - **Session end**: When the parent session ends, all sub-agents are automatically cleaned up.
 - **Force cleanup**: Use `/reap-agent` to immediately destroy a sub-agent and reclaim all resources.
 

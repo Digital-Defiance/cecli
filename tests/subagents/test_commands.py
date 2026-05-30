@@ -7,113 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 
-class TestInvokeAgentCommand:
-    """Tests for InvokeAgentCommand."""
-
-    @pytest.mark.asyncio
-    async def test_no_args_shows_usage(self):
-        """Empty args shows usage error."""
-        from cecli.commands.invoke_agent import InvokeAgentCommand
-
-        io = MagicMock()
-        await InvokeAgentCommand.execute(io, None, "")
-
-        io.tool_error.assert_called_once()
-        assert "Usage" in io.tool_error.call_args[0][0]
-
-    @pytest.mark.asyncio
-    async def test_name_only_no_prompt(self):
-        """Name without prompt passes empty string."""
-        from cecli.commands.invoke_agent import InvokeAgentCommand
-
-        io = MagicMock()
-        coder = MagicMock()
-
-        with patch("cecli.helpers.agents.service.AgentService") as MockSvc:
-            mock_instance = MagicMock()
-            mock_instance.invoke = AsyncMock(return_value="ok")
-            MockSvc.get_instance.return_value = mock_instance
-
-            await InvokeAgentCommand.execute(io, coder, "reviewer")
-
-        mock_instance.invoke.assert_called_once_with("reviewer", "", blocking=True)
-
-    @pytest.mark.asyncio
-    async def test_name_with_prompt(self):
-        """Name with prompt passes prompt correctly."""
-        from cecli.commands.invoke_agent import InvokeAgentCommand
-
-        io = MagicMock()
-        coder = MagicMock()
-
-        with patch("cecli.helpers.agents.service.AgentService") as MockSvc:
-            mock_instance = MagicMock()
-            mock_instance.invoke = AsyncMock(return_value="done")
-            MockSvc.get_instance.return_value = mock_instance
-
-            await InvokeAgentCommand.execute(io, coder, "reviewer review this")
-
-        mock_instance.invoke.assert_called_once_with("reviewer", "review this", blocking=True)
-
-    @pytest.mark.asyncio
-    async def test_value_error_shown_as_error(self):
-        """ValueError from service shown via io.tool_error."""
-        from cecli.commands.invoke_agent import InvokeAgentCommand
-
-        io = MagicMock()
-        coder = MagicMock()
-
-        with patch("cecli.helpers.agents.service.AgentService") as MockSvc:
-            mock_instance = MagicMock()
-            mock_instance.invoke = AsyncMock(side_effect=ValueError("unknown"))
-            MockSvc.get_instance.return_value = mock_instance
-
-            await InvokeAgentCommand.execute(io, coder, "ghost go")
-
-        io.tool_error.assert_called()
-        assert "unknown" in io.tool_error.call_args[0][0]
-
-    @pytest.mark.asyncio
-    async def test_runtime_error_shown_as_error(self):
-        """RuntimeError from service shown via io.tool_error."""
-        from cecli.commands.invoke_agent import InvokeAgentCommand
-
-        io = MagicMock()
-        coder = MagicMock()
-
-        with patch("cecli.helpers.agents.service.AgentService") as MockSvc:
-            mock_instance = MagicMock()
-            mock_instance.invoke = AsyncMock(side_effect=RuntimeError("max reached"))
-            MockSvc.get_instance.return_value = mock_instance
-
-            await InvokeAgentCommand.execute(io, coder, "reviewer go")
-
-        io.tool_error.assert_called()
-        assert "max reached" in io.tool_error.call_args[0][0]
-
-    @pytest.mark.asyncio
-    async def test_summary_output_on_completion(self):
-        """Successful completion shows summary via io.tool_output."""
-        from cecli.commands.invoke_agent import InvokeAgentCommand
-
-        io = MagicMock()
-        coder = MagicMock()
-
-        with patch("cecli.helpers.agents.service.AgentService") as MockSvc:
-            mock_instance = MagicMock()
-            mock_instance.invoke = AsyncMock(return_value="task done")
-            MockSvc.get_instance.return_value = mock_instance
-
-            with patch("cecli.helpers.conversation.service.ConversationService") as MockCS:
-                mock_manager = MagicMock()
-                MockCS.get_manager.return_value = mock_manager
-
-                await InvokeAgentCommand.execute(io, coder, "reviewer do it")
-
-        io.tool_output.assert_called_once()
-        assert "task done" in io.tool_output.call_args[0][0]
-
-
 class TestSpawnAgentCommand:
     """Tests for SpawnAgentCommand."""
 
@@ -143,7 +36,7 @@ class TestSpawnAgentCommand:
 
             await SpawnAgentCommand.execute(io, coder, "reviewer")
 
-        mock_instance.spawn.assert_called_once_with("reviewer")
+        mock_instance.spawn.assert_called_once_with("reviewer", None, parent=coder)
         io.tool_output.assert_called_once()
         assert "spawned" in io.tool_output.call_args[0][0]
 

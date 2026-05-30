@@ -1013,6 +1013,36 @@ class ConversationChunks:
                 force=True,
             )
 
+    def add_sub_agent_states(self) -> None:
+        """
+        Add sub-agent states context block to conversation (priority 250).
+
+        Sub-agent states include: name, UUID, and status (CREATED, RUNNING,
+        FINISHED, ERROR) of each active child sub-agent.
+        """
+        coder = self.get_coder()
+        if not coder:
+            return
+
+        if not hasattr(coder, "use_enhanced_context") or not coder.use_enhanced_context:
+            return
+
+        if not hasattr(coder, "get_child_agent_states"):
+            return
+
+        block = coder.get_child_agent_states()
+        if not block:
+            return
+
+        ConversationService.get_manager(coder).add_message(
+            message_dict={"role": "user", "content": block},
+            tag=MessageTag.STATIC,
+            priority=DEFAULT_TAG_PRIORITY[MessageTag.REMINDER] + 25,  # After post_message blocks
+            mark_for_delete=0,
+            hash_key=("sub_agent_states",),
+            force=True,
+        )
+
     def defer_removal(self, file_path: str):
         self._deferred_removals.add(file_path)
 

@@ -65,37 +65,34 @@ class Tool(BaseTool):
         from cecli.helpers.agents.service import AgentService
 
         agent_service = AgentService.get_instance(coder)
-        # Track results with status flag instead of fragile emoji checks
-        results: list[tuple[bool, str]] = []
 
-        async def _run_one(name: str, prompt: str) -> tuple[bool, str]:
-            """Run a single sub-agent and return a (success, formatted_message) tuple."""
+        async def _spawn_one(name: str, prompt: str) -> tuple[str, str]:
+            """Spawn a single sub-agent and return (name, uuid_or_error)."""
             try:
-                agent_service._check_max_sub_agents()
-                summary = await agent_service.invoke(name, prompt, parent=coder, blocking=True)
-                if summary:
-                    return True, f"Sub-agent '{name}' completed:\n{summary}"
-                return True, f"Sub-agent '{name}' completed (no summary)."
-            except (ValueError, RuntimeError) as e:
-                return False, f"Sub-agent '{name}' failed: {e}"
+                new_coder, info = await agent_service.spawn(name, prompt, parent=coder)
+                return name, info.coder.uuid
             except Exception as e:
-                return False, f"Sub-agent '{name}' failed with unexpected error: {e}"
+                return name, f"failed: {e}"
 
-        # Dispatch all delegations in parallel
-        tasks = [_run_one(d["name"], d["prompt"]) for d in delegations]
+        # Dispatch all delegations in parallel (spawn is fire-and-forget, but
+        # _create_sub_agent_coder is async so we gather for concurrency)
+        tasks = [_spawn_one(d["name"], d["prompt"]) for d in delegations]
         raw_results = await asyncio.gather(*tasks)
 
-        # Separate success flag from message
-        for success, msg in raw_results:
-            results.append((success, msg))
+        started_agents: list[tuple[str, str]] = list(raw_results)
 
         # Build a consolidated report
-        n_ok = sum(1 for ok, _ in results if ok)
-        n_total = len(results)
-        separator = "\n" + "─" * 60 + "\n"
-        combined = separator.join(msg for _, msg in results)
+        lines = []
+        for name, result in started_agents:
+            if result.startswith("failed:"):
+                lines.append(f"❌ **{name}**: {result}")
+            else:
+                lines.append(f"✅ **{name}** agent started with id `{result}`")
 
-        return f"📋 Delegation results ({n_ok}/{n_total} succeeded):" f"{separator}{combined}"
+        n_total = len(started_agents)
+        n_ok = sum(1 for _, r in started_agents if not r.startswith("failed:"))
+        combined = "\n".join(lines)
+        return f"📋 Delegation results ({n_ok}/{n_total} dispatched):\n{combined}"
 
     @classmethod
     def format_output(cls, coder, mcp_server, tool_response):

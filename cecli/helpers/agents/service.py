@@ -6,6 +6,7 @@ that tracks sub-agent info and handles invoke/spawn/wait lifecycle.
 
 import asyncio
 import logging
+import time
 import weakref
 from dataclasses import dataclass
 from enum import Enum
@@ -59,6 +60,10 @@ class AgentService:
     _global_registry: Dict[str, Any] = {}  # name -> SubAgentConfig (from .md files)
     # UUID -> weakref of coder instance for convenient lookup
     _uuid_coder_map: Dict[str, weakref.ref] = {}
+    # Lock pools keyed by parent UUID — created lazily so only parents that
+    # actually use them allocate a lock.
+    _spawn_locks: Dict[str, asyncio.Lock] = {}
+    _conversation_locks: Dict[str, asyncio.Lock] = {}
 
     # ------------------------------------------------------------------ #
     # Singleton
@@ -198,6 +203,13 @@ class AgentService:
 
     # ------------------------------------------------------------------ #
     # Internal helpers
+    @classmethod
+    def _get_lock(cls, pool: Dict[str, asyncio.Lock], uuid: str) -> asyncio.Lock:
+        """Return a lock for *uuid* from *pool*, creating one if absent."""
+        if uuid not in pool:
+            pool[uuid] = asyncio.Lock()
+        return pool[uuid]
+
     @staticmethod
     def _get_tui(coder: Any) -> Any:
         """Dereference the TUI weakref from a coder, returning None if unavailable.
@@ -335,12 +347,18 @@ class AgentService:
                 f"Unknown sub-agent '{name}'. " f"Available: {list(self._global_registry.keys())}"
             )
 
-        self._check_max_sub_agents()
+        # Critical section: max-sub-agent check and registration must be atomic
+        # to prevent TOCTOU race when multiple spawns fire concurrently.
+        # Coder.create() is called *outside* the lock to avoid holding an
+        # await across a lock (which risks deadlock if Coder.create() ever
+        # tried to acquire the same lock).
+        parent_coder = parent if parent is not None else self.coder
+
+        async with self._get_lock(self._spawn_locks, parent_coder.uuid):
+            self._check_max_sub_agents()
+            new_uuid = str(uuid4())
 
         from cecli.coders import Coder
-
-        parent_coder = parent if parent is not None else self.coder
-        new_uuid = str(uuid4())
 
         kwargs = dict(
             io=parent_coder.io,
@@ -362,18 +380,23 @@ class AgentService:
         new_coder = await Coder.create(**kwargs)
         # IOProxy wrapping is handled by base_coder.py's Coder.__init__
 
-        # Register in global coder lookup
-        self._uuid_coder_map[new_uuid] = weakref.ref(new_coder)
+        # Re-acquire the lock to register — we must re-check max agents since
+        # the lock was released and other spawns may have registered in between.
+        async with self._get_lock(self._spawn_locks, parent_coder.uuid):
+            self._check_max_sub_agents()
 
-        info = SubAgentInfo(
-            name=name,
-            coder=new_coder,
-            parent_uuid=parent_coder.uuid,
-            status=SubAgentStatus.CREATED,
-        )
+            # Register in global coder lookup
+            self._uuid_coder_map[new_uuid] = weakref.ref(new_coder)
 
-        self.sub_agents[new_coder.uuid] = info
-        self._sub_agent_order.append(new_coder.uuid)
+            info = SubAgentInfo(
+                name=name,
+                coder=new_coder,
+                parent_uuid=parent_coder.uuid,
+                status=SubAgentStatus.CREATED,
+            )
+
+            self.sub_agents[new_coder.uuid] = info
+            self._sub_agent_order.append(new_coder.uuid)
 
         # Notify TUI to create a container
         try:
@@ -432,6 +455,21 @@ class AgentService:
         for cancellation/monitoring.
 
         Args:
+
+        .. note::
+
+            **Ordering dependency with mark_sub_agent_finished()**
+
+            ``mark_sub_agent_finished()`` (called *synchronously* inside the tool
+            execution pipeline of ``generate()``) writes ``info.status`` and
+            ``info.summary`` before ``generate()`` returns to this task.
+
+            The ``if info.status == SubAgentStatus.RUNNING:`` guard below correctly
+            prevents the task from overwriting those values with defaults.
+
+            This ordering is currently safe because tool execution is synchronous.
+            If tool execution is refactored to introduce interleaved ``await`` points,
+            this dependency would break and an ``asyncio.Event`` would be needed.
             info: The SubAgentInfo for the sub-agent.
             user_message: The user message to pass to ``generate()``.
 
@@ -446,10 +484,12 @@ class AgentService:
                 if info.status == SubAgentStatus.RUNNING:
                     info.status = SubAgentStatus.FINISHED
                     info.summary = info.summary or DEFAULT_SUMMARY_COMPLETED
+                await self._inject_sub_agent_result(info)
             except asyncio.CancelledError:
                 info.status = SubAgentStatus.FINISHED
                 info.summary = info.summary or DEFAULT_SUMMARY_INTERRUPTED
                 logger.debug("Sub-agent %s generate cancelled (interrupted)", info.name)
+                await self._inject_sub_agent_result(info)
                 raise
             except Exception as exc:
                 info.status = SubAgentStatus.ERROR
@@ -460,6 +500,7 @@ class AgentService:
                     exc,
                     exc_info=True,
                 )
+                await self._inject_sub_agent_result(info)
                 raise
 
         # Cancel any previous generate task to prevent duplicate concurrent generates
@@ -468,7 +509,78 @@ class AgentService:
 
         task = asyncio.create_task(_run_generate())
         info.generate_task = task
+        # Suppress "Task exception was never retrieved" for fire-and-forget tasks
+        task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
         return task
+
+    async def _inject_sub_agent_result(self, info: SubAgentInfo) -> None:
+        """Inject the sub-agent's result (summary/error) into the parent's conversation.
+
+        Adds a user message with the result content and an assistant acknowledgment
+        so the parent coder (and therefore the LLM) sees what the sub-agent produced.
+        Uses unique hash keys so multiple sub-agent completions don't overwrite each other.
+        """
+        from cecli.helpers.conversation.service import ConversationService
+        from cecli.helpers.conversation.tags import MessageTag
+
+        # Capture coder UUID early in case the sub-agent is cleaned up before
+        # this method completes (the weakref could become invalid).
+        coder_uuid = getattr(info.coder, "uuid", "(unknown)")
+
+        parent_coder_ref = self._uuid_coder_map.get(info.parent_uuid)
+        if not parent_coder_ref:
+            return
+
+        parent_coder = parent_coder_ref()
+        if not parent_coder:
+            return
+
+        if info.status == SubAgentStatus.ERROR:
+            user_content = (
+                f"The **{info.name}** agent (`{coder_uuid}`) encountered an error:\n"
+                f"{info.error}"
+            )
+            assistant_content = (
+                f"The {info.name} agent `{coder_uuid}` failed with the error above. "
+                f"You may want to review or retry the delegation."
+            )
+        elif info.status == SubAgentStatus.FINISHED:
+            is_interrupted = info.summary == DEFAULT_SUMMARY_INTERRUPTED
+            summary_text = info.summary or DEFAULT_SUMMARY_COMPLETED
+            if is_interrupted:
+                user_content = (
+                    f"The **{info.name}** agent (`{coder_uuid}`) was interrupted:\n"
+                    f"{summary_text}"
+                )
+                assistant_content = (
+                    f"The {info.name} agent `{coder_uuid}` was interrupted before completing its task. "
+                    f"You may want to review or retry the delegation."
+                )
+            else:
+                user_content = (
+                    f"The **{info.name}** agent (`{coder_uuid}`) completed with the following summary:\n"
+                    f"{summary_text}"
+                )
+                assistant_content = (
+                    f"Thank you for sharing the summary for {info.name} agent `{coder_uuid}`. "
+                    f"The agent has finished its task."
+                )
+        else:
+            return
+
+        async with self._get_lock(self._conversation_locks, info.parent_uuid):
+            ConversationService.get_manager(parent_coder).add_message(
+                message_dict={"role": "user", "content": user_content},
+                tag=MessageTag.CUR,
+                hash_key=("sub_agent_result", "user", coder_uuid, str(time.monotonic_ns())),
+                force=True,
+            )
+            ConversationService.get_manager(parent_coder).add_message(
+                message_dict={"role": "assistant", "content": assistant_content},
+                tag=MessageTag.CUR,
+                hash_key=("sub_agent_result", "assistant", coder_uuid, str(time.monotonic_ns())),
+                force=True,
+            )
 
     async def invoke(
         self, name: str, prompt: str, blocking: bool = True, parent: Any = None
@@ -610,4 +722,7 @@ class AgentService:
         """Clean up all sub-agents when the parent session ends."""
         for uuid in list(self.sub_agents.keys()):
             self._cleanup_sub_agent(uuid)
+        # Clean up lock pools to prevent memory leaks
+        self._spawn_locks.pop(self.coder.uuid, None)
+        self._conversation_locks.pop(self.coder.uuid, None)
         self._instances.pop(self.coder.uuid, None)

@@ -471,71 +471,82 @@ class TestWait:
     """AgentService.wait() behavior."""
 
     @pytest.mark.asyncio
-    async def test_unknown_name_raises(self, service):
-        """Unknown name raises ValueError."""
-        with pytest.raises(ValueError, match="No sub-agent named"):
-            await service.wait("ghost")
+    async def test_no_children_returns_empty_list(self, service):
+        """Parent with no children returns empty list."""
+        parent_coder = MagicMock()
+        parent_coder.uuid = "parent-uuid"
+        result = await service.wait(parent_coder)
+        assert result == []
 
     @pytest.mark.asyncio
-    async def test_wait_finished_returns_summary(self, service):
-        """Already FINISHED returns summary immediately."""
+    async def test_wait_finished_returns_summary_list(self, service):
+        """Already FINISHED returns summary in a list."""
+        parent_coder = MagicMock()
+        parent_coder.uuid = "parent-uuid"
         info = SubAgentInfo(
             name="agent",
             coder=MagicMock(),
-            parent_uuid="parent",
+            parent_uuid="parent-uuid",
             status=SubAgentStatus.FINISHED,
             summary="done",
         )
+        info.generate_task = None
         service.sub_agents["agent"] = info
         service._sub_agent_order.append("agent")
 
-        result = await service.wait("agent")
-        assert result == "done"
+        result = await service.wait(parent_coder)
+        assert result == ["done"]
 
     @pytest.mark.asyncio
-    async def test_wait_error_raises(self, service):
-        """ERROR status raises RuntimeError."""
+    async def test_wait_error_returns_none_summary(self, service):
+        """ERROR status returns list containing None summary."""
+        parent_coder = MagicMock()
+        parent_coder.uuid = "parent-uuid"
         info = SubAgentInfo(
             name="agent",
             coder=MagicMock(),
-            parent_uuid="parent",
+            parent_uuid="parent-uuid",
             status=SubAgentStatus.ERROR,
             error="something broke",
+            summary=None,
         )
+        info.generate_task = None
         service.sub_agents["agent"] = info
         service._sub_agent_order.append("agent")
 
-        with pytest.raises(RuntimeError, match="something broke"):
-            await service.wait("agent")
+        result = await service.wait(parent_coder)
+        assert result == [None]
 
     @pytest.mark.asyncio
     async def test_wait_polls_until_finished(self, service):
-        """Polls until status is FINISHED then returns summary."""
+        """Polls via generate_task until FINISHED then returns summary."""
+        import asyncio
+
+        parent_coder = MagicMock()
+        parent_coder.uuid = "parent-uuid"
+
         info = SubAgentInfo(
             name="agent",
             coder=MagicMock(),
-            parent_uuid="parent",
+            parent_uuid="parent-uuid",
             status=SubAgentStatus.CREATED,
         )
-        service.sub_agents["agent"] = info
-        service._sub_agent_order.append("agent")
 
-        # Simulate the sub-agent finishing after a brief delay
         async def finish_later():
-            import asyncio
-
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.05)
             info.status = SubAgentStatus.FINISHED
             info.summary = "completed"
 
-        import asyncio
+        # Create a generate_task that completes when finish_later runs
+        async def gen_task():
+            await finish_later()
 
-        await asyncio.gather(
-            service.wait("agent"),
-            finish_later(),
-        )
+        info.generate_task = asyncio.create_task(gen_task())
+        service.sub_agents["agent"] = info
+        service._sub_agent_order.append("agent")
 
-        assert info.summary == "completed"
+        result = await service.wait(parent_coder)
+        assert result == ["completed"]
 
 
 # ================================================================== #
