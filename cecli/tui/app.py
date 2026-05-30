@@ -702,7 +702,7 @@ class TUI(App):
         action = msg.get("action", "start")
 
         if action == "start":
-            footer.start_spinner(msg.get("text", ""), agent_name=agent_name)
+            footer.start_spinner(msg.get("text", ""), agent_name=agent_name or "")
         elif action == "update":
             footer.spinner_text = msg.get("text", "")
         elif action == "update_suffix":
