@@ -27,7 +27,7 @@ class SpawnAgentCommand(BaseCommand):
 
         try:
             agent_service = AgentService.get_instance(coder)
-            await agent_service.spawn(name, prompt, parent=coder)
+            await agent_service.spawn(name, prompt, parent=coder, auto_reap=False)
 
             if coder.tui and coder.tui():
                 switch_key = coder.tui().get_keys_for("next_agent")

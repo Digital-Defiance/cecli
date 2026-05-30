@@ -47,6 +47,7 @@ class SubAgentInfo:
     generate_task: Optional[asyncio.Task] = (
         None  # Track the generate() task for cancellation/monitoring
     )
+    auto_reap: bool = True  # If True, agent may be automatically reaped when FINISHED
 
 
 class AgentService:
@@ -237,12 +238,83 @@ class AgentService:
     # ------------------------------------------------------------------ #
 
     def _reap_finished_agent(self) -> None:
-        """Remove the oldest FINISHED sub-agent (lazy reap)."""
+        """Remove the oldest FINISHED or ERROR sub-agent (lazy reap).
+
+        Only reaps sub-agents whose descendants (children, grandchildren, etc.)
+        have all also finished.  This prevents reaping a sub-agent while it
+        still has running descendant tasks that its ``generate()`` loop may
+        need to process.
+        """
+        # Build parent → children mapping
+        parent_to_children: Dict[str, List[SubAgentInfo]] = {}
+        for info in self.sub_agents.values():
+            parent_to_children.setdefault(info.parent_uuid, []).append(info)
+
+        def _has_unfinished_descendants(agent_uuid: str) -> bool:
+            """Return True if *agent_uuid* has any non-FINISHED/non-ERROR descendant."""
+            for child in parent_to_children.get(agent_uuid, []):
+                if child.status not in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR):
+                    return True
+                if _has_unfinished_descendants(child.coder.uuid):
+                    return True
+            return False
+
         for coder_uuid in list(self._sub_agent_order):
             info = self.sub_agents.get(coder_uuid)
-            if info and info.status == SubAgentStatus.FINISHED:
+            if (
+                info
+                and info.status in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR)
+                and info.auto_reap
+                and (info.generate_task is None or info.generate_task.done())
+                and not _has_unfinished_descendants(coder_uuid)
+            ):
                 self._cleanup_sub_agent(coder_uuid)
                 return
+
+    async def reap_all_finished_agents(self, parent: Any = None) -> None:
+        """Remove all FINISHED or ERROR sub-agents that have ``auto_reap`` enabled.
+
+        Builds a parent→children mapping of all sub-agents and only reaps
+        finished sub-agents whose descendants (children, grandchildren, etc.)
+        have all also finished.  This prevents reaping a sub-agent while it
+        still has running descendant tasks that its ``generate()`` loop may
+        need to process.  Acquires the spawn lock for the given *parent*
+        (or ``self.coder`` if omitted) to serialise with concurrent
+        ``_create_sub_agent_coder()`` operations under the same parent.
+
+        Args:
+            parent: Optional coder instance whose spawn lock will be acquired.
+                    If provided, reaping is serialised against spawns under this
+                    specific parent. Defaults to ``self.coder``.
+        """
+        # Build parent → children mapping
+        parent_to_children: Dict[str, List[SubAgentInfo]] = {}
+        for info in self.sub_agents.values():
+            parent_to_children.setdefault(info.parent_uuid, []).append(info)
+
+        def _has_unfinished_descendants(agent_uuid: str) -> bool:
+            """Return True if *agent_uuid* has any non-FINISHED/non-ERROR descendant."""
+            for child in parent_to_children.get(agent_uuid, []):
+                if child.status not in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR):
+                    return True
+                if _has_unfinished_descendants(child.coder.uuid):
+                    return True
+            return False
+
+        # Acquire the spawn lock for the primary coder to serialise with
+        # concurrent spawn operations that also hold this lock.
+        parent_coder = parent if parent is not None else self.coder
+        async with self._get_lock(self._spawn_locks, parent_coder.uuid):
+            for coder_uuid in list(self._sub_agent_order):
+                info = self.sub_agents.get(coder_uuid)
+                if (
+                    info
+                    and info.status in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR)
+                    and info.auto_reap
+                    and (info.generate_task is None or info.generate_task.done())
+                    and not _has_unfinished_descendants(coder_uuid)
+                ):
+                    self._cleanup_sub_agent(coder_uuid)
 
     def _cleanup_sub_agent(self, agent_uuid: str) -> None:
         """Remove agent instance from tracking and notify TUI if possible."""
@@ -301,7 +373,9 @@ class AgentService:
         Raises RuntimeError if no finished agents can be reaped.
         """
         active_count = sum(
-            1 for info in self.sub_agents.values() if info.status != SubAgentStatus.FINISHED
+            1
+            for info in self.sub_agents.values()
+            if info.status not in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR)
         )
         if active_count < self.max_sub_agents:
             return
@@ -311,7 +385,9 @@ class AgentService:
 
         # Recalculate active count after reaping
         active_count = sum(
-            1 for info in self.sub_agents.values() if info.status != SubAgentStatus.FINISHED
+            1
+            for info in self.sub_agents.values()
+            if info.status not in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR)
         )
         if active_count >= self.max_sub_agents:
             raise RuntimeError(
@@ -320,7 +396,7 @@ class AgentService:
             )
 
     async def _create_sub_agent_coder(
-        self, name: str, parent: Any = None
+        self, name: str, parent: Any = None, auto_reap: Optional[bool] = None
     ) -> Tuple[Any, SubAgentInfo]:
         """Create a sub-agent coder, register it, and set up its container and prompt.
 
@@ -329,10 +405,13 @@ class AgentService:
 
         Args:
             name: Name of the sub-agent to create.
-            parent: Optional coder instance to use as the parent.
-                    If provided, the new sub-agent's ``parent_uuid`` will be
-                    ``parent.uuid`` instead of ``self.coder.uuid``, enabling
-                    nested sub-agent hierarchies. Defaults to ``self.coder``.
+            parent: Optional coder instance to use as the parent for nested
+                    sub-agent hierarchies. If provided, the new sub-agent's
+                    ``parent_uuid`` will be ``parent.uuid`` instead of
+                    ``self.coder.uuid``. Defaults to ``self.coder``.
+            auto_reap: If True, agent may be automatically reaped when FINISHED.
+                    If not set, defers to the sub-agent config's ``auto_reap``
+                    value, then defaults to ``True``.
 
         Returns:
             Tuple of ``(new_coder, info)``.
@@ -346,6 +425,12 @@ class AgentService:
             raise ValueError(
                 f"Unknown sub-agent '{name}'. " f"Available: {list(self._global_registry.keys())}"
             )
+
+        # Resolve auto_reap: None means defer to sub-agent config, then default to True
+        if auto_reap is None:
+            auto_reap = getattr(config, "auto_reap", None)
+            if auto_reap is None:
+                auto_reap = True
 
         # Critical section: max-sub-agent check and registration must be atomic
         # to prevent TOCTOU race when multiple spawns fire concurrently.
@@ -393,8 +478,8 @@ class AgentService:
                 coder=new_coder,
                 parent_uuid=parent_coder.uuid,
                 status=SubAgentStatus.CREATED,
+                auto_reap=auto_reap,
             )
-
             self.sub_agents[new_coder.uuid] = info
             self._sub_agent_order.append(new_coder.uuid)
 
@@ -583,7 +668,12 @@ class AgentService:
             )
 
     async def invoke(
-        self, name: str, prompt: str, blocking: bool = True, parent: Any = None
+        self,
+        name: str,
+        prompt: str,
+        blocking: bool = True,
+        parent: Any = None,
+        auto_reap: Optional[bool] = None,
     ) -> Optional[str]:
         """Invoke a sub-agent by name with the given prompt (blocking by default).
 
@@ -594,7 +684,9 @@ class AgentService:
             parent: Optional coder instance to use as the parent for nested
                    sub-agent hierarchies. Defaults to ``self.coder``.
         """
-        new_coder, info = await self._create_sub_agent_coder(name, parent)
+        new_coder, info = await self._create_sub_agent_coder(
+            name, auto_reap=auto_reap, parent=parent
+        )
 
         if not blocking:
             return None
@@ -605,7 +697,11 @@ class AgentService:
         return info.summary
 
     async def spawn(
-        self, name: str, prompt: Optional[str] = None, parent: Any = None
+        self,
+        name: str,
+        prompt: Optional[str] = None,
+        parent: Any = None,
+        auto_reap: Optional[bool] = None,
     ) -> Tuple[Any, SubAgentInfo]:
         """Spawn a sub-agent (non-blocking) that waits for user input.
 
@@ -620,7 +716,9 @@ class AgentService:
             Tuple of ``(new_coder, info)`` so callers can further interact
             with the sub-agent (e.g. call ``start_generate_task`` later).
         """
-        new_coder, info = await self._create_sub_agent_coder(name, parent)
+        new_coder, info = await self._create_sub_agent_coder(
+            name, auto_reap=auto_reap, parent=parent
+        )
         if prompt:
             self.start_generate_task(info, prompt)
         return new_coder, info
@@ -688,6 +786,47 @@ class AgentService:
             uid = str(coder_or_uuid)
 
         return [info for info in self.sub_agents.values() if info.parent_uuid == uid]
+
+    def get_parent(self, coder_or_uuid: Any) -> Any:
+        """Return the parent coder for the given coder or UUID.
+
+        If the given coder is the primary coder (``self.coder``), returns itself.
+        Otherwise, looks up the sub-agent's parent in the tracking data and
+        returns that parent's coder instance.
+
+        This is used for lock key resolution when reaping from a sub-agent
+        context — the spawn lock should be acquired with the parent's UUID
+        to properly serialise with concurrent spawn operations under that
+        same parent.
+
+        Args:
+            coder_or_uuid: A coder instance (with ``.uuid``) or a UUID string.
+
+        Returns:
+            The parent coder instance, or ``self.coder`` if the given coder is
+            the primary coder or has no known parent.
+        """
+        if hasattr(coder_or_uuid, "uuid"):
+            uid = str(coder_or_uuid.uuid)
+        else:
+            uid = str(coder_or_uuid)
+
+        # Primary coder returns itself
+        if uid == self.coder.uuid:
+            return self.coder
+
+        # Look up the sub-agent to find its parent_uuid
+        info = self.sub_agents.get(uid)
+        if info and info.parent_uuid:
+            # Parent is the primary coder
+            if info.parent_uuid == self.coder.uuid:
+                return self.coder
+            # Parent is another sub-agent — look up its coder
+            parent_info = self.sub_agents.get(info.parent_uuid)
+            if parent_info:
+                return parent_info.coder
+
+        return self.coder
 
     # ------------------------------------------------------------------ #
     # Foreground agent tracking

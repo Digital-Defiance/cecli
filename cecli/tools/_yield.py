@@ -40,13 +40,13 @@ class Tool(BaseTool):
 
         This gives the LLM explicit control over when it can stop looping
         """
+        from cecli.helpers.agents.service import AgentService
+
         cls.clear_invocation_cache()
 
         if coder:
             # Check for active child sub-agents and await their tasks before finishing
             try:
-                from cecli.helpers.agents.service import AgentService
-
                 agent_service = AgentService.get_instance(coder)
                 children = agent_service.get_children(coder)
                 active_tasks = [
@@ -113,6 +113,13 @@ class Tool(BaseTool):
             except Exception as e:
                 logger.warning("Error awaiting child sub-agents before yield: %s", e)
 
+            # Reap all finished sub-agents with auto_reap enabled
+            try:
+                service = AgentService.get_instance(coder)
+                await service.reap_all_finished_agents(parent=service.get_parent(coder))
+            except Exception:
+                logger.warning("Failed to reap finished sub-agents", exc_info=True)
+
             coder.agent_finished = True
 
             # If this is a sub-agent, capture the summary for the parent
@@ -120,7 +127,6 @@ class Tool(BaseTool):
             parent_uuid = coder.parent_uuid
             if parent_uuid:
                 try:
-                    from cecli.helpers.agents.service import AgentService
 
                     AgentService.mark_sub_agent_finished(
                         sub_coder_uuid=coder.uuid,

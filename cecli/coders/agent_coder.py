@@ -875,6 +875,13 @@ class AgentCoder(Coder):
         content = self.partial_response_content
         tool_calls_found = bool(self.partial_response_tool_calls)
 
+        # Reap all finished sub-agents with auto_reap enabled
+        try:
+            service = AgentService.get_instance(self)
+            await service.reap_all_finished_agents(parent=service.get_parent(self))
+        except Exception:
+            logger.warning("Failed to reap finished sub-agents", exc_info=True)
+
         # 1. Handle Tool Execution Follow-up (Reflection)
         if self.agent_finished:
             self.tool_usage_history = []
@@ -882,6 +889,7 @@ class AgentCoder(Coder):
             self.reflected_message = None
             if self.files_edited_by_tools:
                 _ = await self.auto_commit(self.files_edited_by_tools)
+
             return False
 
         # 2. Check for unfinished and recently finished background commands

@@ -36,7 +36,7 @@ class TestSpawnAgentCommand:
 
             await SpawnAgentCommand.execute(io, coder, "reviewer")
 
-        mock_instance.spawn.assert_called_once_with("reviewer", None, parent=coder)
+        mock_instance.spawn.assert_called_once_with("reviewer", None, parent=coder, auto_reap=False)
         io.tool_output.assert_called_once()
         assert "spawned" in io.tool_output.call_args[0][0]
 

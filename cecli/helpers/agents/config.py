@@ -19,6 +19,7 @@ class SubAgentConfig:
     prompt: str = ""
     model: Optional[str] = None
     hooks: Dict[str, Any] = field(default_factory=dict)
+    auto_reap: Optional[bool] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -71,13 +72,18 @@ def parse_subagent_file(file_path: str) -> Optional[SubAgentConfig]:
     hooks_data = frontmatter_data.get("hooks", {})
     if not isinstance(hooks_data, dict):
         hooks_data = {}
-    metadata = {k: v for k, v in frontmatter_data.items() if k not in ("name", "model", "hooks")}
+    metadata = {
+        k: v
+        for k, v in frontmatter_data.items()
+        if k not in ("name", "model", "hooks", "auto_reap")
+    }
 
     config = SubAgentConfig(
         name=name,
         prompt=prompt,
         model=frontmatter_data.get("model"),
         hooks=hooks_data,
+        auto_reap=frontmatter_data.get("auto_reap"),
         metadata=metadata,
     )
 
