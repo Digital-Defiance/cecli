@@ -79,7 +79,7 @@ class MainFooter(Static):
             else:
                 name = coder.get_active_model().name
         except Exception:
-            name = self.app.worker.coder.get_active_model().name
+            name = self.model_name
 
         # Strip common prefixes like "openrouter/x-ai/"
         if len(name) > 40:
