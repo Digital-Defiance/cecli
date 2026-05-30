@@ -134,6 +134,7 @@ class StatusBar(Widget, can_focus=True):
         self._default = "y"
         self._explicit_yes_required = False
         self._timer = None
+
     def compose(self) -> ComposeResult:
         """Create empty container - content added dynamically."""
         yield Horizontal(classes="status-content")
@@ -171,7 +172,10 @@ class StatusBar(Widget, can_focus=True):
                 hints.mount(Static("\\[d]on't ask again", classes="hint hint-never"))
 
     def show_notification(
-        self, text: str, severity: str = "info", timeout: float | None = 3.0,
+        self,
+        text: str,
+        severity: str = "info",
+        timeout: float | None = 3.0,
         agent_name: str | None = None,
     ) -> None:
         """Show a transient notification message.

@@ -564,7 +564,6 @@ class TUI(App):
             else:
                 self._switch_to_container(target_uuid)
 
-
     def _resolve_agent_name(self, coder_uuid: str | None) -> str | None:
         """Resolve an agent display name from a coder_uuid.
 
@@ -590,8 +589,7 @@ class TUI(App):
                 if str(info.coder.uuid) == coder_uuid:
                     # Check for duplicate names among sub-agents
                     name_count = sum(
-                        1 for i in agent_service.sub_agents.values()
-                        if i.name == info.name
+                        1 for i in agent_service.sub_agents.values() if i.name == info.name
                     )
                     if name_count > 1:
                         # Disambiguate with first 3 UUID characters
@@ -602,6 +600,7 @@ class TUI(App):
             # Agent service not available or coder not yet initialized
             pass
         return None
+
     def add_output(self, text, task_id=None):
         """Add output to the output container."""
         output_container = self.query_one("#output", OutputContainer)
@@ -826,14 +825,17 @@ class TUI(App):
         coder = self.worker.coder
         # Determine which coder is in the foreground for input routing
         foreground_coder = AgentService.get_instance(coder).foreground_coder
-        coder_uuid = str(foreground_coder.uuid) if foreground_coder and hasattr(foreground_coder, "uuid") else None
+        coder_uuid = (
+            str(foreground_coder.uuid)
+            if foreground_coder and hasattr(foreground_coder, "uuid")
+            else None
+        )
         agent_name = self._resolve_agent_name(coder_uuid)
 
         footer.start_spinner("Processing...", agent_name=agent_name or "")
 
         if coder:
             coder.io.start_spinner("Processing...", coder_uuid=coder_uuid)
-
 
         if coder and is_active(getattr(coder.io, "output_task", None)):
             from cecli.helpers.conversation import ConversationService, MessageTag

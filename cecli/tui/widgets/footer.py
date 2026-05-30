@@ -210,6 +210,7 @@ class MainFooter(Static):
         self.spinner_text = ""
         self.agent_name = ""
         self.refresh()
+
     def _has_running_sub_agent(self) -> bool:
         """Check if any agent is currently generating output."""
         try:
