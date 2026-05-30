@@ -577,19 +577,29 @@ class TUI(App):
         if not coder_uuid:
             return None
         try:
+            if not self.worker or not self.worker.coder:
+                return None  # Cannot resolve without a coder
             from cecli.helpers.agents.service import AgentService
 
             agent_service = AgentService.get_instance(self.worker.coder)
+            if not agent_service:
+                return None
             primary_uuid = str(agent_service.coder.uuid)
             if coder_uuid == primary_uuid:
                 if agent_service.sub_agents:
                     return "primary"
                 return None  # Primary agent gets no prefix
+            if not agent_service.sub_agents:
+                return None
             for info in agent_service.sub_agents.values():
+                if not info or not info.coder:
+                    continue
                 if str(info.coder.uuid) == coder_uuid:
                     # Check for duplicate names among sub-agents
                     name_count = sum(
-                        1 for i in agent_service.sub_agents.values() if i.name == info.name
+                        1
+                        for i in agent_service.sub_agents.values()
+                        if i and hasattr(i, "name") and i.name == info.name
                     )
                     if name_count > 1:
                         # Disambiguate with first 3 UUID characters
