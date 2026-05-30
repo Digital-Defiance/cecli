@@ -408,14 +408,7 @@ class TextualInputOutput(InputOutput):
         super().stop_spinner()
 
         # Send to TUI
-        self.output_queue.put(
-            {
-                "type": "spinner",
-                "action": "stop",
-            }
-                "coder_uuid": coder_uuid,
-                "coder_uuid": coder_uuid,
-        )
+        self.output_queue.put({"type": "spinner", "action": "stop", "coder_uuid": coder_uuid})
 
     def interrupt_input(self):
         self.interrupted = True
@@ -531,6 +524,7 @@ class TextualInputOutput(InputOutput):
         allow_never=False,
         allow_tweak=False,
         acknowledge=False,
+        coder_uuid=None,
     ):
         """Override confirm_ask to show modal instead of inline prompt.
 
@@ -607,6 +601,7 @@ class TextualInputOutput(InputOutput):
                             "acknowledge": acknowledge,
                             "valid_responses": valid_responses,
                         },
+                        "coder_uuid": coder_uuid,
                     }
                 )
 

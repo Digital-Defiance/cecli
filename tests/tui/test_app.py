@@ -37,8 +37,6 @@ def test_on_mouse_move_linux(tui_instance):
         mock_event.stop.assert_not_called()
 
 
-
-
 def test_handle_output_message_spinner_with_agent_name(tui_instance, monkeypatch):
     """
     Test that spinner status messages display the agent name prefix
@@ -95,21 +93,20 @@ def test_handle_output_message_spinner_with_agent_name(tui_instance, monkeypatch
 
     # Test: sub-agent spinner should include agent_name="researcher"
     msg = {
-        "type": "spinner", "action": "start", "text": "Thinking...",
+        "type": "spinner",
+        "action": "start",
+        "text": "Thinking...",
         "coder_uuid": "some_uuid",
     }
     tui_instance.handle_output_message(msg)
-    mock_footer.start_spinner.assert_called_once_with(
-        "Thinking...", agent_name="researcher"
-    )
+    mock_footer.start_spinner.assert_called_once_with("Thinking...", agent_name="researcher")
 
     # Test: primary agent spinner should have agent_name=None
     mock_footer.reset_mock()
     msg["coder_uuid"] = "primary_uuid"
     tui_instance.handle_output_message(msg)
-    mock_footer.start_spinner.assert_called_once_with(
-        "Thinking...", agent_name=None
-    )
+    mock_footer.start_spinner.assert_called_once_with("Thinking...", agent_name=None)
+
 
 def test_handle_output_message_confirmation_with_agent_name(tui_instance, monkeypatch):
     """
@@ -168,15 +165,22 @@ def test_handle_output_message_confirmation_with_agent_name(tui_instance, monkey
 
     # Test: sub-agent confirmation should include agent_name="researcher"
     msg = {
-        "type": "confirmation", "question": "Are you sure?",
-        "options": {}, "coder_uuid": "some_uuid",
+        "type": "confirmation",
+        "question": "Are you sure?",
+        "options": {},
+        "coder_uuid": "some_uuid",
     }
     tui_instance.handle_output_message(msg)
     mock_status_bar.show_confirm.assert_called_once_with(
-        "Are you sure?", show_all=False, allow_tweak=False,
-        allow_never=False, default="y",
-        explicit_yes_required=False, agent_name="researcher",
+        "Are you sure?",
+        show_all=False,
+        allow_tweak=False,
+        allow_never=False,
+        default="y",
+        explicit_yes_required=False,
+        agent_name="researcher",
     )
+
 
 def test_handle_output_message_error_with_agent_name(tui_instance, monkeypatch):
     """
@@ -224,11 +228,14 @@ def test_handle_output_message_error_with_agent_name(tui_instance, monkeypatch):
 
     # Test: error message for unknown agent should have agent_name=None
     msg = {
-        "type": "error", "message": "Something went wrong!",
+        "type": "error",
+        "message": "Something went wrong!",
         "coder_uuid": "unknown_uuid",
     }
     tui_instance.handle_output_message(msg)
     mock_status_bar.show_notification.assert_called_once_with(
-        "Something went wrong!", severity="error", timeout=5,
+        "Something went wrong!",
+        severity="error",
+        timeout=5,
         agent_name=None,
     )

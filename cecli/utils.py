@@ -2,13 +2,12 @@ import glob
 import json
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-
-import shlex
 
 from cecli.dump import dump  # noqa: F401
 from cecli.waiting import Spinner
