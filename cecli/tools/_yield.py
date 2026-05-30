@@ -104,7 +104,12 @@ class Tool(BaseTool):
                         except asyncio.CancelledError:
                             pass
 
-                    # Fall through to the normal finishing flow below
+                    # Don't mark as finished — the coder should review sub-agent
+                    # outputs and decide how to proceed
+                    return (
+                        "Sub-agents have finished. Please examine their output above "
+                        "in order to decide how you will proceed."
+                    )
             except Exception as e:
                 logger.warning("Error awaiting child sub-agents before yield: %s", e)
 
