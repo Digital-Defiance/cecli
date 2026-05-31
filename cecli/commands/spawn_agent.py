@@ -27,11 +27,21 @@ class SpawnAgentCommand(BaseCommand):
 
         try:
             agent_service = AgentService.get_instance(coder)
-            await agent_service.spawn(name, prompt, parent=coder, auto_reap=False)
+            new_coder, info = await agent_service.spawn(name, prompt, parent=coder, auto_reap=False)
+
+            # Set the newly spawned agent as the foreground agent
+            agent_service.foreground_uuid = info.coder.uuid
 
             if coder.tui and coder.tui():
-                switch_key = coder.tui().get_keys_for("next_agent")
-                io.tool_output(f"Sub-agent '{name}' spawned. " f"Switch to it with {switch_key}")
+                tui = coder.tui()
+                switch_key = tui.get_keys_for("next_agent")
+                io.tool_output(f"Sub-agent '{name}' spawned and active. Switch with {switch_key}")
+
+                # Switch TUI display to the new sub-agent's container
+                try:
+                    tui.call_from_thread(tui._switch_to_container, info.coder.uuid)
+                except Exception:
+                    pass
         except ValueError as e:
             io.tool_error(f"Error: {e}")
         except RuntimeError as e:
