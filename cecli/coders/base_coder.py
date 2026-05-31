@@ -2655,6 +2655,13 @@ class Coder(metaclass=UsageMeta):
                 expanded_tool_calls.append(tool_call)
                 continue
 
+            merged = responses.merge_glued_json_objects(json_chunks)
+            if merged is not None:
+                new_tool_call = copy_tool_call(tool_call)
+                new_tool_call.function.arguments = json.dumps(merged)
+                expanded_tool_calls.append(new_tool_call)
+                continue
+
             # We have concatenated JSON, so expand it into multiple tool calls.
             for i, chunk in enumerate(json_chunks):
                 if not chunk.strip():
@@ -3638,12 +3645,19 @@ class Coder(metaclass=UsageMeta):
             extracted_calls = responses.extract_tools_from_content_json(
                 self.partial_response_content
             )
+
             if not extracted_calls:
                 extracted_calls = responses.extract_tools_from_content_xml(
                     self.partial_response_content
                 )
 
+            if not extracted_calls:
+                extracted_calls = responses.extract_tools_from_pseudo_json(
+                    self.partial_response_content
+                )
+
             if extracted_calls:
+                self.tool_reflection = True
                 self.partial_response_tool_calls = extracted_calls
 
         self.partial_response_consolidated = (response, func_err, content_err)

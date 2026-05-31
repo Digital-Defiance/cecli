@@ -5,6 +5,7 @@ from cecli.tools.utils.output import tool_footer, tool_header
 
 class Tool(BaseTool):
     NORM_NAME = "updatetodolist"
+    LIST_PARAMS = ["tasks"]
     SCHEMA = {
         "type": "function",
         "function": {

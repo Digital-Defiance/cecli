@@ -12,7 +12,6 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
-from cecli import utils
 from cecli.change_tracker import ChangeTracker
 from cecli.helpers import nested, responses
 from cecli.helpers.agents.service import AgentService
@@ -732,25 +731,23 @@ class AgentCoder(Coder):
                     continue
 
                 if args_string:
-                    json_chunks = utils.split_concatenated_json(args_string)
-                    for chunk in json_chunks:
-                        try:
-                            parsed_args_list.append(json.loads(chunk))
-                        except json.JSONDecodeError as e:
-                            self.model_kwargs = {}
-                            self.io.tool_warning(
-                                f"Malformed JSON arguments in tool {tool_name}: {chunk}"
-                            )
-                            tool_responses.append(
-                                {
-                                    "role": "tool",
-                                    "tool_call_id": tool_call.id,
-                                    "content": (
-                                        f"Malformed JSON arguments in tool {tool_name}: {str(e)}"
-                                    ),
-                                }
-                            )
-                            continue
+                    parsed = responses.parse_tool_arguments(args_string)
+                    if isinstance(parsed, dict) and "@error" in parsed:
+                        self.io.tool_warning(
+                            f"Malformed JSON arguments in tool {tool_name}: {parsed['@error']}"
+                        )
+                        tool_responses.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "content": (
+                                    f"Malformed JSON arguments in tool {tool_name}: {parsed['@error']}"
+                                ),
+                            }
+                        )
+                        continue
+                    parsed_args_list = [parsed]
+
                 if not parsed_args_list and not args_string:
                     parsed_args_list.append({})
                 all_results_content = []
@@ -846,7 +843,9 @@ class AgentCoder(Coder):
         for tool_call in tool_calls:
             # Use existing _execute_mcp_tool logic
             result = await self._execute_mcp_tool(
-                server, tool_call.function.name, json.loads(tool_call.function.arguments)
+                server,
+                tool_call.function.name,
+                responses.parse_tool_arguments(tool_call.function.arguments),
             )
             responses.append(
                 {
