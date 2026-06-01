@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import locale
+import logging
 import os
 import platform
 import random
@@ -14,6 +15,7 @@ from pathlib import Path
 from cecli import utils
 from cecli.change_tracker import ChangeTracker
 from cecli.helpers import nested, responses
+from cecli.helpers.agents.service import AgentService
 from cecli.helpers.background_commands import BackgroundCommandManager
 from cecli.helpers.conversation import ConversationService, MessageTag
 from cecli.helpers.similarity import (
@@ -33,6 +35,8 @@ from .base_coder import Coder
 
 from cecli.helpers.coroutines import interruptible  # isort:skip
 
+logger = logging.getLogger(__name__)
+
 
 class AgentCoder(Coder):
     """Mode where the LLM autonomously manages which files are in context."""
@@ -40,6 +44,7 @@ class AgentCoder(Coder):
     edit_format = "agent"
     prompt_format = "agent"
     context_management_enabled = True
+
     hashlines = True
     stop_on_empty = False
 
@@ -71,7 +76,7 @@ class AgentCoder(Coder):
             "edittext",
             "undochange",
         }
-        self.edit_allowed = False
+        self.edit_allowed = True
         self.max_tool_calls = 10000
         self.large_file_token_threshold = 8192
         self.skills_manager = None
@@ -92,10 +97,31 @@ class AgentCoder(Coder):
         self.skip_cli_confirmations = False
         self.agent_finished = False
         self.agent_config = self._get_agent_config()
+        self.max_sub_agents = self.agent_config.get("max_sub_agents", 3)
+        self.sub_agent_paths = self.agent_config.get("subagent_paths", [])
         self._setup_agent()
+
+        AgentService.build_registry(self.sub_agent_paths)
         ToolRegistry.build_registry(agent_config=self.agent_config)
+
         self.loaded_custom_tools = ToolRegistry.loaded_custom_tools
         super().__init__(*args, **kwargs)
+
+    def post_init(self):
+        super().post_init()
+        # Populate per-instance tool and server filters from config
+        self.registered_tools["included"] = set(
+            map(str.lower, self.agent_config.get("tools_includelist", []))
+        )
+        self.registered_tools["excluded"] = set(
+            map(str.lower, self.agent_config.get("tools_excludelist", []))
+        )
+        self.registered_servers["included"] = set(
+            map(str.lower, self.agent_config.get("servers_includelist", []))
+        )
+        self.registered_servers["excluded"] = set(
+            map(str.lower, self.agent_config.get("servers_excludelist", []))
+        )
 
     def _setup_agent(self):
         os.makedirs(".cecli/temp", exist_ok=True)
@@ -128,6 +154,7 @@ class AgentCoder(Coder):
         )
         config["command_timeout"] = nested.getter(config, "command_timeout", 30)
         config["hot_reload"] = nested.getter(config, "hot_reload", False)
+        config["allow_nested_delegation"] = nested.getter(config, "allow_nested_delegation", False)
 
         config["tools_paths"] = nested.getter(config, ["tools_paths", "tool_paths"], [])
         config["tools_includelist"] = nested.getter(
@@ -137,6 +164,12 @@ class AgentCoder(Coder):
             config, ["tools_excludelist", "tools_blacklist"], []
         )
 
+        config["servers_includelist"] = nested.getter(
+            config, ["servers_includelist", "servers_whitelist"], []
+        )
+        config["servers_excludelist"] = nested.getter(
+            config, ["servers_excludelist", "servers_blacklist"], []
+        )
         config["include_context_blocks"] = set(
             nested.getter(
                 config,
@@ -148,6 +181,7 @@ class AgentCoder(Coder):
                     # "git_status",
                     # "symbol_outline",
                     "todo_list",
+                    "sub_agents",
                     "skills",
                 },
             )
@@ -173,6 +207,7 @@ class AgentCoder(Coder):
             config["skills_excludelist"] = nested.getter(
                 config, ["skills_excludelist", "skills_blacklist"], []
             )
+            config["skills_init"] = nested.getter(config, ["skills_init", "skills_startup"], [])
 
         if "skills" not in self.allowed_context_blocks or not nested.getter(
             config, "skills_paths", []
@@ -193,6 +228,7 @@ class AgentCoder(Coder):
                 directory_paths=config.get("skills_paths", []),
                 include_list=config.get("skills_includelist", []),
                 exclude_list=config.get("skills_excludelist", []),
+                initialize_list=config.get("skills_init", []),
                 git_root=git_root,
                 coder=self,
             )
@@ -211,6 +247,12 @@ class AgentCoder(Coder):
                 skills_list.append(skill.name)
             joined_skills = ", ".join(skills_list)
             self.io.tool_output(f"Available Skills: {joined_skills}")
+
+        registry = AgentService.get_registry()
+        if registry:
+            names = sorted(registry.keys())
+            joined_names = ", ".join(names)
+            self.io.tool_output(f"Available Subagents: {joined_names}")
 
     def get_local_tool_schemas(self):
         """Returns the JSON schemas for all local tools using the tool registry."""
@@ -317,6 +359,7 @@ class AgentCoder(Coder):
                 "git_status",
                 "symbol_outline",
                 "skills",
+                "sub_agents",
                 "loaded_skills",
             ]
             for block_type in block_types:
@@ -352,6 +395,10 @@ class AgentCoder(Coder):
             content = self.get_skills_context()
         elif block_name == "loaded_skills":
             content = self.get_skills_content()
+        elif block_name == "sub_agents" and (
+            not self.parent_uuid or self.agent_config.get("allow_nested_delegation", False)
+        ):
+            content = self.get_sub_agents_context()
         if content is not None:
             self.context_blocks_cache[block_name] = content
         return content
@@ -460,7 +507,20 @@ class AgentCoder(Coder):
         ConversationService.get_chunks(self).add_file_list_reminder()
 
         # Add system messages (including examples and reminder)
-        ConversationService.get_chunks(self).add_system_messages()
+        # For sub-agents, use their specific system prompt via AgentService lookup
+        # For primary agents, use the default system messages flow
+        needs_system_prompts = True
+        if hasattr(self, "parent_uuid") and self.parent_uuid:
+            service = AgentService.get_instance(self)
+            info = service.sub_agents.get(self.uuid)
+            if info:
+                config = AgentService.get_registry().get(info.name)
+                if config and config.prompt and config.prompt.strip():
+                    ConversationService.get_chunks(self).add_system_message(config.prompt)
+                    needs_system_prompts = False
+
+        if needs_system_prompts:
+            ConversationService.get_chunks(self).add_system_messages()
 
         # Add static context blocks (priority 50 - between SYSTEM and EXAMPLES)
         ConversationService.get_chunks(self).add_static_context_blocks()
@@ -745,7 +805,13 @@ class AgentCoder(Coder):
 
         if self.auto_lint and used_write_tool:
             edited = list(self.files_edited_by_tools)
-            lint_errors = self.lint_edited(edited, show_output=False)
+            lint_coro = self.lint_edited(edited, show_output=False)
+            lint_errors, interrupted = await self.coroutines.interruptible(
+                lint_coro, self.interrupt_event
+            )
+            if interrupted:
+                raise KeyboardInterrupt("Interrupted during linting")
+
             self.lint_outcome = not lint_errors
 
             if lint_errors:
@@ -808,6 +874,7 @@ class AgentCoder(Coder):
         # 1. Handle Tool Execution Follow-up (Reflection)
         if self.agent_finished:
             self.tool_usage_history = []
+            self.tool_call_vectors = []
             self.reflected_message = None
             if self.files_edited_by_tools:
                 _ = await self.auto_commit(self.files_edited_by_tools)
@@ -847,7 +914,12 @@ class AgentCoder(Coder):
                 " its outputs are no longer necessary"
             )
             self.io.tool_output(waiting_msg)
-            await asyncio.sleep(command_timeout / 2)
+            sleep_coro = asyncio.sleep(command_timeout / 2)
+            _res, interrupted = await self.coroutines.interruptible(
+                sleep_coro, self.interrupt_event
+            )
+            if interrupted:
+                raise KeyboardInterrupt("Interrupted while waiting for background commands")
             return True
 
         # Check for recently finished commands that need reflection
@@ -860,11 +932,15 @@ class AgentCoder(Coder):
                 self.tool_usage_history = []
             return True
 
-        if content and not tool_calls_found and self.num_reflections < self.max_reflections:
-            self.reflected_message = (
-                "Continue with your task. If you have completed it, call the `Finished` tool."
-            )
-            return True
+        # 4. If we have called no tools (e.g. the first message)
+        # Allow early exiting
+        # If a model forgets a tool call, replay the request instead of stopping early
+        if self.tool_call_vectors:
+            if content and not tool_calls_found and self.num_reflections < self.max_reflections:
+                self.reflected_message = (
+                    "Continue with your task. If you have completed it, call the `Finished` tool."
+                )
+                return True
 
         if tool_calls_found and self.num_reflections < self.max_reflections:
             self.tool_call_count = 0
@@ -1382,6 +1458,42 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
             return self.skills_manager.get_skills_content()
         except Exception as e:
             self.io.tool_error(f"Error generating skills content context: {str(e)}")
+            return None
+
+    def get_sub_agents_context(self):
+        """
+        Generate a context block for registered sub-agents.
+        Only shown for primary coders (no parent_uuid).
+
+        Returns:
+            Formatted context block string with sub-agent names and descriptions,
+            or None if no sub-agents are registered or if called from a sub-agent.
+        """
+        if not self.use_enhanced_context:
+            return None
+        if hasattr(self, "parent_uuid") and self.parent_uuid:
+            return None
+        try:
+            registry = AgentService.get_registry()
+            if not registry:
+                return None
+
+            result = '<context name="sub_agents" from="agent">\n'
+            result += "## Available Sub-Agents\n\n"
+            result += f"Found {len(registry)} registered sub-agent(s):\n\n"
+
+            for name, config in sorted(registry.items()):
+                result += f"**{name}**:\n"
+                desc = config.metadata.get("description", "")
+                if desc:
+                    result += f"{desc}\n"
+                result += "\n"
+
+            result += "Use the `Delegate` tool with the sub-agent name to delegate tasks.\n"
+            result += "</context>"
+            return result
+        except Exception as e:
+            self.io.tool_error(f"Error generating sub-agents context: {str(e)}")
             return None
 
     def get_background_command_output(self):

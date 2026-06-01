@@ -403,7 +403,7 @@ def get_parser(default_config_files, git_root):
         "--use-enhanced-map",
         action="store_true",
         help="Use enhanced Repo Map that takes into account imports (default: False)",
-        default=False,
+        default=True,
     )
 
     ##########
