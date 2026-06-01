@@ -1597,7 +1597,7 @@ class Coder(metaclass=UsageMeta):
                     self.io.output_task = asyncio.create_task(self.generate(user_message, preproc))
 
                     # Start spinner for output task
-                    self.io.start_spinner("Processing...")
+                    self.io.start_spinner("Processing...", coder_uuid=getattr(self, "uuid", None))
                     await self.io.recreate_input()
 
                 # Monitor output task
@@ -1914,6 +1914,7 @@ class Coder(metaclass=UsageMeta):
                     messages,
                     compaction_prompt,
                     self.context_compaction_summary_tokens,
+                    coder=self,
                 )
                 if not text:
                     raise ValueError(f"Summarization of {tag} messages returned empty.")
@@ -2306,6 +2307,16 @@ class Coder(metaclass=UsageMeta):
     def get_active_model(self):
         return self.main_model
 
+    def empty_llm_tool_warning(self) -> str:
+        """Ollama-friendly copy for local models; cloud hint otherwise."""
+        name = str(getattr(getattr(self, "main_model", None), "name", "") or "")
+        if "ollama" in name.lower():
+            return (
+                "Empty response from the local model (Ollama). "
+                "The model may have timed out, unloaded, or hit context limits."
+            )
+        return "Empty response received from LLM. Check API keys, quota, or provider status."
+
     async def send_message(self, inp):
         # Notify IO that LLM processing is starting
         self.io.llm_started()
@@ -2365,7 +2376,7 @@ class Coder(metaclass=UsageMeta):
             if not self.tui:
                 spinner_text += f" • ${self.format_cost(self.total_cost)} session"
 
-            self.io.start_spinner(spinner_text)
+            self.io.start_spinner(spinner_text, coder_uuid=getattr(self, "uuid", None))
             if self.stream:
                 self.mdstream = True
             else:
@@ -2452,9 +2463,7 @@ class Coder(metaclass=UsageMeta):
             self.mdstream = None
 
             # Ensure any waiting spinner is stopped
-            self.io.start_spinner("Processing Answer...")
-
-            self.partial_response_content = self.get_multi_response_content_in_progress(True)
+            self.io.start_spinner("Processing Answer...", coder_uuid=getattr(self, "uuid", None))
             self.remove_reasoning_content()
             self.multi_response_content = ""
 
@@ -2643,6 +2652,13 @@ class Coder(metaclass=UsageMeta):
             # If it's just a single JSON object, there's nothing to expand.
             if len(json_chunks) <= 1:
                 expanded_tool_calls.append(tool_call)
+                continue
+
+            merged = responses.merge_glued_json_objects(json_chunks)
+            if merged is not None:
+                new_tool_call = copy_tool_call(tool_call)
+                new_tool_call.function.arguments = json.dumps(merged)
+                expanded_tool_calls.append(new_tool_call)
                 continue
 
             # We have concatenated JSON, so expand it into multiple tool calls.
@@ -3255,7 +3271,6 @@ class Coder(metaclass=UsageMeta):
                 functions,
                 self.stream,
                 self.temperature,
-                # This could include any tools, but for now it is just MCP tools
                 tools=tools,
                 override_kwargs=self.model_kwargs.copy(),
                 interrupt_event=self.interrupt_event,
@@ -3363,7 +3378,7 @@ class Coder(metaclass=UsageMeta):
             and not len(self.partial_response_tool_calls)
             and not len(self.partial_response_reasoning_content)
         ):
-            self.io.tool_warning("Empty response received from LLM. Check your provider account?")
+            self.io.tool_warning(self.empty_llm_tool_warning())
 
         self.io.assistant_output(show_resp, pretty=self.show_pretty())
 
@@ -3520,7 +3535,7 @@ class Coder(metaclass=UsageMeta):
             return
 
         if not received_content and len(self.partial_response_tool_calls) == 0:
-            self.io.tool_warning("Empty response received from LLM. Check your provider account?")
+            self.io.tool_warning(self.empty_llm_tool_warning())
 
     def consolidate_chunks(self):
         if self.partial_response_consolidated:
@@ -3628,12 +3643,19 @@ class Coder(metaclass=UsageMeta):
             extracted_calls = responses.extract_tools_from_content_json(
                 self.partial_response_content
             )
+
             if not extracted_calls:
                 extracted_calls = responses.extract_tools_from_content_xml(
                     self.partial_response_content
                 )
 
+            if not extracted_calls:
+                extracted_calls = responses.extract_tools_from_pseudo_json(
+                    self.partial_response_content
+                )
+
             if extracted_calls:
+                self.tool_reflection = True
                 self.partial_response_tool_calls = extracted_calls
 
         self.partial_response_consolidated = (response, func_err, content_err)

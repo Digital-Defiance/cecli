@@ -12,6 +12,7 @@ from cecli.tools.utils.output import color_markers, tool_footer, tool_header
 
 class Tool(BaseTool):
     NORM_NAME = "grep"
+    LIST_PARAMS = ["searches"]
     SCHEMA = {
         "type": "function",
         "function": {

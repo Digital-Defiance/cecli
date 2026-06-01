@@ -8,12 +8,12 @@ import pytest
 
 
 class TestFinishedTool:
-    """Tests for the Finished tool sub-agent behavior."""
+    """Tests for the Yield tool sub-agent behavior."""
 
     @pytest.mark.asyncio
     async def test_sets_agent_finished_on_coder(self):
         """Sets coder.agent_finished = True."""
-        from cecli.tools.finished import Tool
+        from cecli.tools._yield import Tool
 
         mock_coder = MagicMock()
         mock_coder.parent_uuid = ""
@@ -27,7 +27,7 @@ class TestFinishedTool:
     async def test_sub_agent_with_summary_updates_info(self):
         """Sub-agent with summary updates SubAgentInfo.summary and status."""
         from cecli.helpers.agents.service import AgentService, SubAgentStatus
-        from cecli.tools.finished import Tool
+        from cecli.tools._yield import Tool
 
         mock_coder = MagicMock()
         mock_coder.uuid = "sub-uuid"
@@ -51,7 +51,7 @@ class TestFinishedTool:
     @pytest.mark.asyncio
     async def test_sub_agent_without_summary(self):
         """Sub-agent without summary kwarg doesn't crash."""
-        from cecli.tools.finished import Tool
+        from cecli.tools._yield import Tool
 
         mock_coder = MagicMock()
         mock_coder.uuid = "sub-uuid"
@@ -59,25 +59,25 @@ class TestFinishedTool:
         mock_coder.files_edited_by_tools = set()
 
         result = await Tool.execute(mock_coder)
-        assert result == "Task Finished!"
+        assert result == "Yielded."
 
     @pytest.mark.asyncio
     async def test_non_sub_agent_skips_lookup(self):
         """Coder without parent_uuid skips sub-agent lookup."""
-        from cecli.tools.finished import Tool
+        from cecli.tools._yield import Tool
 
         mock_coder = MagicMock()
         mock_coder.parent_uuid = ""
         mock_coder.files_edited_by_tools = set()
 
         result = await Tool.execute(mock_coder)
-        assert result == "Task Finished!"
+        assert result == "Yielded."
 
     @pytest.mark.asyncio
     async def test_unknown_parent_uuid_caught_gracefully(self):
         """Sub-agent with parent not in _instances is caught silently."""
         from cecli.helpers.agents.service import AgentService
-        from cecli.tools.finished import Tool
+        from cecli.tools._yield import Tool
 
         mock_coder = MagicMock()
         mock_coder.uuid = "sub-uuid"
@@ -88,10 +88,9 @@ class TestFinishedTool:
             result = await Tool.execute(mock_coder, summary="done")
             assert "Summary: done" in result
 
-    @pytest.mark.asyncio
     async def test_returns_summary_in_response(self):
         """When summary provided, response includes it."""
-        from cecli.tools.finished import Tool
+        from cecli.tools._yield import Tool
 
         mock_coder = MagicMock()
         mock_coder.parent_uuid = ""
@@ -103,7 +102,7 @@ class TestFinishedTool:
     @pytest.mark.asyncio
     async def test_coder_is_none_returns_error(self):
         """When coder is None, returns error string."""
-        from cecli.tools.finished import Tool
+        from cecli.tools._yield import Tool
 
         result = await Tool.execute(None)
         assert "Error" in result

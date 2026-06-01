@@ -49,10 +49,9 @@ class CoderWorker:
 
         try:
             self.loop.run_until_complete(self._async_run())
-        except asyncio.CancelledError:
-            pass
-        except RuntimeError:
-            # Event loop stopped - this is expected during shutdown
+        except BaseException:
+            # Catch anything that could bring down the thread, and just let it exit.
+            # This includes KeyboardInterrupt, SystemExit, etc.
             pass
         finally:
             self._cleanup_loop()
@@ -182,11 +181,6 @@ class CoderWorker:
                 self.loop.call_soon_threadsafe(self.loop.stop)
             except RuntimeError:
                 # Loop may already be closed
-                pass
-            except KeyboardInterrupt:
-                # An interrupt was not caught within the async run loop.
-                # We'll just pass to allow the thread to exit gracefully
-                # without a scary traceback.
                 pass
             except KeyboardInterrupt:
                 # An interrupt was not caught within the async run loop.

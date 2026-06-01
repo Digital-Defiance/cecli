@@ -33,7 +33,6 @@ from .help import HelpCommand
 from .history_search import HistorySearchCommand
 from .hooks import HooksCommand
 from .include_skill import IncludeSkillCommand
-from .invoke_agent import InvokeAgentCommand
 from .lint import LintCommand
 from .list_sessions import ListSessionsCommand
 from .list_skills import ListSkillsCommand
@@ -117,7 +116,6 @@ CommandRegistry.register(HashlineCommand)
 CommandRegistry.register(HelpCommand)
 CommandRegistry.register(HistorySearchCommand)
 CommandRegistry.register(HooksCommand)
-CommandRegistry.register(InvokeAgentCommand)
 CommandRegistry.register(ReapAgentCommand)
 CommandRegistry.register(SpawnAgentCommand)
 CommandRegistry.register(SwitchAgentCommand)
@@ -200,7 +198,6 @@ __all__ = [
     "HistorySearchCommand",
     "HooksCommand",
     "IncludeSkillCommand",
-    "InvokeAgentCommand",
     "ReapAgentCommand",
     "SpawnAgentCommand",
     "SwitchAgentCommand",

@@ -19,6 +19,7 @@ finally:
 
 class Tool(BaseTool):
     NORM_NAME = "explorecode"
+    LIST_PARAMS = ["queries"]
     SCHEMA = {
         "type": "function",
         "function": {

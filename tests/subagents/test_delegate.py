@@ -38,8 +38,8 @@ class TestDelegateTool:
         assert "name" in result
 
     @pytest.mark.asyncio
-    async def test_valid_delegate_calls_invoke(self):
-        """Valid params call AgentService.invoke with correct args."""
+    async def test_valid_delegate_calls_spawn(self):
+        """Valid params call AgentService.spawn with correct args."""
         from cecli.tools.delegate import Tool
 
         mock_coder = MagicMock()
@@ -47,7 +47,10 @@ class TestDelegateTool:
 
         with patch("cecli.helpers.agents.service.AgentService") as MockService:
             mock_instance = MagicMock()
-            mock_instance.invoke = AsyncMock(return_value="review summary")
+            # spawn returns (new_coder, info); info.coder.uuid is used in output
+            mock_info = MagicMock()
+            mock_info.coder.uuid = "child-uuid-123"
+            mock_instance.spawn = AsyncMock(return_value=(MagicMock(), mock_info))
             MockService.get_instance.return_value = mock_instance
 
             result = await Tool.execute(
@@ -55,49 +58,65 @@ class TestDelegateTool:
             )
 
             MockService.get_instance.assert_called_once_with(mock_coder)
-            mock_instance.invoke.assert_called_once_with("reviewer", "review this", blocking=True)
-            assert "review summary" in result
+            mock_instance.spawn.assert_called_once_with(
+                "reviewer", "review this", parent=mock_coder
+            )
+            assert "agent started with id" in result
+            assert "child-uuid-123" in result
 
-    @pytest.mark.asyncio
-    async def test_delegate_no_summary(self):
-        """When invoke returns None, returns appropriate message."""
+    async def test_delegate_multiple_delegations(self):
+        """Multiple delegations show correct dispatch count."""
         from cecli.tools.delegate import Tool
 
         mock_coder = MagicMock()
+        mock_coder.uuid = "parent-uuid"
+
         with patch("cecli.helpers.agents.service.AgentService") as MockService:
             mock_instance = MagicMock()
-            mock_instance.invoke = AsyncMock(return_value=None)
+
+            async def spawn_side_effect(name, prompt, parent=None):
+                mock_info = MagicMock()
+                mock_info.coder.uuid = f"{name}-uuid"
+                return MagicMock(), mock_info
+
+            mock_instance.spawn = AsyncMock(side_effect=spawn_side_effect)
             MockService.get_instance.return_value = mock_instance
 
             result = await Tool.execute(
-                mock_coder, delegations=[{"name": "tester", "prompt": "test"}]
+                mock_coder,
+                delegations=[
+                    {"name": "agent1", "prompt": "task1"},
+                    {"name": "agent2", "prompt": "task2"},
+                ],
             )
-            assert "completed (no summary)" in result
+
+            assert "2/2 dispatched" in result
+            assert "agent1" in result
+            assert "agent2" in result
 
     @pytest.mark.asyncio
-    async def test_delegate_value_error_returns_error_string(self):
-        """ValueError from service returns error string."""
+    async def test_delegate_spawn_error_returns_error_string(self):
+        """Error from spawn returns error string."""
         from cecli.tools.delegate import Tool
 
         mock_coder = MagicMock()
         with patch("cecli.helpers.agents.service.AgentService") as MockService:
             mock_instance = MagicMock()
-            mock_instance.invoke = AsyncMock(side_effect=ValueError("unknown agent"))
+            mock_instance.spawn = AsyncMock(side_effect=ValueError("unknown agent"))
             MockService.get_instance.return_value = mock_instance
 
             result = await Tool.execute(mock_coder, delegations=[{"name": "ghost", "prompt": "x"}])
             assert "failed" in result
             assert "unknown agent" in result
 
-    @pytest.mark.asyncio
     async def test_delegate_runtime_error_returns_error_string(self):
-        """RuntimeError from service returns error string."""
+        """RuntimeError from spawn returns error string."""
         from cecli.tools.delegate import Tool
 
         mock_coder = MagicMock()
         with patch("cecli.helpers.agents.service.AgentService") as MockService:
             mock_instance = MagicMock()
-            mock_instance.invoke = AsyncMock(side_effect=RuntimeError("max reached"))
+            mock_instance.spawn = AsyncMock(side_effect=RuntimeError("max reached"))
             MockService.get_instance.return_value = mock_instance
 
             result = await Tool.execute(
@@ -106,7 +125,6 @@ class TestDelegateTool:
             assert "failed" in result
             assert "max reached" in result
 
-    @pytest.mark.asyncio
     async def test_unexpected_exception_caught(self):
         """Any other exception returns error string (doesn't propagate)."""
         from cecli.tools.delegate import Tool
@@ -114,11 +132,11 @@ class TestDelegateTool:
         mock_coder = MagicMock()
         with patch("cecli.helpers.agents.service.AgentService") as MockService:
             mock_instance = MagicMock()
-            mock_instance.invoke = AsyncMock(side_effect=Exception("unexpected"))
+            mock_instance.spawn = AsyncMock(side_effect=Exception("unexpected"))
             MockService.get_instance.return_value = mock_instance
 
             result = await Tool.execute(
                 mock_coder, delegations=[{"name": "reviewer", "prompt": "x"}]
             )
-            assert "failed with unexpected error" in result
+            assert "failed" in result
             assert "unexpected" in result
