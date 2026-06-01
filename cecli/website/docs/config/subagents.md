@@ -43,6 +43,7 @@ and suggestions for improvement.
 | `name` | Yes | Unique name used to reference the sub-agent in commands and the Delegate tool |
 | `model` | No | Model override for this sub-agent. If omitted, inherits the parent agent's model |
 | `hooks` | No | Per-agent hooks configuration (see [Hooks](/config/hooks) for syntax) |
+| `auto_reap` | No | Controls whether this sub-agent is automatically reaped when the limit is reached. Defaults to `true` if omitted |
 
 #### System Prompt
 
@@ -61,27 +62,29 @@ agent-config:
         - "~/team-agents"     # Custom path for shared agent definitions
 ```
 
+
+
 ## Usage
 
 ### Available Commands
 
 | Command | Description |
 |---------|-------------|
-| `/invoke-agent <name> <prompt>` | Invoke a sub-agent with a prompt (blocking — waits for completion) |
 | `/spawn-agent <name>` | Spawn a sub-agent without a prompt (non-blocking — waits for user input) |
+| `/spawn-agent <name> <prompt>` | Spawn a sub-agent with a prompt (non-blocking — starts processing immediately) |
 | `/reap-agent` | Force destroy the currently active sub-agent |
 
-> **Tip**: Both `/invoke-agent` and `/spawn-agent` support tab completion of sub-agent names.
+> **Tip**: `/spawn-agent` supports tab completion of sub-agent names.
 
-### Invoking a Sub-Agent (Blocking)
+### Spawning a Sub-Agent with a Prompt
 
-The most common way to use sub-agents. The primary agent waits for the sub-agent to finish:
+Spawns a sub-agent and immediately sends it a prompt to start processing (non-blocking):
 
 ```
-/invoke-agent reviewer Can you review the changes in editblock_func_coder.py?
+/spawn-agent reviewer Can you review the changes in editblock_func_coder.py?
 ```
 
-This sends the prompt to the reviewer sub-agent, which works autonomously and returns a summary when done.
+This spawns the reviewer sub-agent and sends it the prompt. The sub-agent begins working autonomously while you can continue interacting with the primary agent.
 
 ### Delegating from the Primary Agent
 
@@ -93,7 +96,7 @@ The primary agent can also delegate work using the `Delegate` tool. This enables
 4. Sub-agents work independently and return their summaries
 5. The primary agent synthesizes the results
 
-### Spawning a Sub-Agent (Non-Blocking)
+### Spawning a Sub-Agent Without a Prompt
 
 Creates a sub-agent that waits for you to interact with it directly:
 
@@ -142,12 +145,30 @@ The `max_sub_agents` setting (default: 3) limits how many concurrent sub-agents 
 
 When the limit is reached:
 
-- If any sub-agents have **finished**, the oldest finished one is automatically reaped to make room
+- If any sub-agents have **finished** and have `auto_reap: true` (the default), the oldest finished one is automatically reaped to make room
 - If all sub-agents are still **running**, a `RuntimeError` is raised. You must wait for one to finish or use `/reap-agent` to free resources.
+
+#### Auto-Reap
+
+The `auto_reap` field in the sub-agent definition's YAML front matter controls whether a finished sub-agent is automatically reaped when the maximum sub-agent limit is reached. When `true` (the default), the oldest finished sub-agent will be removed to make room for new ones.
+
+```markdown
+---
+name: reviewer
+model: deepseek/deepseek-v4-pro
+auto_reap: false  # Prevent automatic reaping of this agent
+---
+You are a code review specialist.
+```
+
+- **`/spawn-agent`** always spawns sub-agents with `auto_reap=false` — since these agents are created manually by the user, they should persist until explicitly reaped with `/reap-agent`.
+- **`Delegate` tool** uses the sub-agent's configured `auto_reap` value from its definition. If not set in the `.md` front matter, it defaults to `true`.
+
+Sub-agents with `auto_reap: true` that finish their work are candidates for automatic cleanup when the agent limit is reached. Sub-agents with `auto_reap: false` are never automatically reaped and must be cleaned up manually.
 
 ### Cleanup
 
-- **Normal completion**: A sub-agent calls `Finished(summary="...")` which marks it as finished. Its container remains visible but its resources are eligible for lazy cleanup.
+- **Normal completion**: A sub-agent calls `Yield(summary="...")` which marks it as finished. Its container remains visible but its resources are eligible for lazy cleanup.
 - **Session end**: When the parent session ends, all sub-agents are automatically cleaned up.
 - **Force cleanup**: Use `/reap-agent` to immediately destroy a sub-agent and reclaim all resources.
 
@@ -174,7 +195,7 @@ and suggestions for improvement.
 ```
 
 ```
-/invoke-agent reviewer Please review the last 5 commits in this branch
+/spawn-agent reviewer Please review the last 5 commits in this branch
 ```
 
 ### Example 2: Test Writing Workflow
@@ -192,7 +213,7 @@ happy paths. Use the project's existing testing patterns and conventions.
 ```
 
 ```
-/invoke-agent tester Write unit tests for the new AgentService.invoke() method
+/spawn-agent tester Write unit tests for the new AgentService.invoke() method
 ```
 
 ### Example 3: Multi-Agent Review

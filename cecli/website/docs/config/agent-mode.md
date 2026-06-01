@@ -38,7 +38,7 @@ Agent Mode operates through a continuous loop where the LLM:
 3. **Executes editing tools** to make changes
 4. **Processes results** and continues exploration and editing until the task is complete
 
-This loop continues automatically until the `Finished` tool is called, or the maximum number of iterations is reached.
+This loop continues automatically until the `Yield` tool is called, or the maximum number of iterations is reached.
 
 ### Key Components
 
@@ -50,7 +50,7 @@ Agent Mode uses a centralized local tool registry that manages all available too
 - **Editing Tools**: `EditText`,
 - **Context Management Tools**: `ContextManager`, `GetLines`
 - **Git Tools**: `GitDiff`, `GitLog`, `GitShow`, `GitStatus`
-- **Utility Tools**: `UpdateTodoList`, `UndoChange`, `Finished`
+- **Utility Tools**: `UpdateTodoList`, `UndoChange`, `Yield`
 - **Skill Management**: `LoadSkill`, `RemoveSkill`
 - **Sub-Agent Tools**: `Delegate` - Delegate sub-tasks to specialized sub-agents
 
@@ -138,7 +138,7 @@ Arguments: {}
 The above continues over and over until:
 
 ```
-Tool Call: Finished
+Tool Call: Yield
 Arguments: {}
 ```
 

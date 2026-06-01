@@ -12,7 +12,6 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
-from cecli import utils
 from cecli.change_tracker import ChangeTracker
 from cecli.helpers import nested, responses
 from cecli.helpers.agents.service import AgentService
@@ -265,7 +264,8 @@ class AgentCoder(Coder):
 
     async def initialize_mcp_tools(self):
         if not self.mcp_manager:
-            self.mcp_manager = McpServerManager([], self.io, self.args.verbose)
+            verbose = getattr(self.args, "verbose", False) if self.args else False
+            self.mcp_manager = McpServerManager([], self.io, verbose)
 
         server_name = "Local"
         server = self.mcp_manager.get_server(server_name)
@@ -540,6 +540,10 @@ class AgentCoder(Coder):
 
         # Add post-message context blocks (priority 250 - between CUR and REMINDER)
         ConversationService.get_chunks(self).add_post_message_context_blocks()
+
+        # Add sub-agent states context block (same priority as post-message blocks)
+        ConversationService.get_chunks(self).add_sub_agent_states()
+
         ConversationService.get_chunks(self).add_randomized_cta()
 
         return ConversationService.get_manager(self).get_messages_dict()
@@ -727,25 +731,23 @@ class AgentCoder(Coder):
                     continue
 
                 if args_string:
-                    json_chunks = utils.split_concatenated_json(args_string)
-                    for chunk in json_chunks:
-                        try:
-                            parsed_args_list.append(json.loads(chunk))
-                        except json.JSONDecodeError as e:
-                            self.model_kwargs = {}
-                            self.io.tool_warning(
-                                f"Malformed JSON arguments in tool {tool_name}: {chunk}"
-                            )
-                            tool_responses.append(
-                                {
-                                    "role": "tool",
-                                    "tool_call_id": tool_call.id,
-                                    "content": (
-                                        f"Malformed JSON arguments in tool {tool_name}: {str(e)}"
-                                    ),
-                                }
-                            )
-                            continue
+                    parsed = responses.parse_tool_arguments(args_string)
+                    if isinstance(parsed, dict) and "@error" in parsed:
+                        self.io.tool_warning(
+                            f"Malformed JSON arguments in tool {tool_name}: {parsed['@error']}"
+                        )
+                        tool_responses.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "content": (
+                                    f"Malformed JSON arguments in tool {tool_name}: {parsed['@error']}"
+                                ),
+                            }
+                        )
+                        continue
+                    parsed_args_list = [parsed]
+
                 if not parsed_args_list and not args_string:
                     parsed_args_list.append({})
                 all_results_content = []
@@ -837,20 +839,22 @@ class AgentCoder(Coder):
 
     async def _execute_mcp_tools(self, server, tool_calls):
         """Execute MCP tools via LiteLLM."""
-        responses = []
+        tool_responses = []
         for tool_call in tool_calls:
             # Use existing _execute_mcp_tool logic
             result = await self._execute_mcp_tool(
-                server, tool_call.function.name, json.loads(tool_call.function.arguments)
+                server,
+                tool_call.function.name,
+                responses.parse_tool_arguments(tool_call.function.arguments),
             )
-            responses.append(
+            tool_responses.append(
                 {
                     "role": "tool",
                     "tool_call_id": tool_call.id,
                     "content": result,
                 }
             )
-        return responses
+        return tool_responses
 
     def get_active_model(self):
         if self.main_model.agent_model:
@@ -871,6 +875,13 @@ class AgentCoder(Coder):
         content = self.partial_response_content
         tool_calls_found = bool(self.partial_response_tool_calls)
 
+        # Reap all finished sub-agents with auto_reap enabled
+        try:
+            service = AgentService.get_instance(self)
+            await service.reap_all_finished_agents(parent=service.get_parent(self))
+        except Exception:
+            logger.warning("Failed to reap finished sub-agents", exc_info=True)
+
         # 1. Handle Tool Execution Follow-up (Reflection)
         if self.agent_finished:
             self.tool_usage_history = []
@@ -878,6 +889,7 @@ class AgentCoder(Coder):
             self.reflected_message = None
             if self.files_edited_by_tools:
                 _ = await self.auto_commit(self.files_edited_by_tools)
+
             return False
 
         # 2. Check for unfinished and recently finished background commands
@@ -938,7 +950,7 @@ class AgentCoder(Coder):
         if self.tool_call_vectors:
             if content and not tool_calls_found and self.num_reflections < self.max_reflections:
                 self.reflected_message = (
-                    "Continue with your task. If you have completed it, call the `Finished` tool."
+                    "Continue with your task. If you have completed it, call the `Yield` tool."
                 )
                 return True
 
@@ -1490,10 +1502,51 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
                 result += "\n"
 
             result += "Use the `Delegate` tool with the sub-agent name to delegate tasks.\n"
+            result += "Use the `Yield` tool to wait for responses for all active sub agents.\n"
             result += "</context>"
             return result
         except Exception as e:
             self.io.tool_error(f"Error generating sub-agents context: {str(e)}")
+            return None
+
+    def get_child_agent_states(self):
+        """Get the state of all active child sub-agents.
+
+        Returns a formatted context block with each child sub-agent's name,
+        UUID, and current status, or None if no children exist.
+        This is used by ConversationChunks.add_sub_agent_states() to provide
+        the model with visibility into active sub-agent states.
+        """
+        if not self.use_enhanced_context:
+            return None
+
+        # Sub-agents should only see child states when nested delegation is enabled
+        if hasattr(self, "parent_uuid") and self.parent_uuid:
+            if not self.agent_config.get("allow_nested_delegation", False):
+                return None
+
+        try:
+            service = AgentService.get_instance(self)
+            children = service.get_children(self)
+
+            if not children:
+                return None
+
+            result = '<context name="sub_agent_states" from="agent">\n'
+            result += "## Active Sub-Agent States\n\n"
+            result += f"Found {len(children)} active child sub-agent(s):\n\n"
+
+            for info in children:
+                result += f"**{info.name}**:\n"
+                result += f"  - UUID: `{info.coder.uuid}`\n"
+                result += f"  - Status: {info.status.value}\n"
+                if info.error:
+                    result += f"  - Error: {info.error}\n"
+                result += "\n"
+            result += "</context>"
+            return result
+        except Exception as e:
+            self.io.tool_error(f"Error generating child agent states: {str(e)}")
             return None
 
     def get_background_command_output(self):

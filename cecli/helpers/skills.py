@@ -449,7 +449,10 @@ class SkillsManager:
             return "Error: Skills manager not connected to a coder instance."
 
         # Check if we're in agent mode
-        if not hasattr(self.coder, "edit_format") or self.coder.edit_format != "agent":
+        if not hasattr(self.coder, "edit_format") or self.coder.edit_format not in (
+            "agent",
+            "subagent",
+        ):
             return "Error: Skill loading is only available in agent mode."
 
         # Check if skill is already loaded
@@ -498,7 +501,10 @@ class SkillsManager:
             return "Error: Skills manager not connected to a coder instance."
 
         # Check if we're in agent mode
-        if not hasattr(self.coder, "edit_format") or self.coder.edit_format != "agent":
+        if not hasattr(self.coder, "edit_format") or self.coder.edit_format not in (
+            "agent",
+            "subagent",
+        ):
             return "Error: Skill removal is only available in agent mode."
 
         # Check if skill is already removed
@@ -532,7 +538,10 @@ class SkillsManager:
             return "Error: Skills manager not connected to a coder instance."
 
         # Check if we're in agent mode
-        if not hasattr(self.coder, "edit_format") or self.coder.edit_format != "agent":
+        if not hasattr(self.coder, "edit_format") or self.coder.edit_format not in (
+            "agent",
+            "subagent",
+        ):
             return "Error: Skill inclusion is only available in agent mode."
 
         # Find the skill to verify it exists
@@ -590,7 +599,10 @@ class SkillsManager:
             return "Error: Skills manager not connected to a coder instance."
 
         # Check if we're in agent mode
-        if not hasattr(self.coder, "edit_format") or self.coder.edit_format != "agent":
+        if not hasattr(self.coder, "edit_format") or self.coder.edit_format not in (
+            "agent",
+            "subagent",
+        ):
             return "Error: Skill exclusion is only available in agent mode."
 
         # Find the skill to verify it exists

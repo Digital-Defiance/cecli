@@ -27,6 +27,7 @@ OPERATION_NOUNS = {
 class Tool(BaseTool):
     NORM_NAME = "edittext"
     TRACK_INVOCATIONS = False
+    LIST_PARAMS = ["edits"]
     SCHEMA = {
         "type": "function",
         "function": {

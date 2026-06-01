@@ -746,6 +746,7 @@ class RepoMap:
 
         num_fnames = len(fnames)
         fname_index = 0
+        skipped_missing = 0
         for fname in fnames:
             if self.verbose:
                 self.io.tool_output(f"Processing {fname}")
@@ -762,12 +763,14 @@ class RepoMap:
                 file_ok = False
 
             if not file_ok:
+                skipped_missing += 1
                 if fname not in self.warned_files:
-                    self.io.tool_warning(f"Repo-map can't include {fname}")
-                    self.io.tool_output(
-                        "Has it been deleted from the file system but not from git?"
-                    )
                     self.warned_files.add(fname)
+                    if skipped_missing <= 2:
+                        self.io.tool_warning(
+                            f"Repo-map skipping missing file: {fname}"
+                            " (removed on disk or not yet written)."
+                        )
                 continue
 
             # dump(fname)
@@ -842,6 +845,11 @@ class RepoMap:
 
                     if tag.specific_kind == "import":
                         file_imports[rel_fname].add(tag.name)
+
+        if skipped_missing > 2:
+            self.io.tool_output(
+                f"Repo-map skipped {skipped_missing} paths that are not readable on disk."
+            )
 
         self.io.profile("Process Files")
 

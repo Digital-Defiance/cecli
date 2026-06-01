@@ -16,6 +16,7 @@ from cecli.tools.utils.output import color_markers, tool_footer, tool_header
 class Tool(BaseTool):
     NORM_NAME = "readrange"
     TRACK_INVOCATIONS = False
+    LIST_PARAMS = ["show"]
     SCHEMA = {
         "type": "function",
         "function": {

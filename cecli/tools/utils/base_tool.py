@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from cecli.tools.utils.helpers import handle_tool_error
+from cecli.tools.utils.helpers import handle_tool_error, normalize_json_array
 from cecli.tools.utils.output import print_tool_response
 
 
@@ -11,6 +11,9 @@ class BaseTool(ABC):
     # Note: NORM_NAME should be the lowercase version of the function name in the SCHEMA
     NORM_NAME = None
     SCHEMA = None
+
+    # Parameters to run normalization checks on
+    LIST_PARAMS = []
 
     # Invocation tracking for detecting repeated tool calls
     _invocations = {}  # Dict to store last 3 invocations per tool
@@ -118,6 +121,10 @@ class BaseTool(ABC):
                     return handle_tool_error(
                         coder, tool_name, ValueError(error_msg), add_traceback=False
                     )
+
+            for param in cls.LIST_PARAMS:
+                if param in params:
+                    params[param] = normalize_json_array(params[param], param_name=param)
 
             # Add current invocation to history (keeping only last 3)
             if params:
