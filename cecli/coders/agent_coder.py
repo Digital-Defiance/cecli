@@ -839,7 +839,7 @@ class AgentCoder(Coder):
 
     async def _execute_mcp_tools(self, server, tool_calls):
         """Execute MCP tools via LiteLLM."""
-        responses = []
+        tool_responses = []
         for tool_call in tool_calls:
             # Use existing _execute_mcp_tool logic
             result = await self._execute_mcp_tool(
@@ -847,14 +847,14 @@ class AgentCoder(Coder):
                 tool_call.function.name,
                 responses.parse_tool_arguments(tool_call.function.arguments),
             )
-            responses.append(
+            tool_responses.append(
                 {
                     "role": "tool",
                     "tool_call_id": tool_call.id,
                     "content": result,
                 }
             )
-        return responses
+        return tool_responses
 
     def get_active_model(self):
         if self.main_model.agent_model:
