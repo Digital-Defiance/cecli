@@ -71,6 +71,20 @@ class AddCommand(BaseCommand):
             if len(confirm_fname) > 64:
                 confirm_fname = f".../{os.path.basename(confirm_fname)}"
 
+            # Check if the path matches any exempt-path regex patterns
+            exempt_paths = getattr(coder.args, "exempt_paths", None) or []
+            if exempt_paths:
+                try:
+                    rel_norm = os.path.relpath(fname, coder.root).replace("\\", "/")
+                except ValueError:
+                    rel_norm = str(fname).replace("\\", "/")
+                if any(re.search(p, rel_norm) for p in exempt_paths):
+                    io.tool_error(
+                        f"Path '{confirm_fname}' matches an exempt-path pattern. "
+                        "Skipping file creation."
+                    )
+                    continue
+
             if await io.confirm_ask(
                 f"No files matched '{confirm_fname}'. Do you want to create this file?"
             ):
