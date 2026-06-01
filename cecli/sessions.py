@@ -17,71 +17,6 @@ class SessionManager:
         self.coder = coder
         self.io = io
 
-    def _get_session_directory(self) -> Path:
-        """Get the session directory, creating it if necessary."""
-        session_dir = Path(self.coder.abs_root_path(".cecli/sessions"))
-        os.makedirs(session_dir, exist_ok=True)
-        return session_dir
-
-    def _session_encrypt_settings(self) -> tuple[bool, bytes | None]:
-        args = getattr(self.coder, "args", None)
-        if not args or not getattr(args, "session_encrypt", False):
-            return False, None
-        key_file = getattr(args, "session_key_file", None)
-        return True, session_crypto.resolve_key(key_file=key_file)
-
-    def _read_session_file(self, session_file: Path) -> dict | None:
-        try:
-            data = session_file.read_bytes()
-        except OSError as e:
-            self.io.tool_error(f"Error reading session: {e}")
-            return None
-        try:
-            if session_crypto.is_encrypted_payload(data):
-                args = getattr(self.coder, "args", None)
-                key_file = getattr(args, "session_key_file", None) if args else None
-                key = session_crypto.resolve_key(key_file=key_file)
-                if not key:
-                    self.io.tool_error(
-                        "Session is encrypted but no key is configured "
-                        f"({session_crypto.KEY_ENV} or --session-key-file)."
-                    )
-                    return None
-                return session_crypto.decrypt_session_bytes(data, key)
-            parsed = json.loads(data.decode("utf-8"))
-            if not isinstance(parsed, dict):
-                self.io.tool_error("Invalid session format.")
-                return None
-            return parsed
-        except session_crypto.SessionCryptoError as e:
-            self.io.tool_error(str(e))
-            return None
-        except (UnicodeDecodeError, json.JSONDecodeError) as e:
-            self.io.tool_error(f"Error loading session: {e}")
-            return None
-
-    def _write_session_file(self, session_file: Path, session_data: dict) -> bool:
-        encrypt_enabled, key = self._session_encrypt_settings()
-        try:
-            if encrypt_enabled:
-                if not key:
-                    self.io.tool_error(
-                        "Session encryption is enabled but no key is configured "
-                        f"({session_crypto.KEY_ENV} or --session-key-file)."
-                    )
-                    return False
-                session_file.write_bytes(session_crypto.encrypt_session_dict(session_data, key))
-            else:
-                with open(session_file, "w", encoding="utf-8") as f:
-                    json.dump(session_data, f, indent=2)
-            return True
-        except session_crypto.SessionCryptoError as e:
-            self.io.tool_error(str(e))
-            return False
-        except OSError as e:
-            self.io.tool_error(f"Error saving session: {e}")
-            return False
-
     def save_session(self, session_name: str, output=True) -> bool:
         """Save the current chat session to a named file."""
         if not session_name:
@@ -180,7 +115,7 @@ class SessionManager:
         if not session_file:
             return False
 
-        session_data = self._read_session_file(session_file)
+        session_data = self._read_session_file(session_file, quiet=quiet)
         if session_data is None:
             return False
 
@@ -206,6 +141,76 @@ class SessionManager:
                 show_announcements=True,
             )
         return applied
+
+    def _get_session_directory(self) -> Path:
+        """Get the session directory, creating it if necessary."""
+        session_dir = Path(self.coder.abs_root_path(".cecli/sessions"))
+        os.makedirs(session_dir, exist_ok=True)
+        return session_dir
+
+    def _session_encrypt_settings(self) -> tuple[bool, bytes | None]:
+        args = getattr(self.coder, "args", None)
+        if not args or not getattr(args, "session_encrypt", False):
+            return False, None
+        key_file = getattr(args, "session_key_file", None)
+        return True, session_crypto.resolve_key(key_file=key_file)
+
+    def _read_session_file(self, session_file: Path, quiet: bool = False) -> dict | None:
+        try:
+            data = session_file.read_bytes()
+        except OSError as e:
+            if not quiet:
+                self.io.tool_error(f"Error reading session: {e}")
+            return None
+        try:
+            if session_crypto.is_encrypted_payload(data):
+                args = getattr(self.coder, "args", None)
+                key_file = getattr(args, "session_key_file", None) if args else None
+                key = session_crypto.resolve_key(key_file=key_file)
+                if not key:
+                    if not quiet:
+                        self.io.tool_error(
+                            "Session is encrypted but no key is configured "
+                            f"({session_crypto.KEY_ENV} or --session-key-file)."
+                        )
+                    return None
+                return session_crypto.decrypt_session_bytes(data, key)
+            parsed = json.loads(data.decode("utf-8"))
+            if not isinstance(parsed, dict):
+                if not quiet:
+                    self.io.tool_error("Invalid session format.")
+                return None
+            return parsed
+        except session_crypto.SessionCryptoError as e:
+            if not quiet:
+                self.io.tool_error(str(e))
+            return None
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
+            if not quiet:
+                self.io.tool_error(f"Error loading session: {e}")
+            return None
+
+    def _write_session_file(self, session_file: Path, session_data: dict) -> bool:
+        encrypt_enabled, key = self._session_encrypt_settings()
+        try:
+            if encrypt_enabled:
+                if not key:
+                    self.io.tool_error(
+                        "Session encryption is enabled but no key is configured "
+                        f"({session_crypto.KEY_ENV} or --session-key-file)."
+                    )
+                    return False
+                session_file.write_bytes(session_crypto.encrypt_session_dict(session_data, key))
+            else:
+                with open(session_file, "w", encoding="utf-8") as f:
+                    json.dump(session_data, f, indent=2)
+            return True
+        except session_crypto.SessionCryptoError as e:
+            self.io.tool_error(str(e))
+            return False
+        except OSError as e:
+            self.io.tool_error(f"Error saving session: {e}")
+            return False
 
     def _build_session_data(self, session_name) -> Dict:
         """Build session data dictionary from current coder state."""
