@@ -83,9 +83,7 @@ async def test_compact_context_with_observations():
     # 2. check_and_trigger: count_tokens(observations)
     # 3. compact_context_if_needed: done_tokens
     # 4. compact_context_if_needed: cur_tokens
-    # 5. compact_context_if_needed: diff_tokens
-    # 6. summarize_and_update: count_tokens inside
-    coder.summarizer.count_tokens.side_effect = [100, 100, 100, 1000, 0, 50]
+    coder.summarizer.count_tokens.side_effect = [100, 100, 1000, 0, 50]
     coder.summarizer.summarize_all_as_text = AsyncMock(return_value="Summary Text")
 
     # Mock manager
@@ -146,9 +144,7 @@ async def test_compact_context_with_observations_integration():
     # 2. check_and_trigger: obs
     # 3. compact: done
     # 4. compact: cur
-    # 5. compact: diff
-    # 6. summarize_and_update: inner
-    coder.summarizer.count_tokens.side_effect = [100, 100, 100, 1000, 0, 50]
+    coder.summarizer.count_tokens.side_effect = [100, 100, 1000, 0, 50]
     coder.summarizer.summarize_all_as_text = AsyncMock(return_value="Summary Text")
 
     # Mock manager

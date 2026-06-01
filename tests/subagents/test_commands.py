@@ -31,7 +31,7 @@ class TestSpawnAgentCommand:
 
         with patch("cecli.helpers.agents.service.AgentService") as MockSvc:
             mock_instance = MagicMock()
-            mock_instance.spawn = AsyncMock()
+            mock_instance.spawn = AsyncMock(return_value=(MagicMock(), MagicMock()))
             MockSvc.get_instance.return_value = mock_instance
 
             await SpawnAgentCommand.execute(io, coder, "reviewer")
