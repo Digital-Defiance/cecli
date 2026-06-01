@@ -197,9 +197,12 @@ def test_handle_output_message_error_with_agent_name(tui_instance, monkeypatch):
         if isinstance(selector, type):
             name = selector.__name__
         else:
-            if "," in selector or "#" in selector:
+            if selector == "#input" or selector == "#input, InputArea":
                 return mock_input_area
-            return mock_footer
+            elif selector == "#status-bar" or selector == "#status-bar, StatusBar":
+                return mock_status_bar
+            name = "MainFooter"  # Default fallback
+
         mapping = {
             "MainFooter": mock_footer,
             "StatusBar": mock_status_bar,
@@ -216,9 +219,6 @@ def test_handle_output_message_error_with_agent_name(tui_instance, monkeypatch):
     mock_coder.uuid = "primary_uuid"
     tui_instance.worker = MagicMock()
     tui_instance.worker.coder = mock_coder
-
-    # Stub status_bar reference
-    tui_instance.status_bar = mock_status_bar
 
     # Mock AgentService - unknown UUID should return None (no prefix)
     monkeypatch.setattr(
@@ -238,4 +238,28 @@ def test_handle_output_message_error_with_agent_name(tui_instance, monkeypatch):
         severity="error",
         timeout=5,
         agent_name=None,
+    )
+
+
+def test_show_error_uses_query_one(tui_instance):
+    """
+    Test that show_error uses query_one to get the status bar and show a notification.
+    """
+    mock_status_bar = MagicMock()
+    tui_instance.query_one = MagicMock(return_value=mock_status_bar)
+
+    # Import StatusBar for the assertion
+    from cecli.tui.widgets import StatusBar
+
+    tui_instance.show_error("A test error", agent_name="test_agent")
+
+    # Assert query_one was called correctly
+    tui_instance.query_one.assert_called_once_with("#status-bar", StatusBar)
+
+    # Assert show_notification was called on the result of query_one
+    mock_status_bar.show_notification.assert_called_once_with(
+        "A test error",
+        severity="error",
+        timeout=5,
+        agent_name="test_agent",
     )
