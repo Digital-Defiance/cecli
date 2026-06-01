@@ -1,5 +1,6 @@
 import json
 import os
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -47,6 +48,17 @@ def mock_coder():
     coder.mcp_manager = None
     coder.skills_manager = None
     coder.io.read_text.return_value = "some todo content"
+    coder.format_chat_chunks = MagicMock()
+    coder.args = SimpleNamespace(
+        model="test_model",
+        weak_model="test_weak_model",
+        editor_model="test_editor_model",
+        agent_model="test_agent_model",
+        editor_edit_format="editor-diff",
+        verbose=False,
+        session_encrypt=False,
+        session_key_file=None,
+    )
 
     return coder
 
