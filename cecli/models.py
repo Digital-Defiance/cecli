@@ -1333,19 +1333,34 @@ class Model(ModelSettings):
         messages,
         max_tokens=None,
         override_kwargs={},
+        coder=None,
     ):
         from cecli.exceptions import LiteLLMExceptions
 
         litellm_ex = LiteLLMExceptions()
         retry_delay = 0.125
+        temperature = None
+        tools = None
+
         if self.verbose:
             dump(messages)
+
+        if coder:
+            temperature = coder.temperature
+            tools = coder.get_tool_list()
+            merged_kwargs = coder.model_kwargs.copy()
+            merged_kwargs.update(override_kwargs)
+            override_kwargs = merged_kwargs
+
         while True:
             try:
+
                 _hash, response = await self.send_completion(
                     messages=messages,
                     functions=None,
                     stream=False,
+                    temperature=temperature,
+                    tools=tools,
                     max_tokens=max_tokens,
                     override_kwargs=override_kwargs,
                 )

@@ -38,6 +38,7 @@ class ObservationService:
         self.observation_threshold = max((coder.context_compaction_max_tokens or 0) / 3, 20000)
         self.reflection_threshold = self.observation_threshold * 2
         self.is_processing = False
+        self.is_reflecting = False
         self._last_observed_index = 0
         self.observations = []  # Internal storage
 
@@ -70,13 +71,6 @@ class ObservationService:
             asyncio.create_task(self.run_observation(unobserved))
             self._last_observed_index = len(cur_messages)
 
-        obs_tokens = coder.summarizer.count_tokens(
-            [{"role": "user", "content": o} for o in self.observations]
-        )
-
-        if obs_tokens >= self.reflection_threshold:
-            asyncio.create_task(self.run_reflection())
-
     async def run_observation(self, messages):
         coder = self.get_coder()
         if coder is None:
@@ -87,9 +81,17 @@ class ObservationService:
             all_messages = ConversationService.get_manager(coder).get_messages_dict()
             prompt = coder.gpt_prompts.observation_prompt
             observation = await coder.summarizer.summarize_all_as_text(
-                all_messages, prompt, max_tokens=8192
+                all_messages, prompt, max_tokens=8192, coder=coder
             )
             self.observations.append(self.format_observation(observation))
+
+            obs_tokens = coder.summarizer.count_tokens(
+                [{"role": "user", "content": o} for o in self.observations]
+            )
+
+            if obs_tokens >= self.reflection_threshold:
+                await self.run_reflection()
+
         except asyncio.CancelledError:
             raise
         except Exception as e:
@@ -102,8 +104,14 @@ class ObservationService:
         if coder is None:
             return
 
-        self.is_processing = True
+        if self.is_reflecting:
+            return
+
+        self.is_reflecting = True
         try:
+            if not self.observations:
+                return
+
             # Prepare observations for the reflector
             obs_text = "\n".join([f"- {o}" for o in self.observations])
 
@@ -113,6 +121,7 @@ class ObservationService:
                 [{"role": "user", "content": obs_text}],
                 reflection_prompt,
                 max_tokens=8192,
+                coder=coder,
             )
 
             # 1. Internal State Update: Store the condensed log internally
@@ -124,7 +133,7 @@ class ObservationService:
         except Exception as e:
             coder.io.tool_error(f"Error during reflection: {e}")
         finally:
-            self.is_processing = False
+            self.is_reflecting = False
 
     def reset(self):
         self.observations = []

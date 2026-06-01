@@ -1914,6 +1914,7 @@ class Coder(metaclass=UsageMeta):
                     messages,
                     compaction_prompt,
                     self.context_compaction_summary_tokens,
+                    coder=self,
                 )
                 if not text:
                     raise ValueError(f"Summarization of {tag} messages returned empty.")
@@ -3272,7 +3273,6 @@ class Coder(metaclass=UsageMeta):
                 functions,
                 self.stream,
                 self.temperature,
-                # This could include any tools, but for now it is just MCP tools
                 tools=tools,
                 override_kwargs=self.model_kwargs.copy(),
                 interrupt_event=self.interrupt_event,
