@@ -539,7 +539,6 @@ def get_parser(default_config_files, git_root):
     group.add_argument(
         "--exempt-paths",
         action="append",
-        metavar="REGEX",
         default=[],
         help=(
             "Specify a regex pattern for paths that should be exempted from file creation. "
