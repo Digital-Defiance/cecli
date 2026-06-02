@@ -220,12 +220,51 @@ def test_handle_output_message_error_with_agent_name(tui_instance, monkeypatch):
     tui_instance.worker = MagicMock()
     tui_instance.worker.coder = mock_coder
 
+
     # Mock AgentService - unknown UUID should return None (no prefix)
     monkeypatch.setattr(
         "cecli.helpers.agents.service.AgentService.get_instance",
         lambda *args: MagicMock(sub_agents={}, coder=mock_coder),
     )
 
+
+    # Test: error message for unknown agent should have agent_name=None
+    msg = {
+        "type": "error",
+        "message": "Something went wrong!",
+        "coder_uuid": "unknown_uuid",
+    }
+    tui_instance.handle_output_message(msg)
+    mock_status_bar.show_notification.assert_called_once_with(
+        "Something went wrong!",
+        severity="error",
+        timeout=5,
+        agent_name=None,
+    )
+
+
+def test_show_error_uses_query_one(tui_instance):
+    """
+    Test that show_error uses query_one to get the status bar and show a notification.
+    """
+    mock_status_bar = MagicMock()
+    tui_instance.query_one = MagicMock(return_value=mock_status_bar)
+
+    # Import StatusBar for the assertion
+    from cecli.tui.widgets import StatusBar
+
+    tui_instance.show_error("A test error", agent_name="test_agent")
+
+    # Assert query_one was called correctly
+    tui_instance.query_one.assert_called_once_with("#status-bar", StatusBar)
+
+    # Assert show_notification was called on the result of query_one
+    mock_status_bar.show_notification.assert_called_once_with(
+        "A test error",
+        severity="error",
+        timeout=5,
+        agent_name="test_agent",
+    )
     # Test: error message for unknown agent should have agent_name=None
     msg = {
         "type": "error",
