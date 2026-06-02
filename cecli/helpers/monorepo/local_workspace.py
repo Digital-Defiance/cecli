@@ -1,4 +1,19 @@
-"""Repo-local multi-project workspaces (path: git roots under one virtual tree)."""
+"""
+Repo-local multi-project workspaces (``path:`` git roots).
+
+Cecli already supports **clone** workspaces under ``~/.cecli/workspaces/`` with
+``repo:`` URLs and paths like ``{project}/main/{file}``. This module adds
+**local** layout: projects point at existing directories on disk, and tracked
+paths are prefixed as ``{project}/{file}`` (no ``/main/`` segment).
+
+Config file names (at the workspace root — usually the primary project directory):
+
+- ``.cecli.workspaces.yml``
+- ``.cecli.workspaces.yaml``
+
+Each project must have exactly one of ``path`` (absolute local git root) or
+``repo`` (clone URL; handled by existing clone workspace code).
+"""
 
 from __future__ import annotations
 
@@ -14,13 +29,19 @@ METADATA_NAME = ".cecli/.workspace-meta.json"
 
 
 def find_workspace_config_file(start: Path) -> Path | None:
-    root = Path(start).resolve()
-    if root.is_file():
-        root = root.parent
-    for name in WORKSPACE_FILENAMES:
-        candidate = root / name
-        if candidate.is_file():
-            return candidate
+    """Return the nearest ``.cecli.workspaces.yml`` walking up from *start*."""
+    current = Path(start).resolve()
+    if current.is_file():
+        current = current.parent
+    while True:
+        for name in WORKSPACE_FILENAMES:
+            candidate = current / name
+            if candidate.is_file():
+                return candidate
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
     return None
 
 
@@ -83,8 +104,8 @@ def resolve_workspace_file_path(
     layout: str,
 ) -> tuple[Path, Path, str] | None:
     """
-    Map a workspace-relative path to (project_git_root, absolute_file, path_in_project_repo).
-  """
+    Map a workspace-relative path to ``(project_git_root, absolute_file, path_in_project_repo)``.
+    """
     rel = workspace_rel.replace("\\", "/").lstrip("/")
     if not rel:
         return None
