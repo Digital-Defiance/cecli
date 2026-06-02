@@ -201,9 +201,19 @@ class ConversationChunks:
             ]
         )
 
+        user_fidelity = random.choice(
+            [
+                "Be mindful of any instructions given, prioritizing the latest.",
+                "Respect all established constraints.",
+                "Please stay on task and stick closely to my guidance.",
+                "Keep my explicit intent in mind.",
+                "Stay focused on our goals and the scope of our concerns.",
+            ]
+        )
+
         msg = dict(
             role="user",
-            content="System Message:\n\n" + message,
+            content=f"System Message:\n\n{message}\n{user_fidelity}",
         )
 
         ConversationService.get_manager(coder).add_message(
