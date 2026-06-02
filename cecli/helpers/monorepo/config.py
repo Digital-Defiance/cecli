@@ -117,7 +117,10 @@ def load_workspace_config(
 
 def validate_config(config: Dict[str, Any]) -> None:
     """
-    Minimal validation of required fields.
+    Validate workspace config shape.
+
+    Each project must have a ``name`` and exactly one of ``path`` (local git
+    root) or ``repo`` (clone URL). At most one project may set ``primary: true``.
     """
     if not config:
         return

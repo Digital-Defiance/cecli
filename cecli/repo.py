@@ -137,10 +137,20 @@ class GitRepo:
 
             ws_file = find_workspace_config_file(Path(repo_paths[0]))
             if not ws_file:
-                self.io.tool_error("Files are in different git repos.")
+                self.io.tool_error(
+                    "Files are in different git repos. Add a .cecli.workspaces.yml at a"
+                    " common ancestor with path: entries for each project."
+                )
                 raise FileNotFoundError
             self.workspace_config = load_workspace_config_file(ws_file)
-            self._init_repo_path = str(Path(repo_paths[0]).resolve())
+            primary = next(
+                (p for p in self.workspace_config.get("projects", []) if p.get("primary")),
+                None,
+            )
+            if primary and primary.get("path"):
+                self._init_repo_path = str(Path(str(primary["path"])).expanduser().resolve())
+            else:
+                self._init_repo_path = str(Path(repo_paths[0]).resolve())
         else:
             self._init_repo_path = repo_paths.pop()
 
