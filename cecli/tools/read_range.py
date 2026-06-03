@@ -24,15 +24,16 @@ class Tool(BaseTool):
             "description": (
                 "Get content hash prefixes of content between start and end patterns in files."
                 " Accepts an array of `show` objects, each with file_path, start_text, end_text."
-                " These values must be lines from the content of the file. They can contain up to 3"
+                " These values must be lines of content in the file. They can contain up to 3"
                 " lines but newlines should generally be avoided. Avoid using generic keywords and"
-                " symbols.Special markers @000 and 000@ represent the file boundaries and can be"
+                " symbols. Special markers @000 and 000@ represent the file boundaries and can be"
                 " used for start_text and end_text for the first and last lines of the file"
                 " respectively. Avoid using both of the special markers together on non-empty"
-                " files. Never use content hashes as the start_text and end_text values. Do not use"
-                " the same pattern for the start_text and end_text. It is best to use function"
-                " names, variable declarations and other block identifiers as start_texts and"
-                " end_texts."
+                " files. Line numbers may be used as values but they are discouraged as"
+                " they shift between edits. Never use content hashes as the start_text and end_text values."
+                " Do not use the same pattern for the start_text and end_text. It is best to use function"
+                " names, variable declarations and other meaningful identifiers as start_text and"
+                " end_text values."
             ),
             "parameters": {
                 "type": "object",
@@ -49,14 +50,14 @@ class Tool(BaseTool):
                                 "start_text": {
                                     "type": "string",
                                     "description": (
-                                        "The content marking the beginning of the context range."
+                                        "The text marking the beginning of the range."
                                         " Use '@000' for the first line on empty files."
                                     ),
                                 },
                                 "end_text": {
                                     "type": "string",
                                     "description": (
-                                        "The content marking the end of the context range."
+                                        "The text marking the end of the range."
                                         " Use '000@' for the last line on empty files."
                                     ),
                                 },
@@ -202,7 +203,19 @@ class Tool(BaseTool):
                 found_by = ""
 
                 if start_text is not None and end_text is not None:
-                    if start_text == "@000" or start_text == "000@":
+                    if start_text.isdigit() and end_text.isdigit():
+                        # Treat both as 1-based line numbers
+                        start_line_num = int(start_text)
+                        end_line_num = int(end_text)
+                        # Clamp to valid range [1, num_lines]
+                        start_line_num = max(1, min(start_line_num, num_lines))
+                        end_line_num = max(1, min(end_line_num, num_lines))
+                        if start_line_num > end_line_num:
+                            # Swap so start <= end
+                            start_line_num, end_line_num = end_line_num, start_line_num
+                        start_indices = [start_line_num - 1]
+                        end_indices = [end_line_num - 1]
+                    elif start_text == "@000" or start_text == "000@":
                         start_indices = [0]
                     else:
                         start_pattern_lines = start_text.split("\n")
@@ -235,7 +248,7 @@ class Tool(BaseTool):
                                     coder,
                                     (
                                         f"Start pattern '{start_text}' too broad."
-                                        " Do not search for it again. Be more specific."
+                                        " Refine your search. Be more specific."
                                     ),
                                     file_path,
                                     start_text,
@@ -270,13 +283,24 @@ class Tool(BaseTool):
                                     min_dist = dist
                                     best_pair = (s, e)
 
+                        # If no valid pair found and one side has exactly one match,
+                        # try inverted matching in case LLM got the order of methods wrong
+                        if best_pair is None and (len(start_indices) == 1 or len(end_indices) == 1):
+                            for s in start_indices:
+                                for e in end_indices:
+                                    if e < s:  # end pattern match is before start pattern match
+                                        dist = s - e
+                                        if dist < min_dist:
+                                            min_dist = dist
+                                            best_pair = (e, s)
+
                         if not start_indices:
                             error_outputs.append(
                                 cls.format_error(
                                     coder,
                                     (
                                         f"Start pattern '{start_text}' not found in {file_path}."
-                                        " Do not search for it again."
+                                        " Refine your search."
                                     ),
                                     file_path,
                                     start_text,
@@ -291,8 +315,8 @@ class Tool(BaseTool):
                                 cls.format_error(
                                     coder,
                                     (
-                                        f"End pattern '{end_text}' not found in {file_path}. Do not"
-                                        " search for it again."
+                                        f"End pattern '{end_text}' not found in {file_path}."
+                                        " Refine your search."
                                     ),
                                     file_path,
                                     start_text,
