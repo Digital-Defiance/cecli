@@ -183,6 +183,10 @@ litellm==1.81.11
     # via
     #   -c requirements/common-constraints.txt
     #   -r requirements/requirements.in
+marisa-trie==1.4.1
+    # via
+    #   -c requirements/common-constraints.txt
+    #   -r requirements/requirements.in
 markdown-it-py[linkify]==4.0.0
     # via
     #   -c requirements/common-constraints.txt
@@ -336,6 +340,10 @@ pyyaml==6.0.3
     #   -c requirements/common-constraints.txt
     #   -r requirements/requirements.in
     #   huggingface-hub
+rapidfuzz==3.14.5
+    # via
+    #   -c requirements/common-constraints.txt
+    #   -r requirements/requirements.in
 referencing==0.37.0
     # via
     #   -c requirements/common-constraints.txt

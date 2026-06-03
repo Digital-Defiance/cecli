@@ -18,6 +18,7 @@ from textual.theme import Theme
 from cecli.editor import pipe_editor
 from cecli.helpers.agents.service import AgentService
 from cecli.helpers.coroutines import is_active
+from cecli.helpers.file_system import FileSystemService
 from cecli.io import CommandCompletionException
 from cecli.tui.io import TextualInputOutput
 
@@ -1356,9 +1357,6 @@ class TUI(App):
         # Also add filenames as completable symbols
         if hasattr(coder, "get_inchat_relative_files"):
             symbols.update(coder.get_inchat_relative_files())
-        if hasattr(coder, "get_all_relative_files"):
-            # Add all project files too
-            symbols.update(coder.get_all_relative_files())
 
         # Limit files to tokenize for performance
         files_to_process = inchat_files[:30]
@@ -1395,20 +1393,46 @@ class TUI(App):
         """Get symbol completions for @ mentions."""
         symbols = self._extract_symbols()
         prefix_lower = prefix.lower()
+        should_sort = True
 
         if prefix:
-            matches = [s for s in symbols if prefix_lower in s.lower()]
+            matches = self._get_path_completions(prefix)
+            matches.extend(sorted([s for s in symbols if prefix_lower in s.lower()]))
+            should_sort = False
         else:
             matches = list(symbols)
 
-        return sorted(matches)[:50]
+        matches = list(dict.fromkeys(matches))
+        return matches[:50] if not should_sort else sorted(matches)[:50]
 
     def _get_path_completions(self, prefix: str) -> list[str]:
-        """Get filesystem path completions relative to coder root."""
+        """Get filesystem path completions relative to coder root.
+
+        Uses FileSystemService when available for efficient trie/trigram
+        lookups, with fallback to legacy filesystem iteration.
+        """
         coder = self.worker.coder
         root = Path(coder.root) if hasattr(coder, "root") else Path.cwd()
 
-        # Handle the prefix - could be partial path like "src/ma" or just "ma"
+        # Try FileSystemService first for efficient lookups
+        try:
+            fs = FileSystemService.get_instance()
+            if prefix:
+                if fs.trie:
+                    is_fuzzy = False
+                    if fs.trie:
+                        matches = fs.list_prefix(prefix)
+
+                    if not matches:
+                        is_fuzzy = True
+                        matches = fs.search(prefix, threshold=0.1)
+
+                    if matches:
+                        return matches if is_fuzzy else sorted(matches)
+        except Exception:
+            pass
+
+        # Fallback: iterate filesystem directory
         if "/" in prefix:
             # Has directory component
             dir_part, file_part = prefix.rsplit("/", 1)

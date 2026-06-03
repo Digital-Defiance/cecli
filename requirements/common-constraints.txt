@@ -200,6 +200,8 @@ llama-index-workflows==2.11.5
     # via llama-index-core
 lox==1.0.0
     # via -r requirements/requirements-dev.in
+marisa-trie==1.4.1
+    # via -r requirements/requirements.in
 markdown-it-py[linkify]==4.0.0
     # via
     #   mdit-py-plugins
@@ -423,6 +425,8 @@ pyyaml==6.0.3
     #   llama-index-core
     #   pre-commit
     #   transformers
+rapidfuzz==3.14.5
+    # via -r requirements/requirements.in
 referencing==0.37.0
     # via
     #   jsonschema
