@@ -8,7 +8,6 @@ from cecli.helpers.agents.service import AgentService
 class SwitchAgentCommand(BaseCommand):
     NORM_NAME = "switch-agent"
     DESCRIPTION = "Switch to a specific agent by name"
-    show_completion_notification = True
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
