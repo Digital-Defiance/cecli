@@ -16,7 +16,6 @@ class PasteCommand(BaseCommand):
         "Paste image/text from the clipboard into the chat. Optionally provide a name for the"
         " image."
     )
-    show_completion_notification = False
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
