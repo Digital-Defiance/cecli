@@ -3,7 +3,7 @@ import os
 import tempfile
 import uuid
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import git
 import pytest
@@ -1418,7 +1418,10 @@ This command will print 'Hello, World!' to the console."""
                 with pytest.raises(SwitchCoderSignal):
                     await coder.reply_completed()
                 io.confirm_ask.assert_called_once_with(
-                    "Edit the files?", allow_tweak=False, explicit_yes_required=False
+                    "Edit the files?",
+                    allow_tweak=False,
+                    explicit_yes_required=False,
+                    coder_uuid=ANY,
                 )
                 mock_editor.generate.assert_called_once()
 
@@ -1445,7 +1448,10 @@ This command will print 'Hello, World!' to the console."""
                     await coder.reply_completed()
 
                 io.confirm_ask.assert_called_once_with(
-                    "Edit the files?", allow_tweak=False, explicit_yes_required=True
+                    "Edit the files?",
+                    allow_tweak=False,
+                    explicit_yes_required=True,
+                    coder_uuid=ANY,
                 )
                 mock_editor.generate.assert_called_once()
 
@@ -1467,7 +1473,10 @@ This command will print 'Hello, World!' to the console."""
 
                 assert result is None
                 io.confirm_ask.assert_called_once_with(
-                    "Edit the files?", allow_tweak=False, explicit_yes_required=True
+                    "Edit the files?",
+                    allow_tweak=False,
+                    explicit_yes_required=True,
+                    coder_uuid=ANY,
                 )
                 mock_create.assert_not_called()
 
@@ -1642,7 +1651,9 @@ This command will print 'Hello, World!' to the console."""
             assert not result
 
             # Verify that confirm_ask was called
-            io.confirm_ask.assert_called_once_with("Run tools?", group_response="Run MCP Tools")
+            io.confirm_ask.assert_called_once_with(
+                "Run tools?", group_response="Run MCP Tools", coder_uuid=ANY
+            )
 
             # Verify that no messages were added
             assert len(coder.cur_messages) == 0
