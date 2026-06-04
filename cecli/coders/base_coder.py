@@ -460,9 +460,7 @@ class Coder(metaclass=UsageMeta):
 
         self.context_compaction_max_tokens = context_compaction_max_tokens
         self.context_compaction_summary_tokens = context_compaction_summary_tokens
-        self.max_reflections = (
-            3 if self.edit_format == "agent" else nested.getter(self.args, "max_reflections", 3)
-        )
+        self.max_reflections = nested.getter(self.args, "max_reflections", 3)
 
         if not fnames:
             fnames = []
