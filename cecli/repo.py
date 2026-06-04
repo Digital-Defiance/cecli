@@ -778,37 +778,45 @@ class GitRepo:
         self.gitignore_spec_cache[dir_path] = spec
         return spec
 
+    def _resolve_path_in_repo(self, path):
+        """Resolve *path* under this repo root (not process cwd)."""
+        file_path = Path(path)
+        if not file_path.is_absolute():
+            file_path = (Path(self.root) / file_path).resolve()
+        else:
+            file_path = file_path.resolve()
+        return file_path
+
     def _is_gitignored_by_pathspec(self, path):
         """Check if a file is ignored by any .gitignore file using pathspec."""
         if not self.repo:
             return False
 
         try:
-            file_path = Path(path).resolve()
-            if not file_path.is_relative_to(self.root):
+            file_path = self._resolve_path_in_repo(path)
+            root = Path(self.root).resolve()
+            if not file_path.is_relative_to(root):
                 return False
 
             # Walk up from file's directory to root
             current_dir = file_path.parent
-            relative_path = file_path.relative_to(self.root)
+            relative_path = file_path.relative_to(root)
 
             # Check each directory level
-            while current_dir.is_relative_to(self.root):
+            while current_dir.is_relative_to(root):
                 spec = self._get_gitignore_spec(current_dir)
 
                 # Get path relative to the directory containing the .gitignore
-                if current_dir == Path(self.root).resolve():
+                if current_dir == root:
                     path_to_check = str(relative_path)
                 else:
-                    path_to_check = str(
-                        relative_path.relative_to(current_dir.relative_to(self.root))
-                    )
+                    path_to_check = str(relative_path.relative_to(current_dir.relative_to(root)))
 
                 if spec.match_file(path_to_check):
                     return True
 
                 # Move up one directory
-                if current_dir == Path(self.root).resolve():
+                if current_dir == root:
                     break
                 current_dir = current_dir.parent
 
