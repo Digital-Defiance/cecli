@@ -9,7 +9,7 @@ from cecli.helpers.conversation import ConversationService
 class AgentModelCommand(BaseCommand):
     NORM_NAME = "agent-model"
     DESCRIPTION = "Switch the Agent Model to a new LLM"
-    show_completion_notification = False
+    show_completion_notification = True
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):

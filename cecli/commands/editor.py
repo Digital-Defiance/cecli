@@ -8,7 +8,7 @@ from cecli.editor import pipe_editor
 class EditorCommand(BaseCommand):
     NORM_NAME = "editor"
     DESCRIPTION = "Open an editor to write a prompt"
-    show_completion_notification = False
+    show_completion_notification = True
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
@@ -49,6 +49,7 @@ class EditorCommand(BaseCommand):
 class EditCommand(BaseCommand):
     NORM_NAME = "edit"
     DESCRIPTION = "Alias for /editor: Open an editor to write a prompt"
+    show_completion_notification = True
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
