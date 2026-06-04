@@ -239,6 +239,8 @@ networkx==3.6
     # via
     #   llama-index-core
     #   torch
+ngram==4.0.3
+    # via -r requirements/requirements.in
 nltk==3.9.2
     # via llama-index-core
 nodeenv==1.9.1

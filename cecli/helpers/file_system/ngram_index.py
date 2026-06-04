@@ -6,6 +6,7 @@ to avoid duplicating the full file list in memory. Falls back to an
 internally stored list when no trie reference is available.
 """
 
+from ngram import NGram
 from rapidfuzz import fuzz, process
 
 # Threshold presets for different use cases (0-1 scale, converted to 0-100 internally)
@@ -66,8 +67,11 @@ class TrigramIndex:
         """
         Fuzzy search for items matching a query string.
 
-        Uses rapidfuzz.process.extract() with WRatio scorer for
+        Uses rapidfuzz.process.extract() with partial_ratio scorer for
         fast C++-backed fuzzy matching against the trie's path list.
+        When fewer than 100 results are returned, re-ranks them using
+        the ngram library's trigram similarity to better match human
+        expectations for ordering.
 
         Args:
             query: Search string
@@ -85,11 +89,20 @@ class TrigramIndex:
         results = process.extract(
             query,
             items,
-            scorer=fuzz.WRatio,
+            scorer=fuzz.partial_ratio,
             limit=max_results,
             score_cutoff=score_cutoff,
         )
-        return [match for match, score, _ in results]
+        match_names = [match for match, score, _ in results]
+
+        # Re-rank with ngram trigram similarity when result set is small
+        # enough to benefit from the more human-like ordering.
+        if len(match_names) < 100:
+            ng = NGram(match_names, N=3)
+            reranked = ng.search(query, threshold=0.0)
+            match_names = [item for item, score in reranked]
+
+        return match_names
 
     def search_with_scores(
         self,
