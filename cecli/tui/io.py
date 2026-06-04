@@ -639,34 +639,6 @@ class TextualInputOutput(InputOutput):
                                     return bool(response)
                         except queue.Empty:
                             continue
-
-                    # Fall back to shared queue (blocking with timeout)
-                    result = self.input_queue.get(timeout=0.1)
-
-                    if "confirmed" in result:
-                        response = result["confirmed"]
-
-                        # Handle special responses
-                        if response == "never":
-                            self.never_prompts.add(question_id)
-                            return False
-                        elif response == "tweak":
-                            return "tweak"
-                        elif response == "all":
-                            if group:
-                                group.preference = "all"
-                            if group_response:
-                                self.group_responses[group_response] = True
-                            return True
-                        elif response == "skip":
-                            if group:
-                                group.preference = "skip"
-                            if group_response:
-                                self.group_responses[group_response] = False
-                            return False
-                        else:
-                            # Regular boolean response
-                            return bool(response)
                 except queue.Empty:
                     await asyncio.sleep(0.1)
         except asyncio.CancelledError:

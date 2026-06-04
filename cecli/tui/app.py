@@ -1156,7 +1156,11 @@ class TUI(App):
         self._sync_sub_agent_display()
 
         # Update input autocomplete data for the active agent
-        if not suppress_input_enable:
+        if (
+            not suppress_input_enable
+            and not self._confirmation_lock
+            and not self._confirmations_pending
+        ):
             coder = agent_service.foreground_coder
             self.enable_input({}, coder=coder)
 
