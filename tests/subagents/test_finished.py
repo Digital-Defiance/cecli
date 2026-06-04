@@ -16,6 +16,7 @@ class TestFinishedTool:
         from cecli.tools._yield import Tool
 
         mock_coder = MagicMock()
+        mock_coder.uuid = "test-uuid"
         mock_coder.parent_uuid = ""
         mock_coder.files_edited_by_tools = set()
 
@@ -67,6 +68,7 @@ class TestFinishedTool:
         from cecli.tools._yield import Tool
 
         mock_coder = MagicMock()
+        mock_coder.uuid = "test-uuid"
         mock_coder.parent_uuid = ""
         mock_coder.files_edited_by_tools = set()
 
@@ -93,6 +95,7 @@ class TestFinishedTool:
         from cecli.tools._yield import Tool
 
         mock_coder = MagicMock()
+        mock_coder.uuid = "test-uuid"
         mock_coder.parent_uuid = ""
         mock_coder.files_edited_by_tools = set()
 

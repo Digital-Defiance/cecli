@@ -105,6 +105,7 @@ class AgentService:
             uid = coder.uuid
             if uid not in cls._instances:
                 cls._instances[uid] = cls(coder)
+
             if cls._instances[uid].coder != coder:
                 cls._instances[uid].coder = coder
                 cls._uuid_coder_map[coder.uuid] = weakref.ref(coder)
