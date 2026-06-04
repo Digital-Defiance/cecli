@@ -34,6 +34,11 @@ xxhash>=3.6.0
 py-cymbal>=0.1.24
 cryptography>=42.0.0
 
+# File system lookup aids
+marisa-trie>=1.0
+rapidfuzz>=3.0
+ngram>=4.0.3
+
 # Replaced networkx with rustworkx for better performance in repomap
 rustworkx>=0.15.0
 

@@ -916,6 +916,54 @@ class GitRepo:
             self.io.tool_warning(f"Error getting ignored files from root: {e}")
             return []
 
+    def get_repo_files(self) -> list[str]:
+        """
+        Get all relevant files from the repository, respecting workspace
+        structure and custom ignore rules.
+
+        This is a unified file collection method that encapsulates the
+        logic for choosing the right file source depending on the repo's
+        configuration:
+
+        - Workspace repos (``workspace_path`` is set) → ``get_workspace_files()``
+        - Non-workspace with ``cecli_ignore`` file → ``get_non_ignored_files_from_root()``
+        - Non-workspace without ``cecli_ignore`` → ``get_tracked_files()``
+
+        Returns:
+            Sorted list of root-relative file paths
+        """
+        if hasattr(self, "workspace_path") and self.workspace_path:
+            return self.get_workspace_files()
+        if self.cecli_ignore_file and self.cecli_ignore_file.is_file():
+            return self.get_non_ignored_files_from_root()
+        return self.get_tracked_files()
+
+    def get_cache_key(self) -> str:
+        """
+        Generate a cache key for the current repository state.
+
+        Combines the HEAD commit SHA with the list of staged (but not yet
+        committed) files so that the cache is invalidated when either:
+        - New commits are made (HEAD changes)
+        - Files are staged (index differs from HEAD)
+
+        Returns:
+            SHA-256 hex digest, or empty string if repo is unavailable
+        """
+        import hashlib
+
+        if not self.repo:
+            return ""
+
+        sha = self.get_head_commit_sha() or ""
+        try:
+            staged = [item.a_path for item in self.repo.index.diff("HEAD")]
+        except ANY_GIT_ERROR:
+            staged = []
+
+        combined = sha + "|" + "".join(sorted(staged))
+        return hashlib.sha256(combined.encode()).hexdigest()
+
     def path_in_repo(self, path):
         if not self.repo:
             return

@@ -8,6 +8,7 @@ from cecli.utils import expand_glob_patterns
 class LintCommand(BaseCommand):
     NORM_NAME = "lint"
     DESCRIPTION = "Lint and fix in-chat files or all dirty files if none in chat"
+    show_completion_notification = True
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):

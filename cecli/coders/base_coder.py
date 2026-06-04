@@ -42,6 +42,7 @@ from cecli.commands import Commands, SwitchCoderSignal
 from cecli.exceptions import LiteLLMExceptions
 from cecli.helpers import command_parser, coroutines, nested, responses
 from cecli.helpers.conversation import ConversationService, MessageTag
+from cecli.helpers.file_system import FileSystemService
 from cecli.helpers.io_proxy import IOProxy
 from cecli.helpers.observations.service import ObservationService
 from cecli.helpers.profiler import TokenProfiler
@@ -459,9 +460,7 @@ class Coder(metaclass=UsageMeta):
 
         self.context_compaction_max_tokens = context_compaction_max_tokens
         self.context_compaction_summary_tokens = context_compaction_summary_tokens
-        self.max_reflections = (
-            3 if self.edit_format == "agent" else nested.getter(self.args, "max_reflections", 3)
-        )
+        self.max_reflections = nested.getter(self.args, "max_reflections", 3)
 
         if not fnames:
             fnames = []
@@ -547,7 +546,6 @@ class Coder(metaclass=UsageMeta):
 
         self.data_cache = {
             "repo": {"last_key": "", "read_only_count": None},
-            "relative_files": None,
         }
 
         self.repo = repo
@@ -593,6 +591,12 @@ class Coder(metaclass=UsageMeta):
 
         if not self.repo:
             self.root = utils.find_common_root(self.abs_fnames)
+
+        # Initialize the FileSystemService singleton for all agents
+        FileSystemService.get_instance(
+            root=self.root if hasattr(self, "root") else ".",
+            repo=self.repo if hasattr(self, "repo") else None,
+        )
 
         if read_only_fnames:
             self.abs_read_only_fnames = set()
@@ -3226,7 +3230,7 @@ class Coder(metaclass=UsageMeta):
         group = ConfirmGroup(new_mentions)
         for rel_fname in sorted(new_mentions):
             message = "Add file to the chat?"
-            if self.args.tui:
+            if self.args and self.args.tui:
                 message = f"Add file to the chat? ({rel_fname})"
 
             if await self.io.confirm_ask(
@@ -3909,37 +3913,16 @@ class Coder(metaclass=UsageMeta):
             return
 
     def get_all_relative_files(self):
-        if self.repo_map and self.repo:
-            try:
-                staged_files_hash = hash(
-                    str([item.a_path for item in self.repo.repo.index.diff("HEAD")])
-                )
-                if (
-                    staged_files_hash == self.data_cache["repo"]["last_key"]
-                    and self.data_cache["relative_files"]
-                ):
-                    return self.data_cache["relative_files"]
-            except ANY_GIT_ERROR as err:
-                # Handle git errors gracefully - fall back to getting tracked files
-                if self.verbose:
-                    self.io.tool_warning(f"Git error while checking staged files: {err}")
-                # Continue to get tracked files normally
-
-        if self.repo:
-            if hasattr(self.repo, "workspace_path") and self.repo.workspace_path:
-                files = self.repo.get_workspace_files()
-            elif not self.repo.cecli_ignore_file or not self.repo.cecli_ignore_file.is_file():
-                files = self.repo.get_tracked_files()
-            else:
-                files = self.repo.get_non_ignored_files_from_root()
-        else:
-            files = self.get_inchat_relative_files()
-        # This is quite slow in large repos
-        # files = [fname for fname in files if self.is_file_safe(fname)]
-
-        self.data_cache["relative_files"] = sorted(set(files))
-
-        return self.data_cache["relative_files"]
+        """Get all files known to the file service singleton."""
+        fs = FileSystemService.get_instance()
+        if fs.trie:
+            # Auto-rebuild if the repository state has changed
+            # (e.g., new commits, staged files, or HEAD change)
+            if fs.needs_rebuild():
+                fs.rebuild()
+            files = fs.list_all()
+            return files
+        return self.get_inchat_relative_files()
 
     def get_all_abs_files(self):
         files = self.get_all_relative_files()

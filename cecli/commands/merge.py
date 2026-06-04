@@ -11,7 +11,6 @@ from cecli.helpers.agents.service import (
 class MergeCommand(BaseCommand):
     NORM_NAME = "merge"
     DESCRIPTION = "Merge the current sub-agent's summary into a target agent's conversation"
-    show_completion_notification = False
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):

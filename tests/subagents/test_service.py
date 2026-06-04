@@ -35,6 +35,7 @@ def service(mock_coder):
     AgentService._instances = {}
     AgentService._global_registry = {}
     AgentService._uuid_coder_map = {}
+    AgentService._primary_agent_uuid = None
     return AgentService(mock_coder)
 
 
@@ -60,6 +61,7 @@ class TestGetInstance:
     def test_get_instance_creates_new(self, mock_coder):
         """First call for a coder UUID creates a new instance."""
         AgentService._instances = {}
+        AgentService._primary_agent_uuid = None
         instance = AgentService.get_instance(mock_coder)
         assert isinstance(instance, AgentService)
         assert instance.coder == mock_coder
@@ -67,6 +69,7 @@ class TestGetInstance:
     def test_get_instance_returns_same(self, mock_coder):
         """Second call for same coder returns same instance."""
         AgentService._instances = {}
+        AgentService._primary_agent_uuid = None
         first = AgentService.get_instance(mock_coder)
         second = AgentService.get_instance(mock_coder)
         assert first is second
@@ -74,8 +77,8 @@ class TestGetInstance:
     def test_get_instance_uses_parent_for_subcoder(self, mock_coder):
         """Coder with parent_uuid returns the parent's service."""
         AgentService._instances = {}
-        parent_service = AgentService(mock_coder)
-        AgentService._instances[mock_coder.uuid] = parent_service
+        AgentService._primary_agent_uuid = None
+        parent_service = AgentService.get_instance(mock_coder)
 
         sub_coder = MagicMock()
         sub_coder.uuid = "sub-uuid"
@@ -87,6 +90,7 @@ class TestGetInstance:
     def test_destroy_instance_removes(self, mock_coder):
         """destroy_instance removes the instance by uuid."""
         AgentService._instances = {}
+        AgentService._primary_agent_uuid = None
         svc = AgentService(mock_coder)
         AgentService._instances[mock_coder.uuid] = svc
         assert mock_coder.uuid in AgentService._instances

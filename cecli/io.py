@@ -1258,6 +1258,7 @@ class InputOutput:
         allow_never=False,
         allow_tweak=False,
         acknowledge=False,
+        **kwargs,
     ):
         self.num_user_asks += 1
 

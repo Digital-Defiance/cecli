@@ -170,6 +170,8 @@ class IOProxy(Generic[T]):
     async def confirm_ask(self, *args, **kwargs):
         """Forward confirm_ask — per-coder queue iteration is handled by
         TextualInputOutput which now iterates all per-coder queues."""
+        if "coder_uuid" not in kwargs:
+            kwargs["coder_uuid"] = self._coder_uuid
         return await self._target.confirm_ask(*args, **kwargs)
 
     async def recreate_input(self, future=None):
