@@ -65,6 +65,7 @@ class AgentService:
     # actually use them allocate a lock.
     _spawn_locks: Dict[str, asyncio.Lock] = {}
     _conversation_locks: Dict[str, asyncio.Lock] = {}
+    _primary_agent_uuid: str = None
 
     # ------------------------------------------------------------------ #
     # Singleton
@@ -72,36 +73,43 @@ class AgentService:
 
     @classmethod
     def get_instance(cls, coder) -> "AgentService":
-        """Return the AgentService for *coder* (keyed by coder.uuid).
+        """Return the primary AgentService instance (keyed by first coder uuid).
 
-        If the coder has a parent_uuid, returns the parent's service
-        instead so sub-agent switching can find sibling sub-agents.
+        The method performs two side-effect responsibilities each time it is
+        called regardless of which code-path is taken:
+
+          1. Keep coder references fresh — coders inherit uuids through state
+             operation chains so the same uuid can refer to different coder
+             instances over time.
+
+          2. Keep the ``_uuid_coder_map`` up to date so look-ups by uuid work.
+
+        The *return* value is always the primary agent's service instance so
+        that sub-agents, tools and TUI components all share the same singleton.
         """
-        # If this coder is a sub-agent, use the parent's service
+        if not cls._primary_agent_uuid:
+            cls._primary_agent_uuid = coder.uuid
+
         parent_uuid = coder.parent_uuid
         if parent_uuid and parent_uuid in cls._instances:
-            parent_service = cls._instances[parent_uuid]
-            # Update sub-agent coder reference on the parent instance.
-            # Coders inherit uuids through state operation chains, so the
-            # same uuid can refer to different coder instances over time.
+            # Sub-agent path — refresh the coder reference stored on the
+            # parent‘s SubAgentInfo so we don’t hold a stale coder object.
+            parent_service = cls._instances[cls._primary_agent_uuid]
             existing_info = parent_service.sub_agents.get(coder.uuid)
             if existing_info and existing_info.coder != coder:
                 existing_info.coder = coder
                 cls._uuid_coder_map[coder.uuid] = weakref.ref(coder)
+        else:
+            # Primary / standalone coder path — ensure an AgentService
+            # instance exists for this uuid and refresh the coder ref.
+            uid = coder.uuid
+            if uid not in cls._instances:
+                cls._instances[uid] = cls(coder)
+            if cls._instances[uid].coder != coder:
+                cls._instances[uid].coder = coder
+                cls._uuid_coder_map[coder.uuid] = weakref.ref(coder)
 
-            return parent_service
-
-        uid = coder.uuid
-        if uid not in cls._instances:
-            cls._instances[uid] = cls(coder)
-
-        # Update coder reference on AgentService Instance
-        # as coders inherit uuids
-        if cls._instances[uid].coder != coder:
-            cls._instances[uid].coder = coder
-            cls._uuid_coder_map[coder.uuid] = weakref.ref(coder)
-
-        return cls._instances[uid]
+        return cls._instances[cls._primary_agent_uuid]
 
     @classmethod
     def destroy_instance(cls, coder_uuid: str) -> None:
@@ -463,6 +471,7 @@ class AgentService:
             )
 
         new_coder = await Coder.create(**kwargs)
+        new_coder.max_sub_agents = getattr(self.coder, "max_sub_agents", 3)
         # IOProxy wrapping is handled by base_coder.py's Coder.__init__
 
         # Re-acquire the lock to register — we must re-check max agents since
