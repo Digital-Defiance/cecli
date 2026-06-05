@@ -132,8 +132,10 @@ class GitRepo:
         if num_repos == 0:
             raise FileNotFoundError
         if num_repos > 1:
-            from cecli.helpers.monorepo.local_workspace import find_workspace_config_file
             from cecli.helpers.monorepo.config import load_workspace_config_file
+            from cecli.helpers.monorepo.local_workspace import (
+                find_workspace_config_file,
+            )
 
             ws_file = find_workspace_config_file(Path(repo_paths[0]))
             if not ws_file:
@@ -182,7 +184,10 @@ class GitRepo:
                 self.root = utils.safe_abs_path(self.repo.working_tree_dir)
 
     def _load_workspace_config(self) -> None:
-        from cecli.helpers.monorepo.config import load_workspace_config, load_workspace_config_file
+        from cecli.helpers.monorepo.config import (
+            load_workspace_config,
+            load_workspace_config_file,
+        )
         from cecli.helpers.monorepo.local_workspace import (
             find_workspace_config_file,
             read_workspace_metadata,
@@ -311,9 +316,7 @@ class GitRepo:
           --no-attribute-committer -> Author=You, Committer=You
         """
         if self.is_workspace and getattr(self, "workspace_layout", "clone") == "local":
-            return await self._commit_local_workspace(
-                fnames, context, message, coder_edits, coder
-            )
+            return await self._commit_local_workspace(fnames, context, message, coder_edits, coder)
 
         if not fnames and not self.repo.is_dirty():
             return
@@ -706,11 +709,12 @@ class GitRepo:
         if not config.get("projects"):
             return self.get_tracked_files()
 
-        from cecli.helpers.monorepo.local_workspace import project_head_shas, union_tracked_files
-
-        project_shas = project_head_shas(
-            Path(self.workspace_path), config, layout=layout
+        from cecli.helpers.monorepo.local_workspace import (
+            project_head_shas,
+            union_tracked_files,
         )
+
+        project_shas = project_head_shas(Path(self.workspace_path), config, layout=layout)
         cache_key = hashlib.sha1(",".join(project_shas).encode()).hexdigest()
 
         if hasattr(self, "_workspace_files_cache"):
@@ -1083,7 +1087,9 @@ class GitRepo:
 
     def abs_root_path(self, path):
         if self.is_workspace and getattr(self, "workspace_layout", "clone") == "local":
-            from cecli.helpers.monorepo.local_workspace import resolve_workspace_file_path
+            from cecli.helpers.monorepo.local_workspace import (
+                resolve_workspace_file_path,
+            )
 
             resolved = resolve_workspace_file_path(
                 Path(self.workspace_path),
