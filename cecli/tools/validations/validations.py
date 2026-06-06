@@ -89,17 +89,14 @@ class ToolValidations:
         """
         Apply basic structural corrections to *params* based on *schema*.
 
-        If the schema declares exactly one property of type ``array`` and
-        *params* is itself a list (i.e. the LLM emitted the array directly
-        instead of wrapping it as ``{param_name: [...]}``), wrap the list
-        into the expected dict form.
+        If the schema declares exactly one property of type ``array``:
+          - If *params* is a bare list, wrap it as ``{param_name: [...]}``.
+          - If *params* is a dict that doesn't contain the expected key,
+            wrap the dict in a list under that key:
+            ``{param_name: [{key: val, ...}]}``.
 
         Returns the (possibly corrected) *params* dict.
         """
-        # Only apply when params is a bare list (LLM forgot the wrapping dict)
-        if not isinstance(params, list):
-            return params
-
         if not schema or "function" not in schema:
             return params
 
@@ -115,7 +112,12 @@ class ToolValidations:
             single_param_name = next(iter(properties.keys()))
             param_schema = properties[single_param_name]
             if param_schema.get("type") == "array":
-                return {single_param_name: params}
+                # Case 1: LLM emitted the array directly (bare list)
+                if isinstance(params, list):
+                    return {single_param_name: params}
+                # Case 2: LLM emitted a dict missing the expected key → wrap it
+                if isinstance(params, dict) and single_param_name not in params:
+                    return {single_param_name: [params]}
 
         return params
 
