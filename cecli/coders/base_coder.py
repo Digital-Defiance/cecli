@@ -91,6 +91,10 @@ class FinishReasonLength(Exception):
     pass
 
 
+class EmptyResponseError(Exception):
+    pass
+
+
 def wrap_fence(name):
     return f"<{name}>", f"</{name}>"
 
@@ -2399,9 +2403,29 @@ class Coder(metaclass=UsageMeta):
         try:
             while True:
                 try:
+                    self.empty_response = False
                     async for chunk in self.send(messages, tools=self.get_tool_list()):
                         yield chunk
                     break
+                except EmptyResponseError:
+                    self.io.tool_warning(self.empty_llm_tool_warning())
+                    if not (self.args and self.args.retry_on_empty):
+                        break
+
+                    retry_delay *= 2
+                    if retry_delay > RETRY_TIMEOUT:
+                        self.io.tool_error("Retry timeout exceeded on empty response.")
+                        break
+
+                    self.io.tool_output(f"Retrying in {retry_delay:.1f} seconds...")
+
+                    _res, interrupted_sleep = await coroutines.interruptible(
+                        asyncio.sleep(retry_delay), self.interrupt_event
+                    )
+                    if interrupted_sleep:
+                        interrupted = True
+                        break
+                    continue
                 except litellm_ex.exceptions_tuple() as err:
                     ex_info = litellm_ex.get_ex_info(err)
 
@@ -3302,6 +3326,9 @@ class Coder(metaclass=UsageMeta):
             else:
                 await self.show_send_output(completion)
 
+            if self.empty_response:
+                raise EmptyResponseError
+
             response, func_err, content_err = self.consolidate_chunks()
 
             if response:
@@ -3382,7 +3409,8 @@ class Coder(metaclass=UsageMeta):
             and not len(self.partial_response_tool_calls)
             and not len(self.partial_response_reasoning_content)
         ):
-            self.io.tool_warning(self.empty_llm_tool_warning())
+            self.empty_response = True
+            return
 
         self.io.assistant_output(show_resp, pretty=self.show_pretty())
 
@@ -3539,7 +3567,8 @@ class Coder(metaclass=UsageMeta):
             return
 
         if not received_content and len(self.partial_response_tool_calls) == 0:
-            self.io.tool_warning(self.empty_llm_tool_warning())
+            self.empty_response = True
+            return
 
     def consolidate_chunks(self):
         if self.partial_response_consolidated:
