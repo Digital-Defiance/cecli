@@ -1,9 +1,9 @@
-import json
 import os
 
 from cecli.tools.utils.base_tool import BaseTool
 from cecli.tools.utils.helpers import ToolError
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
+from cecli.tools.validations import ToolValidations
 
 cwd = os.getcwd()
 
@@ -300,14 +300,17 @@ class Tool(BaseTool):
         """Format output for ExploreCode tool."""
         color_start, color_end = color_markers(coder)
 
+        # Output header
+        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+
         try:
-            params = json.loads(tool_response.function.arguments)
-        except json.JSONDecodeError:
+            params = ToolValidations.validate_params(
+                tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+            )
+        except ToolError:
             coder.io.tool_error("Invalid Tool JSON")
             return
 
-        # Output header
-        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
         queries = params.get("queries", [])
         if queries:
             coder.io.tool_output("")
@@ -324,4 +327,4 @@ class Tool(BaseTool):
             coder.io.tool_output("")
 
         # Output footer
-        tool_footer(coder=coder, tool_response=tool_response)
+        tool_footer(coder=coder, tool_response=tool_response, params=params)

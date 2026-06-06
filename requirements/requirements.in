@@ -33,6 +33,7 @@ truststore
 xxhash>=3.6.0
 py-cymbal>=0.1.24
 cryptography>=42.0.0
+json-repair>=0.60.1
 
 # File system lookup aids
 marisa-trie>=1.0

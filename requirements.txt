@@ -161,6 +161,10 @@ jiter==0.12.0
     # via
     #   -c requirements/common-constraints.txt
     #   openai
+json-repair==0.60.1
+    # via
+    #   -c requirements/common-constraints.txt
+    #   -r requirements/requirements.in
 json5==0.12.1
     # via
     #   -c requirements/common-constraints.txt

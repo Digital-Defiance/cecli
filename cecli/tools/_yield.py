@@ -1,9 +1,10 @@
 import asyncio
-import json
 import logging
 
 from cecli.tools.utils.base_tool import BaseTool
+from cecli.tools.utils.helpers import ToolError
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
+from cecli.tools.validations import ToolValidations
 
 logger = logging.getLogger(__name__)
 
@@ -150,9 +151,17 @@ class Tool(BaseTool):
     @classmethod
     def format_output(cls, coder, mcp_server, tool_response):
         color_start, color_end = color_markers(coder)
-        params = json.loads(tool_response.function.arguments)
 
+        # Output header
         tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+
+        try:
+            params = ToolValidations.validate_params(
+                tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+            )
+        except ToolError:
+            coder.io.tool_error("Invalid Tool JSON")
+            return
 
         summary = params.get("summary")
         if summary:
@@ -161,4 +170,4 @@ class Tool(BaseTool):
             coder.io.tool_output(summary)
             coder.io.tool_output("")
 
-        tool_footer(coder=coder, tool_response=tool_response)
+        tool_footer(coder=coder, tool_response=tool_response, params=params)

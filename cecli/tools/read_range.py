@@ -1,4 +1,3 @@
-import json
 import os
 from typing import Dict, List
 
@@ -11,6 +10,7 @@ from cecli.tools.utils.helpers import (
     resolve_paths,
 )
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
+from cecli.tools.validations import ToolValidations
 
 
 class Tool(BaseTool):
@@ -599,13 +599,16 @@ class Tool(BaseTool):
         """Format output for ReadRange tool."""
         color_start, color_end = color_markers(coder)
 
+        # Output header
+        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+
         try:
-            params = json.loads(tool_response.function.arguments)
-        except json.JSONDecodeError:
+            params = ToolValidations.validate_params(
+                tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+            )
+        except ToolError:
             coder.io.tool_error("Invalid Tool JSON")
             return
-
-        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
 
         show_ops = params.get("show", [])
         if show_ops:
@@ -623,7 +626,7 @@ class Tool(BaseTool):
                 coder.io.tool_output(formatted_query)
             coder.io.tool_output("")
 
-        tool_footer(coder=coder, tool_response=tool_response)
+        tool_footer(coder=coder, tool_response=tool_response, params=params)
 
     @classmethod
     def format_error(cls, coder, error_text, file_path, start_text, end_text, operation_index):

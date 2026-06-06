@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import json
 
+import json_repair
+
 from cecli.helpers import responses
 from cecli.tools.utils.helpers import ToolError
 
@@ -52,6 +54,12 @@ class ToolValidations:
         Returns:
             The (possibly mutated) *params* dict.
         """
+        if isinstance(params, str):
+            params = json_repair.loads(params)
+
+        if not isinstance(params, (dict, list)):
+            raise ToolError("Invalid Tool Input - Unparsable JSON")
+
         # Apply basic structural corrections before declarative validations
         params = cls._basic_validations(params, schema)
 
@@ -236,6 +244,12 @@ class ToolValidations:
                 return parsed
             if isinstance(parsed, dict):
                 return [parsed]
+
+            parsed = json_repair.loads(text, skip_json_loads=True)
+
+            if isinstance(parsed, list):
+                return parsed
+
             return []
 
         if isinstance(item, dict):
@@ -262,13 +276,15 @@ class ToolValidations:
             parsed = responses.try_parse_json_value(text)
             if isinstance(parsed, dict):
                 return parsed
-            # Fallback: try standard json.loads
+            # Fallback: try json repaid json.loads
             try:
-                parsed = json.loads(text)
+                parsed = json_repair.loads(text, skip_json_loads=True)
             except (json.JSONDecodeError, ValueError):
                 return None
+
             if isinstance(parsed, dict):
                 return parsed
+
         return None
 
     @classmethod

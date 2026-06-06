@@ -139,7 +139,12 @@ class BaseTool(ABC):
 
     @classmethod
     def format_output(cls, coder, mcp_server, tool_response):
-        print_tool_response(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+        params = ToolValidations.validate_params(
+            tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+        )
+        print_tool_response(
+            coder=coder, mcp_server=mcp_server, tool_response=tool_response, params=params
+        )
 
     @classmethod
     def on_duplicate_request(cls, coder, **kwargs):

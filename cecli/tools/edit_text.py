@@ -1,5 +1,3 @@
-import json
-
 from cecli.helpers.hashline import (
     ContentHashError,
     apply_hashline_operations,
@@ -15,6 +13,7 @@ from cecli.tools.utils.helpers import (
     validate_file_for_edit,
 )
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
+from cecli.tools.validations import ToolValidations
 
 VALID_OPERATIONS = {"replace", "delete", "insert"}
 OPERATION_NOUNS = {
@@ -235,7 +234,7 @@ class Tool(BaseTool):
                         if new_content != original_content:
                             file_successful_edits += len(successful_ops)
                         else:
-                            raise ToolError("Invalid Edit - Edit Results In Same Content")
+                            raise ToolError("Invalid Edit - Update content hash bounds")
 
                         if len(failed_ops):
                             for failed_op in failed_ops:
@@ -373,12 +372,16 @@ class Tool(BaseTool):
     def format_output(cls, coder, mcp_server, tool_response):
         color_start, color_end = color_markers(coder)
 
-        try:
-            params = json.loads(tool_response.function.arguments)
-        except json.JSONDecodeError:
-            coder.io.tool_error("Invalid Tool JSON")
-
+        # Output header
         tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+
+        try:
+            params = ToolValidations.validate_params(
+                tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+            )
+        except ToolError:
+            coder.io.tool_error("Invalid Tool JSON")
+            return
 
         # Group edits by file_path for display
         edits_by_file = {}
@@ -453,4 +456,4 @@ class Tool(BaseTool):
                     coder.io.tool_output(range_info)
                     coder.io.tool_output("")
 
-        tool_footer(coder=coder, tool_response=tool_response)
+        tool_footer(coder=coder, tool_response=tool_response, params=params)
