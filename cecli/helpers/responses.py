@@ -3,6 +3,7 @@ import re
 import time
 from typing import List, Optional
 
+import json_repair
 from litellm.types.utils import ChatCompletionMessageToolCall, Function
 
 from cecli import utils
@@ -368,7 +369,8 @@ def parse_tool_arguments(args_string: str) -> dict:
         if isinstance(lone, dict):
             return lone
         try:
-            single = json.loads(chunks[0])
+            json_string = json_repair.repair_json(chunks[0], ensure_ascii=False)
+            single = json.loads(json_string)
         except json.JSONDecodeError as err:
             return {"@error": f"Malformed JSON arguments: {err}"}
         return single if isinstance(single, dict) else {}

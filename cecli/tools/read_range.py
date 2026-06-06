@@ -212,7 +212,7 @@ class Tool(BaseTool):
                 # 4. Determine line range
                 start_line_idx = -1
                 end_line_idx = -1
-                found_by = ""
+                # found_by = ""
 
                 if start_text is not None and end_text is not None:
                     if start_text.isdigit() and end_text.isdigit():
@@ -372,7 +372,7 @@ class Tool(BaseTool):
                 # Store the found indices for future disambiguation
                 cls._last_invocation[abs_path] = {"start_idx": s_idx, "end_idx": e_idx}
 
-                found_by = f"range '{start_text}' to '{end_text}'"
+                # found_by = f"range '{start_text}' to '{end_text}'"
 
                 try:
                     padding_int = int(padding)
@@ -399,23 +399,23 @@ class Tool(BaseTool):
 
                 # 6. Format output for this operation
                 # Use rel_path for user-facing messages
-                output_lines = [f"Displaying context around {found_by} in {rel_path}:"]
+                # output_lines = [f"Displaying context around {found_by} in {rel_path}:"]
 
                 # Generate hashline for the entire file
                 hashed_content = hashline(content)
                 hashed_lines = hashed_content.splitlines()
 
                 # Extract the context window from hashed lines
-                context_hashed_lines = hashed_lines[start_line_idx : end_line_idx + 1]
+                # context_hashed_lines = hashed_lines[start_line_idx : end_line_idx + 1]
 
-                for i in range(start_line_idx, end_line_idx + 1):
-                    hashed_line = context_hashed_lines[i - start_line_idx]
-                    output_lines.append(hashed_line)
+                # for i in range(start_line_idx, end_line_idx + 1):
+                #    hashed_line = context_hashed_lines[i - start_line_idx]
+                #    output_lines.append(hashed_line)
 
                 # Add separator between multiple show operations
-                if show_index > 0:
-                    all_outputs.append("")
-                all_outputs.extend(output_lines)
+                # if show_index > 0:
+                #     all_outputs.append("")
+                # all_outputs.extend(output_lines)
 
                 # Update the conversation cache with the displayed range
                 # Note: start_line_idx and end_line_idx are 0-based, convert to 1-based for hashline
@@ -524,6 +524,9 @@ class Tool(BaseTool):
                         "Do not call `ReadRange` again with these parameters again unless you edit"
                         " the relevant files."
                     )
+
+            if all_outputs:
+                result_parts.append("\n".join(all_outputs))
 
             if error_outputs:
                 coder.io.tool_error(f"Errors encountered for {len(error_outputs)} operation(s)")

@@ -113,8 +113,22 @@ class Tool(BaseTool):
         Each edit object must include its own file_path.
         """
         if not coder.edit_allowed:
-            raise ToolError(
-                "Please call `ReadRange` first to make sure edits are appropriately scoped"
+            from cecli.helpers.conversation import ConversationService, MessageTag
+
+            ConversationService.get_manager(coder).add_message(
+                message_dict=dict(
+                    role="user",
+                    content=(
+                        "Please call `ReadRange` on files you intend to edit to"
+                        " make sure edits are appropriately targeted."
+                    ),
+                ),
+                tag=MessageTag.CUR,
+                hash_key=("edit_text", "reminder"),
+                promotion=ConversationService.get_manager(coder).DEFAULT_TAG_PROMOTION_VALUE,
+                mark_for_delete=0,
+                mark_for_demotion=1,
+                force=True,
             )
 
         tool_name = "EditText"
