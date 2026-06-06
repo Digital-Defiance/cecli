@@ -14,7 +14,6 @@ from cecli.helpers.monorepo.local_workspace import (
     find_workspace_config_file,
     load_workspace_file,
     primary_project,
-    project_git_root,
     project_path_prefix,
     read_workspace_metadata,
     resolve_workspace_file_path,
