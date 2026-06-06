@@ -719,6 +719,19 @@ async def main_async(argv=None, input=None, output=None, force_git_root=None, re
         for fname in loaded_dotenvs:
             io.tool_output(f"Loaded {fname}")
     all_files = args.files + (args.file or [])
+
+    # Check for arguments starting with '--' that are likely
+    # unrecognized or misspelled parameters, not file arguments
+    filtered_files = []
+    for f in all_files:
+        if f.startswith("--"):
+            # Extract the parameter name: everything between '--' and '=' or end
+            param = f[2:].split("=")[0].split()[0]
+            io.tool_warning(f"The parameter --{param} does not exist.")
+        else:
+            filtered_files.append(f)
+
+    all_files = filtered_files
     all_files = utils.expand_glob_patterns(all_files)
     fnames = [str(Path(fn).resolve()) for fn in all_files]
     read_patterns = args.read or []

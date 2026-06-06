@@ -1,4 +1,3 @@
-import json
 import shutil
 from pathlib import Path
 
@@ -7,12 +6,17 @@ import oslex
 from cecli.helpers.hashline import strip_hashline
 from cecli.run_cmd import run_cmd_subprocess
 from cecli.tools.utils.base_tool import BaseTool
+from cecli.tools.utils.helpers import ToolError
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
+from cecli.tools.validations import ToolValidations
 
 
 class Tool(BaseTool):
     NORM_NAME = "grep"
-    LIST_PARAMS = ["searches"]
+    VALIDATIONS = {
+        "searches": ["coerce_list"],
+        "searches[]": ["coerce_dict"],
+    }
     SCHEMA = {
         "type": "function",
         "function": {
@@ -236,13 +240,16 @@ class Tool(BaseTool):
         """Format output for Grep tool."""
         color_start, color_end = color_markers(coder)
 
+        # Output header
+        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+
         try:
-            params = json.loads(tool_response.function.arguments)
-        except json.JSONDecodeError:
+            params = ToolValidations.validate_params(
+                tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+            )
+        except ToolError:
             coder.io.tool_error("Invalid Tool JSON")
             return
-
-        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
 
         # Output each search operation with the requested format
         searches = params.get("searches", [])
@@ -278,4 +285,4 @@ class Tool(BaseTool):
                 coder.io.tool_output(formatted_query)
             coder.io.tool_output("")
 
-        tool_footer(coder=coder, tool_response=tool_response)
+        tool_footer(coder=coder, tool_response=tool_response, params=params)

@@ -98,7 +98,7 @@ def test_grep_format_output_empty_searches_does_not_crash_tool_footer():
         mcp_server=SimpleNamespace(name="Local"),
         tool_response=tool_response,
     )
-    assert coder.io.tool_error.called
+    assert not coder.io.tool_error.called
 
 
 def test_try_join_char_split_json_array_reconstructs_array():

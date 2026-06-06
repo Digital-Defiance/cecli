@@ -1,12 +1,13 @@
 # Import necessary functions
-import json
 import os
 import platform
 
 from cecli.helpers.background_commands import BackgroundCommandManager
 from cecli.run_cmd import run_cmd_subprocess
 from cecli.tools.utils.base_tool import BaseTool
+from cecli.tools.utils.helpers import ToolError
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
+from cecli.tools.validations import ToolValidations
 
 
 class Tool(BaseTool):
@@ -392,14 +393,16 @@ class Tool(BaseTool):
         """Format output for Command tool."""
         color_start, color_end = color_markers(coder)
 
-        try:
-            params = json.loads(tool_response.function.arguments)
-        except json.JSONDecodeError:
-            coder.io.tool_error("Invalid Tool JSON")
-            return
-
         # Output header
         tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+
+        try:
+            params = ToolValidations.validate_params(
+                tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+            )
+        except ToolError:
+            coder.io.tool_error("Invalid Tool JSON")
+            return
 
         command = params.get("command", "")
         background = params.get("background", False)
@@ -430,4 +433,4 @@ class Tool(BaseTool):
         coder.io.tool_output("")
 
         # Output footer
-        tool_footer(coder=coder, tool_response=tool_response)
+        tool_footer(coder=coder, tool_response=tool_response, params=params)
