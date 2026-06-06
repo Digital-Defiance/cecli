@@ -142,3 +142,31 @@ def test_multiline_pattern_search(coder_with_file):
 
     assert "Retrieved context for 1 operation(s)" in result
     coder.io.tool_error.assert_not_called()
+
+
+def test_empty_file_includes_edit_hint(tmp_path):
+    empty = tmp_path / "pubspec.yaml"
+    empty.write_text("")
+    coder = DummyCoder(tmp_path)
+
+    from unittest.mock import patch
+
+    with patch("cecli.helpers.conversation.ConversationService") as conv:
+        conv.get_files.return_value.clear_ranges = Mock()
+        conv.get_files.return_value.push_range = Mock()
+        conv.get_chunks.return_value.add_file_context_messages = Mock()
+        result = read_range.Tool.execute(
+            coder,
+            show=[
+                {
+                    "file_path": "pubspec.yaml",
+                    "start_text": "@000",
+                    "end_text": "@000",
+                }
+            ],
+        )
+
+    assert "pubspec.yaml is empty" in result
+    assert "EditText" in result
+    assert "readrange again" in result.lower()
+    coder.io.tool_error.assert_not_called()

@@ -194,11 +194,20 @@ class Tool(BaseTool):
                 num_lines = len(lines)
 
                 if num_lines == 0:
-                    # Handle empty file case
-                    output_lines = [f"File {rel_path} is empty."]
-                    if show_index > 0:
-                        all_outputs.append("")
-                    all_outputs.extend(output_lines)
+                    new_context_details.append(
+                        "\n".join(
+                            [
+                                f"File {rel_path} is empty.",
+                                (
+                                    "Next: use EditText with start_line @000 and end_line @000 to"
+                                    " write content, or ContextManager to scaffold — do not call"
+                                    " ReadRange again on this empty file."
+                                ),
+                            ]
+                        )
+                    )
+                    new_context_retrieved.append(rel_path)
+                    cls._last_read_turn[abs_path] = coder.turn_count
                     continue
                 # 4. Determine line range
                 start_line_idx = -1
