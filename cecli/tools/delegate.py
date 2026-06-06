@@ -10,7 +10,10 @@ from cecli.tools.utils.output import color_markers, tool_footer, tool_header
 class Tool(BaseTool):
     NORM_NAME = "delegate"
     TRACK_INVOCATIONS = True
-    LIST_PARAMS = ["delegations"]
+    VALIDATIONS = {
+        "delegations": ["coerce_list"],
+        "delegations[]": ["coerce_dict"],
+    }
     SCHEMA = {
         "type": "function",
         "function": {

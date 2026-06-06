@@ -27,7 +27,10 @@ OPERATION_NOUNS = {
 class Tool(BaseTool):
     NORM_NAME = "edittext"
     TRACK_INVOCATIONS = False
-    LIST_PARAMS = ["edits"]
+    VALIDATIONS = {
+        "edits": ["coerce_list"],
+        "edits[]": ["coerce_dict"],
+    }
     SCHEMA = {
         "type": "function",
         "function": {

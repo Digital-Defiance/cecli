@@ -19,7 +19,10 @@ finally:
 
 class Tool(BaseTool):
     NORM_NAME = "explorecode"
-    LIST_PARAMS = ["queries"]
+    VALIDATIONS = {
+        "queries": ["coerce_list"],
+        "queries[]": ["coerce_dict"],
+    }
     SCHEMA = {
         "type": "function",
         "function": {

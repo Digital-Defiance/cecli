@@ -5,7 +5,10 @@ from cecli.tools.utils.output import tool_footer, tool_header
 
 class Tool(BaseTool):
     NORM_NAME = "updatetodolist"
-    LIST_PARAMS = ["tasks"]
+    VALIDATIONS = {
+        "tasks": ["coerce_list"],
+        "tasks[]": ["coerce_dict"],
+    }
     SCHEMA = {
         "type": "function",
         "function": {
@@ -40,17 +43,6 @@ class Tool(BaseTool):
                         "type": "boolean",
                         "description": (
                             "Whether to append to existing content instead of replacing it."
-                            " Defaults to False."
-                        ),
-                    },
-                    "change_id": {
-                        "type": "string",
-                        "description": "Optional change ID for tracking.",
-                    },
-                    "dry_run": {
-                        "type": "boolean",
-                        "description": (
-                            "Whether to perform a dry run without actually updating the file."
                             " Defaults to False."
                         ),
                     },

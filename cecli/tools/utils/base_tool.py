@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 
-from cecli.tools.utils.helpers import handle_tool_error, normalize_json_array
+from cecli.tools.utils.helpers import handle_tool_error
 from cecli.tools.utils.output import print_tool_response
+from cecli.tools.validations import ToolValidations
 
 
 class BaseTool(ABC):
@@ -12,8 +13,8 @@ class BaseTool(ABC):
     NORM_NAME = None
     SCHEMA = None
 
-    # Parameters to run normalization checks on
-    LIST_PARAMS = []
+    # Declarative validations (maps param paths to lists of validation method names)
+    VALIDATIONS = {}
 
     # Invocation tracking for detecting repeated tool calls
     _invocations = {}  # Dict to store last 3 invocations per tool
@@ -122,15 +123,14 @@ class BaseTool(ABC):
                         coder, tool_name, ValueError(error_msg), add_traceback=False
                     )
 
-            for param in cls.LIST_PARAMS:
-                if param in params:
-                    params[param] = normalize_json_array(params[param], param_name=param)
-
             # Add current invocation to history (keeping only last 3)
             if params:
                 cls._invocations[tool_name].append((current_params_tuple, params))
             if len(cls._invocations[tool_name]) > 3:
                 cls._invocations[tool_name] = cls._invocations[tool_name][-3:]
+
+        # Apply declarative validations from VALIDATIONS dict
+        params = ToolValidations.validate_params(params, cls.VALIDATIONS, cls.SCHEMA)
 
         try:
             return cls.execute(coder, **params)
