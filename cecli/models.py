@@ -592,11 +592,25 @@ class Model(ModelSettings):
 
             valid_model_settings_fields = {f.name for f in fields(ModelSettings)}
 
+            # Detect structured keys: api_settings, api, llm_settings, or llm keys indicate the new format
+            has_structured_keys = any(
+                k in self.override_kwargs
+                for k in (
+                    "api_settings",
+                    "api-settings",
+                    "llm_settings",
+                    "llm-settings",
+                    "api",
+                    "llm",
+                    "agent",
+                )
+            )
+
             for key, value in self.override_kwargs.items():
-                if key == "model_settings" or key == "model-settings":
+                if key in ("agent", "model_settings", "model-settings"):
                     if not isinstance(value, dict):
                         raise ValueError(
-                            f"override_kwargs 'model_settings' must be a dict, got {type(value)}"
+                            f"override_kwargs '{key}' must be a dict, got {type(value)}"
                         )
                     for setting_key, setting_value in value.items():
                         if setting_key not in valid_model_settings_fields:
@@ -605,6 +619,26 @@ class Model(ModelSettings):
                                 f"Must be one of: {sorted(valid_model_settings_fields)}"
                             )
                         setattr(self, setting_key, setting_value)
+                elif has_structured_keys and key in ("api", "api_settings", "api-settings"):
+                    # api_settings: merge each sub-key into extra_params
+                    if not isinstance(value, dict):
+                        raise ValueError(
+                            f"override_kwargs '{key}' must be a dict, got {type(value)}"
+                        )
+                    for api_key, api_value in value.items():
+                        if isinstance(api_value, dict) and isinstance(
+                            self.extra_params.get(api_key), dict
+                        ):
+                            self.extra_params[api_key] = {**self.extra_params[api_key], **api_value}
+                        else:
+                            self.extra_params[api_key] = api_value
+                elif has_structured_keys and key in ("llm", "llm_settings", "llm-settings"):
+                    # llm_settings: merge into self.info
+                    if not isinstance(value, dict):
+                        raise ValueError(
+                            f"override_kwargs '{key}' must be a dict, got {type(value)}"
+                        )
+                    self.info = {**self.info, **value}
                 elif isinstance(value, dict) and isinstance(self.extra_params.get(key), dict):
                     self.extra_params[key] = {**self.extra_params[key], **value}
                 else:
