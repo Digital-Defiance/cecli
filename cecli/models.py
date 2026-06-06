@@ -1591,7 +1591,7 @@ async def check_for_dependencies(io, model_name):
         )
 
 
-def get_chat_model_names():
+def get_chat_model_names(query: str = "") -> list:
     chat_models = set()
     model_metadata = list(litellm.model_cost.items())
     model_metadata += list(model_info_manager.local_model_metadata.items())
@@ -1609,7 +1609,38 @@ def get_chat_model_names():
                 fq_model = f"{provider}/{orig_model}"
             chat_models.add(fq_model)
         chat_models.add(orig_model)
-    return sorted(chat_models)
+
+    sorted_models = sorted(chat_models)
+
+    # Fuzzy match against the query when one is provided
+    if query:
+        try:
+            from ngram import NGram
+            from rapidfuzz import fuzz, process
+
+            score_cutoff = int(0.3 * 100)
+            results = process.extract(
+                query,
+                sorted_models,
+                scorer=fuzz.partial_ratio,
+                limit=20,
+                score_cutoff=score_cutoff,
+            )
+            match_names = [match for match, score, _ in results]
+
+            # Re-rank with ngram trigram similarity when result set is small
+            if len(match_names) < 100:
+                ng = NGram(match_names, N=3)
+                reranked = ng.search(query, threshold=0.0)
+                match_names = [item for item, score in reranked]
+
+            return match_names
+        except ImportError:
+            # Fall back to simple substring matching if fuzzy libs unavailable
+            query_lower = query.lower()
+            return [m for m in sorted_models if query_lower in m.lower()]
+
+    return sorted_models
 
 
 def fuzzy_match_models(name):

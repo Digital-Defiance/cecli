@@ -1535,9 +1535,18 @@ class TUI(App):
                 else:
                     # Use standard command completions (no file fallback)
                     try:
-                        cmd_completions = commands.get_completions(cmd_name, coder=active_coder)
+                        cmd_completions = commands.get_completions(
+                            cmd_name, args=arg_prefix, coder=active_coder
+                        )
                         if cmd_completions:
-                            if arg_prefix:
+                            exempt_from_substring_matching = {
+                                "/model",
+                                "/models",
+                                "/agent-model",
+                                "/editor-model",
+                                "/weak-model",
+                            }
+                            if arg_prefix and cmd_name not in exempt_from_substring_matching:
                                 suggestions = [
                                     c for c in cmd_completions if arg_prefix_lower in str(c).lower()
                                 ]
