@@ -1115,7 +1115,7 @@ class AgentCoder(Coder):
             context_parts.append("## File Editing Tools Disabled")
             context_parts.append(
                 "File editing tools are currently disabled. Use `ReadRange` to determine the"
-                " current content hash prefixes needed to perform an edit and activate them when"
+                " current content ID prefixes needed to perform an edit and activate them when"
                 " you are ready to edit a file."
             )
 

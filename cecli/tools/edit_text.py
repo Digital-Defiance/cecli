@@ -35,13 +35,13 @@ class Tool(BaseTool):
         "function": {
             "name": "EditText",
             "description": (
-                "Edit text in one or more files using content hash markers. "
+                "Edit text in one or more files using content ID markers. "
                 "Supports replace, delete, and insert operations in a single call. "
                 "Can handle an array of up to 10 edits across multiple files. "
                 "Each edit must include its own file_path and operation type. "
-                "Use content hash ranges with the start_line and end_line parameters with format "
+                "Use content ID ranges with the start_line and end_line parameters with format "
                 "`{4 char hash}` (without the braces). For empty files, use `@000` as the "
-                "content hash references."
+                "content ID references."
             ),
             "parameters": {
                 "type": "object",
@@ -74,14 +74,14 @@ class Tool(BaseTool):
                                 "start_line": {
                                     "type": "string",
                                     "description": (
-                                        "Content hash for start line: `{4 char hash}` (without "
+                                        "content ID for start line: `{4 char hash}` (without "
                                         "the braces)"
                                     ),
                                 },
                                 "end_line": {
                                     "type": "string",
                                     "description": (
-                                        "Content hash for end line: `{4 char hash}` (without the"
+                                        "content ID for end line: `{4 char hash}` (without the"
                                         " braces)"
                                     ),
                                 },
@@ -248,7 +248,7 @@ class Tool(BaseTool):
                         if new_content != original_content:
                             file_successful_edits += len(successful_ops)
                         else:
-                            raise ToolError("Invalid Edit - Update content hash bounds")
+                            raise ToolError("Invalid Edit - Update content ID bounds")
 
                         if len(failed_ops):
                             for failed_op in failed_ops:
@@ -446,7 +446,7 @@ class Tool(BaseTool):
                                     text=strip_hashline(text),
                                 )
                         except ContentHashError as e:
-                            diff_output = f"Content hash verification failed: {str(e)}"
+                            diff_output = f"content ID verification failed: {str(e)}"
                         except Exception:
                             pass
 

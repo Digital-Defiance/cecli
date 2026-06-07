@@ -650,6 +650,20 @@ def _apply_start_stitching(
                     # The replacement line matches the line being replaced
                     # Don't stitch to a line in lines_before_range
                     continue
+
+                # Require 2 consecutive matching lines to avoid false positives
+                # (single boilerplate lines like "import sys" or "def foo():"
+                # are too likely to be coincidental)
+                if line_idx + 1 < len(replacement_lines) and match_index + 1 < len(
+                    lines_before_range_normalized
+                ):
+                    next_repl = replacement_lines[line_idx + 1]
+                    next_repl_stripped = strip_hashline(next_repl)
+                    if not next_repl_stripped.endswith("\n"):
+                        next_repl_stripped += "\n"
+                    if next_repl_stripped != lines_before_range_normalized[match_index + 1]:
+                        continue  # Only 1 line matches — likely coincidental
+
                 # Found a line that already exists before the range!
                 # This is a non-contiguous match - we need to "stitch" the replacement
                 # at this exact content match to prevent duplicate code structures
@@ -694,9 +708,9 @@ def _apply_start_stitching(
                     start_idx = new_start_idx
                     replacement_lines = new_replacement_lines
                 else:
-                    # Can't extend backward due to overlap, but we can still truncate
-                    # the replacement text to avoid duplication
-                    replacement_lines = new_replacement_lines
+                    # Can't extend backward due to overlap with another operation
+                    # Don't truncate without extending — that would silently lose content
+                    continue  # Try next line instead
 
                 # We've found our stitching point, break out of the loop
                 break
@@ -772,6 +786,15 @@ def _apply_end_stitching(
             # Check if this line exists anywhere in lines_after_range_normalized
             try:
                 match_index = lines_after_range_normalized.index(replacement_line_stripped)
+
+                # Require 2 consecutive matching lines to reduce false positives
+                if line_idx - 1 >= 0 and match_index - 1 >= 0:
+                    prev_repl = replacement_lines[line_idx - 1]
+                    prev_repl_stripped = strip_hashline(prev_repl)
+                    if not prev_repl_stripped.endswith("\n"):
+                        prev_repl_stripped += "\n"
+                    if prev_repl_stripped != lines_after_range_normalized[match_index - 1]:
+                        continue  # Only 1 line matches — likely coincidental
                 # Found a line that already exists after the range!
                 # This is a non-contiguous match - we need to "stitch" the replacement
                 # at this exact content match to prevent duplicate code structures
@@ -896,109 +919,6 @@ def _apply_range_shifting(hashed_lines, resolved_ops):
                         if not overlap:
                             resolved["start_idx"] = new_start
                             resolved["end_idx"] = new_end
-
-    return resolved_ops
-
-
-# Regex configuration
-RE_CODE_NOISE = r'(#.*|//.*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')'
-
-
-def get_brace_balance(lines_to_check: list[str]) -> int:
-    """
-    Calculates the net curly brace debt of a list of lines.
-    Automatically strips hashlines, comments, and string literals.
-    """
-    text = "".join(lines_to_check)
-    clean_code = strip_hashline(text)
-    clean_code = re.sub(RE_CODE_NOISE, "", clean_code)
-    return clean_code.count("{") - clean_code.count("}")
-
-
-def _apply_closure_safeguard(hashed_lines, resolved_ops):
-    """
-    Enhanced closure safeguard with dynamic bidirectional search.
-    """
-    # Tune these to adjust how far the 'healing' logic searches
-    MAX_LOOK_DOWN = 5
-    # Note: We'll calculate the actual MAX_LOOK_UP per operation
-    # to ensure we don't scan past the start_idx.
-
-    for i, resolved in enumerate(resolved_ops):
-        op = resolved["op"]
-        if op["operation"] not in {"replace", "delete"}:
-            continue
-
-        replacement_text = op.get("text", "") or ""
-        replacement_lines = replacement_text.splitlines(keepends=True)
-
-        # --- PHASE 1: BIDIRECTIONAL STRUCTURAL HEALING ---
-        if get_brace_balance([replacement_text]) == 0:
-            start_idx = resolved["start_idx"]
-            orig_end_idx = resolved["end_idx"]
-
-            if get_brace_balance(hashed_lines[start_idx : orig_end_idx + 1]) != 0:
-                # Dynamic Search List Generation
-                # We limit look-up so we don't scan before the start_idx
-                actual_max_up = orig_end_idx - start_idx
-                actual_max_down = max(MAX_LOOK_DOWN, orig_end_idx - start_idx)
-                search_offsets = []
-
-                # Generate alternating offsets: [1, -1, 2, -2, ... N]
-                for dist in range(1, max(actual_max_down, actual_max_up) + 1):
-                    if dist <= actual_max_down:
-                        search_offsets.append(dist)
-                    if dist <= actual_max_up:
-                        search_offsets.append(-dist)
-
-                for offset in search_offsets:
-                    candidate_end = orig_end_idx + offset
-
-                    # Safety: check bounds and avoid overlapping other ops
-                    if candidate_end < start_idx or candidate_end >= len(hashed_lines):
-                        continue
-
-                    if any(
-                        j != i and (other["start_idx"] <= candidate_end <= other["end_idx"])
-                        for j, other in enumerate(resolved_ops)
-                    ):
-                        continue
-
-                    if get_brace_balance(hashed_lines[start_idx : candidate_end + 1]) == 0:
-                        resolved["end_idx"] = candidate_end
-                        break
-
-        # --- PHASE 2: CONTRACTION (Indentation Guard) ---
-        # Prevents replacing an outer-scope brace if the replacement text already
-        # includes its own correctly indented closer.
-        if not replacement_lines:
-            continue
-
-        last_repl_line = strip_hashline(replacement_lines[-1])
-        last_repl_stripped = last_repl_line.strip().rstrip(";,")
-
-        if last_repl_stripped and last_repl_stripped[-1] in "})]":
-            # Calculate replacement indent
-            repl_indent = len(last_repl_line) - len(last_repl_line.lstrip(" \t"))
-
-            if resolved["end_idx"] < len(hashed_lines):
-                end_line = strip_hashline(hashed_lines[resolved["end_idx"]])
-                check_end = end_line.strip().rstrip(";,")
-
-                if check_end and check_end[-1] in "})]":
-                    # Calculate indent of the existing brace in the file
-                    file_indent = len(end_line) - len(end_line.lstrip(" \t"))
-
-                    # If the file's brace is less indented, it belongs to an outer scope
-                    if file_indent < repl_indent and resolved["end_idx"] > resolved["start_idx"]:
-                        new_end_idx = resolved["end_idx"] - 1
-
-                        # Safety: don't contract into another operation's territory
-                        if not any(
-                            j != i and (other["start_idx"] <= new_end_idx <= other["end_idx"])
-                            for j, other in enumerate(resolved_ops)
-                        ):
-                            resolved["end_idx"] = new_end_idx
 
     return resolved_ops
 
@@ -1411,9 +1331,6 @@ def apply_hashline_operations(
     resolved_ops = _merge_replace_operations(resolved_ops)
     # Apply content-aware range expansion/shifting for replace operations
     # resolved_ops = _apply_range_shifting(hashed_lines, resolved_ops)
-    # Apply closure safeguard for braces/brackets
-    resolved_ops = _apply_closure_safeguard(hashed_lines, resolved_ops)
-
     # Sort by start_idx descending to apply from bottom to top
     # When operations have same start_idx, apply in order: insert, replace, delete
     # This ensures correct behavior when multiple operations target the same line

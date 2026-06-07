@@ -52,7 +52,7 @@ class HashPos:
     def generate_public_id(self, text: str, line_idx: int) -> str:
         """
         Generates a 4-char Base64 ID combining modulo buckets and context hash.
-        Layout: [2-bit b1] [10-bit Hash A] [2-bit b2] [10-bit Hash B]
+        Layout: [2-bit b1] [2-bit b2] [10-bit Hash A] [10-bit Hash B]
         """
         b1, b2 = self._get_region_bits(line_idx)
         neighborhood_hash = self._get_neighborhood_hash(line_idx)
@@ -62,8 +62,7 @@ class HashPos:
         hash_b = neighborhood_hash & 0x3FF
 
         # Construct the mixed 24-bit integer
-        packed = (b1 << 22) | (hash_a << 12) | (b2 << 10) | hash_b
-
+        packed = (b1 << 22) | (b2 << 20) | (hash_a << 10) | hash_b
         res = ""
         for _ in range(4):
             res += self.B64[packed % 64]
@@ -79,10 +78,9 @@ class HashPos:
             packed |= self.B64.index(char) << (6 * i)
 
         b1 = (packed >> 22) & 3
-        hash_a = (packed >> 12) & 0x3FF
-        b2 = (packed >> 10) & 3
+        b2 = (packed >> 20) & 3
+        hash_a = (packed >> 10) & 0x3FF
         hash_b = packed & 0x3FF
-
         mod_val = (b1 << 2) | b2
         neighborhood_hash = (hash_a << 10) | hash_b
 

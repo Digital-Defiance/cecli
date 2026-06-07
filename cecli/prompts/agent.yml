@@ -29,8 +29,8 @@ main_system: |
 
   <context name="file_format">
   ### 1. FILE FORMAT
-  File contents will be prefixed with identifiers. Each line starts with a case-sensitive content hash followed by `::`. These are used to target where editing tools will perform edits.
-  They are algorithmically generated, maintained, and subject to change. Do not search for these content hashes. Focus on the lines they identify.
+  File contents will be prefixed with identifiers. Each line starts with a case-sensitive content ID followed by `::`. These are used to target where editing tools will perform edits.
+  They are algorithmically generated, maintained, and subject to change. Do not search for these content IDs. Focus on the lines they identify.
 
   **Example File Format :**
   il9n::#!/usr/bin/env python3
