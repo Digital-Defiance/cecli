@@ -19,26 +19,31 @@ class Tool(BaseTool):
     VALIDATIONS = {
         "show": ["coerce_list"],
         "show[]": ["coerce_dict"],
-        "show[].start_text": ["coerce_str"],
-        "show[].end_text": ["coerce_str"],
+        "show[].start_marker": ["coerce_str"],
+        "show[].end_marker": ["coerce_str"],
     }
     SCHEMA = {
         "type": "function",
         "function": {
             "name": "ReadRange",
             "description": (
-                "Get content hash prefixes of content between start and end patterns in files."
-                " Accepts an array of `show` objects, each with file_path, start_text, end_text."
-                " These values must be lines of content in the file. They can contain up to 3"
-                " lines but newlines should generally be avoided. Avoid using generic keywords and"
+                "Get content hash prefixes of content between start and end markers in files."
+                " This is useful for files you are attempting to edit and for understanding their structure."
+                " Accepts an array of `show` objects, each with file_path, start_marker, end_marker."
+                " These values should be lines of content in the file. They can contain up to 3"
+                " lines of content but newlines should generally be avoided. Avoid using generic keywords and"
                 " symbols. Special markers @000 and 000@ represent the file boundaries and can be"
-                " used for start_text and end_text for the first and last lines of the file"
-                " respectively. Avoid using both of the special markers together on non-empty"
-                " files. Line numbers may be used as values but they are discouraged as"
-                " they shift between edits. Never use content hashes as the start_text and end_text values."
-                " Do not use the same pattern for the start_text and end_text. It is best to use function"
-                " names, variable declarations and other meaningful identifiers as start_text and"
-                " end_text values."
+                " used for start_marker and end_marker for the first and last lines of the file"
+                " respectively. Line numbers may also be used for range lookups."
+                " It is best to use function names, variable declarations and other meaningful identifiers"
+                " as start_marker and end_marker values."
+                " Do not use both of the special markers together on non-empty file."
+                " Do not use content hashes as the start_marker and end_marker values."
+                " Do not use the same pattern for the start_marker and end_marker."
+                " Do not use empty strings for the start_marker and end_marker."
+                " Prefer using this tool to cli tools for reading files."
+                " Calling this tool sequentially on increasingly finer grained searchers "
+                " will help with getting outlines of important structural features"
             ),
             "parameters": {
                 "type": "object",
@@ -52,14 +57,14 @@ class Tool(BaseTool):
                                     "type": "string",
                                     "description": "File path to search in.",
                                 },
-                                "start_text": {
+                                "start_marker": {
                                     "type": "string",
                                     "description": (
                                         "The text marking the beginning of the range."
                                         " Use '@000' for the first line on empty files."
                                     ),
                                 },
-                                "end_text": {
+                                "end_marker": {
                                     "type": "string",
                                     "description": (
                                         "The text marking the end of the range."
@@ -67,7 +72,7 @@ class Tool(BaseTool):
                                     ),
                                 },
                             },
-                            "required": ["file_path", "start_text", "end_text"],
+                            "required": ["file_path", "start_marker", "end_marker"],
                         },
                         "description": "Array of show operations to perform.",
                     },
@@ -111,8 +116,8 @@ class Tool(BaseTool):
             for show_index, show_op in enumerate(show):
                 # Extract parameters for this show operation
                 file_path = show_op.get("file_path")
-                start_text = show_op.get("start_text")
-                end_text = show_op.get("end_text")
+                start_marker = show_op.get("start_marker")
+                end_marker = show_op.get("end_marker")
                 padding = 5
 
                 if file_path is None:
@@ -129,37 +134,37 @@ class Tool(BaseTool):
                     continue
 
                 # Validate arguments for this operation
-                if not is_provided(start_text) or not is_provided(end_text):
+                if not is_provided(start_marker) or not is_provided(end_marker):
                     error_outputs.append(
                         cls.format_error(
                             coder,
                             (
-                                f"Show operation {show_index + 1}: Provide both 'start_text' and"
-                                " 'end_text'."
+                                f"Show operation {show_index + 1}: Provide both 'start_marker' and"
+                                " 'end_marker'."
                             ),
                             file_path,
-                            start_text,
-                            end_text,
+                            start_marker,
+                            end_marker,
                             show_index,
                         )
                     )
                     continue
 
-                if start_text.count("\n") > 4 or end_text.count("\n") > 4:
+                if start_marker.count("\n") > 4 or end_marker.count("\n") > 4:
                     error_outputs.append(
                         cls.format_error(
                             coder,
                             "Patterns must not contain more than 5 lines.",
                             file_path,
-                            start_text,
-                            end_text,
+                            start_marker,
+                            end_marker,
                             show_index,
                         )
                     )
                     continue
 
-                start_text = strip_hashline(start_text).strip()
-                end_text = strip_hashline(end_text).strip()
+                start_marker = strip_hashline(start_marker).strip()
+                end_marker = strip_hashline(end_marker).strip()
 
                 # 2. Resolve path
                 abs_path, rel_path = resolve_paths(coder, file_path)
@@ -170,8 +175,8 @@ class Tool(BaseTool):
                             coder,
                             f"File not found: {file_path}",
                             file_path,
-                            start_text,
-                            end_text,
+                            start_marker,
+                            end_marker,
                             show_index,
                         )
                     )
@@ -185,8 +190,8 @@ class Tool(BaseTool):
                             coder,
                             f"Could not read file: {file_path}",
                             file_path,
-                            start_text,
-                            end_text,
+                            start_marker,
+                            end_marker,
                             show_index,
                         )
                     )
@@ -214,25 +219,79 @@ class Tool(BaseTool):
                 # 4. Determine line range
                 start_line_idx = -1
                 end_line_idx = -1
+                both_structured = False
                 # found_by = ""
 
-                if start_text is not None and end_text is not None:
-                    if start_text.isdigit() and end_text.isdigit():
-                        # Treat both as 1-based line numbers
-                        start_line_num = int(start_text)
-                        end_line_num = int(end_text)
-                        # Clamp to valid range [1, num_lines]
-                        start_line_num = max(1, min(start_line_num, num_lines))
-                        end_line_num = max(1, min(end_line_num, num_lines))
-                        if start_line_num > end_line_num:
-                            # Swap so start <= end
-                            start_line_num, end_line_num = end_line_num, start_line_num
-                        start_indices = [start_line_num - 1]
-                        end_indices = [end_line_num - 1]
-                    elif start_text == "@000" or start_text == "000@":
-                        start_indices = [0]
+                if start_marker is not None and end_marker is not None:
+
+                    def _is_valid_int(s):
+                        try:
+                            int(s)
+                            return True
+                        except ValueError:
+                            return False
+
+                    start_is_digit = _is_valid_int(start_marker)
+                    end_is_digit = _is_valid_int(end_marker)
+                    start_is_special = start_marker in ("@000", "000@")
+                    end_is_special = end_marker in ("@000", "000@")
+                    both_structured = (start_is_digit or start_is_special) and (
+                        end_is_digit or end_is_special
+                    )
+                    start_is_text = not start_is_digit and not start_is_special
+                    end_is_text = not end_is_digit and not end_is_special
+                    mixed_special_search = (start_is_special and end_is_text) or (
+                        end_is_special and start_is_text
+                    )
+                    start_indices = []
+                    end_indices = []
+
+                    if both_structured:
+                        if start_is_digit:
+                            start_line_num = int(start_marker)
+                            start_line_num = max(1, min(start_line_num, num_lines))
+                            start_indices = [start_line_num - 1]
+                        else:
+                            start_indices = [0]
+
+                        if end_is_digit:
+                            end_line_num = int(end_marker)
+                            end_line_num = max(1, min(end_line_num, num_lines))
+                            end_indices = [end_line_num - 1]
+                        else:
+                            end_indices = [num_lines - 1]
+                    elif mixed_special_search:
+                        if start_is_special:
+                            # Start is special marker, end is text pattern
+                            if start_marker == "@000":
+                                start_indices = [0]
+                            else:  # 000@
+                                start_indices = [num_lines - 1]
+                            # Search for end pattern as text
+                            end_pattern_lines = end_marker.split("\n")
+                            end_indices = []
+                            for i in range(len(lines) - len(end_pattern_lines) + 1):
+                                if all(
+                                    p_line in lines[i + j]
+                                    for j, p_line in enumerate(end_pattern_lines)
+                                ):
+                                    end_indices.append(i + len(end_pattern_lines) - 1)
+                        else:
+                            # Start is text pattern, end is special marker
+                            start_pattern_lines = start_marker.split("\n")
+                            start_indices = []
+                            for i in range(len(lines) - len(start_pattern_lines) + 1):
+                                if all(
+                                    p_line in lines[i + j]
+                                    for j, p_line in enumerate(start_pattern_lines)
+                                ):
+                                    start_indices.append(i)
+                            if end_marker == "@000":
+                                end_indices = [0]
+                            else:  # 000@
+                                end_indices = [num_lines - 1]
                     else:
-                        start_pattern_lines = start_text.split("\n")
+                        start_pattern_lines = start_marker.split("\n")
                         start_indices = []
                         for i in range(len(lines) - len(start_pattern_lines) + 1):
                             if all(
@@ -241,10 +300,7 @@ class Tool(BaseTool):
                             ):
                                 start_indices.append(i)
 
-                    if end_text == "000@" or end_text == "@000":
-                        end_indices = [num_lines - 1]
-                    else:
-                        end_pattern_lines = end_text.split("\n")
+                        end_pattern_lines = end_marker.split("\n")
                         end_indices = []
                         for i in range(len(lines) - len(end_pattern_lines) + 1):
                             if all(
@@ -261,12 +317,12 @@ class Tool(BaseTool):
                                 cls.format_error(
                                     coder,
                                     (
-                                        f"Start pattern '{start_text}' too broad."
+                                        f"Start pattern '{start_marker}' too broad."
                                         " Refine your search. Be more specific."
                                     ),
                                     file_path,
-                                    start_text,
-                                    end_text,
+                                    start_marker,
+                                    end_marker,
                                     show_index,
                                 )
                             )
@@ -313,12 +369,12 @@ class Tool(BaseTool):
                                 cls.format_error(
                                     coder,
                                     (
-                                        f"Start pattern '{start_text}' not found in {file_path}."
+                                        f"Start pattern '{start_marker}' not found in {file_path}."
                                         " Refine your search."
                                     ),
                                     file_path,
-                                    start_text,
-                                    end_text,
+                                    start_marker,
+                                    end_marker,
                                     show_index,
                                 )
                             )
@@ -329,12 +385,12 @@ class Tool(BaseTool):
                                 cls.format_error(
                                     coder,
                                     (
-                                        f"End pattern '{end_text}' not found in {file_path}."
+                                        f"End pattern '{end_marker}' not found in {file_path}."
                                         " Refine your search."
                                     ),
                                     file_path,
-                                    start_text,
-                                    end_text,
+                                    start_marker,
+                                    end_marker,
                                     show_index,
                                 )
                             )
@@ -345,12 +401,12 @@ class Tool(BaseTool):
                                 cls.format_error(
                                     coder,
                                     (
-                                        f"End pattern '{end_text}' not found after start pattern in"
+                                        f"End pattern '{end_marker}' not found after start pattern in"
                                         f" {file_path}."
                                     ),
                                     file_path,
-                                    start_text,
-                                    end_text,
+                                    start_marker,
+                                    end_marker,
                                     show_index,
                                 )
                             )
@@ -358,10 +414,10 @@ class Tool(BaseTool):
 
                     s_idx, e_idx = best_pair
 
-                # Validate range width when special markers are used
-                # If too large, use _get_range_preview which tries get_file_stub
-                # first, falling back to 20 equally-spaced lines for non-code files
-                if (start_text == "@000" or end_text == "000@") and (e_idx - s_idx > 200):
+                # For structured searches (line numbers, special markers) or mixed searches
+                # (one special marker, one text pattern), cap large ranges with preview
+                # Text pattern searches are not subject to capping
+                if (both_structured or mixed_special_search) and (e_idx - s_idx > 200):
                     preview = cls._get_range_preview(
                         abs_path, coder.io, start_idx=s_idx, end_idx=e_idx, line_numbers=True
                     )
@@ -374,7 +430,7 @@ class Tool(BaseTool):
                 # Store the found indices for future disambiguation
                 cls._last_invocation[abs_path] = {"start_idx": s_idx, "end_idx": e_idx}
 
-                # found_by = f"range '{start_text}' to '{end_text}'"
+                # found_by = f"range '{start_marker}' to '{end_marker}'"
 
                 try:
                     padding_int = int(padding)
@@ -392,8 +448,8 @@ class Tool(BaseTool):
                             coder,
                             "Internal error: Could not determine line range.",
                             file_path,
-                            start_text,
-                            end_text,
+                            start_marker,
+                            end_marker,
                             show_index,
                         )
                     )
@@ -629,13 +685,13 @@ class Tool(BaseTool):
             coder.io.tool_output("")
             for i, show_op in enumerate(show_ops):
                 file_path = show_op.get("file_path", "")
-                start_text = strip_hashline(show_op.get("start_text", "")).strip()
-                end_text = strip_hashline(show_op.get("end_text", "")).strip()
+                start_marker = strip_hashline(show_op.get("start_marker", "")).strip()
+                end_marker = strip_hashline(show_op.get("end_marker", "")).strip()
 
-                # Format as "show: • file_path • start_text • end_text • padding"
+                # Format as "show: • file_path • start_marker • end_marker • padding"
                 formatted_query = (
-                    f"{color_start}range_{i + 1}:{color_end} {file_path} • {start_text} •"
-                    f" {end_text}"
+                    f"{color_start}range_{i + 1}:{color_end} {file_path} • {start_marker} •"
+                    f" {end_marker}"
                 )
                 coder.io.tool_output(formatted_query)
             coder.io.tool_output("")
@@ -643,24 +699,24 @@ class Tool(BaseTool):
         tool_footer(coder=coder, tool_response=tool_response, params=params)
 
     @classmethod
-    def format_error(cls, coder, error_text, file_path, start_text, end_text, operation_index):
+    def format_error(cls, coder, error_text, file_path, start_marker, end_marker, operation_index):
         """Format error output for the ReadRange tool."""
 
-        # Truncate start_text to first line with ellipsis if multiline
-        start_line = (start_text or "N/A").split("\n")[0]
-        if start_text and start_text.count("\n") > 0:
+        # Truncate start_marker to first line with ellipsis if multiline
+        start_line = (start_marker or "N/A").split("\n")[0]
+        if start_marker and start_marker.count("\n") > 0:
             start_line = start_line + " ..."
 
-        # Truncate end_text to first line with ellipsis if multiline
-        end_line = (end_text or "N/A").split("\n")[0]
-        if end_text and end_text.count("\n") > 0:
+        # Truncate end_marker to first line with ellipsis if multiline
+        end_line = (end_marker or "N/A").split("\n")[0]
+        if end_marker and end_marker.count("\n") > 0:
             end_line = end_line + " ..."
 
         output = [
             f"[Operation {operation_index + 1}]",
             f"file_path: {file_path or 'N/A'}",
-            f"start_text: {start_line}",
-            f"end_text: {end_line}",
+            f"start_marker: {start_line}",
+            f"end_marker: {end_line}",
             "",
             error_text,
         ]

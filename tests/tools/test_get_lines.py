@@ -57,8 +57,8 @@ def test_pattern_with_zero_line_number_is_allowed(coder_with_file):
         show=[
             {
                 "file_path": "example.txt",
-                "start_text": "beta",
-                "end_text": "beta",
+                "start_marker": "beta",
+                "end_marker": "beta",
                 "padding": 0,
             }
         ],
@@ -77,8 +77,8 @@ def test_empty_pattern_uses_line_number(coder_with_file):
         show=[
             {
                 "file_path": "example.txt",
-                "start_text": "beta",
-                "end_text": "beta",
+                "start_marker": "beta",
+                "end_marker": "beta",
                 "padding": 0,
             }
         ],
@@ -98,13 +98,13 @@ def test_conflicting_pattern_and_line_number_raise(coder_with_file):
         show=[
             {
                 "file_path": "example.txt",
-                "end_text": "beta",
+                "end_marker": "beta",
                 "padding": 0,
             }
         ],
     )
 
-    assert "Provide both 'start_text' and 'end_text'" in result
+    assert "Provide both 'start_marker' and 'end_marker'" in result
     coder.io.tool_error.assert_called()
 
 
@@ -133,8 +133,8 @@ def test_multiline_pattern_search(coder_with_file):
         show=[
             {
                 "file_path": "example.txt",
-                "start_text": "alpha\nbeta",
-                "end_text": "beta\ngamma",
+                "start_marker": "alpha\nbeta",
+                "end_marker": "beta\ngamma",
                 "padding": 0,
             }
         ],
@@ -160,8 +160,8 @@ def test_empty_file_includes_edit_hint(tmp_path):
             show=[
                 {
                     "file_path": "pubspec.yaml",
-                    "start_text": "@000",
-                    "end_text": "@000",
+                    "start_marker": "@000",
+                    "end_marker": "@000",
                 }
             ],
         )
