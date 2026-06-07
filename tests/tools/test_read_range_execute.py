@@ -16,6 +16,16 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 
+def _safe_relpath(path):
+    """Wrapper around os.path.relpath that handles cross-drive scenarios on Windows."""
+    try:
+        return os.path.relpath(path)
+    except ValueError:
+        # On Windows, os.path.relpath fails when path and cwd are on different drives.
+        # Fall back to basename which is sufficient for test patches.
+        return os.path.basename(path)
+
+
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -27,7 +37,7 @@ def mock_coder():
     coder = MagicMock()
     coder.turn_count = 5
     coder.abs_root_path.side_effect = lambda p: os.path.abspath(p)
-    coder.get_rel_fname.side_effect = lambda p: os.path.relpath(p, os.getcwd())
+    coder.get_rel_fname.side_effect = lambda p: _safe_relpath(p)
     coder.io.tool_output = MagicMock()
     coder.io.tool_error = MagicMock()
     coder.io.tool_warning = MagicMock()
@@ -114,7 +124,7 @@ class TestReadRangeExecute:
         # Patch resolve_paths
         rp_patch = patch(
             "cecli.tools.read_range.resolve_paths",
-            return_value=(self.test_file, os.path.relpath(self.test_file)),
+            return_value=(self.test_file, _safe_relpath(self.test_file)),
         )
         rp_patch.start()
         self.patches.append(rp_patch)
