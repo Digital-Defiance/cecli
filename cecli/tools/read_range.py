@@ -19,6 +19,8 @@ class Tool(BaseTool):
     VALIDATIONS = {
         "show": ["coerce_list"],
         "show[]": ["coerce_dict"],
+        "show[].start_text": ["coerce_str"],
+        "show[].end_text": ["coerce_str"],
     }
     SCHEMA = {
         "type": "function",
