@@ -281,14 +281,17 @@ class ConversationFiles:
             diff_message = {
                 "role": "user",
                 "content": (
-                    f"{rel_fname} has been updated. Here is a git diff of the changes to"
-                    f" review:\n\n{diff}"
+                    f"{rel_fname} has been updated. Review this git diff of the changes to"
+                    f" ensure the modifications are intended:\n\n{diff}"
                 ),
             }
 
             assistant_msg = {
                 "role": "assistant",
-                "content": f"Thank you for sharing this diff of the updates to {rel_fname}.",
+                "content": (
+                    f"Thank you for sharing this diff of the updates to {rel_fname}."
+                    " I will review their contents next turn."
+                ),
             }
 
             ConversationService.get_manager(coder).add_message(
