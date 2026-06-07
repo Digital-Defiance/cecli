@@ -2416,7 +2416,9 @@ class Coder(metaclass=UsageMeta):
                         try:
                             retries_config = json.loads(retries_config)
                         except json.JSONDecodeError:
-                            self.io.tool_warning(f"Could not parse retries config: {retries_config}")
+                            self.io.tool_warning(
+                                f"Could not parse retries config: {retries_config}"
+                            )
                             retries_config = {}
                     if isinstance(retries_config, dict):
                         retry_on_empty = retries_config.get("retry_on_empty", False)

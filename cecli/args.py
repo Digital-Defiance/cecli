@@ -277,7 +277,7 @@ def get_parser(default_config_files, git_root):
         "--retries",
         metavar="RETRIES_JSON",
         help=(
-            "Specify LLM retry configuration as a JSON/YAML string (e.g., '{\"retry_on_empty\": "
+            'Specify LLM retry configuration as a JSON/YAML string (e.g., \'{"retry_on_empty": '
             "true}')"
         ),
         default=None,
