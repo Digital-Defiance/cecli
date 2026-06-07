@@ -1,4 +1,3 @@
-import json
 import os
 from typing import Dict, List
 
@@ -11,12 +10,16 @@ from cecli.tools.utils.helpers import (
     resolve_paths,
 )
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
+from cecli.tools.validations import ToolValidations
 
 
 class Tool(BaseTool):
     NORM_NAME = "readrange"
     TRACK_INVOCATIONS = False
-    LIST_PARAMS = ["show"]
+    VALIDATIONS = {
+        "show": ["coerce_list"],
+        "show[]": ["coerce_dict"],
+    }
     SCHEMA = {
         "type": "function",
         "function": {
@@ -191,16 +194,25 @@ class Tool(BaseTool):
                 num_lines = len(lines)
 
                 if num_lines == 0:
-                    # Handle empty file case
-                    output_lines = [f"File {rel_path} is empty."]
-                    if show_index > 0:
-                        all_outputs.append("")
-                    all_outputs.extend(output_lines)
+                    new_context_details.append(
+                        "\n".join(
+                            [
+                                f"File {rel_path} is empty.",
+                                (
+                                    "Next: use EditText with start_line @000 and end_line @000 to"
+                                    " write content, or ContextManager to scaffold — do not call"
+                                    " ReadRange again on this empty file."
+                                ),
+                            ]
+                        )
+                    )
+                    new_context_retrieved.append(rel_path)
+                    cls._last_read_turn[abs_path] = coder.turn_count
                     continue
                 # 4. Determine line range
                 start_line_idx = -1
                 end_line_idx = -1
-                found_by = ""
+                # found_by = ""
 
                 if start_text is not None and end_text is not None:
                     if start_text.isdigit() and end_text.isdigit():
@@ -360,7 +372,7 @@ class Tool(BaseTool):
                 # Store the found indices for future disambiguation
                 cls._last_invocation[abs_path] = {"start_idx": s_idx, "end_idx": e_idx}
 
-                found_by = f"range '{start_text}' to '{end_text}'"
+                # found_by = f"range '{start_text}' to '{end_text}'"
 
                 try:
                     padding_int = int(padding)
@@ -387,23 +399,23 @@ class Tool(BaseTool):
 
                 # 6. Format output for this operation
                 # Use rel_path for user-facing messages
-                output_lines = [f"Displaying context around {found_by} in {rel_path}:"]
+                # output_lines = [f"Displaying context around {found_by} in {rel_path}:"]
 
                 # Generate hashline for the entire file
                 hashed_content = hashline(content)
                 hashed_lines = hashed_content.splitlines()
 
                 # Extract the context window from hashed lines
-                context_hashed_lines = hashed_lines[start_line_idx : end_line_idx + 1]
+                # context_hashed_lines = hashed_lines[start_line_idx : end_line_idx + 1]
 
-                for i in range(start_line_idx, end_line_idx + 1):
-                    hashed_line = context_hashed_lines[i - start_line_idx]
-                    output_lines.append(hashed_line)
+                # for i in range(start_line_idx, end_line_idx + 1):
+                #    hashed_line = context_hashed_lines[i - start_line_idx]
+                #    output_lines.append(hashed_line)
 
                 # Add separator between multiple show operations
-                if show_index > 0:
-                    all_outputs.append("")
-                all_outputs.extend(output_lines)
+                # if show_index > 0:
+                #     all_outputs.append("")
+                # all_outputs.extend(output_lines)
 
                 # Update the conversation cache with the displayed range
                 # Note: start_line_idx and end_line_idx are 0-based, convert to 1-based for hashline
@@ -513,6 +525,9 @@ class Tool(BaseTool):
                         " the relevant files."
                     )
 
+            if all_outputs:
+                result_parts.append("\n".join(all_outputs))
+
             if error_outputs:
                 coder.io.tool_error(f"Errors encountered for {len(error_outputs)} operation(s)")
 
@@ -596,13 +611,16 @@ class Tool(BaseTool):
         """Format output for ReadRange tool."""
         color_start, color_end = color_markers(coder)
 
+        # Output header
+        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+
         try:
-            params = json.loads(tool_response.function.arguments)
-        except json.JSONDecodeError:
+            params = ToolValidations.validate_params(
+                tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+            )
+        except ToolError:
             coder.io.tool_error("Invalid Tool JSON")
             return
-
-        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
 
         show_ops = params.get("show", [])
         if show_ops:
@@ -620,7 +638,7 @@ class Tool(BaseTool):
                 coder.io.tool_output(formatted_query)
             coder.io.tool_output("")
 
-        tool_footer(coder=coder, tool_response=tool_response)
+        tool_footer(coder=coder, tool_response=tool_response, params=params)
 
     @classmethod
     def format_error(cls, coder, error_text, file_path, start_text, end_text, operation_index):

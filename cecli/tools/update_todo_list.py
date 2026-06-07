@@ -1,11 +1,15 @@
 from cecli.tools.utils.base_tool import BaseTool
 from cecli.tools.utils.helpers import ToolError, format_tool_result, handle_tool_error
 from cecli.tools.utils.output import tool_footer, tool_header
+from cecli.tools.validations import ToolValidations
 
 
 class Tool(BaseTool):
     NORM_NAME = "updatetodolist"
-    LIST_PARAMS = ["tasks"]
+    VALIDATIONS = {
+        "tasks": ["coerce_list"],
+        "tasks[]": ["coerce_dict"],
+    }
     SCHEMA = {
         "type": "function",
         "function": {
@@ -40,17 +44,6 @@ class Tool(BaseTool):
                         "type": "boolean",
                         "description": (
                             "Whether to append to existing content instead of replacing it."
-                            " Defaults to False."
-                        ),
-                    },
-                    "change_id": {
-                        "type": "string",
-                        "description": "Optional change ID for tracking.",
-                    },
-                    "dry_run": {
-                        "type": "boolean",
-                        "description": (
-                            "Whether to perform a dry run without actually updating the file."
                             " Defaults to False."
                         ),
                     },
@@ -187,16 +180,21 @@ class Tool(BaseTool):
 
     @classmethod
     def format_output(cls, coder, mcp_server, tool_response):
-        import json
-
         from cecli.tools.utils.output import color_markers
 
         color_start, color_end = color_markers(coder)
 
+        # Output header
         tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
 
-        # Parse the parameters to display formatted todo list
-        params = json.loads(tool_response.function.arguments)
+        try:
+            params = ToolValidations.validate_params(
+                tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+            )
+        except ToolError:
+            coder.io.tool_error("Invalid Tool JSON")
+            return
+
         tasks = params.get("tasks", [])
 
         if tasks:
@@ -235,4 +233,4 @@ class Tool(BaseTool):
 
             coder.io.tool_output("")
 
-        tool_footer(coder=coder, tool_response=tool_response)
+        tool_footer(coder=coder, tool_response=tool_response, params=params)

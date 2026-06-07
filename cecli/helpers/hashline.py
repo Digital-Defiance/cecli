@@ -327,18 +327,46 @@ def get_hashline_diff(
     elif operation == "insert":
         find_text = ""
         # For insert operations, we need to calculate hashlines for the text to insert
-        # The text should be hashed starting at the line after the end line
+        # with surrounding context for proper neighborhood-based hashing
         if text:
-            # Insert after the end line, so start hashline at found_end + 2 (1-indexed)
-            replace_text = hashline(text, start_line=found_end + 2)
+            original_lines = original_content.splitlines()
+            text_lines = text.splitlines()
+            # Get up to 3 lines of context before (ending at found_end) and after the insertion point
+            ctx_before = original_lines[max(0, found_end - 2) : found_end + 1]
+            ctx_after = original_lines[found_end + 1 : min(len(original_lines), found_end + 4)]
+            # Build a mini document with context so HashPos computes correct neighborhood hashes
+            mini_lines = ctx_before + text_lines + ctx_after
+            mini_text = "\n".join(mini_lines)
+            hashed_mini = hashline(mini_text)
+            hashed_mini_lines = hashed_mini.splitlines(keepends=True)
+            # Extract only the replacement text portion's hashlines
+            replace_lines_hashed = hashed_mini_lines[
+                len(ctx_before) : len(ctx_before) + len(text_lines)
+            ]
+            replace_text = "".join(replace_lines_hashed)
         else:
             replace_text = ""
     # For replace operation, we're replacing the range
     elif operation == "replace":
         find_text = original_range_content
-        # For replace operations, the replacement text should be hashed starting at the start line
+        # For replace operations, the replacement text should be hashed
+        # with surrounding context for proper neighborhood-based hashing
         if text:
-            replace_text = hashline(text, start_line=found_start + 1)
+            original_lines = original_content.splitlines()
+            text_lines = text.splitlines()
+            # Get up to 3 lines of context before and after the range
+            ctx_before = original_lines[max(0, found_start - 3) : found_start]
+            ctx_after = original_lines[found_end + 1 : min(len(original_lines), found_end + 4)]
+            # Build a mini document with context so HashPos computes correct neighborhood hashes
+            mini_lines = ctx_before + text_lines + ctx_after
+            mini_text = "\n".join(mini_lines)
+            hashed_mini = hashline(mini_text)
+            hashed_mini_lines = hashed_mini.splitlines(keepends=True)
+            # Extract only the replacement text portion's hashlines
+            replace_lines_hashed = hashed_mini_lines[
+                len(ctx_before) : len(ctx_before) + len(text_lines)
+            ]
+            replace_text = "".join(replace_lines_hashed)
         else:
             replace_text = ""
     else:

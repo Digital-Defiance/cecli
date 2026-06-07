@@ -1,4 +1,3 @@
-import json
 import os
 import re
 import time
@@ -7,6 +6,7 @@ from cecli.helpers.background_commands import BackgroundCommandManager
 from cecli.tools.utils.base_tool import BaseTool
 from cecli.tools.utils.helpers import ToolError, parse_arg_as_list
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
+from cecli.tools.validations import ToolValidations
 
 
 class Tool(BaseTool):
@@ -121,13 +121,16 @@ class Tool(BaseTool):
         """Format output for ContextManager tool."""
         color_start, color_end = color_markers(coder)
 
+        # Output header
+        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+
         try:
-            params = json.loads(tool_response.function.arguments)
-        except json.JSONDecodeError:
+            params = ToolValidations.validate_params(
+                tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+            )
+        except ToolError:
             coder.io.tool_error("Invalid Tool JSON")
             return
-
-        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
 
         # Define action display names
         action_names = {
@@ -145,7 +148,7 @@ class Tool(BaseTool):
                 file_list = ", ".join(files)
                 coder.io.tool_output(f"{color_start}{display_name}:{color_end} {file_list}")
 
-        tool_footer(coder=coder, tool_response=tool_response)
+        tool_footer(coder=coder, tool_response=tool_response, params=params)
 
     @classmethod
     def _remove(cls, coder, file_path):
