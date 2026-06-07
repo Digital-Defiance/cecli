@@ -276,14 +276,11 @@ def get_parser(default_config_files, git_root):
     group.add_argument(
         "--retries",
         metavar="RETRIES_JSON",
-        help="Specify LLM retry configuration as a JSON string",
+        help=(
+            "Specify LLM retry configuration as a JSON/YAML string (e.g., '{\"retry_on_empty\": "
+            "true}')"
+        ),
         default=None,
-    )
-    group.add_argument(
-        "--retry-on-empty",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Enable/disable retrying on empty LLM responses (default: False)",
     )
 
     #######
