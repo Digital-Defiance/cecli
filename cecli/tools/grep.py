@@ -46,23 +46,13 @@ class Tool(BaseTool):
                                 },
                                 "use_regex": {
                                     "type": "boolean",
-                                    "default": False,
+                                    "default": True,
                                     "description": "Whether to use regex.",
                                 },
                                 "case_insensitive": {
                                     "type": "boolean",
-                                    "default": False,
+                                    "default": True,
                                     "description": "Whether to perform a case-insensitive search.",
-                                },
-                                "context_before": {
-                                    "type": "integer",
-                                    "default": 5,
-                                    "description": "Number of lines to show before a match.",
-                                },
-                                "context_after": {
-                                    "type": "integer",
-                                    "default": 5,
-                                    "description": "Number of lines to show after a match.",
                                 },
                             },
                             "required": ["pattern"],
@@ -117,8 +107,8 @@ class Tool(BaseTool):
             pattern = strip_hashline(search_op.get("pattern"))
             file_pattern = search_op.get("file_pattern", "*")
             directory = search_op.get("directory", search_op.get("path", "."))
-            use_regex = search_op.get("use_regex", False)
-            case_insensitive = search_op.get("case_insensitive", False)
+            use_regex = search_op.get("use_regex", True)
+            case_insensitive = search_op.get("case_insensitive", True)
             context_before = search_op.get("context_before", 5)
             context_after = search_op.get("context_after", 5)
 
