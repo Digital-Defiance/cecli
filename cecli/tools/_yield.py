@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from cecli.helpers.threading import ThreadSafeEvent
 from cecli.tools.utils.base_tool import BaseTool
 from cecli.tools.utils.helpers import ToolError
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
@@ -65,7 +66,7 @@ class Tool(BaseTool):
                     # the interrupt event, avoiding nested asyncio.wait() calls.
                     interrupt_event = coder.interrupt_event
                     if interrupt_event is None:
-                        interrupt_event = asyncio.Event()
+                        interrupt_event = ThreadSafeEvent()
 
                     interrupt_task = asyncio.create_task(interrupt_event.wait())
                     pending = set(active_tasks) | {interrupt_task}

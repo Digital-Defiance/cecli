@@ -46,6 +46,7 @@ from cecli.helpers.file_system import FileSystemService
 from cecli.helpers.io_proxy import IOProxy
 from cecli.helpers.observations.service import ObservationService
 from cecli.helpers.profiler import TokenProfiler
+from cecli.helpers.threading import ThreadSafeEvent
 from cecli.history import ChatSummary
 from cecli.hooks import HookIntegration
 from cecli.io import ConfirmGroup, InputOutput
@@ -420,7 +421,7 @@ class Coder(metaclass=UsageMeta):
         # Each contains "included" and "excluded" sets that filter from the global singletons
         self.registered_tools = {"included": set(), "excluded": set()}
         self.registered_servers = {"included": set(), "excluded": set()}
-        self.interrupt_event = asyncio.Event()
+        self.interrupt_event = ThreadSafeEvent()
         self.uuid = str(generate_unique_id())
 
         if uuid:
@@ -1643,6 +1644,7 @@ class Coder(metaclass=UsageMeta):
 
     async def generate(self, user_message, preproc):
         await asyncio.sleep(0.1)
+        self.interrupt_event.clear()
 
         try:
             if self.enable_context_compaction:

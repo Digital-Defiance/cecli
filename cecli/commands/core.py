@@ -1,4 +1,3 @@
-import asyncio
 import json
 import re
 import sys
@@ -7,6 +6,7 @@ from pathlib import Path
 from cecli.commands.utils.registry import CommandRegistry
 from cecli.helpers import nested, plugin_manager
 from cecli.helpers.file_searcher import handle_core_files
+from cecli.helpers.threading import ThreadSafeEvent
 from cecli.repo import ANY_GIT_ERROR
 
 
@@ -94,7 +94,7 @@ class Commands:
         self.custom_commands = nested.getter(customizations, "command-paths", [])
         self._load_custom_commands(self.custom_commands)
 
-        self.cmd_running_event = asyncio.Event()
+        self.cmd_running_event = ThreadSafeEvent()
         self.cmd_running_event.set()
         self.last_command_show_notification = True
 

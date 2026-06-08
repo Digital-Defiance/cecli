@@ -12,6 +12,7 @@ import oslex
 from cecli.dump import dump  # noqa: F401
 from cecli.helpers.grep_ast import TreeContext, filename_to_lang
 from cecli.helpers.grep_ast.tsl import get_parser  # noqa: E402
+from cecli.helpers.threading import ThreadSafeEvent
 from cecli.run_cmd import run_cmd_async, run_cmd_subprocess  # noqa: F401
 
 # tree_sitter is throwing a FutureWarning
@@ -22,7 +23,7 @@ class Linter:
     def __init__(self, encoding="utf-8", root=None, interrupt_event=None):
         self.encoding = encoding
         self.root = root
-        self.interrupt_event = interrupt_event or asyncio.Event()
+        self.interrupt_event = interrupt_event or ThreadSafeEvent()
 
         self.languages = dict(
             python=self.py_lint,
