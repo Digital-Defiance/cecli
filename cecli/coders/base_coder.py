@@ -2405,7 +2405,6 @@ class Coder(metaclass=UsageMeta):
         try:
             while True:
                 try:
-                    self.empty_response = False
                     async for chunk in self.send(messages, tools=self.get_tool_list()):
                         yield chunk
                     break
@@ -3292,6 +3291,7 @@ class Coder(metaclass=UsageMeta):
         self.interrupt_event.clear()
         self.got_reasoning_content = False
         self.ended_reasoning_content = False
+        self.empty_response = False
 
         self._streaming_buffer_length = 0
         self.io.reset_streaming_response()
