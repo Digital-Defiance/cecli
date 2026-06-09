@@ -112,6 +112,9 @@ class Tool(BaseTool):
             all_outputs = []
             already_up_to_details = []
             new_context_details = []
+            all_outputs_set = set()
+            new_context_set = set()
+            already_up_to_set = set()
             ranges = {}
 
             for read_index, read_op in enumerate(read):
@@ -424,9 +427,13 @@ class Tool(BaseTool):
                     preview = cls._get_range_preview(
                         abs_path, coder.io, start_idx=s_idx, end_idx=e_idx, line_numbers=True
                     )
-                    if read_index > 0:
-                        all_outputs.append("")
-                    all_outputs.append(preview)
+
+                    if preview not in all_outputs_set:
+                        all_outputs_set.add(preview)
+                        if len(all_outputs):
+                            all_outputs.append("")
+                        all_outputs.append(preview)
+
                     cls._last_invocation[abs_path] = {"start_idx": s_idx, "end_idx": e_idx}
                     continue
 
@@ -526,15 +533,21 @@ class Tool(BaseTool):
                 ):
                     hashed_slice = hashed_lines[s_idx : e_idx + 1]
                     if is_already_up_to_date:
-                        already_up_to_details.append(
-                            cls.format_model_response(
-                                coder, rel_path, s_idx, e_idx, hashed_slice, current=True
-                            )
+                        model_response = cls.format_model_response(
+                            coder, rel_path, s_idx, e_idx, hashed_slice, current=True
                         )
+
+                        if model_response not in already_up_to_set:
+                            already_up_to_set.add(model_response)
+                            already_up_to_details.append(model_response)
                     else:
-                        new_context_details.append(
-                            cls.format_model_response(coder, rel_path, s_idx, e_idx, hashed_slice)
+                        model_response = cls.format_model_response(
+                            coder, rel_path, s_idx, e_idx, hashed_slice
                         )
+
+                        if model_response not in new_context_set:
+                            new_context_set.add(model_response)
+                            new_context_details.append(model_response)
 
                 # Conditionally remove old file context messages
                 # If the file was last read >= 3 turns ago, keep old messages (allow coexistence)
@@ -661,7 +674,12 @@ class Tool(BaseTool):
                         )
                         lines.extend(hashed_lines[start_stub_s:start_stub_e])
 
-                    if end_found and start_stub_s != end_stub_s and start_stub_e != end_stub_e:
+                    if (
+                        end_found
+                        and start_stub_s != end_stub_s
+                        and start_stub_e != end_stub_e
+                        and end_stub_e != e_idx
+                    ):
                         lines.append("...⋮...")
                         lines.append(
                             f"File {rel_path} Snapshot (Lines {end_stub_s + 1} - {end_stub_e + 1}):"
