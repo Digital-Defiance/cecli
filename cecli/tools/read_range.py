@@ -250,15 +250,15 @@ class Tool(BaseTool):
                     if both_structured:
                         if start_is_digit:
                             start_line_num = int(range_start) - 1
-                            start_line_num = max(1, min(start_line_num, num_lines))
-                            start_indices = [start_line_num - 1]
+                            start_line_num = max(0, min(start_line_num, num_lines - 1))
+                            start_indices = [start_line_num]
                         else:
                             start_indices = [0]
 
                         if end_is_digit:
                             end_line_num = int(range_end) - 1
-                            end_line_num = max(1, min(end_line_num, num_lines))
-                            end_indices = [end_line_num - 1]
+                            end_line_num = max(0, min(end_line_num, num_lines - 1))
+                            end_indices = [end_line_num]
                         else:
                             end_indices = [num_lines - 1]
                     elif mixed_special_search:

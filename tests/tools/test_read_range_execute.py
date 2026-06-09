@@ -156,11 +156,11 @@ class TestReadRangeExecute:
     def test_both_digits_valid_range(
         self, mock_coder, mock_file_context, mock_chunks, mock_manager
     ):
-        """Test: start_marker='5', end_marker='10' -> lines 4-9 (0-based)."""
+        """Test: range_start='5', range_end='10' -> lines 5-10 (1-based)."""
         content = "\n".join(f"line{i}" for i in range(1, 11))
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [{"file_path": self.test_file, "start_marker": "5", "end_marker": "10"}]
+            show = [{"file_path": self.test_file, "range_start": "5", "range_end": "10"}]
             result = self.Tool.execute(self.coder, show)
             assert "Snapshot" in result
             assert "line5" in result
@@ -169,11 +169,11 @@ class TestReadRangeExecute:
             self._teardown()
 
     def test_both_digits_same_line(self, mock_coder, mock_file_context, mock_chunks, mock_manager):
-        """Test: start_marker='1', end_marker='1' -> just line 0."""
+        """Test: range_start='1', range_end='1' -> just line 0."""
         content = "\n".join(f"line{i}" for i in range(1, 11))
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [{"file_path": self.test_file, "start_marker": "1", "end_marker": "1"}]
+            show = [{"file_path": self.test_file, "range_start": "1", "range_end": "1"}]
             result = self.Tool.execute(self.coder, show)
             assert "line1" in result
         finally:
@@ -182,11 +182,11 @@ class TestReadRangeExecute:
     def test_both_digits_out_of_bounds(
         self, mock_coder, mock_file_context, mock_chunks, mock_manager
     ):
-        """Test: start_marker='1', end_marker='100' -> clamp to valid range."""
+        """Test: range_start='1', range_end='100' -> clamp to valid range."""
         content = "\n".join(f"line{i}" for i in range(1, 11))
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [{"file_path": self.test_file, "start_marker": "1", "end_marker": "100"}]
+            show = [{"file_path": self.test_file, "range_start": "1", "range_end": "100"}]
             result = self.Tool.execute(self.coder, show)
             assert "line1" in result
             assert "line10" in result
@@ -196,11 +196,11 @@ class TestReadRangeExecute:
     def test_both_digits_inverted_order(
         self, mock_coder, mock_file_context, mock_chunks, mock_manager
     ):
-        """Test: start_marker='10', end_marker='5': inverted matching swaps."""
+        """Test: range_start='10', range_end='5': inverted matching swaps."""
         content = "\n".join(f"line{i}" for i in range(1, 11))
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [{"file_path": self.test_file, "start_marker": "10", "end_marker": "5"}]
+            show = [{"file_path": self.test_file, "range_start": "10", "range_end": "5"}]
             result = self.Tool.execute(self.coder, show)
             # Inverted: start=[9], end=[4], only one each -> swap to (4, 9)
             assert result is not None
@@ -216,7 +216,7 @@ class TestReadRangeExecute:
         content = "\n".join([f"line{i}" for i in range(1, 6)])
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [{"file_path": self.test_file, "start_marker": "@000", "end_marker": "000@"}]
+            show = [{"file_path": self.test_file, "range_start": "@000", "range_end": "000@"}]
             result = self.Tool.execute(self.coder, show)
             assert "line1" in result
             assert "line5" in result
@@ -228,7 +228,7 @@ class TestReadRangeExecute:
         content = "\n".join([f"line{i}" for i in range(1, 6)])
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [{"file_path": self.test_file, "start_marker": "@000", "end_marker": "@000"}]
+            show = [{"file_path": self.test_file, "range_start": "@000", "range_end": "@000"}]
             result = self.Tool.execute(self.coder, show)
             assert "line1" in result
         finally:
@@ -239,7 +239,7 @@ class TestReadRangeExecute:
         content = "\n".join([f"line{i}" for i in range(1, 6)])
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [{"file_path": self.test_file, "start_marker": "000@", "end_marker": "000@"}]
+            show = [{"file_path": self.test_file, "range_start": "000@", "range_end": "000@"}]
             result = self.Tool.execute(self.coder, show)
             assert "line5" in result
         finally:
@@ -252,11 +252,11 @@ class TestReadRangeExecute:
     def test_special_start_digit_end(
         self, mock_coder, mock_file_context, mock_chunks, mock_manager
     ):
-        """Test: @000 to '3' -> first to line 2 (0-based)."""
+        """Test: @000 to '3' -> first to line 3 (1-based)."""
         content = "line1\nline2\nline3\nline4\nline5"
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [{"file_path": self.test_file, "start_marker": "@000", "end_marker": "3"}]
+            show = [{"file_path": self.test_file, "range_start": "@000", "range_end": "3"}]
             result = self.Tool.execute(self.coder, show)
             assert "line1" in result
             assert "line3" in result
@@ -270,7 +270,7 @@ class TestReadRangeExecute:
         content = "line1\nline2\nline3\nline4\nline5"
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [{"file_path": self.test_file, "start_marker": "2", "end_marker": "000@"}]
+            show = [{"file_path": self.test_file, "range_start": "2", "range_end": "000@"}]
             result = self.Tool.execute(self.coder, show)
             assert "line2" in result
             assert "line5" in result
@@ -291,8 +291,8 @@ class TestReadRangeExecute:
             show = [
                 {
                     "file_path": self.test_file,
-                    "start_marker": "def foo():",
-                    "end_marker": "def bar():",
+                    "range_start": "def foo():",
+                    "range_end": "def bar():",
                 }
             ]
             result = self.Tool.execute(self.coder, show)
@@ -310,8 +310,8 @@ class TestReadRangeExecute:
             show = [
                 {
                     "file_path": self.test_file,
-                    "start_marker": "nonexistent_pattern",
-                    "end_marker": "also_nonexistent",
+                    "range_start": "nonexistent_pattern",
+                    "range_end": "also_nonexistent",
                 }
             ]
             result = self.Tool.execute(self.coder, show)
@@ -324,9 +324,7 @@ class TestReadRangeExecute:
         content = "def foo():\n    return 1\n\ndef bar():\n    return 2\n"
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [
-                {"file_path": self.test_file, "start_marker": "def foo", "end_marker": "def bar"}
-            ]
+            show = [{"file_path": self.test_file, "range_start": "def foo", "range_end": "def bar"}]
             result = self.Tool.execute(self.coder, show)
             assert "Snapshot" in result
         finally:
@@ -345,9 +343,7 @@ class TestReadRangeExecute:
         content = "header\nconfig_value = 42\ndebug_mode = True\nfooter"
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [
-                {"file_path": self.test_file, "start_marker": "@000", "end_marker": "debug_mode"}
-            ]
+            show = [{"file_path": self.test_file, "range_start": "@000", "range_end": "debug_mode"}]
             result = self.Tool.execute(self.coder, show)
             # Should find '@000' at start and 'debug_mode' as text
             print(f"\n[special_start_text_end] result: {result[:300]}")
@@ -365,7 +361,7 @@ class TestReadRangeExecute:
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
             show = [
-                {"file_path": self.test_file, "start_marker": "config_value", "end_marker": "000@"}
+                {"file_path": self.test_file, "range_start": "config_value", "range_end": "000@"}
             ]
             result = self.Tool.execute(self.coder, show)
             print(f"\n[text_start_special_end] result: {result[:300]}")
@@ -381,7 +377,7 @@ class TestReadRangeExecute:
         """Test with an empty file."""
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, "")
         try:
-            show = [{"file_path": self.test_file, "start_marker": "@000", "end_marker": "000@"}]
+            show = [{"file_path": self.test_file, "range_start": "@000", "range_end": "000@"}]
             result = self.Tool.execute(self.coder, show)
             assert "empty" in result.lower()
         finally:
@@ -391,7 +387,7 @@ class TestReadRangeExecute:
         """Test with a single line file."""
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, "only_line")
         try:
-            show = [{"file_path": self.test_file, "start_marker": "1", "end_marker": "1"}]
+            show = [{"file_path": self.test_file, "range_start": "1", "range_end": "1"}]
             result = self.Tool.execute(self.coder, show)
             assert "only_line" in result
         finally:
@@ -412,15 +408,15 @@ class TestReadRangeExecute:
 
         from cecli.tools.read_range import Tool
 
-        show = [{"file_path": "nonexistent/path.py", "start_marker": "1", "end_marker": "10"}]
+        show = [{"file_path": "nonexistent/path.py", "range_start": "1", "range_end": "10"}]
         result = Tool.execute(mock_coder, show)
         assert "not found" in result or "Errors" in result
 
     def test_missing_parameters(self, mock_coder, mock_file_context, mock_chunks, mock_manager):
-        """Test with missing start_marker and end_marker (empty strings)."""
+        """Test with missing range_start and range_end (empty strings)."""
         from cecli.tools.read_range import Tool
 
-        show = [{"file_path": "some_file.py", "start_marker": "", "end_marker": ""}]
+        show = [{"file_path": "some_file.py", "range_start": "", "range_end": ""}]
         result = Tool.execute(mock_coder, show)
         assert "Provide both" in result or "Errors" in result
 
@@ -469,8 +465,8 @@ class TestReadRangeExecute:
             Tool._last_read_turn = {}
 
             show = [
-                {"file_path": "file1.py", "start_marker": "1", "end_marker": "3"},
-                {"file_path": "file2.py", "start_marker": "2", "end_marker": "4"},
+                {"file_path": "file1.py", "range_start": "1", "range_end": "3"},
+                {"file_path": "file2.py", "range_start": "2", "range_end": "4"},
             ]
             result = Tool.execute(mock_coder, show)
             assert "line1_1" in result
@@ -510,8 +506,8 @@ def func_f():
             show = [
                 {
                     "file_path": self.test_file,
-                    "start_marker": "def func_a",
-                    "end_marker": "def func_c",
+                    "range_start": "def func_a",
+                    "range_end": "def func_c",
                 }
             ]
             result = self.Tool.execute(self.coder, show)
@@ -543,7 +539,7 @@ def func_f():
 """
         self._setup(mock_coder, mock_file_context, mock_chunks, mock_manager, content)
         try:
-            show = [{"file_path": self.test_file, "start_marker": "def", "end_marker": "def"}]
+            show = [{"file_path": self.test_file, "range_start": "def", "range_end": "def"}]
             result = self.Tool.execute(self.coder, show)
             assert "too broad" in result.lower()
         finally:

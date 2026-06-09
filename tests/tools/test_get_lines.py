@@ -54,17 +54,17 @@ def test_pattern_with_zero_line_number_is_allowed(coder_with_file):
 
     result = read_range.Tool.execute(
         coder,
-        show=[
+        read=[
             {
                 "file_path": "example.txt",
-                "start_marker": "beta",
-                "end_marker": "beta",
+                "range_start": "beta",
+                "range_end": "beta",
                 "padding": 0,
             }
         ],
     )
 
-    # show_numbered_context now returns a new formatted context message
+    # read_range now returns a new formatted context message
     assert "Retrieved context for 1 operation(s)" in result
     coder.io.tool_error.assert_not_called()
 
@@ -74,17 +74,17 @@ def test_empty_pattern_uses_line_number(coder_with_file):
 
     result = read_range.Tool.execute(
         coder,
-        show=[
+        read=[
             {
                 "file_path": "example.txt",
-                "start_marker": "beta",
-                "end_marker": "beta",
+                "range_start": "beta",
+                "range_end": "beta",
                 "padding": 0,
             }
         ],
     )
 
-    # show_numbered_context now returns a static success message
+    # read_range now returns a static success message
     assert "Retrieved context for 1 operation(s)" in result
     coder.io.tool_error.assert_not_called()
 
@@ -93,18 +93,19 @@ def test_conflicting_pattern_and_line_number_raise(coder_with_file):
     coder, file_path = coder_with_file
 
     # Test that missing start_text raises an error
+    # Test that missing range_start raises an error
     result = read_range.Tool.execute(
         coder,
-        show=[
+        read=[
             {
                 "file_path": "example.txt",
-                "end_marker": "beta",
+                "range_end": "beta",
                 "padding": 0,
             }
         ],
     )
 
-    assert "Provide both 'start_marker' and 'end_marker'" in result
+    assert "Provide both 'range_start' and 'range_end'" in result
     coder.io.tool_error.assert_called()
 
 
@@ -130,11 +131,11 @@ def test_multiline_pattern_search(coder_with_file):
 
     result = read_range.Tool.execute(
         coder,
-        show=[
+        read=[
             {
                 "file_path": "example.txt",
-                "start_marker": "alpha\nbeta",
-                "end_marker": "beta\ngamma",
+                "range_start": "alpha\nbeta",
+                "range_end": "beta\ngamma",
                 "padding": 0,
             }
         ],
@@ -157,11 +158,11 @@ def test_empty_file_includes_edit_hint(tmp_path):
         conv.get_chunks.return_value.add_file_context_messages = Mock()
         result = read_range.Tool.execute(
             coder,
-            show=[
+            read=[
                 {
                     "file_path": "pubspec.yaml",
-                    "start_marker": "@000",
-                    "end_marker": "@000",
+                    "range_start": "@000",
+                    "range_end": "@000",
                 }
             ],
         )
