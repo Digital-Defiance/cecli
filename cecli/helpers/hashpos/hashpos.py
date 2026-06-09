@@ -221,6 +221,6 @@ class HashPos:
         # If no pattern matches, raise error
         raise ValueError(
             f"Invalid HashPos format '{hashpos_str}'. "
-            r"Expected \"{hash_prefix}\" "
-            r"where hash_prefix is exactly 4 characters from the set [0-9a-zA-Z\~_@]."
+            r"Expected \"{content ID}\" "
+            r"where content ID is exactly 4 characters from the set [0-9a-zA-Z\~_@]."
         )
