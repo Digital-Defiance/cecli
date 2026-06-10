@@ -842,7 +842,7 @@ class ConversationChunks:
 
             user_msg = {
                 "role": "user",
-                "content": f"Hash-Prefixed Context For:\n{rel_fname}\n\n{context_content}",
+                "content": f"ID-Prefixed Context For:\n{rel_fname}\n\n{context_content}",
             }
 
             assistant_msg = {

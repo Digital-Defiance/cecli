@@ -27,24 +27,21 @@ class Tool(BaseTool):
         "function": {
             "name": "ReadRange",
             "description": (
-                "Get content ID prefixes of content between start and end markers in files."
+                "Get content ID prefixed content between start and end markers in files."
                 " This is useful for files you are attempting to edit and for understanding their structure."
                 " Accepts an array of `read` objects, each with file_path, range_start, range_end."
-                " These values should be lines of content in the file. They can contain up to 3"
-                " lines of content but newlines should generally be avoided. Avoid using generic keywords and"
+                " They can contain up to 3 lines of content. Avoid using singular generic keywords and"
                 " symbols. Special markers @000 and 000@ represent the file boundaries and can be"
                 " used for range_start and range_end for the first and last lines of the file"
                 " respectively. Line numbers may also be used for range lookups."
                 " It is best to use function names, variable declarations and other meaningful identifiers"
                 " as range_start and range_end values."
                 " Do not use both of the special markers together on non-empty file."
-                " Do not use content IDs cannot be used as the range_start and range_end values."
-                " These lookups will fail."
                 " Do not use the same pattern for the range_start and range_end."
                 " Do not use empty strings for the range_start and range_end."
-                " Prefer using this tool to cli tools for reading files."
-                " Calling this tool sequentially on increasingly finer grained searchers "
-                " will help with getting outlines of important structural features"
+                " Prefer using this tool over cli tools for reading files."
+                " Calling this tool sequentially on increasingly finer grained searches "
+                " will help with understanding important structural features."
             ),
             "parameters": {
                 "type": "object",
@@ -547,10 +544,10 @@ class Tool(BaseTool):
                     and e_idx >= 0
                     and e_idx < len(hashed_lines)
                 ):
-                    hashed_slice = hashed_lines[s_idx : e_idx + 1]
+                    # hashed_slice = hashed_lines[s_idx : e_idx + 1]
                     if is_already_up_to_date:
                         model_response = cls.format_model_response(
-                            coder, rel_path, s_idx, e_idx, hashed_slice, current=True
+                            coder, rel_path, s_idx, e_idx, hashed_lines, current=True
                         )
 
                         if model_response not in already_up_to_set:
@@ -558,7 +555,7 @@ class Tool(BaseTool):
                             already_up_to_details.append(model_response)
                     else:
                         model_response = cls.format_model_response(
-                            coder, rel_path, s_idx, e_idx, hashed_slice
+                            coder, rel_path, s_idx, e_idx, hashed_lines
                         )
 
                         if model_response not in new_context_set:
@@ -641,7 +638,7 @@ class Tool(BaseTool):
             return handle_tool_error(coder, tool_name, e)
 
     @classmethod
-    def format_model_response(cls, coder, rel_path, s_idx, e_idx, hashed_slice, current=False):
+    def format_model_response(cls, coder, rel_path, s_idx, e_idx, hashed_lines, current=False):
         """Format a file's context range as hash-prefixed lines for the model."""
         # Read file content for stub lookups
         try:
@@ -649,17 +646,15 @@ class Tool(BaseTool):
 
             abs_path, _ = resolve_paths(coder, rel_path)
             last_turn = cls._last_read_turn[abs_path] or 0
-            content = coder.io.read_text(abs_path)
-            file_lines = content.splitlines() if content else None
         except Exception:
-            file_lines = None
+            pass
 
         lines = []
 
         # Try to return structural stub information instead of raw hashed lines
         try:
-            if file_lines is not None and current and coder.turn_count - last_turn >= 2:
-                num_lines = len(file_lines)
+            if hashed_lines and current and coder.turn_count - last_turn >= 2:
+                num_lines = len(hashed_lines)
 
                 start_stub_s, start_stub_e = cls._extend_range_with_stub(
                     coder, abs_path, s_idx, s_idx, num_lines
@@ -681,9 +676,6 @@ class Tool(BaseTool):
                     end_found = False
 
                 if start_found or end_found:
-                    hashed_content = hashline(content)
-                    hashed_lines = hashed_content.splitlines()
-
                     if start_found:
                         lines.append(
                             f"File {rel_path} Snapshot (Lines {start_stub_s + 1} - {start_stub_e + 1}):"
@@ -708,13 +700,13 @@ class Tool(BaseTool):
             pass
 
         lines = [f"File {rel_path} Snapshot (Lines {s_idx + 1} - {e_idx + 1}):"]
-        total = len(hashed_slice)
+        total = e_idx - s_idx
         if total <= 15:
-            lines.extend(hashed_slice)
+            lines.extend(hashed_lines[s_idx : e_idx + 1])
         else:
-            lines.extend(hashed_slice[:5])
+            lines.extend(hashed_lines[s_idx : s_idx + 5])
             lines.append("...⋮...")
-            lines.extend(hashed_slice[-5:])
+            lines.extend(hashed_lines[e_idx - 4 : e_idx + 1])
         lines.append("")
         return "\n".join(lines)
 
