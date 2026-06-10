@@ -416,6 +416,22 @@ class Tool(BaseTool):
                             )
                             continue
 
+                    if best_pair is None:
+                        error_outputs.append(
+                            cls.format_error(
+                                coder,
+                                (
+                                    f"End pattern '{range_end}' not found after start pattern in"
+                                    f" {file_path}."
+                                ),
+                                file_path,
+                                range_start,
+                                range_end,
+                                read_index,
+                            )
+                        )
+                        continue
+
                     s_idx, e_idx = best_pair
                     s_idx, e_idx = cls._extend_range_with_stub(
                         coder, abs_path, s_idx, e_idx, num_lines
