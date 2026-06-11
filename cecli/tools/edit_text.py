@@ -40,7 +40,7 @@ class Tool(BaseTool):
                 "Can handle an array of up to 10 edits across multiple files. "
                 "Each edit must include its own file_path and operation type. "
                 "Use content ID ranges with the start_line and end_line parameters with format "
-                "`{4 char hash}` (without the braces). For empty files, use `@000` as the "
+                "`content_id::` (the content id with the :: demarcator). For empty files, use `@000` as the "
                 "content ID references."
             ),
             "parameters": {
@@ -64,25 +64,24 @@ class Tool(BaseTool):
                                         " after start_line). Defaults to 'replace'."
                                     ),
                                 },
-                                "text": {
-                                    "type": "string",
-                                    "description": (
-                                        "Text content for replace/insert operations. "
-                                        "Not required for delete operations."
-                                    ),
-                                },
                                 "start_line": {
                                     "type": "string",
                                     "description": (
-                                        "content ID for start line: `{4 char hash}` (without "
-                                        "the braces)"
+                                        "Content ID for start line. Only include the id and demarcator."
                                     ),
                                 },
                                 "end_line": {
                                     "type": "string",
                                     "description": (
-                                        "content ID for end line: `{4 char hash}` (without the"
-                                        " braces)"
+                                        "Content ID for end line. Only include the id and demarcator."
+                                    ),
+                                },
+                                "text": {
+                                    "type": "string",
+                                    "description": (
+                                        "Text content for replace operations. "
+                                        "Empty string for delete operations. "
+                                        "Do not include content IDs inside replacement text"
                                     ),
                                 },
                             },
