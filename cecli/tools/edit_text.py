@@ -2,6 +2,7 @@ from cecli.helpers.hashline import (
     ContentHashError,
     apply_hashline_operations,
     get_hashline_diff,
+    resolve_content_to_hashline_ids,
     strip_hashline,
 )
 from cecli.tools.utils.base_tool import BaseTool
@@ -184,6 +185,13 @@ class Tool(BaseTool):
                             )
                             edit_start_line = edit.get("start_line")
                             edit_end_line = edit.get("end_line")
+
+                            # Try to resolve line content values to content IDs
+                            # This handles cases where LLMs pass actual line content
+                            # instead of content ID markers
+                            edit_start_line, edit_end_line = resolve_content_to_hashline_ids(
+                                original_content, edit_start_line, edit_end_line
+                            )
 
                             # Validate required fields based on operation type
                             if operation in ("replace", "insert"):

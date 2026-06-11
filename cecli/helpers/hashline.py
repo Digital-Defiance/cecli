@@ -236,6 +236,84 @@ def extract_hashline_range(
     return original_range_content
 
 
+def resolve_content_to_hashline_ids(
+    original_content: str,
+    start_value: str,
+    end_value: str = None,
+) -> tuple:
+    """
+    Resolve potential line content values to proper hashline content IDs.
+
+    If start_value or end_value does not look like a content ID (hash),
+    search for the content in the original file. If found exactly once,
+    return the hash ID for that line instead.
+
+    This handles the case where LLMs return entire line content or fragments
+    instead of content IDs in edit parameters.
+
+    Args:
+        original_content: Original file content (without hash prefixes)
+        start_value: The start_line value from the edit
+        end_value: The end_line value from the edit (optional)
+
+    Returns:
+        tuple: (resolved_start, resolved_end) with hash IDs or original values
+               unchanged if resolution is not possible
+    """
+    if not original_content:
+        return start_value, end_value
+
+    def _looks_like_content_id(value: str) -> bool:
+        """Check if value looks like a content ID rather than line content."""
+        if value in ("@000", "000@"):
+            return True
+        # Try to normalize - if it succeeds, it's a valid content ID
+        try:
+            normalize_hashline(value)
+            return True
+        except (ContentHashError, ValueError):
+            return False
+
+    def _resolve_value(value: str) -> str:
+        if value is None:
+            return value
+        if _looks_like_content_id(value):
+            return value
+
+        # Value doesn't look like a content ID - try to find it as line content
+        lines = original_content.splitlines()
+        value_stripped = value.rstrip("\r\n")
+
+        # First try exact match (full line content)
+        matching_indices = [
+            i for i, line in enumerate(lines) if line.rstrip("\r\n") == value_stripped
+        ]
+
+        if len(matching_indices) == 1:
+            idx = matching_indices[0]
+            hp = HashPos(original_content)
+            hash_id = hp.generate_public_id(lines[idx], idx)
+            return hash_id + "::"
+
+        # If no exact match, try substring match (value might be a fragment)
+        # Only resolve if exactly one line contains the value
+        containing_indices = [i for i, line in enumerate(lines) if value_stripped in line]
+
+        if len(containing_indices) == 1:
+            idx = containing_indices[0]
+            hp = HashPos(original_content)
+            hash_id = hp.generate_public_id(lines[idx], idx)
+            return hash_id + "::"
+
+        # Can't resolve uniquely - return original value
+        return value
+
+    resolved_start = _resolve_value(start_value)
+    resolved_end = _resolve_value(end_value) if end_value is not None else end_value
+
+    return resolved_start, resolved_end
+
+
 def find_best_line(content, target_line_num, content_to_lines, used_lines, hashlines):
     """
     Find the best matching line for given content near target_line_num.
