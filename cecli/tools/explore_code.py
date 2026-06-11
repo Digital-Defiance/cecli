@@ -120,7 +120,10 @@ class Tool(BaseTool):
 
                 try:
                     if action == "search":
-                        results = c.search(symbol, limit=limit)
+                        # Sanitize symbol: Cymbal's CLI interprets hyphens as SQL operators.
+                        # Replace hyphens with underscores (common in code) and strip special chars.
+                        safe_symbol = symbol.replace("-", "_") if symbol else symbol
+                        results = c.search(safe_symbol, limit=limit)
                         all_results.append(cls._format_search_results(results, symbol))
                     elif action == "investigate":
                         symbol_name = symbol
@@ -131,8 +134,11 @@ class Tool(BaseTool):
                                 file_hint = parts[0]
                                 symbol_name = parts[1]
 
+                        # Sanitize for Cymbal search
+                        safe_name = symbol_name.replace("-", "_") if symbol_name else symbol_name
+
                         try:
-                            investigation = c.investigate(symbol_name, file_hint)
+                            investigation = c.investigate(safe_name, file_hint)
                             all_results.append(
                                 cls._format_investigation_results(investigation, symbol)
                             )
@@ -151,7 +157,8 @@ class Tool(BaseTool):
                             else:
                                 raise e
                     elif action == "find_references":
-                        references = c.find_references(symbol, limit=limit)
+                        safe_symbol = symbol.replace("-", "_") if symbol else symbol
+                        references = c.find_references(safe_symbol, limit=limit)
                         all_results.append(cls._format_reference_results(references, symbol))
                     else:
                         all_failed_queries.append(
