@@ -778,91 +778,118 @@ class Coder(metaclass=UsageMeta):
         """Get CUR messages from ConversationManager."""
         return ConversationService.get_manager(self).get_messages_dict(MessageTag.CUR)
 
+    @staticmethod
+    def _strip_provider(model_name: str) -> str:
+        """Remove provider prefix from model name (e.g., 'openai/gpt-4' -> 'gpt-4')."""
+        if "/" in model_name:
+            return model_name.split("/", 1)[1]
+        return model_name
+
     def get_announcements(self):
-        lines = []
-        lines.append(f"cecli v{__version__}")
+        sections = {}
 
-        # Model
+        # --- MODELS ---
         main_model = self.main_model
-        weak_model = main_model.weak_model
+
+        models_items = [f"{self._strip_provider(main_model.name)} (main)"]
         agent_model = main_model.agent_model
+        weak_model = main_model.weak_model
 
-        if weak_model is not main_model:
-            prefix = "Main model"
-        else:
-            prefix = "Model"
+        if agent_model and agent_model.name != main_model.name:
+            models_items.append(f"{self._strip_provider(agent_model.name)} (agent)")
 
-        output = f"{prefix}: {main_model.name} with {self.edit_format} edit format"
+        if weak_model and weak_model.name != main_model.name:
+            models_items.append(f"{self._strip_provider(weak_model.name)} (weak)")
+        if self.edit_format == "architect":
+            models_items.append(f"{self._strip_provider(main_model.editor_model.name)} (editor)")
 
-        # Check for thinking token budget
+        sections["Models"] = {"items": models_items}
+
+        # --- SETTINGS ---
+        settings_items = []
+
+        # Edit format
+        settings_items.append(f"{self.edit_format} (edit format)")
+
+        # Thinking tokens
         thinking_tokens = main_model.get_thinking_tokens()
         if thinking_tokens:
-            output += f", {thinking_tokens} think tokens"
+            settings_items.append(f"{thinking_tokens} think tokens")
 
-        # Check for reasoning effort
+        # Reasoning effort
         reasoning_effort = main_model.get_reasoning_effort()
         if reasoning_effort:
-            output += f", reasoning {reasoning_effort}"
+            settings_items.append(f"reasoning {reasoning_effort}")
 
+        # Prompt cache
         if self.add_cache_headers or main_model.caches_by_default:
-            output += ", prompt cache"
+            settings_items.append("prompt cache")
+
+        # Infinite output
         if main_model.info.get("supports_assistant_prefill"):
-            output += ", infinite output"
+            settings_items.append("infinite output")
+
+        # Copy/paste mode
         if self.copy_paste_mode:
-            output += ", copy/paste mode"
+            settings_items.append("copy/paste mode")
 
-        lines.append(output)
+        if settings_items:
+            sections["Settings"] = {"items": settings_items}
 
-        if self.edit_format == "architect":
-            output = (
-                f"Editor model: {main_model.editor_model.name} with"
-                f" {main_model.editor_edit_format} edit format"
-            )
-            lines.append(output)
+        # --- ENVIRONMENT ---
+        env_items = []
+        repo_map_tokens = None  # Track for later warning check
 
-        if weak_model is not main_model:
-            output = f"Weak model: {weak_model.name}"
-            lines.append(output)
-
-        if agent_model is not main_model:
-            output = f"Agent model: {agent_model.name}"
-            lines.append(output)
-
-        # Repo
         if self.repo:
             rel_repo_dir = self.repo.get_rel_repo_dir()
             num_files = len(self.repo.get_tracked_files())
-
-            lines.append(f"Git repo: {rel_repo_dir} with {num_files:,} files")
+            env_items.append(f"{rel_repo_dir} ({num_files:,} files)")
             if num_files > 1000:
-                lines.append(
+                env_items.append(
                     "Warning: For large repos, consider using --subtree-only and .cecli_ignore"
                 )
-                lines.append(f"See: {urls.large_repos}")
+                env_items.append(f"See: {urls.large_repos}")
         else:
-            lines.append("Git repo: none")
+            env_items.append("no git repo")
 
-        # Repo-map
         if self.repo_map:
             map_tokens = self.repo_map.max_map_tokens
             if map_tokens > 0:
                 refresh = self.repo_map.refresh
-                lines.append(f"Repo-map: using {map_tokens} tokens, {refresh} refresh")
-                max_map_tokens = self.get_active_model().get_repo_map_tokens() * 2
-                if map_tokens > max_map_tokens:
-                    lines.append(
-                        f"Warning: map-tokens > {max_map_tokens} is not recommended. Too much"
-                        " irrelevant code can confuse LLMs."
-                    )
+                env_items.append(f"map ({map_tokens} tokens, {refresh} refresh)")
+                repo_map_tokens = map_tokens
             else:
-                lines.append("Repo-map: disabled because map_tokens == 0")
+                env_items.append("repo-map disabled")
         else:
-            lines.append("Repo-map: disabled")
+            env_items.append("repo-map disabled")
 
+        sections["Environment"] = {"items": env_items}
+        # --- CAPABILITIES ---
+        capabilities = {}
+
+        # Sub-agents
+        try:
+            from cecli.helpers.agents.service import AgentService
+
+            registry = AgentService.get_registry()
+            if registry:
+                capabilities["Subagents"] = sorted(registry.keys())
+        except Exception:
+            pass
+
+        # Skills
+        if hasattr(self, "skills_manager") and self.skills_manager:
+            try:
+                skills = self.skills_manager.find_skills()
+                if skills:
+                    capabilities["Skills"] = [s.name for s in skills]
+            except Exception:
+                pass
+
+        # MCP Servers
         if self.mcp_tools:
             mcp_servers = []
             for server_name, server_tools in self.mcp_tools:
-                # Filter servers per instance configuration
                 if (
                     self.registered_servers["included"]
                     and server_name not in self.registered_servers["included"]
@@ -871,17 +898,49 @@ class Coder(metaclass=UsageMeta):
                 if server_name in self.registered_servers["excluded"]:
                     continue
                 mcp_servers.append(server_name)
-
             if mcp_servers:
-                lines.append(f"MCP servers configured: {', '.join(mcp_servers)}")
+                capabilities["Servers"] = mcp_servers
 
+        if capabilities:
+            # sections["Extensions"] = {"subsections": capabilities}
+            sections["Environment"]["subsections"] = capabilities
+
+        # --- RENDER ---
+        lines = []
+
+        # Version line (CLI only; TUI has its own banner)
+        if not self.args.tui:
+            lines.append(f"cecli v{__version__}")
+
+        for name, section in sections.items():
+            if "items" in section:
+                lines.append(f"{name:15s}" + " • ".join(section["items"]))
+            if "subsections" in section:
+                last_key = next(reversed(section["subsections"]))
+                # lines.append(name)
+                for sub_name, sub_items in section["subsections"].items():
+                    connector = "└─" if sub_name == last_key else "├─"
+                    lines.append(f" {connector} {sub_name:10} {' • '.join(sub_items)}")
+
+        # Repo-map max_tokens warning
+        if repo_map_tokens is not None:
+            max_map_tokens = self.get_active_model().get_repo_map_tokens() * 2
+            if repo_map_tokens > max_map_tokens:
+                lines.append(
+                    f"Warning: map-tokens > {max_map_tokens} is not recommended. Too much"
+                    " irrelevant code can confuse LLMs."
+                )
+
+        # Read-only stubs
         for fname in self.abs_read_only_stubs_fnames:
             rel_fname = self.get_rel_fname(fname)
             lines.append(f"Added {rel_fname} to the chat (read-only stub).")
 
+        # Restored conversation
         if ConversationService.get_manager(self).get_messages_dict(MessageTag.DONE):
             lines.append("Restored previous conversation history.")
 
+        # Multiline mode
         if self.io.multiline_mode and not self.args.tui:
             lines.append("Multiline mode: Enabled. Enter inserts newline, Alt-Enter submits text")
 

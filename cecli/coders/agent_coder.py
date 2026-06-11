@@ -239,20 +239,6 @@ class AgentCoder(Coder):
         if self.loaded_custom_tools:
             self.io.tool_output(f"Loaded custom tools: {', '.join(self.loaded_custom_tools)}")
 
-        skills = self.skills_manager.find_skills()
-        if skills:
-            skills_list = []
-            for skill in skills:
-                skills_list.append(skill.name)
-            joined_skills = ", ".join(skills_list)
-            self.io.tool_output(f"Available Skills: {joined_skills}")
-
-        registry = AgentService.get_registry()
-        if registry:
-            names = sorted(registry.keys())
-            joined_names = ", ".join(names)
-            self.io.tool_output(f"Available Subagents: {joined_names}")
-
     def get_local_tool_schemas(self):
         """Returns the JSON schemas for all local tools using the tool registry."""
         schemas = []

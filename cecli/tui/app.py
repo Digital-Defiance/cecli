@@ -15,6 +15,7 @@ from textual import events
 from textual.app import App, ComposeResult
 from textual.theme import Theme
 
+from cecli import __version__
 from cecli.editor import pipe_editor
 from cecli.helpers.agents.service import AgentService
 from cecli.helpers.coroutines import is_active
@@ -360,7 +361,7 @@ class TUI(App):
 [bold {BANNER_COLORS[2]}]  ▒▒║     ▒▒▒▒▒╗  ▒▒║     ▒▒║     ▒▒║[/bold {BANNER_COLORS[2]}]
 [bold {BANNER_COLORS[3]}]  ▒▒║     ▒▒╔══╝  ▒▒║     ▒▒║     ▒▒║[/bold {BANNER_COLORS[3]}]
 [bold {BANNER_COLORS[4]}]  ╚▒▒▒▒▒▒╗▒▒▒▒▒▒▒╗╚▒▒▒▒▒▒╗▒▒▒▒▒▒▒╗▒▒║[/bold {BANNER_COLORS[4]}]
-[bold {BANNER_COLORS[5]}]   ╚═════╝╚══════╝ ╚═════╝╚══════╝╚═╝[/bold {BANNER_COLORS[5]}]
+[bold {BANNER_COLORS[5]}]   ╚═════╝╚══════╝ ╚═════╝╚══════╝╚═╝ v{__version__}[/bold {BANNER_COLORS[5]}]
 
 """
 
