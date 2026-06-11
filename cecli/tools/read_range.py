@@ -36,12 +36,13 @@ class Tool(BaseTool):
                 " respectively. Line numbers may also be used for range lookups."
                 " It is best to use function names, variable declarations and other meaningful identifiers"
                 " as range_start and range_end values."
-                " Do not use both of the special markers together on non-empty file."
                 " Do not use the same pattern for the range_start and range_end."
                 " Do not use empty strings for the range_start and range_end."
-                " Prefer using this tool over cli tools for reading files."
-                " Calling this tool sequentially on increasingly finer grained searches "
-                " will help with understanding important structural features."
+                " Use this tool instead of cli tools for reading file contents."
+                " Line number and special marker ranges greater than 200 lines will return"
+                " preview content for further, more scoped investigation."
+                " Call this tool sequentially on increasingly finer grained searches "
+                " to help with understanding important structural features in large files."
             ),
             "parameters": {
                 "type": "object",
@@ -436,7 +437,7 @@ class Tool(BaseTool):
                 # For structured searches (line numbers, special markers) or mixed searches
                 # (one special marker, one text pattern), cap large ranges with preview
                 # Text pattern searches are not subject to capping
-                if (both_structured or mixed_special_search) and (e_idx - s_idx > 200):
+                if both_structured or (mixed_special_search and (e_idx - s_idx > 200)):
                     preview = cls._get_range_preview(
                         abs_path, coder.io, start_idx=s_idx, end_idx=e_idx, line_numbers=True
                     )

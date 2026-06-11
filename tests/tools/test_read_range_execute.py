@@ -162,7 +162,7 @@ class TestReadRangeExecute:
         try:
             show = [{"file_path": self.test_file, "range_start": "5", "range_end": "10"}]
             result = self.Tool.execute(self.coder, show)
-            assert "Snapshot" in result
+            assert "File range too large" in result
             assert "line5" in result
             assert "line10" in result
         finally:
@@ -456,7 +456,7 @@ class TestReadRangeExecute:
         cs_patch = patch("cecli.helpers.conversation.ConversationService", mock_cs)
         cs_patch.start()
 
-        mock_coder.io.read_text.side_effect = [content1, content2]
+        mock_coder.io.read_text.side_effect = [content1, content1, content2, content2]
 
         try:
             from cecli.tools.read_range import Tool

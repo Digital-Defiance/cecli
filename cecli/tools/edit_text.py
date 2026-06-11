@@ -42,7 +42,8 @@ class Tool(BaseTool):
                 "Each edit must include its own file_path and operation type. "
                 "Use content ID ranges with the start_line and end_line parameters with format "
                 "`content_id::` (the content id with the :: demarcator). For empty files, use `@000` as the "
-                "content ID references."
+                "content ID references. "
+                "Edits within a file must not be adjacent or overlapping."
             ),
             "parameters": {
                 "type": "object",
@@ -91,7 +92,6 @@ class Tool(BaseTool):
                         "description": "Array of edits to apply.",
                     },
                     "change_id": {"type": "string"},
-                    "dry_run": {"type": "boolean", "default": False},
                 },
                 "required": ["edits"],
             },
