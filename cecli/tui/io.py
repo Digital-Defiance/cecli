@@ -314,7 +314,8 @@ class TextualInputOutput(InputOutput):
 
         # Check if this is a tool result (comes right after tool call)
         if self._expect_tool_result and text.strip():
-            self._expect_tool_result = False
+            if msg_type != "tool-result":
+                self._expect_tool_result = False
             msg = {
                 "type": "tool_result",
                 "text": text,

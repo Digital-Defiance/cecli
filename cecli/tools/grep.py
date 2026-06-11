@@ -166,7 +166,9 @@ class Tool(BaseTool):
                 cmd_args.extend(["--", pattern, str(search_dir_path)])
 
                 command_string = oslex.join(cmd_args)
-                coder.io.tool_output(f"⛭ Executing {tool_name}: {command_string}")
+                coder.io.tool_output(
+                    f"⛭ Executing {tool_name}: {command_string}", type="tool-result"
+                )
 
                 exit_status, combined_output = run_cmd_subprocess(
                     command_string,
@@ -207,9 +209,9 @@ class Tool(BaseTool):
             for search_op, result in zip(searches, all_results):
                 pattern = search_op.get("pattern")
                 if "No matches found" in result:
-                    ui_summaries.append(f"No matches found for '{pattern}'.")
+                    ui_summaries.append(f"✗ No matches found for '{pattern}'.")
                 elif "Error" in result:
-                    ui_summaries.append(f"Error searching for '{pattern}'.")
+                    ui_summaries.append(f"✗ Error searching for '{pattern}'.")
                 else:
                     # Count lines in the output to give a sense of scale
                     # The result string contains the matches in a code block
@@ -220,8 +222,8 @@ class Tool(BaseTool):
                         match_count = 0
                     ui_summaries.append(f"✓ Matches found for '{pattern}'.")
 
-            ui_message = "\n\n".join(ui_summaries)
-            coder.io.tool_output(ui_message)
+            ui_message = "\n".join(ui_summaries)
+            coder.io.tool_output(ui_message, type="tool-result")
 
         return final_message
 

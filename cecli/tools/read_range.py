@@ -589,7 +589,8 @@ class Tool(BaseTool):
             if already_up_to_details or new_context_details:
                 if new_context_details:
                     coder.io.tool_output(
-                        f"✓ Retrieved context for {len(new_context_details)} operation(s)"
+                        f"✓ Retrieved context for {len(new_context_details)} operation(s)",
+                        type="tool-result",
                     )
 
                     detail_str = "\n".join(new_context_details)
@@ -600,8 +601,11 @@ class Tool(BaseTool):
                     )
                 if already_up_to_details:
                     coder.io.tool_output(
-                        "Lines already up to date in context for"
-                        f" {len(already_up_to_details)} operation(s)"
+                        (
+                            "Lines already up to date in context for"
+                            f" {len(already_up_to_details)} operation(s)"
+                        ),
+                        type="tool-result",
                     )
 
                     detail_str = "\n".join(already_up_to_details)
@@ -622,7 +626,9 @@ class Tool(BaseTool):
                 result_parts.append("\nUse these outlines to refine your search.\n")
 
             if error_outputs:
-                coder.io.tool_error(f"Errors encountered for {len(error_outputs)} operation(s)")
+                coder.io.tool_error(
+                    f"Errors encountered for {len(error_outputs)} operation(s)", type="tool-result"
+                )
 
                 result_parts.append("Errors:\n" + "\n".join(error_outputs))
 

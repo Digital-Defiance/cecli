@@ -55,7 +55,7 @@ class Tool(BaseTool):
 
             # Check if path exists
             if not os.path.exists(abs_path):
-                coder.io.tool_output(f"⚠ Path '{dir_path}' not found")
+                coder.io.tool_output(f"⚠ Path '{dir_path}' not found", type="tool-result")
                 return "Directory not found"
 
             # Get directory contents
@@ -76,7 +76,9 @@ class Tool(BaseTool):
                 contents.append(os.path.relpath(abs_path, coder.root))
 
             if contents:
-                coder.io.tool_output(f"📋 Listed {len(contents)} file(s) in '{dir_path}'")
+                coder.io.tool_output(
+                    f"📋 Listed {len(contents)} file(s) in '{dir_path}'", type="tool-result"
+                )
                 sorted_contents = sorted(contents)
                 if len(sorted_contents) > 10:
                     return (
@@ -85,7 +87,7 @@ class Tool(BaseTool):
                 else:
                     return f"Found {len(sorted_contents)} files: {', '.join(sorted_contents)}"
             else:
-                coder.io.tool_output(f"📋 No files found in '{dir_path}'")
+                coder.io.tool_output(f"📋 No files found in '{dir_path}'", type="tool-result")
                 return "No files found in directory"
         except Exception as e:
             coder.io.tool_error(f"Error in ls: {str(e)}")
