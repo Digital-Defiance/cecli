@@ -166,7 +166,7 @@ class Tool(BaseTool):
                 cmd_args.extend(["--", pattern, str(search_dir_path)])
 
                 command_string = oslex.join(cmd_args)
-                coder.io.tool_output(f"⚙️ Executing {tool_name}: {command_string}")
+                coder.io.tool_output(f"⛭ Executing {tool_name}: {command_string}")
 
                 exit_status, combined_output = run_cmd_subprocess(
                     command_string,
@@ -218,7 +218,7 @@ class Tool(BaseTool):
                     )  # Subtracting for the markdown block markers
                     if match_count < 0:
                         match_count = 0
-                    ui_summaries.append(f"✅ Matches found for '{pattern}'.")
+                    ui_summaries.append(f"✓ Matches found for '{pattern}'.")
 
             ui_message = "\n\n".join(ui_summaries)
             coder.io.tool_output(ui_message)

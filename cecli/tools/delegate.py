@@ -90,9 +90,9 @@ class Tool(BaseTool):
         lines = []
         for name, result in started_agents:
             if result.startswith("failed:"):
-                lines.append(f"❌ **{name}**: {result}")
+                lines.append(f"✗ **{name}**: {result}")
             else:
-                lines.append(f"✅ **{name}** agent started with id `{result}`")
+                lines.append(f"✓ **{name}** agent started with id `{result}`")
 
         n_total = len(started_agents)
         n_ok = sum(1 for _, r in started_agents if not r.startswith("failed:"))

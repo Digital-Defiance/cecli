@@ -1107,7 +1107,7 @@ class Coder(metaclass=UsageMeta):
 
                             # Add message about showing definitions instead of full content
                             # self.io.tool_output(
-                            #    f"⚠️ '{relative_fname}' is very large ({file_tokens} tokens). "
+                            #    f"⚠ '{relative_fname}' is very large ({file_tokens} tokens). "
                             #    "Use /context-management to toggle truncation off if needed."
                             # )
 
@@ -1175,7 +1175,7 @@ class Coder(metaclass=UsageMeta):
 
                         # Add message about showing definitions instead of full content
                         # self.io.tool_output(
-                        #    f"⚠️ '{relative_fname}' is very large ({file_tokens} tokens). "
+                        #    f"⚠ '{relative_fname}' is very large ({file_tokens} tokens). "
                         #    "Use /context-management to toggle truncation off if needed."
                         # )
 

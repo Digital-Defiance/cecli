@@ -611,7 +611,7 @@ class AgentCoder(Coder):
                 percentage = total_tokens / max_input_tokens * 100
                 result += f" ({percentage:.1f}% of limit)"
                 if percentage > 80:
-                    result += "\n\n⚠️ **Context is getting full!**\n"
+                    result += "\n\n⚠ **Context is getting full!**\n"
                     result += "- Remove non-essential files via the `ContextManager` tool.\n"
                     result += "- Keep only essential files in context for best performance"
             result += "\n</context>"
@@ -1265,7 +1265,7 @@ class AgentCoder(Coder):
         abs_path = self.abs_root_path(file_path)
         rel_path = self.get_rel_fname(abs_path)
         if not os.path.isfile(abs_path):
-            self.io.tool_output(f"⚠️ File '{file_path}' not found")
+            self.io.tool_output(f"⚠ File '{file_path}' not found")
             return "File not found"
         if abs_path in self.abs_fnames:
             if explicit:
@@ -1285,7 +1285,7 @@ class AgentCoder(Coder):
                 file_tokens = self.get_active_model().token_count(content)
                 if file_tokens > self.large_file_token_threshold:
                     self.io.tool_output(
-                        f"⚠️ '{file_path}' is very large ({file_tokens} tokens). Use"
+                        f"⚠ '{file_path}' is very large ({file_tokens} tokens). Use"
                         " /context-management to toggle truncation off if needed."
                     )
             self.abs_read_only_fnames.add(abs_path)

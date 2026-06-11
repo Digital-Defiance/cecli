@@ -328,7 +328,7 @@ def format_tool_result(
         return full_message
     else:
         # Use the provided success message, potentially adding change_id and diff
-        full_message = f"✅ {success_message}"
+        full_message = f"✓ {success_message}"
         if change_id:
             full_message += f" (change_id: {change_id})"
         coder.io.tool_output(full_message)  # Log the success action

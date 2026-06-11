@@ -121,7 +121,7 @@ class Tool(BaseTool):
             # Check if content exceeds 4096 characters and warn
             if len(new_content) > 4096:
                 coder.io.tool_warning(
-                    "⚠️ Todo list content exceeds 4096 characters. Consider summarizing the plan"
+                    "⚠ Todo list content exceeds 4096 characters. Consider summarizing the plan"
                     " before proceeding."
                 )
 

@@ -56,7 +56,7 @@ class Tool(BaseTool):
                 coder.io.tool_output(f"Skipped execution of shell command: {command_string}")
                 return "Shell command execution skipped by user."
 
-            coder.io.tool_output(f"⚙️ Starting interactive shell command: {command_string}")
+            coder.io.tool_output(f"⛭ Starting interactive shell command: {command_string}")
 
             tui = coder.tui() if coder.tui else None
 

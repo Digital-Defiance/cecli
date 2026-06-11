@@ -55,7 +55,7 @@ class Tool(BaseTool):
 
             # Check if path exists
             if not os.path.exists(abs_path):
-                coder.io.tool_output(f"⚠️ Path '{dir_path}' not found")
+                coder.io.tool_output(f"⚠ Path '{dir_path}' not found")
                 return "Directory not found"
 
             # Get directory contents

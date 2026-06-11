@@ -161,7 +161,7 @@ class Tool(BaseTool):
         """
         Execute command in background.
         """
-        coder.io.tool_output(f"⚙️ Starting background command: {command_string}")
+        coder.io.tool_output(f"⛭ Starting background command: {command_string}")
 
         # Use static manager to start background command
         command_key = BackgroundCommandManager.start_background_command(
@@ -193,7 +193,7 @@ class Tool(BaseTool):
 
         from cecli.helpers.background_commands import CircularBuffer
 
-        coder.io.tool_output(f"⚙️ Executing shell command with {timeout}s timeout.")
+        coder.io.tool_output(f"⛭ Executing shell command with {timeout}s timeout.")
 
         shell = os.environ.get("SHELL", "/bin/sh")
 
@@ -322,7 +322,7 @@ class Tool(BaseTool):
             tui = coder.tui()
             should_print = False
 
-        coder.io.tool_output("⚙️ Executing shell command.")
+        coder.io.tool_output("⛭ Executing shell command.")
 
         # Use run_cmd_subprocess for non-interactive execution
         exit_status, combined_output = run_cmd_subprocess(

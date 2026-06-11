@@ -180,7 +180,7 @@ class Tool(BaseTool):
                 for failed_msg in all_failed_queries:
                     coder.io.tool_error(failed_msg)
             else:
-                coder.io.tool_output("✅ All queries successful.")
+                coder.io.tool_output("✓ All queries successful.")
 
             return "\n\n" + "=" * 40 + "\n\n".join(all_results)
 

@@ -38,7 +38,7 @@ class Tool(BaseTool):
                 " as range_start and range_end values."
                 " Do not use the same pattern for the range_start and range_end."
                 " Do not use empty strings for the range_start and range_end."
-                " Use this tool instead of cli tools for reading file contents."
+                " Always use the ReadRange tool instead of cli tools for reading file contents."
                 " Line number and special marker ranges greater than 200 lines will return"
                 " preview content for further, more scoped investigation."
                 " Call this tool sequentially on increasingly finer grained searches "
@@ -589,7 +589,7 @@ class Tool(BaseTool):
             if already_up_to_details or new_context_details:
                 if new_context_details:
                     coder.io.tool_output(
-                        f"✅ Retrieved context for {len(new_context_details)} operation(s)"
+                        f"✓ Retrieved context for {len(new_context_details)} operation(s)"
                     )
 
                     detail_str = "\n".join(new_context_details)
