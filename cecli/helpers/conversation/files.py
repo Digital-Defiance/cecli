@@ -281,8 +281,8 @@ class ConversationFiles:
             diff_message = {
                 "role": "user",
                 "content": (
-                    f"{rel_fname} has been updated. Review this git diff of the changes to"
-                    f" ensure the modifications are intended:\n\n{diff}"
+                    f"{rel_fname} has been updated. Review this diff of the changes to"
+                    f" ensure all modifications are appropriate:\n\n{diff}"
                 ),
             }
 
@@ -290,7 +290,7 @@ class ConversationFiles:
                 "role": "assistant",
                 "content": (
                     f"Thank you for sharing this diff of the updates to {rel_fname}."
-                    " I will review their contents next turn."
+                    " I will review their contents."
                 ),
             }
 
