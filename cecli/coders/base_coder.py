@@ -422,6 +422,7 @@ class Coder(metaclass=UsageMeta):
         self.registered_servers = {"included": set(), "excluded": set()}
         self.interrupt_event = asyncio.Event()
         self.uuid = str(generate_unique_id())
+        self.reflected_message = None
 
         if uuid:
             self.uuid = str(uuid)
