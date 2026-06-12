@@ -2561,7 +2561,9 @@ class Coder(metaclass=UsageMeta):
                     return
         finally:
             if self.mdstream:
-                content_to_show = self.live_incremental_response(True)
+                content_to_show = (
+                    "" if self.tui and self.tui() else self.live_incremental_response(True)
+                )
                 self.stream_wrapper(content_to_show, final=True)
             self.mdstream = None
 
@@ -3584,30 +3586,35 @@ class Coder(metaclass=UsageMeta):
                         except AttributeError:
                             reasoning_content = None
 
-                    if reasoning_content:
-                        if nested.getter(self.args, "show_thinking"):
-                            if not self.got_reasoning_content:
-                                text += f"<{REASONING_TAG}>\n\n"
-                            text += reasoning_content
-                            self.got_reasoning_content = True
-                            received_content = True
-                        self.token_profiler.on_token()
-                        self.io.update_spinner_suffix(reasoning_content)
-                        self.partial_response_reasoning_content += reasoning_content
-
                     try:
                         content = chunk.choices[0].delta.content
                         if content:
                             if self.got_reasoning_content and not self.ended_reasoning_content:
                                 text += f"\n\n</{self.reasoning_tag_name}>\n\n"
-                                self.ended_reasoning_content = True
 
+                            self.ended_reasoning_content = True
                             text += content
                             received_content = True
                             self.token_profiler.on_token()
                             self.io.update_spinner_suffix(content)
                     except AttributeError:
                         pass
+
+                    if reasoning_content:
+                        if (
+                            nested.getter(self.args, "show_thinking")
+                            and not self.ended_reasoning_content
+                        ):
+                            if not self.got_reasoning_content:
+                                text += f"<{REASONING_TAG}>\n\n"
+
+                            text += reasoning_content
+                            self.got_reasoning_content = True
+                            received_content = True
+
+                        self.token_profiler.on_token()
+                        self.io.update_spinner_suffix(reasoning_content)
+                        self.partial_response_reasoning_content += reasoning_content
 
                 self.partial_response_content += text
 
@@ -3635,6 +3642,16 @@ class Coder(metaclass=UsageMeta):
         except (asyncio.CancelledError, KeyboardInterrupt):
             raise KeyboardInterrupt
 
+        if (
+            self.show_pretty()
+            and nested.getter(self.args, "show_thinking")
+            and self.got_reasoning_content
+            and not self.ended_reasoning_content
+        ):
+            self.partial_response_content += f"\n\n</{self.reasoning_tag_name}>\n\n"
+            content_to_show = self.live_incremental_response(False)
+            self.stream_wrapper(content_to_show, final=False)
+
         # The Part Doing the Heavy Lifting Now
         self.consolidate_chunks()
 
@@ -3657,6 +3674,11 @@ class Coder(metaclass=UsageMeta):
         )
         func_err = None
         content_err = None
+
+        last_chunk = self.partial_response_chunks[len(self.partial_response_chunks) - 1]
+        if last_chunk:
+            if getattr(last_chunk, "usage", None):
+                response.usage = last_chunk.usage
 
         # Collect provider-specific fields from chunks to preserve them
         # We need to track both by ID (primary) and index (fallback) since
@@ -3849,6 +3871,7 @@ class Coder(metaclass=UsageMeta):
             cache_hit_tokens = (
                 getattr(completion.usage, "prompt_cache_hit_tokens", 0)
                 or getattr(completion.usage, "cache_read_input_tokens", 0)
+                or nested.getter(completion.usage, "prompt_tokens_details.cached_tokens", 0)
                 or 0
             )
             cache_write_tokens = getattr(completion.usage, "cache_creation_input_tokens", 0) or 0
