@@ -91,6 +91,7 @@ class AgentCoder(Coder):
         self.allowed_context_blocks = set()
         self.context_block_tokens = {}
         self.context_blocks_cache = {}
+        self.current_tasks = []
         self.hot_reload_enabled = False
         self.tokens_calculated = False
         self.skip_cli_confirmations = False
@@ -1428,9 +1429,8 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
             if content is None or not content.strip():
                 return None
             result = '<context name="todo_list" from="agent">\n'
-            result += "## Current Todo List\n\n"
-            result += "Below is the current todo list managed via the `UpdateTodoList` tool:\n\n"
-            result += f"```\n{content}\n```\n"
+            result += "## Current Active Tasks\n\n"
+            result += f"```{"\n".join(self.current_tasks)}```\n"
             result += "</context>"
             return result
         except Exception as e:
