@@ -174,7 +174,7 @@ class AgentCoder(Coder):
                 config,
                 "include_context_blocks",
                 {
-                    "context_summary",
+                    # "context_summary",
                     # "directory_structure",
                     "environment_info",
                     # "git_status",
