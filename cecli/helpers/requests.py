@@ -13,6 +13,8 @@ def add_reasoning_content(messages):
     for msg in messages:
         if msg.get("role") == "assistant" and "reasoning_content" not in msg:
             msg["reasoning_content"] = ""
+        if msg.get("provider_specific_fields", None):
+            msg["provider_specific_fields"].pop("reasoning_content", None)
     return messages
 
 
