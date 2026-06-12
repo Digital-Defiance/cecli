@@ -164,6 +164,28 @@ def add_continue_for_no_prefill(model, messages, tools):
     return messages
 
 
+def prevent_consecutive_assistant_messages(messages):
+    """Insert '(empty request)' user messages between consecutive assistant messages.
+
+    Args:
+        messages: List of message dictionaries
+
+    Returns:
+        List of messages with '(empty request)' inserted between consecutive
+        assistant messages
+    """
+    result = []
+    for i, msg in enumerate(messages):
+        result.append(msg)
+        if (
+            i < len(messages) - 1
+            and msg.get("role") == "assistant"
+            and messages[i + 1].get("role") == "assistant"
+        ):
+            result.append({"role": "user", "content": "(empty request)"})
+    return result
+
+
 def model_request_parser(model, messages, tools):
     messages = thought_signature(model, messages)
     messages = remove_empty_tool_calls(messages)
@@ -171,4 +193,5 @@ def model_request_parser(model, messages, tools):
     messages = ensure_alternating_roles(messages)
     messages = add_reasoning_content(messages)
     messages = add_continue_for_no_prefill(model, messages, tools)
+    messages = prevent_consecutive_assistant_messages(messages)
     return messages
