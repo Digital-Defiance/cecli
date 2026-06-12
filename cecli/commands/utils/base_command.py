@@ -159,6 +159,12 @@ class BaseCommand(ABC, metaclass=CommandMeta):
         await new_coder.generate(user_message=user_msg, preproc=False)
         coder.coder_commit_hashes = new_coder.coder_commit_hashes
 
+        # Transfer files added during the /agent (or other temp-coder) turn back to the original
+        if new_coder.abs_fnames - original_coder.abs_fnames:
+            original_coder.abs_fnames.update(new_coder.abs_fnames)
+        if new_coder.abs_read_only_fnames - original_coder.abs_read_only_fnames:
+            original_coder.abs_read_only_fnames.update(new_coder.abs_read_only_fnames)
+
         # Clear manager and restore original state
         ConversationService.get_manager(original_coder).initialize(
             reset=True,
