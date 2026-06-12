@@ -17,7 +17,10 @@ class Tool(BaseTool):
         "type": "function",
         "function": {
             "name": "Yield",
-            "description": "Yield control back to the user, indicating all sub-goals are complete.",
+            "description": (
+                "Yield control to subagents, to await their results or back to the user,"
+                " indicating all sub-goals are complete."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
