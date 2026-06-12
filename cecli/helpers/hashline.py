@@ -1453,23 +1453,23 @@ def apply_hashline_operations(
                     # Check for overlapping lines to prevent duplication
                     # This handles cases where the model underspecifies the range and
                     # the replacement text includes lines that already exist after the range
-                    max_overlap_check = 2  # Check up to 2 lines for overlap
+                    # max_overlap_check = 2  # Check up to 2 lines for overlap
 
                     # Check for overlapping lines BEFORE the range (bidirectional stitching)
-                    start_idx, replacement_lines = _apply_start_stitching(
-                        hashed_lines,
-                        start_idx,
-                        end_idx,
-                        replacement_lines,
-                        resolved_ops,
-                        resolved,
-                        max_overlap_check,
-                    )
+                    # start_idx, replacement_lines = _apply_start_stitching(
+                    #    hashed_lines,
+                    #    start_idx,
+                    #    end_idx,
+                    #    replacement_lines,
+                    #    resolved_ops,
+                    #    resolved,
+                    #    max_overlap_check,
+                    # )
 
                     # Now check for overlapping lines AFTER the range
-                    end_idx, replacement_lines = _apply_end_stitching(
-                        hashed_lines, start_idx, end_idx, replacement_lines, max_overlap_check
-                    )
+                    # end_idx, replacement_lines = _apply_end_stitching(
+                    #    hashed_lines, start_idx, end_idx, replacement_lines, max_overlap_check
+                    # )
 
                     hashed_lines[start_idx : end_idx + 1] = replacement_lines
                 else:
