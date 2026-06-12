@@ -83,6 +83,7 @@ class Tool(BaseTool):
 
     _last_invocation = {}  # file_path -> {start_idx, end_idx}
     _last_read_turn: Dict[str, int] = {}  # abs_path -> turn_count when last read
+    _special_marker_count: Dict[str, int] = {}  # abs_path -> count of both-special-marker reads
 
     @classmethod
     def execute(cls, coder, read, **kwargs):
@@ -185,7 +186,8 @@ class Tool(BaseTool):
                     continue
 
                 # 3. Read file content
-                content = coder.io.read_text(abs_path)
+                content: str = coder.io.read_text(abs_path)
+
                 if content is None:
                     error_outputs.append(
                         cls.format_error(
@@ -262,6 +264,7 @@ class Tool(BaseTool):
                             end_indices = [end_line_num]
                         else:
                             end_indices = [num_lines - 1]
+
                     elif mixed_special_search:
                         if start_is_special:
                             # Start is special marker, end is text pattern
@@ -434,13 +437,31 @@ class Tool(BaseTool):
                     s_idx, e_idx = cls._extend_range_with_stub(
                         coder, abs_path, s_idx, e_idx, num_lines
                     )
+
+                # Store the found indices for future disambiguation
+                cls._last_invocation[abs_path] = {"start_idx": s_idx, "end_idx": e_idx}
+
                 # For structured searches (line numbers, special markers) or mixed searches
                 # (one special marker, one text pattern), cap large ranges with preview
                 # Text pattern searches are not subject to capping
                 if both_structured or (mixed_special_search and (e_idx - s_idx > 200)):
-                    preview = cls._get_range_preview(
-                        abs_path, coder.io, start_idx=s_idx, end_idx=e_idx, line_numbers=True
+
+                    preview, has_stub = cls._get_range_preview(
+                        coder, abs_path, start_idx=s_idx, end_idx=e_idx, line_numbers=True
                     )
+
+                    if has_stub and abs_path not in coder.abs_fnames:
+                        token_count = coder.main_model.token_count(content)
+                        # Track special marker usage for auto-editable detection
+                        if token_count <= coder.large_file_token_threshold:
+                            cls._special_marker_count[abs_path] = (
+                                cls._special_marker_count.get(abs_path, 0) + 1
+                            )
+                            if cls._special_marker_count[abs_path] > 1:
+                                coder.abs_fnames.add(abs_path)
+                                preview = f"Full contents of {rel_path} added to cotext."
+                                if abs_path in coder.abs_read_only_fnames:
+                                    coder.abs_read_only_fnames.remove(abs_path)
 
                     if preview not in all_outputs_set:
                         all_outputs_set.add(preview)
@@ -448,11 +469,7 @@ class Tool(BaseTool):
                             all_outputs.append("")
                         all_outputs.append(preview)
 
-                    cls._last_invocation[abs_path] = {"start_idx": s_idx, "end_idx": e_idx}
                     continue
-
-                # Store the found indices for future disambiguation
-                cls._last_invocation[abs_path] = {"start_idx": s_idx, "end_idx": e_idx}
 
                 # found_by = f"range '{range_start}' to '{range_end}'"
 
@@ -909,7 +926,7 @@ class Tool(BaseTool):
             return s_idx, e_idx
 
     @classmethod
-    def _get_range_preview(cls, abs_path, io, start_idx, end_idx, line_numbers=True):
+    def _get_range_preview(cls, coder, abs_path, start_idx, end_idx, line_numbers=True):
         """Get a preview of a large file range between start_idx and end_idx.
 
         For code files (where tree-sitter can parse structure), uses
@@ -929,6 +946,9 @@ class Tool(BaseTool):
         """
         from cecli.repomap import RepoMap
 
+        io = coder.io
+        abs_path, rel_path = resolve_paths(coder, abs_path)
+
         stub = RepoMap.get_file_stub(
             abs_path, io, start_line=start_idx, end_line=end_idx, line_numbers=line_numbers
         )
@@ -937,12 +957,12 @@ class Tool(BaseTool):
         if stub and stub != "# No outline available":
             total_lines = end_idx - start_idx + 1
             parts = [
-                f"File range too large ({total_lines} lines).",
-                "Showing structural outline of the range:",
+                f"Showing structural information for {rel_path}:",
+                "Use this information to further narrow your search",
                 "",
                 stub,
             ]
-            return "\n".join(parts)
+            return "\n".join(parts), True
 
         content = io.read_text(abs_path)
         if not content:
@@ -956,7 +976,7 @@ class Tool(BaseTool):
         total_lines = actual_end - actual_start + 1
 
         if total_lines <= 0:
-            return ""
+            return "", False
 
         if total_lines <= 20:
             # Return all lines
@@ -987,4 +1007,4 @@ class Tool(BaseTool):
             line_num = idx + 1
             parts.append(f"  {line_num:>5} | {line_content}")
 
-        return "\n".join(parts)
+        return "\n".join(parts), False

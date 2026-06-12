@@ -278,7 +278,11 @@ class ConversationChunks:
 
         self._last_clear_count += 1
 
-        if should_clear and self._last_clear_count >= 20:
+        if (
+            should_clear
+            and self._last_clear_count >= 20
+            and diff_tokens + other_tokens > coder.context_compaction_max_tokens * 0.5
+        ):
             self._last_clear_count = 0
 
             # Clear all diff messages

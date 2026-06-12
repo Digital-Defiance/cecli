@@ -38,7 +38,7 @@ class Tool(BaseTool):
             "description": (
                 "Edit text in one or more files using content ID markers. "
                 "Supports replace, delete, and insert operations in a single call. "
-                "Can handle an array of up to 10 edits across multiple files. "
+                "Can handle an array of edits across multiple files. "
                 "Each edit must include its own file_path and operation type. "
                 "Use content ID ranges with the start_line and end_line parameters with format "
                 "`content_id::` (the content id with the :: demarcator). For empty files, use `@000` as the "
@@ -112,9 +112,9 @@ class Tool(BaseTool):
         Can handle single edit or array of edits across multiple files.
         Each edit object must include its own file_path.
         """
-        if not coder.edit_allowed:
-            from cecli.helpers.conversation import ConversationService, MessageTag
+        from cecli.helpers.conversation import ConversationService, MessageTag
 
+        if not coder.edit_allowed:
             ConversationService.get_manager(coder).add_message(
                 message_dict=dict(
                     role="user",
