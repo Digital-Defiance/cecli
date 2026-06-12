@@ -34,7 +34,7 @@ class Tool(BaseTool):
                                     "type": "string",
                                     "description": "The pattern to search for.",
                                 },
-                                "file_pattern": {
+                                "file_glob": {
                                     "type": "string",
                                     "default": "*",
                                     "description": "Glob pattern for files to search.",
@@ -105,7 +105,7 @@ class Tool(BaseTool):
         all_results = []
         for search_op in searches:
             pattern = strip_hashline(search_op.get("pattern"))
-            file_pattern = search_op.get("file_pattern", "*")
+            file_pattern = search_op.get("file_glob", "*")
             directory = search_op.get("directory", search_op.get("path", "."))
             use_regex = search_op.get("use_regex", True)
             case_insensitive = search_op.get("case_insensitive", True)
@@ -249,7 +249,7 @@ class Tool(BaseTool):
             coder.io.tool_output("")
             for i, search_op in enumerate(searches):
                 pattern = search_op.get("pattern", "")
-                file_pattern = search_op.get("file_pattern", "*")
+                file_pattern = search_op.get("file_glob", "*")
                 directory = search_op.get("directory", ".")
                 use_regex = search_op.get("use_regex", False)
                 case_insensitive = search_op.get("case_insensitive", False)
