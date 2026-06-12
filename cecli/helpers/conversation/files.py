@@ -272,16 +272,19 @@ class ConversationFiles:
             self._file_diffs[abs_fname] = diff
 
             rel_fname = fname
+            prefix_str = ""
 
             if coder:
                 rel_fname = coder.get_rel_fname(fname)
+                prefix_str = "content ID prefixed " if getattr(coder, "hashlines") else ""
 
             # Add diff message to conversation
             content_hash = xxhash.xxh3_128_hexdigest(diff.encode("utf-8"))
+
             diff_message = {
                 "role": "user",
                 "content": (
-                    f"{rel_fname} has been updated. Review this diff of the changes to"
+                    f"{rel_fname} has been updated. Review this {prefix_str}diff of the changes to"
                     f" ensure all modifications are appropriate:\n\n{diff}"
                 ),
             }
@@ -289,7 +292,7 @@ class ConversationFiles:
             assistant_msg = {
                 "role": "assistant",
                 "content": (
-                    f"Thank you for sharing this diff of the updates to {rel_fname}."
+                    f"Thank you for sharing this {prefix_str}diff of the updates to {rel_fname}."
                     " I will review their contents."
                 ),
             }
