@@ -161,7 +161,9 @@ class AgentCoder(Coder):
             config, ["tools_includelist", "tools_whitelist"], []
         )
         config["tools_excludelist"] = nested.getter(
-            config, ["tools_excludelist", "tools_blacklist"], []
+            config,
+            ["tools_excludelist", "tools_blacklist"],
+            ["gitbranch", "gitdiff", "gitlog", "gitremote", "gitshow", "gitstatus"],
         )
 
         config["servers_includelist"] = nested.getter(
@@ -808,6 +810,9 @@ class AgentCoder(Coder):
                     "# Fix any linting errors below, if possible.",
                     "# Fix any linting errors below, if possible and then continue with your task.",
                     1,
+                )
+                ConversationService.get_manager(self).remove_message_by_hash_key(
+                    ("lint_errors", "agent")
                 )
                 ConversationService.get_manager(self).add_message(
                     message_dict=dict(role="user", content=lint_errors),
