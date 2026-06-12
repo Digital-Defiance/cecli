@@ -1674,6 +1674,7 @@ class InputOutput:
 
     def stream_print(self, *messages, **kwargs):
         kwargs.pop("coder_uuid", None)
+        kwargs.pop("type", None)
 
         with self.console.capture() as capture:
             self.console.print(*messages, **kwargs)
