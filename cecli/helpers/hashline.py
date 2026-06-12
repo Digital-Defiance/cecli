@@ -245,8 +245,13 @@ def resolve_content_to_hashline_ids(
     Resolve potential line content values to proper hashline content IDs.
 
     If start_value or end_value does not look like a content ID (hash),
-    search for the content in the original file. If found exactly once,
-    return the hash ID for that line instead.
+    search for the content in the original file using substring matching.
+
+    For start_value: Only resolves if exactly one line contains it as a
+    substring (unique match).
+
+    For end_value: Resolves by finding the closest line (by position) to
+    the resolved start line that contains it as a substring.
 
     This handles the case where LLMs return entire line content or fragments
     instead of content IDs in edit parameters.
@@ -274,42 +279,55 @@ def resolve_content_to_hashline_ids(
         except (ContentHashError, ValueError):
             return False
 
-    def _resolve_value(value: str) -> str:
-        if value is None:
-            return value
-        if _looks_like_content_id(value):
-            return value
-
-        # Value doesn't look like a content ID - try to find it as line content
-        lines = original_content.splitlines()
+    def _find_substring_matches(lines, value):
+        """Find all line indices where the value appears as a substring."""
         value_stripped = value.rstrip("\r\n")
+        return [i for i, line in enumerate(lines) if value_stripped in line]
 
-        # First try exact match (full line content)
-        matching_indices = [
-            i for i, line in enumerate(lines) if line.rstrip("\r\n") == value_stripped
-        ]
+    def _resolve_to_hash_id(lines, idx, hp):
+        """Generate a hash ID for the line at the given index."""
+        hash_id = hp.generate_public_id(lines[idx], idx)
+        return hash_id + "::"
 
-        if len(matching_indices) == 1:
-            idx = matching_indices[0]
-            hp = HashPos(original_content)
-            hash_id = hp.generate_public_id(lines[idx], idx)
-            return hash_id + "::"
+    lines = original_content.splitlines()
+    hp = HashPos(original_content)
 
-        # If no exact match, try substring match (value might be a fragment)
-        # Only resolve if exactly one line contains the value
-        containing_indices = [i for i, line in enumerate(lines) if value_stripped in line]
+    # Resolve start_value first (must be unique substring match)
+    resolved_start = start_value
+    resolved_start_idx = None
 
+    if start_value is not None and not _looks_like_content_id(start_value):
+        containing_indices = _find_substring_matches(lines, start_value)
         if len(containing_indices) == 1:
+            resolved_start_idx = containing_indices[0]
+            resolved_start = _resolve_to_hash_id(lines, resolved_start_idx, hp)
+    elif start_value is not None and _looks_like_content_id(start_value):
+        # Already a content ID - try to resolve it to find the line position
+        # for proximity matching with end_value
+        try:
+            normalized = normalize_hashline(start_value)
+            candidates = hp.resolve_to_lines(normalized)
+            if candidates:
+                resolved_start_idx = candidates[0]
+        except (ContentHashError, ValueError):
+            pass
+
+    # Resolve end_value based on proximity to start position
+    resolved_end = end_value
+
+    if end_value is not None and not _looks_like_content_id(end_value):
+        containing_indices = _find_substring_matches(lines, end_value)
+        if len(containing_indices) == 1:
+            # Unique match - resolve directly
             idx = containing_indices[0]
-            hp = HashPos(original_content)
-            hash_id = hp.generate_public_id(lines[idx], idx)
-            return hash_id + "::"
-
-        # Can't resolve uniquely - return original value
-        return value
-
-    resolved_start = _resolve_value(start_value)
-    resolved_end = _resolve_value(end_value) if end_value is not None else end_value
+            resolved_end = _resolve_to_hash_id(lines, idx, hp)
+        elif len(containing_indices) > 1 and resolved_start_idx is not None:
+            # Multiple matches - pick closest to start position
+            closest_idx = min(
+                containing_indices,
+                key=lambda idx: abs(idx - resolved_start_idx),
+            )
+            resolved_end = _resolve_to_hash_id(lines, closest_idx, hp)
 
     return resolved_start, resolved_end
 
