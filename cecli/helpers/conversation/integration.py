@@ -179,7 +179,7 @@ class ConversationChunks:
                 ),
                 (
                     "Continue making progress. If you have reached the goal, summarize the results."
-                    " Otherwise, call the next necessary tool."
+                    " Otherwise, call the next necessary tools."
                 ),
                 (
                     "Please use the proper tools to fulfill the next steps of this task based on"

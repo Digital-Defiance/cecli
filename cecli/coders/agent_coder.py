@@ -1265,16 +1265,20 @@ class AgentCoder(Coder):
         abs_path = self.abs_root_path(file_path)
         rel_path = self.get_rel_fname(abs_path)
         if not os.path.isfile(abs_path):
-            self.io.tool_output(f"⚠ File '{file_path}' not found")
+            self.io.tool_output(f"⚠ File '{file_path}' not found", type="tool-result")
             return "File not found"
         if abs_path in self.abs_fnames:
             if explicit:
-                self.io.tool_output(f"📎 File '{file_path}' already in context as editable")
+                self.io.tool_output(
+                    f"🗀  File '{file_path}' already in context as editable", type="tool-result"
+                )
                 return "File already in context as editable"
             return "File already in context as editable"
         if abs_path in self.abs_read_only_fnames:
             if explicit:
-                self.io.tool_output(f"📎 File '{file_path}' already in context as read-only")
+                self.io.tool_output(
+                    f"🗀  File '{file_path}' already in context as read-only", type="tool-result"
+                )
                 return "File already in context as read-only"
             return "File already in context as read-only"
         try:
@@ -1285,13 +1289,18 @@ class AgentCoder(Coder):
                 file_tokens = self.get_active_model().token_count(content)
                 if file_tokens > self.large_file_token_threshold:
                     self.io.tool_output(
-                        f"⚠ '{file_path}' is very large ({file_tokens} tokens). Use"
-                        " /context-management to toggle truncation off if needed."
+                        (
+                            f"⚠ '{file_path}' is very large ({file_tokens} tokens). Use"
+                            " /context-management to toggle truncation off if needed."
+                        ),
+                        type="tool-result",
                     )
             self.abs_read_only_fnames.add(abs_path)
             self.files_added_in_exploration.add(rel_path)
             if explicit:
-                self.io.tool_output(f"📎 Viewed '{file_path}' (added to context as read-only)")
+                self.io.tool_output(
+                    f"🗀  Viewed '{file_path}' (added to context as read-only)", type="tool-result"
+                )
                 return "Viewed file (added to context as read-only)"
             else:
                 return "Added file to context as read-only"
