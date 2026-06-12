@@ -1433,9 +1433,11 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
             content = self.io.read_text(abs_path)
             if content is None or not content.strip():
                 return None
+
+            current_tasks = "\n".join(self.current_tasks)
             result = '<context name="todo_list" from="agent">\n'
             result += "## Current Active Tasks\n\n"
-            result += f"```{"\n".join(self.current_tasks)}```\n"
+            result += f"```{current_tasks}```\n"
             result += "</context>"
             return result
         except Exception as e:
