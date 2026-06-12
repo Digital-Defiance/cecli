@@ -109,8 +109,8 @@ class Tool(BaseTool):
             directory = search_op.get("directory", search_op.get("path", "."))
             use_regex = search_op.get("use_regex", True)
             case_insensitive = search_op.get("case_insensitive", True)
-            context_before = search_op.get("context_before", 5)
-            context_after = search_op.get("context_after", 5)
+            context_before = search_op.get("context_before", 2)
+            context_after = search_op.get("context_after", 2)
 
             try:
                 search_dir_path = Path(repo.root) / directory

@@ -104,6 +104,9 @@ class ConversationChunks:
                     priority=75 + i,
                 )
 
+        if self._cancel_post_message_injections():
+            return
+
         # Add system reminder as a pre-prompt context block
         use_reminders = getattr(coder.args, "use_reminders", True)
         if (
@@ -164,6 +167,9 @@ class ConversationChunks:
         coder = self.get_coder()
         if not coder:
             return
+
+        # if self._cancel_post_message_injections():
+        #     return
 
         message = random.choice(
             [
@@ -346,6 +352,9 @@ class ConversationChunks:
         """
         coder = self.get_coder()
         if not coder:
+            return
+
+        if self._cancel_post_message_injections():
             return
 
         # Get relative paths for display
@@ -980,6 +989,9 @@ class ConversationChunks:
         if not hasattr(coder, "use_enhanced_context") or not coder.use_enhanced_context:
             return
 
+        if self._cancel_post_message_injections():
+            return
+
         # Add post-message blocks as dict with block type as key
         message_blocks = {}
 
@@ -1062,6 +1074,17 @@ class ConversationChunks:
 
     def flush_removals(self):
         self._deferred_removals.clear()
+
+    def _cancel_post_message_injections(self):
+        coder = self.get_coder()
+        if not coder:
+            return False
+
+        # Add system reminder as a pre-prompt context block
+        if coder.edit_format in ("agent", "subagent") and coder.turn_count % 5 != 0:
+            return True
+
+        return False
 
     def _shuffle_reminders(self, content: str) -> str:
         """

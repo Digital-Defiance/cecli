@@ -66,6 +66,7 @@ system_reminder: |
   - Prefer the `ReadRange` tool to cli commands for file reading
   - Pay close attention to indentation and styling when editing files  
   - Batch tool calls as often as possible
+  - Reason out loud through problems but be brief.   
 
   {lazy_prompt}
   {shell_cmd_reminder}
