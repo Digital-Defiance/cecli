@@ -153,6 +153,7 @@ class AgentCoder(Coder):
             config, "skip_cli_confirmations", nested.getter(config, "yolo", [])
         )
         config["command_timeout"] = nested.getter(config, "command_timeout", 30)
+        config["allowed_commands"] = nested.getter(config, "allowed_commands", [])
         config["hot_reload"] = nested.getter(config, "hot_reload", False)
         config["allow_nested_delegation"] = nested.getter(config, "allow_nested_delegation", False)
 

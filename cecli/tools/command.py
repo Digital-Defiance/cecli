@@ -1,4 +1,5 @@
 # Import necessary functions
+import fnmatch
 import os
 import platform
 
@@ -140,6 +141,14 @@ class Tool(BaseTool):
         """Get user confirmation for command execution."""
         if coder.skip_cli_confirmations:
             return True
+
+        # Check if command matches any allowed_commands patterns
+        if hasattr(coder, "agent_config"):
+            allowed_commands = coder.agent_config.get("allowed_commands", [])
+            if allowed_commands:
+                for pattern in allowed_commands:
+                    if fnmatch.fnmatch(command_string, pattern):
+                        return True
 
         command_string = coder.format_command_with_prefix(command_string)
 

@@ -151,6 +151,7 @@ Agent Mode can also be configured directly in your configuration file. See the [
 
 - **`large_file_token_threshold`**: Maximum token threshold for large file warnings (default: 32768)
 - **`skip_cli_confirmations`**: YOLO mode, be brave and let the LLM cook, can also use the option `yolo` (default: False)
+- **`allowed_commands`**: Array of glob patterns for commands that can be executed without prompting. Commands matching any pattern will skip the confirmation dialog. Example: `["wc -l*"]` (default: [])
 - **`tools_includelist`**: Array of tool names to allow (only these tools will be available)
 - **`tools_excludelist`**: Array of tool names to exclude (these tools will be disabled)
 - **`tools_paths`**: Array of directories or Python files containing custom tools to load
@@ -282,6 +283,7 @@ agent-config:
   # Performance and behavior settings
   large_file_token_threshold: 32768  # Token threshold for large file warnings (default: 32768)
   skip_cli_confirmations: false  # YOLO mode - be brave and let the LLM cook
+  allowed_commands: ["wc -l*"]  # Commands matching these glob patterns will not prompt for confirmation
   # Skills configuration (see Skills documentation for details)
   skills_paths: ["~/my-skills", "./project-skills"]  # Directories to search for skills
   skills_includelist: ["python-refactoring", "react-components"]  # Optional: Whitelist of skills to include

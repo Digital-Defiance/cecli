@@ -1,5 +1,6 @@
 # Import necessary functions
 import asyncio
+import fnmatch
 
 from cecli.run_cmd import run_cmd
 from cecli.tools.utils.base_tool import BaseTool
@@ -30,6 +31,17 @@ class Tool(BaseTool):
         },
     }
 
+    @staticmethod
+    def _is_command_allowed(coder, command_string):
+        """Check if command matches any allowed_commands patterns."""
+        if hasattr(coder, "agent_config"):
+            allowed_commands = coder.agent_config.get("allowed_commands", [])
+            for pattern in allowed_commands:
+                if fnmatch.fnmatch(command_string, pattern):
+                    return True
+
+        return False
+
     @classmethod
     async def execute(cls, coder, command_string, **kwargs):
         """
@@ -40,7 +52,7 @@ class Tool(BaseTool):
 
             confirmed = (
                 True
-                if coder.skip_cli_confirmations
+                if coder.skip_cli_confirmations or cls._is_command_allowed(coder, command_string)
                 else await coder.io.confirm_ask(
                     "Allow execution of this command?",
                     subject=command_string,
