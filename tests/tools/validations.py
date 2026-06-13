@@ -461,3 +461,209 @@ class TestValidateParams:
             {"items[]": ["coerce_dict"]},
         )
         assert result == {"items": "not a list"}
+
+
+# =========================================================================
+# path parsing tests
+# =========================================================================
+
+
+class TestPathParsing:
+    """Path resolution: segment, segment.nested, segment[], segment[].nested, segment.nested[], and complex."""
+
+    # ---- "segment" - single path ----
+
+    def test_single_path_segment(self):
+        """A simple key should resolve to a top-level param value."""
+        params = {"delegations": '[{"name": "a1"}]'}
+        result = ToolValidations.validate_params(
+            params,
+            {"delegations": ["coerce_list"]},
+        )
+        assert result == {"delegations": [{"name": "a1"}]}
+
+    # ---- "segment.nested" - nested path ----
+
+    def test_nested_path_segment(self):
+        """A dot-separated key should resolve to a nested param value."""
+        params = {"outer": {"inner": '[{"name": "a1"}]'}}
+        result = ToolValidations.validate_params(
+            params,
+            {"outer.inner": ["coerce_list"]},
+        )
+        assert result == {"outer": {"inner": [{"name": "a1"}]}}
+
+    def test_nested_path_deep(self):
+        """Deeply nested dot-separated key should resolve correctly."""
+        params = {"a": {"b": {"c": '{"x": 1}'}}}
+        result = ToolValidations.validate_params(
+            params,
+            {"a.b.c": ["coerce_dict"]},
+        )
+        assert result == {"a": {"b": {"c": {"x": 1}}}}
+
+    # ---- "segment[]" - iterate over list items at segment ----
+
+    def test_segment_bracket_iterates_list_items(self):
+        """A key with trailing [] should apply validation to each list item."""
+        params = {
+            "items": [
+                '{"name": "a1", "prompt": "do x"}',
+                '{"name": "a2", "prompt": "do y"}',
+            ]
+        }
+        result = ToolValidations.validate_params(
+            params,
+            {"items[]": ["coerce_dict"]},
+        )
+        assert result == {
+            "items": [
+                {"name": "a1", "prompt": "do x"},
+                {"name": "a2", "prompt": "do y"},
+            ]
+        }
+
+    # ---- "segment[].nested" - iterate then access sub-key ----
+
+    def test_segment_bracket_nested_key(self):
+        """segment[].nested: iterate over segment items, apply validation to each item's .nested."""
+        params = {
+            "items": [
+                {"nested": '{"a": 1}'},
+                {"nested": '{"b": 2}'},
+            ]
+        }
+        result = ToolValidations.validate_params(
+            params,
+            {"items[].nested": ["coerce_dict"]},
+        )
+        assert result == {
+            "items": [
+                {"nested": {"a": 1}},
+                {"nested": {"b": 2}},
+            ]
+        }
+
+    def test_segment_bracket_nested_skips_missing_keys(self):
+        """segment[].nested: items missing the nested key should be left alone."""
+        params = {
+            "items": [
+                {"nested": '{"a": 1}'},
+                {"other": "value"},
+            ]
+        }
+        result = ToolValidations.validate_params(
+            params,
+            {"items[].nested": ["coerce_dict"]},
+        )
+        # The item without 'nested' should remain unchanged
+        assert result == {
+            "items": [
+                {"nested": {"a": 1}},
+                {"other": "value"},
+            ]
+        }
+
+    def test_segment_bracket_nested_not_a_list(self):
+        """segment[].nested: if segment is not a list, params should be left unchanged."""
+        params = {"items": "not a list"}
+        result = ToolValidations.validate_params(
+            params,
+            {"items[].nested": ["coerce_dict"]},
+        )
+        assert result == {"items": "not a list"}
+
+    # ---- "segment.nested[]" - navigate then iterate ----
+
+    def test_nested_dot_bracket_iterates_list(self):
+        """segment.nested[]: navigate to segment.nested, then iterate over list items."""
+        params = {
+            "group": {
+                "items": [
+                    '{"name": "a1"}',
+                    '{"name": "a2"}',
+                ]
+            }
+        }
+        result = ToolValidations.validate_params(
+            params,
+            {"group.items[]": ["coerce_dict"]},
+        )
+        assert result == {
+            "group": {
+                "items": [
+                    {"name": "a1"},
+                    {"name": "a2"},
+                ]
+            }
+        }
+
+    # ---- "segment[].nested[].nested2" - complex ----
+
+    def test_complex_nested_iteration(self):
+        """segment[].nested[].nested2: iterate, descend, iterate, access sub-key."""
+        params = {
+            "items": [
+                {
+                    "nested": [
+                        {"nested2": '{"a": 1}'},
+                        {"nested2": '{"b": 2}'},
+                    ]
+                },
+                {
+                    "nested": [
+                        {"nested2": '{"c": 3}'},
+                    ]
+                },
+            ]
+        }
+        result = ToolValidations.validate_params(
+            params,
+            {"items[].nested[].nested2": ["coerce_dict"]},
+        )
+        assert result == {
+            "items": [
+                {
+                    "nested": [
+                        {"nested2": {"a": 1}},
+                        {"nested2": {"b": 2}},
+                    ]
+                },
+                {
+                    "nested": [
+                        {"nested2": {"c": 3}},
+                    ]
+                },
+            ]
+        }
+
+    # ---- edge cases ----
+
+    def test_complex_missing_intermediate_key(self):
+        """Complex path: missing intermediate key should leave params unchanged."""
+        params = {"items": [{"nested": [{"nested2": "value"}]}]}
+        result = ToolValidations.validate_params(
+            params,
+            {"items[].missing[].nested2": ["coerce_dict"]},
+        )
+        # "missing" doesn't exist, so nothing happens
+        assert result == {"items": [{"nested": [{"nested2": "value"}]}]}
+
+    def test_complex_middle_not_a_list(self):
+        """Complex path: if an intermediate [] target is not a list, params left unchanged."""
+        params = {"items": [{"nested": "not a list"}]}
+        result = ToolValidations.validate_params(
+            params,
+            {"items[].nested[].nested2": ["coerce_dict"]},
+        )
+        # "nested" is not a list, so the second [] iteration can't happen
+        assert result == {"items": [{"nested": "not a list"}]}
+
+    def test_complex_empty_inner_list(self):
+        """Complex path: an empty inner list should remain empty."""
+        params = {"items": [{"nested": []}]}
+        result = ToolValidations.validate_params(
+            params,
+            {"items[].nested[].nested2": ["coerce_dict"]},
+        )
+        assert result == {"items": [{"nested": []}]}

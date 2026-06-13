@@ -34,7 +34,7 @@ class Tool(BaseTool):
                                     "type": "string",
                                     "description": "The pattern to search for.",
                                 },
-                                "file_pattern": {
+                                "file_glob": {
                                     "type": "string",
                                     "default": "*",
                                     "description": "Glob pattern for files to search.",
@@ -46,23 +46,13 @@ class Tool(BaseTool):
                                 },
                                 "use_regex": {
                                     "type": "boolean",
-                                    "default": False,
+                                    "default": True,
                                     "description": "Whether to use regex.",
                                 },
                                 "case_insensitive": {
                                     "type": "boolean",
-                                    "default": False,
+                                    "default": True,
                                     "description": "Whether to perform a case-insensitive search.",
-                                },
-                                "context_before": {
-                                    "type": "integer",
-                                    "default": 5,
-                                    "description": "Number of lines to show before a match.",
-                                },
-                                "context_after": {
-                                    "type": "integer",
-                                    "default": 5,
-                                    "description": "Number of lines to show after a match.",
                                 },
                             },
                             "required": ["pattern"],
@@ -115,12 +105,12 @@ class Tool(BaseTool):
         all_results = []
         for search_op in searches:
             pattern = strip_hashline(search_op.get("pattern"))
-            file_pattern = search_op.get("file_pattern", "*")
+            file_pattern = search_op.get("file_glob", "*")
             directory = search_op.get("directory", search_op.get("path", "."))
-            use_regex = search_op.get("use_regex", False)
-            case_insensitive = search_op.get("case_insensitive", False)
-            context_before = search_op.get("context_before", 5)
-            context_after = search_op.get("context_after", 5)
+            use_regex = search_op.get("use_regex", True)
+            case_insensitive = search_op.get("case_insensitive", True)
+            context_before = search_op.get("context_before", 2)
+            context_after = search_op.get("context_after", 2)
 
             try:
                 search_dir_path = Path(repo.root) / directory
@@ -176,7 +166,9 @@ class Tool(BaseTool):
                 cmd_args.extend(["--", pattern, str(search_dir_path)])
 
                 command_string = oslex.join(cmd_args)
-                coder.io.tool_output(f"⚙️ Executing {tool_name}: {command_string}")
+                coder.io.tool_output(
+                    f"⛭ Executing {tool_name}: {command_string}", type="tool-result"
+                )
 
                 exit_status, combined_output = run_cmd_subprocess(
                     command_string,
@@ -217,9 +209,9 @@ class Tool(BaseTool):
             for search_op, result in zip(searches, all_results):
                 pattern = search_op.get("pattern")
                 if "No matches found" in result:
-                    ui_summaries.append(f"No matches found for '{pattern}'.")
+                    ui_summaries.append(f"✗ No matches found for '{pattern}'.")
                 elif "Error" in result:
-                    ui_summaries.append(f"Error searching for '{pattern}'.")
+                    ui_summaries.append(f"✗ Error searching for '{pattern}'.")
                 else:
                     # Count lines in the output to give a sense of scale
                     # The result string contains the matches in a code block
@@ -228,10 +220,10 @@ class Tool(BaseTool):
                     )  # Subtracting for the markdown block markers
                     if match_count < 0:
                         match_count = 0
-                    ui_summaries.append(f"✅ Matches found for '{pattern}'.")
+                    ui_summaries.append(f"✓ Matches found for '{pattern}'.")
 
-            ui_message = "\n\n".join(ui_summaries)
-            coder.io.tool_output(ui_message)
+            ui_message = "\n".join(ui_summaries)
+            coder.io.tool_output(ui_message, type="tool-result")
 
         return final_message
 
@@ -257,7 +249,7 @@ class Tool(BaseTool):
             coder.io.tool_output("")
             for i, search_op in enumerate(searches):
                 pattern = search_op.get("pattern", "")
-                file_pattern = search_op.get("file_pattern", "*")
+                file_pattern = search_op.get("file_glob", "*")
                 directory = search_op.get("directory", ".")
                 use_regex = search_op.get("use_regex", False)
                 case_insensitive = search_op.get("case_insensitive", False)

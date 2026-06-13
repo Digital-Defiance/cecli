@@ -1,4 +1,5 @@
 # Import necessary functions
+import fnmatch
 import os
 import platform
 
@@ -141,6 +142,14 @@ class Tool(BaseTool):
         if coder.skip_cli_confirmations:
             return True
 
+        # Check if command matches any allowed_commands patterns
+        if hasattr(coder, "agent_config"):
+            allowed_commands = coder.agent_config.get("allowed_commands", [])
+            if allowed_commands:
+                for pattern in allowed_commands:
+                    if fnmatch.fnmatch(command_string, pattern):
+                        return True
+
         command_string = coder.format_command_with_prefix(command_string)
 
         if background:
@@ -161,7 +170,7 @@ class Tool(BaseTool):
         """
         Execute command in background.
         """
-        coder.io.tool_output(f"⚙️ Starting background command: {command_string}")
+        coder.io.tool_output(f"⛭ Starting background command: {command_string}", type="tool-result")
 
         # Use static manager to start background command
         command_key = BackgroundCommandManager.start_background_command(
@@ -193,7 +202,9 @@ class Tool(BaseTool):
 
         from cecli.helpers.background_commands import CircularBuffer
 
-        coder.io.tool_output(f"⚙️ Executing shell command with {timeout}s timeout.")
+        coder.io.tool_output(
+            f"⛭ Executing shell command with {timeout}s timeout.", type="tool-result"
+        )
 
         shell = os.environ.get("SHELL", "/bin/sh")
 
@@ -278,7 +289,7 @@ class Tool(BaseTool):
 
                 # Output to TUI console if TUI exists (same logic as _execute_foreground)
                 if coder.tui and coder.tui():
-                    coder.io.tool_output(output_content)
+                    coder.io.tool_output(output_content, type="tool-result")
 
                 if exit_code == 0:
                     return (
@@ -296,7 +307,8 @@ class Tool(BaseTool):
             if elapsed >= timeout:
                 # Timeout elapsed, process continues in background
                 coder.io.tool_output(
-                    f"⏱️ Command exceeded {timeout}s timeout, continuing in background..."
+                    f"⏱️ Command exceeded {timeout}s timeout, continuing in background...",
+                    type="tool-result",
                 )
 
                 # Get any output captured so far
@@ -322,7 +334,7 @@ class Tool(BaseTool):
             tui = coder.tui()
             should_print = False
 
-        coder.io.tool_output("⚙️ Executing shell command.")
+        coder.io.tool_output("⛭ Executing shell command.", type="tool-result")
 
         # Use run_cmd_subprocess for non-interactive execution
         exit_status, combined_output = run_cmd_subprocess(
@@ -360,7 +372,7 @@ class Tool(BaseTool):
             )
 
         if tui:
-            coder.io.tool_output(output_content)
+            coder.io.tool_output(output_content, type="tool-result")
 
         if exit_status == 0:
             return f"Shell command executed successfully (exit code 0). Output:\n{output_content}"

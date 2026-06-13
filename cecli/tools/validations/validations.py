@@ -67,22 +67,114 @@ class ToolValidations:
             return params
 
         for raw_key, method_names in validations.items():
-            # Determine whether the key targets list items (trailing "[]")
-            iterate_over_list = raw_key.endswith("[]")
-            clean_key = raw_key.rstrip("[]")
-
-            # Split on dots to get the navigation path into params
-            path = clean_key.split(".") if clean_key else []
-
-            if not path:
+            segments = cls._parse_validation_key(raw_key)
+            if not segments:
                 continue
-
-            if iterate_over_list:
-                cls._apply_validations_to_list_items(params, path, method_names)
-            else:
-                cls._apply_validations_to_value(params, path, method_names)
-
+            cls._apply_along_segments(params, segments, method_names)
         return params
+
+    @staticmethod
+    def _parse_validation_key(raw_key: str) -> list[tuple[str, bool]]:
+        """
+        Parse a validation path into a list of (key, iterate) tuples.
+
+        Supports the following path shapes:
+
+            "segment"              -> [("segment", False)]
+            "segment.nested"        -> [("segment", False), ("nested", False)]
+            "segment[]"             -> [("segment", True)]
+            "segment[].nested"      -> [("segment", True), ("nested", False)]
+            "segment.nested[]"      -> [("segment", False), ("nested", True)]
+            "segment[].nested[].n2" -> [("segment", True), ("nested", True), ("n2", False)]
+
+        Any trailing ``[]`` on a path segment marks it for iteration — the
+        validation will be applied to each item in the list found at that key.
+
+        Returns:
+            A list of (key, should_iterate) tuples. Returns an empty list
+            if the key is empty or contains only separators.
+        """
+        if not raw_key:
+            return []
+
+        parts = raw_key.split(".")
+        segments: list[tuple[str, bool]] = []
+        for part in parts:
+            if not part:
+                continue
+            if part.endswith("[]"):
+                segments.append((part[:-2], True))
+            else:
+                segments.append((part, False))
+
+        return segments
+
+    @classmethod
+    def _apply_along_segments(
+        cls, params: dict, segments: list[tuple[str, bool]], method_names: list[str]
+    ) -> None:
+        """
+        Recursively apply *method_names* along the parsed *segments* path.
+
+        Each segment is a ``(key, iterate)`` tuple.  When *iterate* is ``True``
+        the method expects ``params[key]`` to be a list and either applies the
+        validations to each item (if this is the last segment) or recurses
+        into each item's dict (if there are further segments).  When *iterate*
+        is ``False`` the method either applies validations to ``params[key]``
+        (last segment) or recurses into the nested dict.
+
+        ``params`` is mutated in place.
+        """
+        if not segments:
+            return
+
+        key, iterate = segments[0]
+        remaining = segments[1:]
+
+        if not isinstance(params, dict) or key not in params:
+            return
+
+        if iterate:
+            items = params[key]
+            if not isinstance(items, list):
+                return
+
+            if not remaining:
+                # Apply validation methods to each item in the list
+                new_items: list = []
+                for item in items:
+                    for method_name in method_names:
+                        method = getattr(cls, method_name, None)
+                        if method is None:
+                            raise ToolError(f"Unknown validation method: {method_name}")
+                        item = method(item)
+                        if item is None:
+                            break
+                    if item is not None:
+                        new_items.append(item)
+                params[key] = new_items
+            else:
+                # Recurse into each item, applying remaining segments
+                for item in items:
+                    if isinstance(item, dict):
+                        cls._apply_along_segments(item, remaining, method_names)
+        else:
+            if not remaining:
+                # Apply validation methods to the value at this key
+                value = params[key]
+                for method_name in method_names:
+                    method = getattr(cls, method_name, None)
+                    if method is None:
+                        raise ToolError(f"Unknown validation method: {method_name}")
+                    value = method(value)
+                    if value is None:
+                        break
+                params[key] = value
+            else:
+                # Navigate deeper
+                nested = params[key]
+                if isinstance(nested, dict):
+                    cls._apply_along_segments(nested, remaining, method_names)
 
     @classmethod
     def _basic_validations(cls, params: object, schema: dict | None = None) -> dict:

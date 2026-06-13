@@ -43,6 +43,7 @@ from rich.text import Text
 
 from cecli.commands import SwitchCoderSignal
 from cecli.helpers import coroutines
+from cecli.helpers.threading import ThreadSafeEvent
 from cecli.report import update_error_prefix
 
 from .dump import dump  # noqa: F401
@@ -395,7 +396,7 @@ class InputOutput:
         self.linear = False
 
         # State tracking for confirmation input
-        self.confirmation_in_progress_event = asyncio.Event()
+        self.confirmation_in_progress_event = ThreadSafeEvent()
         self.confirmation_in_progress_event.set()  # Initially set, meaning no confirmation in progress
         self.confirmation_acknowledgement = False
         self.confirmation_input_active = False
@@ -1673,6 +1674,7 @@ class InputOutput:
 
     def stream_print(self, *messages, **kwargs):
         kwargs.pop("coder_uuid", None)
+        kwargs.pop("type", None)
 
         with self.console.capture() as capture:
             self.console.print(*messages, **kwargs)

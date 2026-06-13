@@ -134,6 +134,7 @@ class TextualInputOutput(InputOutput):
         """
         # Pop coder_uuid from kwargs before passing to console
         coder_uuid = kwargs.pop("coder_uuid", None)
+        coder_uuid = kwargs.pop("type", None)
 
         # Capture Rich rendering with forced ANSI output
         console = self._get_tui_console()
@@ -314,7 +315,8 @@ class TextualInputOutput(InputOutput):
 
         # Check if this is a tool result (comes right after tool call)
         if self._expect_tool_result and text.strip():
-            self._expect_tool_result = False
+            if msg_type != "tool-result":
+                self._expect_tool_result = False
             msg = {
                 "type": "tool_result",
                 "text": text,

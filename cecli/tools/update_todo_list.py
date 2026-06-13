@@ -64,6 +64,7 @@ class Tool(BaseTool):
             # Define the todo file path
             todo_file_path = coder.local_agent_folder("todo.txt")
             abs_path = coder.abs_root_path(todo_file_path)
+            coder.current_tasks = []
 
             # Format tasks into string
             done_tasks = []
@@ -83,6 +84,7 @@ class Tool(BaseTool):
                     # Check if this is the current task
                     if task_item.get("current", False):
                         remaining_tasks.append(f"→ {task_item['task']}")
+                        coder.current_tasks.append(f"- {task_item['task']}")
                     else:
                         remaining_tasks.append(f"○ {task_item['task']}")
 
@@ -121,7 +123,7 @@ class Tool(BaseTool):
             # Check if content exceeds 4096 characters and warn
             if len(new_content) > 4096:
                 coder.io.tool_warning(
-                    "⚠️ Todo list content exceeds 4096 characters. Consider summarizing the plan"
+                    "⚠ Todo list content exceeds 4096 characters. Consider summarizing the plan"
                     " before proceeding."
                 )
 
@@ -152,7 +154,16 @@ class Tool(BaseTool):
             coder.io.write_text(abs_path, new_content)
 
             # Track the change
-            final_change_id = coder.change_tracker.track_change(
+            # final_change_id = coder.change_tracker.track_change(
+            #     file_path=todo_file_path,
+            #     change_type="updatetodolist",
+            #     original_content=existing_content,
+            #     new_content=new_content,
+            #     metadata=metadata,
+            #     change_id=change_id,
+            # )
+
+            coder.change_tracker.track_change(
                 file_path=todo_file_path,
                 change_type="updatetodolist",
                 original_content=existing_content,
@@ -164,14 +175,15 @@ class Tool(BaseTool):
             coder.coder_edited_files.add(todo_file_path)
 
             # Format and return result
-            action = "appended to" if append else "updated"
-            success_message = f"Successfully {action} todo list"
-            return format_tool_result(
-                coder,
-                tool_name,
-                success_message,
-                change_id=final_change_id,
-            )
+            # action = "appended to" if append else "updated"
+            # success_message = f"Successfully {action} todo list"
+            # return format_tool_result(
+            #     coder,
+            #     tool_name,
+            #     success_message,
+            #     change_id=final_change_id,
+            # )
+            return new_content
 
         except ToolError as e:
             return handle_tool_error(coder, tool_name, e, add_traceback=False)

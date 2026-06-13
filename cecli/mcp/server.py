@@ -42,6 +42,7 @@ class McpServer:
         self.io = io
         self.verbose = verbose
         self.session = None
+        self._connection_loop: asyncio.AbstractEventLoop | None = None
         self._cleanup_lock: asyncio.Lock = asyncio.Lock()
         self.exit_stack = AsyncExitStack()
 
@@ -59,10 +60,17 @@ class McpServer:
         Returns:
             ClientSession: The active session if mcp is not disabled
         """
+        current_loop = asyncio.get_running_loop()
         if self.session is not None:
+            # Event loop affinity check: streams from stdio_client() are bound
+            # to the loop that created them.  Reconnect if the loop changed.
+            if self._connection_loop is current_loop:
+                if self.verbose and self.io:
+                    self.io.tool_output(f"Using existing session for MCP server: {self.name}")
+                return self.session
             if self.verbose and self.io:
-                self.io.tool_output(f"Using existing session for MCP server: {self.name}")
-            return self.session
+                self.io.tool_output(f"Reconnecting MCP server {self.name} (event loop changed)")
+            await self.disconnect()
 
         if self.verbose and self.io:
             self.io.tool_output(f"Establishing new connection to MCP server: {self.name}")
@@ -87,6 +95,7 @@ class McpServer:
                 session = await self.exit_stack.enter_async_context(ClientSession(read, write))
                 await session.initialize()
                 self.session = session
+                self._connection_loop = current_loop
                 return session
         except Exception as e:
             logging.error(f"Error initializing server {self.name}: {e}")
@@ -193,10 +202,15 @@ class HttpBasedMcpServer(McpServer):
         raise NotImplementedError("Subclasses must implement _create_transport")
 
     async def connect(self):
+        current_loop = asyncio.get_running_loop()
         if self.session is not None:
+            if self._connection_loop is current_loop:
+                if self.verbose and self.io:
+                    self.io.tool_output(f"Using existing session for {self.name}")
+                return self.session
             if self.verbose and self.io:
-                self.io.tool_output(f"Using existing session for {self.name}")
-            return self.session
+                self.io.tool_output(f"Reconnecting {self.name} (event loop changed)")
+            await self.disconnect()
 
         if self.verbose and self.io:
             self.io.tool_output(f"Establishing new connection to {self.name}")
@@ -224,6 +238,7 @@ class HttpBasedMcpServer(McpServer):
             session = await self.exit_stack.enter_async_context(ClientSession(read, write))
             await session.initialize()
             self.session = session
+            self._connection_loop = current_loop
 
             if oauth_provider.context.oauth_metadata:
                 token_endpoint = oauth_provider._get_token_endpoint()
@@ -270,9 +285,13 @@ class SseServer(McpServer):
     """SSE (Server-Sent Events) MCP server using mcp.client.sse_client."""
 
     async def connect(self):
+        current_loop = asyncio.get_running_loop()
         if self.session is not None:
-            logging.info(f"Using existing session for SSE MCP server: {self.name}")
-            return self.session
+            if self._connection_loop is current_loop:
+                logging.info(f"Using existing session for SSE MCP server: {self.name}")
+                return self.session
+            logging.info(f"Reconnecting SSE MCP server {self.name} (event loop changed)")
+            await self.disconnect()
 
         logging.info(f"Establishing new connection to SSE MCP server: {self.name}")
         try:
@@ -285,6 +304,7 @@ class SseServer(McpServer):
             session = await self.exit_stack.enter_async_context(ClientSession(read, write))
             await session.initialize()
             self.session = session
+            self._connection_loop = current_loop
             return session
         except Exception as e:
             logging.error(f"Error initializing SSE server {self.name}: {e}")

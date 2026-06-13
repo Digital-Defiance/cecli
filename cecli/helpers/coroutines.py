@@ -1,5 +1,7 @@
 import asyncio
 
+from cecli.helpers.threading import ThreadSafeEvent
+
 
 async def interruptible_async_generator(async_generator, interrupt_event):
     """
@@ -57,7 +59,7 @@ async def interruptible(coroutine, interrupt_event):
         - If interrupted: (None, True)
     """
     if interrupt_event is None:
-        interrupt_event = asyncio.Event()
+        interrupt_event = ThreadSafeEvent()
 
     main_task = asyncio.create_task(coroutine)
     interrupt_task = asyncio.create_task(interrupt_event.wait())

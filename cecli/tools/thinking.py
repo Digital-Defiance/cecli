@@ -34,7 +34,7 @@ class Tool(BaseTool):
         A place to allow the model to record freeform text as it
         iterates over tools to ideally help it guide itself to a proper solution
         """
-        coder.io.tool_output("🧠 Thoughts recorded in context")
+        coder.io.tool_output("🧠 Thoughts recorded in context", type="tool-result")
         return "🧠 Thoughts recorded in context. Please proceed with your task"
 
     @classmethod
