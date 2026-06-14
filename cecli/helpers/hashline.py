@@ -1292,28 +1292,23 @@ def sort_ranges(op):
 def _would_create_duplicate_content(source_lines, candidate_start, candidate_end, repl_lines):
     """
     Check if applying the edit would create duplicate adjacent content at boundaries.
-
-    At the start boundary: if the first replacement line matches the line just before
-    the edit range, the edit would duplicate content.
-
-    At the end boundary: if the last replacement line matches the line just after
-    the edit range, the edit would duplicate content.
     """
     if not repl_lines:
         return False
 
     # Check start boundary: first replacement line matches line before edit range
     if candidate_start > 0:
-        line_before = source_lines[candidate_start - 1]
-        first_repl = repl_lines[0]
-        if line_before.strip() and line_before.strip() == first_repl.strip():
+        line_before = source_lines[candidate_start - 1].strip()
+        first_repl = repl_lines[0].strip()
+        # Fix: Ensure the line actually contains text to prevent eating blank lines
+        if line_before and line_before == first_repl:
             return True
 
     # Check end boundary: last replacement line matches line after edit range
     if candidate_end < len(source_lines) - 1:
-        line_after = source_lines[candidate_end + 1]
-        last_repl = repl_lines[-1]
-        if line_after.strip() and line_after.strip() == last_repl.strip():
+        line_after = source_lines[candidate_end + 1].strip()
+        last_repl = repl_lines[-1].strip()
+        if line_after and line_after == last_repl:
             return True
 
     return False
@@ -1322,8 +1317,6 @@ def _would_create_duplicate_content(source_lines, candidate_start, candidate_end
 def _fix_duplicate_content_boundaries(source_lines, resolved_ops):
     """
     Expand edit boundaries when replacement content duplicates adjacent lines.
-    Prevents off-by-one errors where the edit boundary misses a line that appears
-    in both the original and replacement content.
     """
     for resolved in resolved_ops:
         op = resolved["op"]
@@ -1339,18 +1332,18 @@ def _fix_duplicate_content_boundaries(source_lines, resolved_ops):
 
         # Expand start backward if first replacement line duplicates line before
         while start_idx > 0:
-            line_before = source_lines[start_idx - 1]
-            first_repl = repl_lines[0]
-            if line_before.strip() and line_before.strip() == first_repl.strip():
+            line_before = source_lines[start_idx - 1].strip()
+            first_repl = repl_lines[0].strip()
+            if line_before and line_before == first_repl:
                 start_idx -= 1
             else:
                 break
 
         # Expand end forward if last replacement line duplicates line after
         while end_idx < len(source_lines) - 1:
-            line_after = source_lines[end_idx + 1]
-            last_repl = repl_lines[-1]
-            if line_after.strip() and line_after.strip() == last_repl.strip():
+            line_after = source_lines[end_idx + 1].strip()
+            last_repl = repl_lines[-1].strip()
+            if line_after and line_after == last_repl:
                 end_idx += 1
             else:
                 break
@@ -1392,7 +1385,6 @@ def _apply_closure_safeguard(
     """
 
     def is_syntactically_valid(source_bytes: bytes, parser) -> bool:
-        """Returns True if the code parses without any ERROR or MISSING nodes."""
         try:
             tree = parser.parse(source_bytes)
             return not tree.root_node.has_error
@@ -1408,6 +1400,10 @@ def _apply_closure_safeguard(
         """Applies the edit and returns the new source code as bytes."""
         new_lines = source_lines[:start] + replacement + source_lines[end + 1 :]
         return "\n".join(new_lines).encode("utf-8")
+
+    def count_closures(source_bytes: bytes) -> int:
+        """Counts the total number of brackets, braces, and parenthesis."""
+        return sum(source_bytes.count(b) for b in b"{}[]()")
 
     if not resolved_ops or not file_path:
         return resolved_ops
@@ -1466,11 +1462,6 @@ def _apply_closure_safeguard(
 
         found_valid = False
         for distance in range(MAX_STEPS + 1):
-            # Build candidates for this distance
-            # For distance 0: only (0, 0) - the original bounds
-            # For distance > 0: the 4 specific movements described above
-            round_candidates = []
-
             if distance == 0:
                 round_candidates = [(0, 0)]
             elif llm_start == llm_end:
@@ -1480,12 +1471,14 @@ def _apply_closure_safeguard(
                 ]
             else:
                 round_candidates = [
-                    (-distance, +distance),  # Both indices down
-                    (+distance, -distance),  # Both indices up
                     (-distance, 0),  # Start down only (partial)
                     (+distance, 0),  # Start up only (partial)
                     (0, +distance),  # End down only (partial)
                     (0, -distance),  # End up only (partial)
+                    (-distance, +distance),  # Both indices down
+                    (+distance, -distance),  # Both indices up
+                    (+distance, +distance),  # Expand outward (start up, end down)
+                    (-distance, -distance),  # Contract inward (start down, end up)
                 ]
 
             valid_at_round = []
@@ -1514,6 +1507,8 @@ def _apply_closure_safeguard(
                     # Determine properties for tiebreaking
                     is_partial = (start_shift == 0) ^ (end_shift == 0)  # XOR: exactly one is zero
                     is_downward = start_shift <= 0  # Negative/zero shift = moving down
+                    is_both = start_shift == end_shift  # Whole range expansion/contraction
+                    closures = count_closures(test_source)
 
                     valid_at_round.append(
                         {
@@ -1522,28 +1517,33 @@ def _apply_closure_safeguard(
                             "source_len": len(test_source),
                             "is_partial": is_partial,
                             "is_downward": is_downward,
+                            "is_both": is_both,
+                            "closure_count": closures,
                         }
                     )
 
             if valid_at_round:
-                # Sort by:
-                # 1. Longest source (preserve more file content, minimize accidental deletion)
-                # 2. Partial expansions over full range shifts
-                # 3. Downward changes over upward changes
+                # Sort using the new hierarchy:
+                # 1. Fewest total closures (minimize structural pollution)
+                # 2. Longest source (preserve more file content)
+                # 3. Partial expansions over full range shifts
+                # 4. Downward changes over upward changes
                 valid_at_round.sort(
                     key=lambda r: (
-                        -r["source_len"],
-                        not r["is_partial"],
-                        not r["is_downward"],
+                        r["closure_count"],  # Ascending: smaller is better
+                        -r["source_len"],  # Descending: larger is better
+                        not r["is_partial"],  # Booleans: False comes before True
+                        not r["is_downward"],  # Booleans: False comes before True
+                        not r["is_both"],  # Booleans: False comes before True
                     )
                 )
+
                 best = valid_at_round[0]
                 resolved["start_idx"] = best["start_idx"]
                 resolved["end_idx"] = best["end_idx"]
                 found_valid = True
                 break
 
-        # If we never found a valid state, keep the original boundaries
         if not found_valid:
             pass
 
