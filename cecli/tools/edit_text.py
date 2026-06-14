@@ -250,6 +250,7 @@ class Tool(BaseTool):
                         new_content, successful_ops, failed_ops = apply_hashline_operations(
                             original_content=original_content,
                             operations=operations,
+                            file_path=file_path_key,
                         )
 
                         if new_content != original_content:

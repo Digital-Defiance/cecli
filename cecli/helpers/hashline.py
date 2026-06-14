@@ -1,6 +1,8 @@
 import difflib
 import re
 
+from cecli.helpers.grep_ast.parsers import filename_to_lang
+from cecli.helpers.grep_ast.tsl import get_language, get_parser
 from cecli.helpers.hashpos.hashpos import HashPos
 
 HASHLINE_PREFIX_RE = HashPos.HASH_PREFIX_RE
@@ -1287,9 +1289,187 @@ def sort_ranges(op):
     return (-start_idx, priority)
 
 
+def _apply_closure_safeguard(
+    original_content: str,
+    resolved_ops: list,
+    file_path: str = None,
+) -> list:
+    """
+    Use tree-sitter to heal edit boundaries by simulating edits and checking syntax.
+
+    For each replace/delete operation, this simulates applying the edit with
+    the replacement text, parses the resulting code with tree-sitter, and
+    checks if the result is syntactically valid (no ERROR/MISSING nodes).
+
+    If the edit produces invalid syntax (e.g., missing closing braces),
+    it progressively expands/contracts the start and end boundaries by a
+    step and re-tests until the resulting code parses correctly or the
+    maximum number of expansion steps is exhausted.
+
+    This prevents the common LLM edit error of "eating" outer scope
+    closing braces, parentheses, or brackets by finding the nearest
+    syntactically valid edit boundary.
+
+    Args:
+        original_content: Original source code (without hashlines)
+        resolved_ops: List of resolved operation dicts with start_idx/end_idx
+        file_path: File path to determine tree-sitter language
+
+    Returns:
+        Modified resolved_ops with healed boundaries
+    """
+
+    def is_syntactically_valid(source_bytes: bytes, parser) -> bool:
+        """Returns True if the code parses without any ERROR or MISSING nodes."""
+        try:
+            tree = parser.parse(source_bytes)
+            return not tree.root_node.has_error
+        except Exception:
+            return False
+
+    def apply_edit(
+        source_lines: list[str],
+        start: int,
+        end: int,
+        replacement: list[str],
+    ) -> bytes:
+        """Applies the edit and returns the new source code as bytes."""
+        new_lines = source_lines[:start] + replacement + source_lines[end + 1 :]
+        return "\n".join(new_lines).encode("utf-8")
+
+    if not resolved_ops or not file_path:
+        return resolved_ops
+
+    # Determine language from file path
+    lang = filename_to_lang(file_path)
+    if not lang:
+        return resolved_ops
+
+    # Set up tree-sitter parser
+    try:
+        language = get_language(lang)  # noqa
+        parser = get_parser(lang)
+    except Exception:
+        # Can't determine language, skip safeguard
+        return resolved_ops
+
+    source_lines = original_content.splitlines()
+    MAX_STEPS = 3  # Maximum expansion steps
+
+    for resolved in resolved_ops:
+        op = resolved["op"]
+        if op["operation"] not in {"replace", "delete"}:
+            continue
+
+        llm_start = resolved["start_idx"]
+        llm_end = resolved["end_idx"]
+
+        # Clamp to valid bounds
+        if llm_start < 0 or llm_start >= len(source_lines):
+            continue
+        if llm_end < llm_start:
+            continue
+
+        # Get replacement text
+        replacement_text = op.get("text", "") or ""
+        if op["operation"] == "delete":
+            replacement_text = ""
+        repl_lines = replacement_text.splitlines()
+
+        # Clamp end to valid range
+        llm_end = min(llm_end, len(source_lines) - 1)
+
+        # --- THE HEALING LOOP ---
+        # Try original bounds first (distance 0), then progressively expand
+        # outward in rounds. At each round d>=1, test exactly 4 candidates:
+        #   1. Both indices down by d lines (range shifts down)
+        #   2. Both indices up by d lines (range shifts up)
+        #   3. Start index down by d lines, end unchanged (partial expansion)
+        #   4. End index down by d lines, start unchanged (partial expansion)
+        #
+        # If multiple candidates are valid at a round, select using:
+        #   1. Longest resulting source code (preserve more code)
+        #   2. Partial expansions over full range shifts
+        #   3. Downward changes over upward changes
+
+        found_valid = False
+        for distance in range(MAX_STEPS + 1):
+            # Build candidates for this distance
+            # For distance 0: only (0, 0) - the original bounds
+            # For distance > 0: the 4 specific movements described above
+            round_candidates = []
+
+            if distance == 0:
+                round_candidates = [(0, 0)]
+            else:
+                round_candidates = [
+                    (-distance, +distance),  # Both indices down
+                    (+distance, -distance),  # Both indices up
+                    (-distance, 0),  # Start down only (partial)
+                    (+distance, 0),  # Start up only (partial)
+                    (0, +distance),  # End down only (partial)
+                    (0, -distance),  # End up only (partial)
+                ]
+
+            valid_at_round = []
+            for start_shift, end_shift in round_candidates:
+                candidate_start = max(0, llm_start - start_shift)
+                candidate_end = min(len(source_lines) - 1, llm_end + end_shift)
+
+                if candidate_end < candidate_start:
+                    continue
+
+                test_source = apply_edit(
+                    source_lines,
+                    candidate_start,
+                    candidate_end,
+                    repl_lines,
+                )
+
+                if is_syntactically_valid(test_source, parser):
+                    # Determine properties for tiebreaking
+                    is_partial = (start_shift == 0) ^ (end_shift == 0)  # XOR: exactly one is zero
+                    is_downward = start_shift <= 0  # Negative/zero shift = moving down
+
+                    valid_at_round.append(
+                        {
+                            "start_idx": candidate_start,
+                            "end_idx": candidate_end,
+                            "source_len": len(test_source),
+                            "is_partial": is_partial,
+                            "is_downward": is_downward,
+                        }
+                    )
+
+            if valid_at_round:
+                # Sort by:
+                # 1. Longest source (preserve more file content, minimize accidental deletion)
+                # 2. Partial expansions over full range shifts
+                # 3. Downward changes over upward changes
+                valid_at_round.sort(
+                    key=lambda r: (
+                        -r["source_len"],
+                        not r["is_partial"],
+                        not r["is_downward"],
+                    )
+                )
+                best = valid_at_round[0]
+                resolved["start_idx"] = best["start_idx"]
+                resolved["end_idx"] = best["end_idx"]
+                found_valid = True
+                break
+
+        # If we never found a valid state, keep the original boundaries
+        if not found_valid:
+            pass
+
+    return resolved_ops
+
+
 def apply_hashline_operations(
     original_content: str,
     operations: list,
+    file_path: str = None,
 ) -> tuple[str, list, list]:
     """
     Apply multiple hashline operations sequentially.
@@ -1425,8 +1605,9 @@ def apply_hashline_operations(
     resolved_ops = _merged_contained_ranges(resolved_ops)
     # Merge contiguous replace operations
     resolved_ops = _merge_replace_operations(resolved_ops)
-    # Apply content-aware range expansion/shifting for replace operations
-    # resolved_ops = _apply_range_shifting(hashed_lines, resolved_ops)
+    if file_path:
+        # Apply tree-sitter based closure safeguard to snap boundaries to AST nodes
+        resolved_ops = _apply_closure_safeguard(original_content, resolved_ops, file_path)
     # Sort by start_idx descending to apply from bottom to top
     # When operations have same start_idx, apply in order: insert, replace, delete
     # This ensures correct behavior when multiple operations target the same line
@@ -1488,8 +1669,22 @@ def apply_hashline_operations(
                     # end_idx, replacement_lines = _apply_end_stitching(
                     #    hashed_lines, start_idx, end_idx, replacement_lines, max_overlap_check
                     # )
+                    # Preserve empty lines after the edit range
+                    # If there is an empty line immediately after the edit boundary,
+                    # track it so it can be restored if consumed by the replacement
+                    next_idx = end_idx + 1
+                    preserve_trailing_empty = (
+                        next_idx < len(hashed_lines) and hashed_lines[next_idx].strip() == ""
+                    )
 
                     hashed_lines[start_idx : end_idx + 1] = replacement_lines
+
+                    # Ensure the trailing empty line is preserved after replacement
+                    if preserve_trailing_empty:
+                        check_idx = start_idx + len(replacement_lines)
+                        if check_idx >= len(hashed_lines) or hashed_lines[check_idx].strip() != "":
+                            hashed_lines.insert(check_idx, "\n")
+
                 else:
                     # Empty text - replace with nothing (delete)
                     hashed_lines[start_idx : end_idx + 1] = []
