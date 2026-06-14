@@ -93,6 +93,57 @@ class TestSpecGenAgent(unittest.TestCase):
         self.assertIn("REQ-001", raw)
         runner.run_one_shot.assert_called_once()
 
+    def test_run_spec_layer_llm_deepens_when_richness_gate_fails(self):
+        from cecli.spec.gen_agent import run_spec_layer_llm
+
+        item = TodoItem(id="a", title="T")
+        runner = MagicMock()
+        runner.apply_spec_gen_route = MagicMock()
+        thin = "## Requirements\n### REQ-001\n**WHEN** a\n**THE** system **SHALL** b.\n"
+        deep = "## Requirements\n### REQ-001\n**WHEN** a\n**THE** system **SHALL** b.\n### REQ-002\n**WHEN** c\n**THE** system **SHALL** d.\n"
+        runner.run_one_shot.side_effect = [thin, deep]
+
+        with patch("cecli.spec.gen_agent.spec_gen_agent_enabled", return_value=False):
+            with patch("cecli.spec.gen_agent.spec_gen_richness_gate_enabled", return_value=True):
+                raw = run_spec_layer_llm(
+                    runner,
+                    workspace="/tmp/ws",
+                    prompt="Build it",
+                    item=item,
+                    section="requirements",
+                    mode="generate",
+                    todo_id="a",
+                    total_turn_timeout_s=600.0,
+                )
+        self.assertEqual(runner.run_one_shot.call_count, 2)
+        self.assertIn("REQ-002", raw)
+
+    def test_run_spec_layer_llm_explore_when_agent_enabled(self):
+        from cecli.spec.gen_agent import run_spec_layer_llm
+
+        item = TodoItem(id="a", title="T")
+        runner = MagicMock()
+        runner.apply_spec_gen_route = MagicMock()
+        runner.run_message.return_value = iter(
+            [{"type": "done", "assistant_text": "- `src/main.py` exists\n"}]
+        )
+        runner.run_one_shot.return_value = "## Requirements\n### REQ-001\n**WHEN** a\n**THE** system **SHALL** b.\n"
+
+        with patch("cecli.spec.gen_agent.spec_gen_agent_enabled", return_value=True):
+            with patch("cecli.spec.gen_agent.spec_gen_richness_gate_enabled", return_value=False):
+                raw = run_spec_layer_llm(
+                    runner,
+                    workspace="/tmp/ws",
+                    prompt="Build it",
+                    item=item,
+                    section="requirements",
+                    mode="generate",
+                    todo_id="a",
+                    total_turn_timeout_s=600.0,
+                )
+        runner.run_message.assert_called_once()
+        self.assertIn("REQ-001", raw)
+
 
 if __name__ == "__main__":
     unittest.main()
