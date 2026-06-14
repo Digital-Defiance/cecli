@@ -1461,14 +1461,14 @@ def _apply_closure_safeguard(
         #   3. Downward changes over upward changes
 
         found_valid = False
-        for distance in range(MAX_STEPS + 1):
+        EFFECTIVE_STEPS = MAX_STEPS
+
+        if llm_start == llm_end:
+            EFFECTIVE_STEPS = 1
+
+        for distance in range(EFFECTIVE_STEPS + 1):
             if distance == 0:
                 round_candidates = [(0, 0)]
-            elif llm_start == llm_end:
-                round_candidates = [
-                    (-distance, +distance),  # Both indices down
-                    (+distance, -distance),  # Both indices up
-                ]
             else:
                 round_candidates = [
                     (-distance, 0),  # Start down only (partial)
@@ -1477,8 +1477,8 @@ def _apply_closure_safeguard(
                     (0, -distance),  # End up only (partial)
                     (-distance, +distance),  # Both indices down
                     (+distance, -distance),  # Both indices up
-                    (+distance, +distance),  # Expand outward (start up, end down)
-                    (-distance, -distance),  # Contract inward (start down, end up)
+                    # (+distance, +distance),  # Expand outward (start up, end down)
+                    # (-distance, -distance),  # Contract inward (start down, end up)
                 ]
 
             valid_at_round = []
@@ -1534,7 +1534,7 @@ def _apply_closure_safeguard(
                         -r["source_len"],  # Descending: larger is better
                         not r["is_partial"],  # Booleans: False comes before True
                         not r["is_downward"],  # Booleans: False comes before True
-                        not r["is_both"],  # Booleans: False comes before True
+                        r["is_both"],  # Booleans: False comes before True
                     )
                 )
 
