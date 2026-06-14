@@ -1473,6 +1473,11 @@ def _apply_closure_safeguard(
 
             if distance == 0:
                 round_candidates = [(0, 0)]
+            elif llm_start == llm_end:
+                round_candidates = [
+                    (-distance, +distance),  # Both indices down
+                    (+distance, -distance),  # Both indices up
+                ]
             else:
                 round_candidates = [
                     (-distance, +distance),  # Both indices down
