@@ -1306,14 +1306,14 @@ def _would_create_duplicate_content(source_lines, candidate_start, candidate_end
     if candidate_start > 0:
         line_before = source_lines[candidate_start - 1]
         first_repl = repl_lines[0]
-        if line_before.strip() == first_repl.strip():
+        if line_before.strip() and line_before.strip() == first_repl.strip():
             return True
 
     # Check end boundary: last replacement line matches line after edit range
     if candidate_end < len(source_lines) - 1:
         line_after = source_lines[candidate_end + 1]
         last_repl = repl_lines[-1]
-        if line_after.strip() == last_repl.strip():
+        if line_after.strip() and line_after.strip() == last_repl.strip():
             return True
 
     return False
@@ -1341,7 +1341,7 @@ def _fix_duplicate_content_boundaries(source_lines, resolved_ops):
         while start_idx > 0:
             line_before = source_lines[start_idx - 1]
             first_repl = repl_lines[0]
-            if line_before.strip() == first_repl.strip():
+            if line_before.strip() and line_before.strip() == first_repl.strip():
                 start_idx -= 1
             else:
                 break
@@ -1350,7 +1350,7 @@ def _fix_duplicate_content_boundaries(source_lines, resolved_ops):
         while end_idx < len(source_lines) - 1:
             line_after = source_lines[end_idx + 1]
             last_repl = repl_lines[-1]
-            if line_after.strip() == last_repl.strip():
+            if line_after.strip() and line_after.strip() == last_repl.strip():
                 end_idx += 1
             else:
                 break
