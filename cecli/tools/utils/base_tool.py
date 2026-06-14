@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 
+import asyncio
+
 from cecli.tools.utils.helpers import handle_tool_error
-from cecli.tools.utils.output import print_tool_response
+from cecli.tools.utils.output import emit_execute_result_to_ui, print_tool_response
 from cecli.tools.utils.responses import ToolResponse
 from cecli.tools.validations import ToolValidations
 
@@ -19,6 +21,9 @@ class BaseTool(ABC):
 
     # Result format configuration ("str" or "list")
     RESULT_TYPE = "str"
+
+    # When True, execute() already streamed full output via tool_output (skip UI mirror).
+    SKIP_EXECUTE_RESULT_UI = False
 
     # Invocation tracking for detecting repeated tool calls
     _invocations = {}  # Dict to store last 3 invocations per tool
@@ -144,10 +149,10 @@ class BaseTool(ABC):
 
         try:
             result = cls.execute(coder, **params)
-
+            if not asyncio.iscoroutine(result) and not cls.SKIP_EXECUTE_RESULT_UI:
+                emit_execute_result_to_ui(coder, result)
             if isinstance(result, ToolResponse):
                 return result if not _convert else str(result)
-
             return result
         except Exception as e:
             return handle_tool_error(coder, cls.SCHEMA.get("function").get("name"), e)
