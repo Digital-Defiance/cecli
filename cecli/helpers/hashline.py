@@ -1289,6 +1289,78 @@ def sort_ranges(op):
     return (-start_idx, priority)
 
 
+def _would_create_duplicate_content(source_lines, candidate_start, candidate_end, repl_lines):
+    """
+    Check if applying the edit would create duplicate adjacent content at boundaries.
+
+    At the start boundary: if the first replacement line matches the line just before
+    the edit range, the edit would duplicate content.
+
+    At the end boundary: if the last replacement line matches the line just after
+    the edit range, the edit would duplicate content.
+    """
+    if not repl_lines:
+        return False
+
+    # Check start boundary: first replacement line matches line before edit range
+    if candidate_start > 0:
+        line_before = source_lines[candidate_start - 1]
+        first_repl = repl_lines[0]
+        if line_before.rstrip() == first_repl.rstrip():
+            return True
+
+    # Check end boundary: last replacement line matches line after edit range
+    if candidate_end < len(source_lines) - 1:
+        line_after = source_lines[candidate_end + 1]
+        last_repl = repl_lines[-1]
+        if line_after.rstrip() == last_repl.rstrip():
+            return True
+
+    return False
+
+
+def _fix_duplicate_content_boundaries(source_lines, resolved_ops):
+    """
+    Expand edit boundaries when replacement content duplicates adjacent lines.
+    Prevents off-by-one errors where the edit boundary misses a line that appears
+    in both the original and replacement content.
+    """
+    for resolved in resolved_ops:
+        op = resolved["op"]
+        if op["operation"] not in {"replace", "delete"}:
+            continue
+        repl_text = op.get("text", "") or ""
+        repl_lines = repl_text.splitlines()
+        if not repl_lines:
+            continue
+
+        start_idx = resolved["start_idx"]
+        end_idx = resolved["end_idx"]
+
+        # Expand start backward if first replacement line duplicates line before
+        while start_idx > 0:
+            line_before = source_lines[start_idx - 1]
+            first_repl = repl_lines[0]
+            if line_before.rstrip() == first_repl.rstrip():
+                start_idx -= 1
+            else:
+                break
+
+        # Expand end forward if last replacement line duplicates line after
+        while end_idx < len(source_lines) - 1:
+            line_after = source_lines[end_idx + 1]
+            last_repl = repl_lines[-1]
+            if line_after.rstrip() == last_repl.rstrip():
+                end_idx += 1
+            else:
+                break
+
+        resolved["start_idx"] = start_idx
+        resolved["end_idx"] = end_idx
+
+    return resolved_ops
+
+
 def _apply_closure_safeguard(
     original_content: str,
     resolved_ops: list,
@@ -1417,6 +1489,13 @@ def _apply_closure_safeguard(
                 candidate_end = min(len(source_lines) - 1, llm_end + end_shift)
 
                 if candidate_end < candidate_start:
+                    continue
+
+                # Skip candidates that would create duplicate adjacent content at edit boundaries
+                # (e.g., replacement starts with same line as line just before the edit range)
+                if _would_create_duplicate_content(
+                    source_lines, candidate_start, candidate_end, repl_lines
+                ):
                     continue
 
                 test_source = apply_edit(
@@ -1608,6 +1687,11 @@ def apply_hashline_operations(
     if file_path:
         # Apply tree-sitter based closure safeguard to snap boundaries to AST nodes
         resolved_ops = _apply_closure_safeguard(original_content, resolved_ops, file_path)
+
+        # Fix edit boundaries where replacement content duplicates adjacent lines
+        source_lines = original_content.splitlines()
+        resolved_ops = _fix_duplicate_content_boundaries(source_lines, resolved_ops)
+
     # Sort by start_idx descending to apply from bottom to top
     # When operations have same start_idx, apply in order: insert, replace, delete
     # This ensures correct behavior when multiple operations target the same line
