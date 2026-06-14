@@ -1300,7 +1300,7 @@ def _would_create_duplicate_content(source_lines, candidate_start, candidate_end
     if candidate_start > 0:
         line_before = source_lines[candidate_start - 1].strip()
         first_repl = repl_lines[0].strip()
-        # Fix: Ensure the line actually contains text to prevent eating blank lines
+        # Ensure the line actually contains text to prevent eating blank lines
         if line_before and line_before == first_repl:
             return True
 
@@ -1405,6 +1405,10 @@ def _apply_closure_safeguard(
         """Counts the total number of brackets, braces, and parenthesis."""
         return sum(source_bytes.count(b) for b in b"{}[]()")
 
+    def get_indentation(line: str) -> int:
+        """Helper to safely calculate the leading whitespace of a line."""
+        return len(line) - len(line.lstrip(" \t"))
+
     if not resolved_ops or not file_path:
         return resolved_ops
 
@@ -1477,8 +1481,8 @@ def _apply_closure_safeguard(
                     (0, -distance),  # End up only (partial)
                     (-distance, +distance),  # Both indices down
                     (+distance, -distance),  # Both indices up
-                    # (+distance, +distance),  # Expand outward (start up, end down)
-                    # (-distance, -distance),  # Contract inward (start down, end up)
+                    (+distance, +distance),  # Expand outward (start up, end down)
+                    (-distance, -distance),  # Contract inward (start down, end up)
                 ]
 
             valid_at_round = []
@@ -1490,7 +1494,6 @@ def _apply_closure_safeguard(
                     continue
 
                 # Skip candidates that would create duplicate adjacent content at edit boundaries
-                # (e.g., replacement starts with same line as line just before the edit range)
                 if _would_create_duplicate_content(
                     source_lines, candidate_start, candidate_end, repl_lines
                 ):
@@ -1510,6 +1513,31 @@ def _apply_closure_safeguard(
                     is_both = start_shift == end_shift  # Whole range expansion/contraction
                     closures = count_closures(test_source)
 
+                    # --- INDENTATION SCORING ---
+                    indent_score = 0
+                    if repl_lines:
+                        # Safely grab the first and last non-empty replacement lines
+                        first_repl = next((line for line in repl_lines if line.strip()), "")
+                        last_repl = next(
+                            (line for line in reversed(repl_lines) if line.strip()), ""
+                        )
+
+                        # Check Start Boundary Match
+                        if first_repl and candidate_start < len(source_lines):
+                            source_start_line = source_lines[candidate_start]
+                            if source_start_line.strip() and get_indentation(
+                                first_repl
+                            ) == get_indentation(source_start_line):
+                                indent_score += 1
+
+                        # Check End Boundary Match
+                        if last_repl and candidate_end < len(source_lines):
+                            source_end_line = source_lines[candidate_end]
+                            if source_end_line.strip() and get_indentation(
+                                last_repl
+                            ) == get_indentation(source_end_line):
+                                indent_score += 1
+
                     valid_at_round.append(
                         {
                             "start_idx": candidate_start,
@@ -1519,19 +1547,22 @@ def _apply_closure_safeguard(
                             "is_downward": is_downward,
                             "is_both": is_both,
                             "closure_count": closures,
+                            "indent_score": indent_score,
                         }
                     )
 
             if valid_at_round:
                 # Sort using the new hierarchy:
                 # 1. Fewest total closures (minimize structural pollution)
-                # 2. Longest source (preserve more file content)
-                # 3. Partial expansions over full range shifts
-                # 4. Downward changes over upward changes
+                # 2. Indentation Score (Descending: 2 is better than 0)
+                # 3. Longest source (preserve more file content)
+                # 4. Partial expansions over full range shifts
+                # 5. Downward changes over upward changes
                 valid_at_round.sort(
                     key=lambda r: (
-                        r["closure_count"],  # Ascending: smaller is better
+                        -r["indent_score"],  # Descending: larger score is better (2 > 1 > 0)
                         -r["source_len"],  # Descending: larger is better
+                        r["closure_count"],  # Ascending: smaller is better
                         not r["is_partial"],  # Booleans: False comes before True
                         not r["is_downward"],  # Booleans: False comes before True
                         r["is_both"],  # Booleans: False comes before True
