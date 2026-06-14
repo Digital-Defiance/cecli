@@ -1306,14 +1306,14 @@ def _would_create_duplicate_content(source_lines, candidate_start, candidate_end
     if candidate_start > 0:
         line_before = source_lines[candidate_start - 1]
         first_repl = repl_lines[0]
-        if line_before.rstrip() == first_repl.rstrip():
+        if line_before.strip() == first_repl.strip():
             return True
 
     # Check end boundary: last replacement line matches line after edit range
     if candidate_end < len(source_lines) - 1:
         line_after = source_lines[candidate_end + 1]
         last_repl = repl_lines[-1]
-        if line_after.rstrip() == last_repl.rstrip():
+        if line_after.strip() == last_repl.strip():
             return True
 
     return False
@@ -1327,7 +1327,7 @@ def _fix_duplicate_content_boundaries(source_lines, resolved_ops):
     """
     for resolved in resolved_ops:
         op = resolved["op"]
-        if op["operation"] not in {"replace", "delete"}:
+        if op["operation"] not in {"replace", "insert", "delete"}:
             continue
         repl_text = op.get("text", "") or ""
         repl_lines = repl_text.splitlines()
@@ -1341,7 +1341,7 @@ def _fix_duplicate_content_boundaries(source_lines, resolved_ops):
         while start_idx > 0:
             line_before = source_lines[start_idx - 1]
             first_repl = repl_lines[0]
-            if line_before.rstrip() == first_repl.rstrip():
+            if line_before.strip() == first_repl.strip():
                 start_idx -= 1
             else:
                 break
@@ -1350,7 +1350,7 @@ def _fix_duplicate_content_boundaries(source_lines, resolved_ops):
         while end_idx < len(source_lines) - 1:
             line_after = source_lines[end_idx + 1]
             last_repl = repl_lines[-1]
-            if line_after.rstrip() == last_repl.rstrip():
+            if line_after.strip() == last_repl.strip():
                 end_idx += 1
             else:
                 break
@@ -1430,7 +1430,7 @@ def _apply_closure_safeguard(
 
     for resolved in resolved_ops:
         op = resolved["op"]
-        if op["operation"] not in {"replace", "delete"}:
+        if op["operation"] not in {"replace", "insert", "delete"}:
             continue
 
         llm_start = resolved["start_idx"]
@@ -1585,6 +1585,13 @@ def apply_hashline_operations(
 
     if not normalized_operations:
         return original_content, [], failed_ops
+    # Convert insert operations without @000 marker to inclusive replace operations
+    for op in normalized_operations:
+        if op["operation"] == "insert":
+            start_hash_fragment, _, _ = parse_hashline(op["start_line_hash"])
+            if start_hash_fragment != "@000" and start_hash_fragment != "000@":
+                op["operation"] = "replace"
+                op["end_line_hash"] = op["start_line_hash"]
 
     # Apply hashline to original content once
     # This converts content to hashed lines for line tracking
@@ -1610,12 +1617,6 @@ def apply_hashline_operations(
                     found_start = find_hashline_by_exact_match(
                         hashed_lines, start_hash_fragment, start_line_num_str
                     )
-
-                    # if found_start is None:
-                    #    # Fall back to fragment matching if exact match fails
-                    #    found_start = find_hashline_by_fragment(
-                    #        hashed_lines, start_hash_fragment, start_line_num
-                    #    )
 
                     if found_start is None:
                         raise ContentHashError(

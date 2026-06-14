@@ -40,6 +40,8 @@ class Tool(BaseTool):
                 "Supports replace, delete, and insert operations in a single call. "
                 "Can handle an array of edits across multiple files. "
                 "Each edit must include its own file_path and operation type. "
+                "Ranges are inclusive: start and end content IDs both count as "
+                "part of the range to replace, insert at, or delete. "
                 "Use content ID ranges with the start_line and end_line parameters with format "
                 "`content_id::` (the content id with the :: demarcator). For empty files, use `@000` as the "
                 "content ID references. "
@@ -63,7 +65,7 @@ class Tool(BaseTool):
                                     "description": (
                                         "The type of operation: 'replace' (replace range with"
                                         " text), 'delete' (remove range), or 'insert' (insert text"
-                                        " after start_line). Defaults to 'replace'."
+                                        " at start_line)."
                                     ),
                                 },
                                 "start_line": {
