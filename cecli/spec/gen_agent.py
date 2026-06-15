@@ -187,6 +187,10 @@ def spec_gen_explore_timeout_s(total_turn_timeout_s: float) -> float:
 
 
 def spec_gen_write_timeout_s(total_turn_timeout_s: float) -> float:
+    """Budget for the main generate one-shot (after optional explore)."""
+    if compact_spec_gen_enabled() or not spec_gen_agent_enabled():
+        # Compact / single-pass lane: one write uses nearly the full turn cap.
+        return max(180.0, total_turn_timeout_s - 60.0)
     return max(180.0, total_turn_timeout_s * 0.55)
 
 
