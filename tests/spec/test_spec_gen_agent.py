@@ -54,6 +54,20 @@ class TestSpecGenAgent(unittest.TestCase):
             else:
                 os.environ["BV_COMPACT_SPEC_GEN"] = prev
 
+    def test_compact_write_timeout_uses_full_turn_budget(self):
+        from cecli.spec.gen_agent import spec_gen_write_timeout_s
+
+        prev = os.environ.get("BV_COMPACT_SPEC_GEN")
+        os.environ["BV_COMPACT_SPEC_GEN"] = "1"
+        try:
+            self.assertEqual(spec_gen_write_timeout_s(1800.0), 1740.0)
+            self.assertEqual(spec_gen_write_timeout_s(600.0), 540.0)
+        finally:
+            if prev is None:
+                os.environ.pop("BV_COMPACT_SPEC_GEN", None)
+            else:
+                os.environ["BV_COMPACT_SPEC_GEN"] = prev
+
     def test_deepen_message_carries_suggestions(self):
         item = TodoItem(
             id="a",
