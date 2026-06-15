@@ -51,6 +51,7 @@ class AgentCoder(Coder):
         if kwargs.get("uuid", None):
             self.uuid = kwargs.get("uuid")
 
+        self.start_up_errors = []
         self.recently_removed = {}
         self.tool_usage_history = []
         self.loaded_custom_tools = []
@@ -123,6 +124,11 @@ class AgentCoder(Coder):
             map(str.lower, self.agent_config.get("servers_excludelist", []))
         )
 
+        for err in self.start_up_errors:
+            self.io.tool_warning(err)
+
+        self.start_up_errors = []
+
     def _setup_agent(self):
         os.makedirs(".cecli/temp", exist_ok=True)
 
@@ -143,7 +149,7 @@ class AgentCoder(Coder):
             try:
                 config = json.loads(self.args.agent_config)
             except (json.JSONDecodeError, TypeError) as e:
-                self.io.tool_warning(f"Failed to parse agent-config JSON: {e}")
+                self.start_up_errors.append(f"Failed to parse agent-config JSON: {e}")
                 return {}
 
         config["large_file_token_threshold"] = nested.getter(
