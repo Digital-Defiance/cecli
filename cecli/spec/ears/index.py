@@ -11,6 +11,7 @@ from cecli.spec.ears.lint import analyze_requirements
 from cecli.spec.ears.model import EarsIssue, Severity
 from cecli.spec.ears.parse import parse_requirements_markdown
 
+
 @dataclass
 class SpecFolderRecord:
     todo_id: str
@@ -118,7 +119,7 @@ def build_spec_index(
     issues: list[EarsIssue] = []
     folders: list[SpecFolderRecord] = []
 
-    known_tasks = {t.strip() for t in (task_ids or []) if t.strip()}
+    known_tasks = {t.strip() for t in task_ids or [] if t.strip()}
     if specs.is_dir():
         for entry in sorted(specs.iterdir()):
             if not entry.is_dir() or entry.name.startswith("."):

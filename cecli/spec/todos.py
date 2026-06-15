@@ -18,12 +18,7 @@ from cecli.spec.paths import specs_root, todos_json_path, workspace_meta_dir
 TodoStatus = Literal["open", "in_progress", "done", "cancelled"]
 
 TODO_TEMPLATES: dict[str, str] = {
-    "feature": (
-        "## Goal\n\n"
-        "## Requirements\n\n"
-        "## Acceptance criteria\n"
-        "- [ ] \n"
-    ),
+    "feature": "## Goal\n\n" "## Requirements\n\n" "## Acceptance criteria\n" "- [ ] \n",
     "bugfix": (
         "## Problem\n\n"
         "## Root cause\n\n"
@@ -51,16 +46,9 @@ SPEC_LAYER_TEMPLATES: dict[str, dict[str, str]] = {
             "**WHEN** …\n"
             "**THE** system **SHALL** …\n"
         ),
-        "design": (
-            "## Overview\n\n"
-            "## Architecture\n\n"
-            "## Components\n\n"
-            "## Data flow\n\n"
-        ),
+        "design": "## Overview\n\n" "## Architecture\n\n" "## Components\n\n" "## Data flow\n\n",
         "tasks_md": (
-            "## Implementation tasks\n\n"
-            "- [ ] 1. … (depends: none)\n"
-            "- [ ] 2. … (depends: 1)\n"
+            "## Implementation tasks\n\n" "- [ ] 1. … (depends: none)\n" "- [ ] 2. … (depends: 1)\n"
         ),
     },
 }
@@ -293,9 +281,7 @@ def _truncate_spec_layer(text: str, *, max_chars: int, label: str) -> str:
 def _requirements_summary_for_implement(requirements: str) -> str:
     """REQ headings only — keeps implement turns lean on local models."""
     headings = [
-        line.strip()
-        for line in requirements.splitlines()
-        if line.strip().startswith("### REQ-")
+        line.strip() for line in requirements.splitlines() if line.strip().startswith("### REQ-")
     ]
     if headings:
         return "\n".join(headings)
@@ -534,6 +520,10 @@ class WorkspaceTodos:
             item.design = design
         if tasks_md is not None:
             item.tasks_md = tasks_md
+            if tasks_md.strip() and not any(c.text.strip() for c in item.checklist):
+                from cecli.spec.progress import materialize_checklist_from_tasks_md
+
+                item.checklist = materialize_checklist_from_tasks_md(item)
         if depends_on is not None:
             item.depends_on = [d.strip() for d in depends_on if str(d).strip()]
         if branch is not None:

@@ -5,13 +5,14 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from cecli.spec.implement import build_implement_workspace_block
 from cecli.spec.steering import (
     IMPLEMENTATION_TOOL_HINTS,
     SCAFFOLD_MISSING_HINT,
+    SPEC_FOCUS_INSTRUCTIONS,
     build_spec_focus_preamble,
     workspace_lib_missing,
 )
-from cecli.spec.implement import build_implement_workspace_block
 from cecli.spec.todos import (
     TodoItem,
     TodoStore,

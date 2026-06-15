@@ -140,9 +140,7 @@ def analyze_traceability(
     for rid in req_ids:
         in_design = rid in design_refs
         task_steps = [s.number for s in steps if rid in s.req_refs]
-        links.append(
-            TraceLink(req_id=rid, in_design=in_design, task_steps=task_steps)
-        )
+        links.append(TraceLink(req_id=rid, in_design=in_design, task_steps=task_steps))
         if not in_design and not task_steps:
             issues.append(
                 _issue(

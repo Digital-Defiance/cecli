@@ -90,7 +90,9 @@ class TestSpecGenAgent(unittest.TestCase):
         item = TodoItem(id="a", title="T")
         runner = MagicMock()
         runner.apply_spec_gen_route = MagicMock()
-        runner.run_one_shot.return_value = "## Requirements\n### REQ-001\n**WHEN** a\n**THE** system **SHALL** b.\n"
+        runner.run_one_shot.return_value = (
+            "## Requirements\n### REQ-001\n**WHEN** a\n**THE** system **SHALL** b.\n"
+        )
 
         with patch("cecli.spec.gen_agent.spec_gen_agent_enabled", return_value=False):
             with patch("cecli.spec.gen_agent.spec_gen_richness_gate_enabled", return_value=False):
@@ -114,7 +116,10 @@ class TestSpecGenAgent(unittest.TestCase):
         runner = MagicMock()
         runner.apply_spec_gen_route = MagicMock()
         thin = "## Requirements\n### REQ-001\n**WHEN** a\n**THE** system **SHALL** b.\n"
-        deep = "## Requirements\n### REQ-001\n**WHEN** a\n**THE** system **SHALL** b.\n### REQ-002\n**WHEN** c\n**THE** system **SHALL** d.\n"
+        deep = (
+            "## Requirements\n### REQ-001\n**WHEN** a\n**THE** system **SHALL** b.\n"
+            "### REQ-002\n**WHEN** c\n**THE** system **SHALL** d.\n"
+        )
         runner.run_one_shot.side_effect = [thin, deep]
 
         with patch("cecli.spec.gen_agent.spec_gen_agent_enabled", return_value=False):
@@ -141,7 +146,9 @@ class TestSpecGenAgent(unittest.TestCase):
         runner.run_message.return_value = iter(
             [{"type": "done", "assistant_text": "- `src/main.py` exists\n"}]
         )
-        runner.run_one_shot.return_value = "## Requirements\n### REQ-001\n**WHEN** a\n**THE** system **SHALL** b.\n"
+        runner.run_one_shot.return_value = (
+            "## Requirements\n### REQ-001\n**WHEN** a\n**THE** system **SHALL** b.\n"
+        )
 
         with patch("cecli.spec.gen_agent.spec_gen_agent_enabled", return_value=True):
             with patch("cecli.spec.gen_agent.spec_gen_richness_gate_enabled", return_value=False):

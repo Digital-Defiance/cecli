@@ -33,9 +33,7 @@ class TestEarsSpecIndex(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             result = build_spec_index(root, task_ids=["only-json"])
-            self.assertTrue(
-                any(i.code == "SPEC_MISSING_FOLDER" for i in result.issues)
-            )
+            self.assertTrue(any(i.code == "SPEC_MISSING_FOLDER" for i in result.issues))
 
     def test_to_dict_serializable(self):
         with tempfile.TemporaryDirectory() as tmp:

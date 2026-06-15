@@ -7,18 +7,18 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from cecli.spec.agent_todos import AgentTodoRow
 from cecli.spec.implement import (
     build_implement_workspace_block,
     checklist_step_prefix,
+    dart_test_paths_for_focus,
     deliverable_paths_exist,
     focus_checklist_item,
     is_step_after,
     paths_from_checklist_text,
     resolve_flutter_executable,
     resolve_implement_focus,
-    dart_test_paths_for_focus,
 )
-from cecli.spec.agent_todos import AgentTodoRow
 from cecli.spec.todos import ChecklistItem
 
 
@@ -37,7 +37,9 @@ class TestImplementWorkspace(unittest.TestCase):
 
     def test_focus_prefers_active_task_title_over_first_open(self):
         checklist = [
-            ChecklistItem(id="c1", text="1.2 Implement NetworkInterceptor in lib/core/network/", done=False),
+            ChecklistItem(
+                id="c1", text="1.2 Implement NetworkInterceptor in lib/core/network/", done=False
+            ),
             ChecklistItem(id="c2", text="1.3 Write unit tests for NetworkInterceptor", done=False),
         ]
         focus = focus_checklist_item(
@@ -81,7 +83,9 @@ class TestImplementWorkspace(unittest.TestCase):
             test_dir.mkdir(parents=True)
             (test_dir / "network_interceptor_test.dart").write_text("", encoding="utf-8")
             (test_dir / "other_test.dart").write_text("", encoding="utf-8")
-            focus = ChecklistItem(id="c1", text="1.3 Write unit tests for NetworkInterceptor", done=False)
+            focus = ChecklistItem(
+                id="c1", text="1.3 Write unit tests for NetworkInterceptor", done=False
+            )
             paths = dart_test_paths_for_focus(root, focus)
             self.assertIn("test/core/network/network_interceptor_test.dart", paths)
 
@@ -96,7 +100,9 @@ class TestImplementWorkspace(unittest.TestCase):
             test.mkdir(parents=True)
             (test / "a_test.dart").write_text("", encoding="utf-8")
             checklist = [
-                ChecklistItem(id="c1", text="1.3 Write unit tests for NetworkInterceptor", done=False),
+                ChecklistItem(
+                    id="c1", text="1.3 Write unit tests for NetworkInterceptor", done=False
+                ),
             ]
             block = build_implement_workspace_block(
                 root,
@@ -130,7 +136,11 @@ class TestImplementWorkspace(unittest.TestCase):
             ChecklistItem(id="c2", text="2.3 Write unit tests mocking repositories", done=True),
         ]
         agent_rows = [
-            AgentTodoRow(text="3.1 Develop EncryptedStorageRepository for local encrypted data", done=False, current=True),
+            AgentTodoRow(
+                text="3.1 Develop EncryptedStorageRepository for local encrypted data",
+                done=False,
+                current=True,
+            ),
         ]
         focus, from_agent = resolve_implement_focus(
             checklist,

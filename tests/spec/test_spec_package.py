@@ -8,11 +8,15 @@ from pathlib import Path
 
 import cecli.spec
 import cecli.spec.ears as ears_pkg
-from cecli.spec import SpecGenerationJob, analyze_requirements, analyze_traceability, build_spec_index
+from cecli.spec import (
+    SpecGenerationJob,
+    analyze_requirements,
+    analyze_traceability,
+    build_spec_index,
+)
 from cecli.spec.ears.model import EarsLintResult
 from cecli.spec.jobs import spec_gen_timeout_s
 from cecli.spec.runtime import AgentTodoSession, SpecTurnRunner
-
 
 _FORBIDDEN_PREFIXES = (
     "bright_vision_core",
@@ -58,9 +62,7 @@ class TestSpecPackage(unittest.TestCase):
         self.assertEqual(violations, [], "\n".join(violations))
 
     def test_ears_lint_result_serializes(self):
-        result = analyze_requirements(
-            "### REQ-001\n**WHEN** x\n**THE** system **SHALL** y.\n"
-        )
+        result = analyze_requirements("### REQ-001\n**WHEN** x\n**THE** system **SHALL** y.\n")
         self.assertIsInstance(result, EarsLintResult)
         payload = result.to_dict()
         self.assertIn("ok", payload)

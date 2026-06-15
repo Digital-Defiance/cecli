@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import unittest
 
-from cecli.spec.layers import (
-    assess_spec_richness,
-    normalize_spec_layer_traceability,
-)
-from cecli.spec.generate import parse_generated_layers
-
 from helpers.spec_layer_assertions import (
     SAMPLE_GENERATED_MARKDOWN,
     assess_generated_spec_layers,
+)
+
+from cecli.spec.generate import parse_generated_layers
+from cecli.spec.layers import (
+    assess_spec_richness,
+    normalize_spec_layer_traceability,
 )
 
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import tempfile
 import unittest
-from pathlib import Path
 
 from cecli.spec.focus import (
     build_user_message_with_spec_context,
@@ -12,7 +11,7 @@ from cecli.spec.focus import (
     spec_focus_requested,
     todo_has_spec_content,
 )
-from cecli.spec.todos import TodoItem, TodoStore, migrate_todo_layers, ChecklistItem
+from cecli.spec.todos import ChecklistItem, TodoItem, TodoStore, migrate_todo_layers
 
 
 def _item(
@@ -62,23 +61,17 @@ class TestSpecFocusGating(unittest.TestCase):
     def test_empty_layers_not_spec_content(self):
         item = _item()
         self.assertFalse(todo_has_spec_content(item))
-        self.assertFalse(
-            spec_focus_preamble_applies(focus_requested=True, item=item)
-        )
+        self.assertFalse(spec_focus_preamble_applies(focus_requested=True, item=item))
 
     def test_tasks_md_alone_not_spec_content(self):
         item = _item(tasks_md="- [ ] Explore project structure\n- [ ] Ship feature")
         self.assertFalse(todo_has_spec_content(item))
-        self.assertFalse(
-            spec_focus_preamble_applies(focus_requested=True, item=item)
-        )
+        self.assertFalse(spec_focus_preamble_applies(focus_requested=True, item=item))
 
     def test_layers_with_requirements_is_spec_content(self):
         item = _item(requirements="### REQ-001\n**WHEN** x **THE** system **SHALL** y")
         self.assertTrue(todo_has_spec_content(item))
-        self.assertTrue(
-            spec_focus_preamble_applies(focus_requested=True, item=item)
-        )
+        self.assertTrue(spec_focus_preamble_applies(focus_requested=True, item=item))
 
     def test_no_preamble_without_active_task(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -156,14 +149,10 @@ class TestSpecFocusGating(unittest.TestCase):
         from cecli.spec.focus import is_implement_turn_message
 
         self.assertTrue(
-            is_implement_turn_message(
-                "/agent Implement only implementation task 1: Scaffold lib/."
-            )
+            is_implement_turn_message("/agent Implement only implementation task 1: Scaffold lib/.")
         )
         self.assertTrue(
-            is_implement_turn_message(
-                "/agent Continue the active task from where you stopped."
-            )
+            is_implement_turn_message("/agent Continue the active task from where you stopped.")
         )
 
     def test_agent_continuation_skips_full_spec_preamble(self):

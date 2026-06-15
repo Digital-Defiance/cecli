@@ -8,21 +8,21 @@ import pytest
 
 from cecli.spec.agent_todos import (
     AGENT_PLAN_TITLE,
+    AgentTodoRow,
+    AgentTodoSanitizeContext,
+    _recover_char_split_agent_rows,
     agent_todo_link_for,
+    current_agent_todo_row,
     export_todo_item_to_agent,
+    format_agent_todo_txt,
     import_agent_plan_for_workspace,
-    import_agent_plan_store,
+    load_agent_todo_rows,
     parse_agent_todo_txt,
     plan_title_from_rows,
     rows_from_todo_item,
     rows_to_tasks_md,
-    format_agent_todo_txt,
-    AgentTodoRow,
-    AgentTodoSanitizeContext,
-    _recover_char_split_agent_rows,
-    load_agent_todo_rows,
-    current_agent_todo_row,
     sanitize_agent_todo_rows,
+    sync_session_agent_todos,
 )
 from cecli.spec.todos import ChecklistItem, TodoItem, WorkspaceTodos, _now_iso
 
@@ -233,7 +233,9 @@ def test_sanitize_reverts_premature_done_beyond_focus():
 
 
 def test_sanitize_reverts_test_done_without_flutter_pass():
-    rows = [AgentTodoRow(text="1.3 Write unit tests for NetworkInterceptor", done=True, current=False)]
+    rows = [
+        AgentTodoRow(text="1.3 Write unit tests for NetworkInterceptor", done=True, current=False)
+    ]
     ctx = AgentTodoSanitizeContext(focus_step="1.3", flutter_test_ok=False)
     sanitized, warnings = sanitize_agent_todo_rows(
         rows,
@@ -266,3 +268,58 @@ def test_load_agent_todo_rows_from_latest(tmp_path: Path):
     assert len(rows) == 1
     assert rows[0].current
     assert "3.1" in rows[0].text
+
+
+def test_sync_session_pull_prefers_linked_agent_todo_over_stale_session_copy(tmp_path: Path):
+    """Pre-session push must not revert a later workspace import from the linked todo.txt."""
+    spec_tasks = (
+        "## Implementation tasks\n\n"
+        "- [ ] 1. Wire generate-spec API for REQ-001 (depends: none)\n"
+        "- [ ] 2. Add tests for REQ-002 (depends: 1)\n"
+    )
+    api = WorkspaceTodos(tmp_path)
+    store = api.load()
+    item = TodoItem(
+        id="user1",
+        title="My feature",
+        tasks_md=spec_tasks,
+        status="in_progress",
+        links=[],
+        checklist=[],
+        created_at=_now_iso(),
+        updated_at=_now_iso(),
+    )
+    store.todos.append(item)
+    store.active_id = item.id
+    api.save(store)
+
+    class FakeCoder:
+        def __init__(self, root: Path):
+            self.root = root
+
+        def local_agent_folder(self, name: str) -> str:
+            return f".cecli/agents/2026-06-03/session-a/{name}"
+
+    class FakeSession:
+        def __init__(self, root: Path):
+            self.coder = FakeCoder(root)
+
+    session_rel = ".cecli/agents/2026-06-03/session-a/todo.txt"
+    export_todo_item_to_agent(tmp_path, session_rel, item)
+
+    linked_rel = ".cecli/agents/2026-05-27/imported/todo.txt"
+    linked = tmp_path / linked_rel
+    linked.parent.mkdir(parents=True)
+    linked.write_text(
+        "Done:\n"
+        "✓ 1. Wire generate-spec API for REQ-001 (depends: none)\n\n"
+        "Remaining:\n"
+        "→ 2. Add tests for REQ-002 (depends: 1)\n",
+        encoding="utf-8",
+    )
+    import_agent_plan_for_workspace(tmp_path, agent_todo_relpath=linked_rel)
+
+    store2, _ = sync_session_agent_todos(FakeSession(tmp_path), pull=True, push_active=True)
+    merged = store2.todos[0]
+    assert "- [x] 1. Wire generate-spec" in merged.tasks_md
+    assert merged.checklist[0].done is True
