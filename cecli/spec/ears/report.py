@@ -10,9 +10,7 @@ from cecli.spec.ears.trace import TraceabilityResult
 def format_lint_summary(result: EarsLintResult) -> str:
     if result.ok and not result.issues:
         return "EARS: no issues."
-    parts = [
-        f"EARS: {result.error_count} error(s), {result.warning_count} warning(s)."
-    ]
+    parts = [f"EARS: {result.error_count} error(s), {result.warning_count} warning(s)."]
     for issue in result.issues[:12]:
         loc = ""
         if issue.line:

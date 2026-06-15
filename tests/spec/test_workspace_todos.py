@@ -1,8 +1,8 @@
 import unittest
 from pathlib import Path
 
-from cecli.utils import GitTemporaryDirectory, make_repo
 from cecli.spec.todos import WorkspaceTodos
+from cecli.utils import GitTemporaryDirectory, make_repo
 
 
 class TestWorkspaceTodos(unittest.TestCase):
@@ -115,7 +115,9 @@ class TestWorkspaceTodos(unittest.TestCase):
             self.assertEqual(count, 1)
             self.assertEqual(ids, ["deleted-task-id"])
             self.assertFalse(orphan.is_dir())
-            self.assertTrue((api.specs_root / item.id).is_dir() or not (api.specs_root / item.id).exists())
+            self.assertTrue(
+                (api.specs_root / item.id).is_dir() or not (api.specs_root / item.id).exists()
+            )
 
     def test_sync_spec_files_writes_layers(self):
         with GitTemporaryDirectory() as temp_dir:
@@ -141,9 +143,7 @@ class TestWorkspaceTodos(unittest.TestCase):
             agent_path = root / ".cecli" / "agents" / "default" / "todo.txt"
             agent_path.parent.mkdir(parents=True, exist_ok=True)
             agent_path.write_text(
-                format_agent_todo_txt(
-                    [AgentTodoRow(text="Ship it", done=False, current=True)]
-                ),
+                format_agent_todo_txt([AgentTodoRow(text="Ship it", done=False, current=True)]),
                 encoding="utf-8",
             )
             store = import_agent_plan_for_workspace(root)

@@ -6,7 +6,6 @@ import unittest
 
 from cecli.spec.ears import analyze_requirements
 
-
 GOOD = """\
 ### REQ-001
 **WHEN** the user opens Tasks

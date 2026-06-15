@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import unittest
 
-from cecli.spec.ears.prompt import format_spec_quality_for_prompt, requirements_pass_ears
+from cecli.spec.ears.prompt import (
+    format_spec_quality_for_prompt,
+    requirements_pass_ears,
+)
 
 
 class TestEarsPrompt(unittest.TestCase):
@@ -32,18 +35,14 @@ class TestEarsPrompt(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(issues, [])
 
-        bad, issues = requirements_pass_ears(
-            "### REQ-001\n**WHEN** x\n**THE** system shows y.\n"
-        )
+        bad, issues = requirements_pass_ears("### REQ-001\n**WHEN** x\n**THE** system shows y.\n")
         self.assertFalse(bad)
         self.assertTrue(any(i["code"] == "EARS_NO_SHALL" for i in issues))
         self.assertTrue(all(i["severity"] == "error" for i in issues))
 
     def test_requirements_pass_ears_returns_errors_only(self):
         """Gate issues list contains severity=error entries only."""
-        bad, issues = requirements_pass_ears(
-            "### REQ-001\n**WHEN** x\n**THE** system shows y.\n"
-        )
+        bad, issues = requirements_pass_ears("### REQ-001\n**WHEN** x\n**THE** system shows y.\n")
         self.assertFalse(bad)
         self.assertTrue(issues)
         self.assertTrue(all(i["severity"] == "error" for i in issues))

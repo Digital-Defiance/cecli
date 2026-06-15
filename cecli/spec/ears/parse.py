@@ -25,7 +25,7 @@ def parse_requirements_markdown(text: str) -> list[EarsClause]:
     buf_line = 0
 
     def flush() -> None:
-        nonlocal buf, buf_line
+        nonlocal buf
         if not buf:
             return
         body = " ".join(s.strip() for s in buf if s.strip())
@@ -54,9 +54,7 @@ def parse_requirements_markdown(text: str) -> list[EarsClause]:
         if _SKIP_LABEL.match(stripped):
             flush()
             continue
-        if _BULLET.match(line) or (
-            current_req_id and "**WHEN**" in stripped.upper() and not buf
-        ):
+        if _BULLET.match(line) or (current_req_id and "**WHEN**" in stripped.upper() and not buf):
             flush()
             buf_line = i
             buf = [stripped.lstrip("-* ").strip()]

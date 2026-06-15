@@ -16,9 +16,7 @@ from cecli.spec.ears.report import (
 
 class TestEarsReport(unittest.TestCase):
     def test_format_lint_summary_ok(self):
-        result = analyze_requirements(
-            "### REQ-001\n**WHEN** x\n**THE** system **SHALL** y.\n"
-        )
+        result = analyze_requirements("### REQ-001\n**WHEN** x\n**THE** system **SHALL** y.\n")
         summary = format_lint_summary(result)
         self.assertIn("no issues", summary.lower())
 

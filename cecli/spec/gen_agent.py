@@ -47,7 +47,7 @@ def _strip_thinking_content(text: str) -> str:
     closing_pattern = re.compile(r"</thinking-content-[0-9a-f]+>")
     match = closing_pattern.search(result)
     if match:
-        result = result[match.end():].strip()
+        result = result[match.end() :].strip()
     return result
 
 

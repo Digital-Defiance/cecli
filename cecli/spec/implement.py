@@ -124,10 +124,15 @@ def focus_checklist_item(
     step = implement_step_from_message(message or "")
     if step:
         for entry in checklist:
-            if not entry.done and (entry.text.strip().startswith(step + " ") or entry.text.strip().startswith(step + ".")):
+            if not entry.done and (
+                entry.text.strip().startswith(step + " ")
+                or entry.text.strip().startswith(step + ".")
+            ):
                 return entry
         for entry in checklist:
-            if entry.text.strip().startswith(step + " ") or entry.text.strip().startswith(step + "."):
+            if entry.text.strip().startswith(step + " ") or entry.text.strip().startswith(
+                step + "."
+            ):
                 return entry
 
     title = (active_task_title or "").strip()
@@ -197,7 +202,7 @@ def resolve_implement_focus(
     if not agent_todo_rows:
         return None, False
 
-    from cecli.spec.agent_todos import AgentTodoRow, current_agent_todo_row
+    from cecli.spec.agent_todos import current_agent_todo_row
 
     row = current_agent_todo_row(agent_todo_rows)
     if row is None or row.done:
@@ -213,7 +218,11 @@ def dart_test_paths_for_focus(workspace: str | Path, focus: ChecklistItem) -> li
         return test_paths[:4]
     all_tests = list_workspace_test_files(workspace)
     lower = focus.text.lower()
-    tokens = [t for t in re.split(r"[\W_]+", lower) if len(t) > 3 and t not in {"write", "unit", "tests", "test", "for"}]
+    tokens = [
+        t
+        for t in re.split(r"[\W_]+", lower)
+        if len(t) > 3 and t not in {"write", "unit", "tests", "test", "for"}
+    ]
     scored: list[tuple[int, str]] = []
     for path in all_tests:
         path_lower = path.lower()
@@ -252,6 +261,8 @@ def resolve_flutter_executable() -> str | None:
 def build_workspace_snapshot_lines(workspace: str | Path) -> list[str]:
     root = Path(workspace).resolve()
     lines = ["## Workspace snapshot (verified on disk — do **not** ls to rediscover)"]
+    from cecli.spec.pubspec_repair import pubspec_repair_snapshot_lines
+
     pubspec = root / "pubspec.yaml"
     if pubspec.is_file():
         lines.append("- `pubspec.yaml` — present")
@@ -266,6 +277,7 @@ def build_workspace_snapshot_lines(workspace: str | Path) -> list[str]:
         preview = ", ".join(f"`{f}`" for f in files[:8])
         extra = f" (+{len(files) - 8} more)" if len(files) > 8 else ""
         lines.append(f"- `{sub}/` — {len(files)} file(s): {preview}{extra}")
+    lines.extend(pubspec_repair_snapshot_lines(root))
     return lines
 
 
@@ -306,9 +318,7 @@ def build_implement_next_action_lines(
 
     if is_test_related_checklist_text(focus.text) and test_files:
         target = next((f for f in test_files if "test" in f), test_files[0])
-        lines.append(
-            f"Focus checklist: **{focus.text.strip()}** — test file(s) already on disk."
-        )
+        lines.append(f"Focus checklist: **{focus.text.strip()}** — test file(s) already on disk.")
         lines.append(
             f"1. **ReadRange** `{target}` with `@000` / `000@` once\n"
             f"2. **EditText** only if tests need fixes\n"
@@ -341,7 +351,7 @@ def build_implement_next_action_lines(
             f"Focus checklist: **{focus.text.strip()}** — paths exist on disk (`{target}`)."
         )
         lines.append(
-            f"**ReadRange** the target source file, then **EditText** to finish. **No ls.**"
+            "**ReadRange** the target source file, then **EditText** to finish. **No ls.**"
         )
     elif workspace_lib_missing(workspace):
         lines.append(f"Focus checklist: **{focus.text.strip()}**")

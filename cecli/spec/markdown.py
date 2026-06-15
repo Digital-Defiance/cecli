@@ -8,7 +8,7 @@ import re
 import uuid
 from typing import Any
 
-from cecli.spec.todos import ChecklistItem, TodoItem, TodoStore, _now_iso, migrate_todo_layers
+from cecli.spec.todos import ChecklistItem, TodoItem, TodoStore, migrate_todo_layers
 
 _TASK_HEADER = re.compile(r"^#\s+(.+)$")
 _META_ID = re.compile(r"^id:\s*(\S+)\s*$", re.I)
@@ -74,7 +74,9 @@ def _parse_checklist_line(line: str) -> ChecklistItem | None:
     )
 
 
-def import_markdown(text: str, existing: TodoStore | None = None, *, merge: bool = False) -> TodoStore:
+def import_markdown(
+    text: str, existing: TodoStore | None = None, *, merge: bool = False
+) -> TodoStore:
     store = existing if merge and existing else TodoStore()
     if not merge:
         store = TodoStore()

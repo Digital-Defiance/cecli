@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import unittest
 
-from cecli.spec.ears.prompt import format_spec_quality_for_prompt, requirements_pass_ears
+from cecli.spec.ears.prompt import (
+    format_spec_quality_for_prompt,
+    requirements_pass_ears,
+)
 from cecli.spec.generate import build_generate_message
 from cecli.spec.todos import TodoItem
 

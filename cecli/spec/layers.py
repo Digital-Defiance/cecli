@@ -68,9 +68,7 @@ def assess_spec_richness(
 
     if req:
         if "user story" not in req.lower():
-            suggestions.append(
-                "requirements: add a **User Story** line to each requirement"
-            )
+            suggestions.append("requirements: add a **User Story** line to each requirement")
         criteria = len(re.findall(r"(?m)^\s*\d+\.\s+", req))
         ids = len(requirement_ids(req))
         if ids < 2 or criteria < 4:
@@ -88,9 +86,7 @@ def assess_spec_richness(
     if tasks:
         steps = re.findall(r"(?m)^\s*(?:-\s*\[[ xX]\]\s*)?\d+\.", tasks)
         if len(steps) < 3:
-            suggestions.append(
-                "tasks: break the work into more incremental, test-driven steps"
-            )
+            suggestions.append("tasks: break the work into more incremental, test-driven steps")
 
     return len(suggestions) == 0, suggestions
 

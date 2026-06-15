@@ -1,3 +1,4 @@
+# flake8: noqa: E501
 """
 LLM-assisted three-layer todo spec generation and parsing.
 """
@@ -117,11 +118,7 @@ def _requirements_format() -> str:
 
 
 def _requirements_example() -> str:
-    return (
-        _REQUIREMENTS_EXAMPLE_COMPACT
-        if compact_spec_gen_enabled()
-        else _REQUIREMENTS_EXAMPLE
-    )
+    return _REQUIREMENTS_EXAMPLE_COMPACT if compact_spec_gen_enabled() else _REQUIREMENTS_EXAMPLE
 
 
 def _design_format() -> str:
@@ -138,17 +135,11 @@ def _design_example() -> str:
 
 def _generate_all_layers_body() -> str:
     return (
-        "## Requirements\n"
-        + _requirements_format()
-        + "\n"
-        "## Design\n"
-        + _design_format()
-        + "\n"
-        "## Implementation tasks\n"
-        + _tasks_format()
-        + "\n"
-        + _ALL_EXAMPLE
+        "## Requirements\n" + _requirements_format() + "\n"
+        "## Design\n" + _design_format() + "\n"
+        "## Implementation tasks\n" + _tasks_format() + "\n" + _ALL_EXAMPLE
     )
+
 
 _REQUIREMENTS_EXAMPLE = """\
 Format example (replace with the real feature; do not copy this content):
@@ -373,13 +364,7 @@ def build_generate_message(
             prompt=prompt.strip() or "Review for consistency.",
             ears_context=ears_context,
             refine_depth=_refine_depth(),
-        ) + (
-            _requirements_format()
-            + "\n"
-            + _design_format()
-            + "\n"
-            + _tasks_format()
-        )
+        ) + (_requirements_format() + "\n" + _design_format() + "\n" + _tasks_format())
     if section == "requirements":
         existing = _optional_existing_block(
             "requirements draft",
@@ -418,12 +403,15 @@ def build_generate_message(
             f"Design:\n{item.design}\n\n"
             f"Implementation tasks:\n{item.tasks_md}\n"
         )
-    return _GENERATE_TEMPLATE_PREFIX.format(
-        prompt=prompt.strip(),
-        existing=existing,
-        ears_context=ears_context,
-        depth=_generate_depth(),
-    ) + _generate_all_layers_body()
+    return (
+        _GENERATE_TEMPLATE_PREFIX.format(
+            prompt=prompt.strip(),
+            existing=existing,
+            ears_context=ears_context,
+            depth=_generate_depth(),
+        )
+        + _generate_all_layers_body()
+    )
 
 
 def _parse_generated_layers_once(text: str) -> dict[str, str]:
