@@ -339,7 +339,7 @@ python-dotenv==1.2.1
     #   -c requirements/common-constraints.txt
     #   litellm
     #   pydantic-settings
-python-multipart==0.0.20
+python-multipart==0.0.31
     # via
     #   -c requirements/common-constraints.txt
     #   mcp
