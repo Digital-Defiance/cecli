@@ -48,6 +48,7 @@ class SubAgentInfo:
         None  # Track the generate() task for cancellation/monitoring
     )
     auto_reap: bool = True  # If True, agent may be automatically reaped when FINISHED
+    independent: bool = False
 
 
 class AgentService:
@@ -418,7 +419,11 @@ class AgentService:
             )
 
     async def _create_sub_agent_coder(
-        self, name: str, parent: Any = None, auto_reap: Optional[bool] = None
+        self,
+        name: str,
+        parent: Any = None,
+        auto_reap: Optional[bool] = None,
+        independent: bool = False,
     ) -> Tuple[Any, SubAgentInfo]:
         """Create a sub-agent coder, register it, and set up its container and prompt.
 
@@ -502,6 +507,7 @@ class AgentService:
                 parent_uuid=parent_coder.uuid,
                 status=SubAgentStatus.CREATED,
                 auto_reap=auto_reap,
+                independent=independent,
             )
             self.sub_agents[new_coder.uuid] = info
             self._sub_agent_order.append(new_coder.uuid)
@@ -590,18 +596,18 @@ class AgentService:
             info.status = SubAgentStatus.RUNNING
             try:
                 await info.coder.generate(user_message=user_message, preproc=True)
-
+                await self._inject_sub_agent_result(info)
                 if info.status == SubAgentStatus.RUNNING:
                     info.status = SubAgentStatus.FINISHED
                     info.summary = info.summary or DEFAULT_SUMMARY_COMPLETED
-                await self._inject_sub_agent_result(info)
             except asyncio.CancelledError:
+                await self._inject_sub_agent_result(info)
                 info.status = SubAgentStatus.FINISHED
                 info.summary = info.summary or DEFAULT_SUMMARY_INTERRUPTED
                 logger.debug("Sub-agent %s generate cancelled (interrupted)", info.name)
-                await self._inject_sub_agent_result(info)
                 raise
             except Exception as exc:
+                await self._inject_sub_agent_result(info)
                 info.status = SubAgentStatus.ERROR
                 info.error = str(exc)
                 logger.error(
@@ -610,7 +616,6 @@ class AgentService:
                     exc,
                     exc_info=True,
                 )
-                await self._inject_sub_agent_result(info)
                 raise
             except SwitchCoderSignal:
                 raise
@@ -736,6 +741,7 @@ class AgentService:
         prompt: Optional[str] = None,
         parent: Any = None,
         auto_reap: Optional[bool] = None,
+        independent: bool = False,
     ) -> Tuple[Any, SubAgentInfo]:
         """Spawn a sub-agent (non-blocking) that waits for user input.
 
@@ -751,7 +757,7 @@ class AgentService:
             with the sub-agent (e.g. call ``start_generate_task`` later).
         """
         new_coder, info = await self._create_sub_agent_coder(
-            name, auto_reap=auto_reap, parent=parent
+            name, auto_reap=auto_reap, parent=parent, independent=independent
         )
         if prompt:
             self.start_generate_task(info, prompt)

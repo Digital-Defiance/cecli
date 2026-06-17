@@ -1539,15 +1539,20 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
         try:
             service = AgentService.get_instance(self)
             children = service.get_children(self)
-
             if not children:
+                return None
+
+            # Filter to non-independent children only
+            dependent_children = [info for info in children if not info.independent]
+
+            if not dependent_children:
                 return None
 
             result = '<context name="sub_agent_states" from="agent">\n'
             result += "## Active Sub-Agent States\n\n"
-            result += f"Found {len(children)} active child sub-agent(s):\n\n"
+            result += f"Found {len(dependent_children)} active child sub-agent(s):\n\n"
 
-            for info in children:
+            for info in dependent_children:
                 result += f"**{info.name}**:\n"
                 result += f"  - UUID: `{info.coder.uuid}`\n"
                 result += f"  - Status: {info.status.value}\n"
