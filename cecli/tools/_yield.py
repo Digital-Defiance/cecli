@@ -62,7 +62,7 @@ class Tool(BaseTool):
         response = ToolResponse(cls.NORM_NAME)
 
         if coder:
-            wait = kwargs.get("wait")
+wait = kwargs.get("wait")
             if wait is not None and wait != "":
                 if isinstance(wait, bool):
                     wait_seconds = 60
@@ -100,6 +100,13 @@ class Tool(BaseTool):
                     response.append_result(f"Waited for {wait_seconds} seconds.")
 
                 return response
+
+            reject = getattr(coder, "reject_yield", None)
+            if callable(reject):
+                blocked = reject(coder, **kwargs)
+                if blocked:
+                    response.append_result(str(blocked))
+                    return response
 
             waited_for_sub_agents = False
             # Check for active child sub-agents and await their tasks before finishing
