@@ -110,19 +110,21 @@ class AgentCoder(Coder):
 
     def post_init(self):
         super().post_init()
-        # Populate per-instance tool and server filters from config
-        self.registered_tools["included"] = set(
-            map(str.lower, self.agent_config.get("tools_includelist", []))
-        )
-        self.registered_tools["excluded"] = set(
-            map(str.lower, self.agent_config.get("tools_excludelist", []))
-        )
-        self.registered_servers["included"] = set(
-            map(str.lower, self.agent_config.get("servers_includelist", []))
-        )
-        self.registered_servers["excluded"] = set(
-            map(str.lower, self.agent_config.get("servers_excludelist", []))
-        )
+
+        if not self._inherited_tools:
+            # Populate per-instance tool and server filters from config
+            self.registered_tools["included"] = set(
+                map(str.lower, self.agent_config.get("tools_includelist", []))
+            )
+            self.registered_tools["excluded"] = set(
+                map(str.lower, self.agent_config.get("tools_excludelist", []))
+            )
+            self.registered_servers["included"] = set(
+                map(str.lower, self.agent_config.get("servers_includelist", []))
+            )
+            self.registered_servers["excluded"] = set(
+                map(str.lower, self.agent_config.get("servers_excludelist", []))
+            )
 
         for err in self.start_up_errors:
             self.io.tool_warning(err)

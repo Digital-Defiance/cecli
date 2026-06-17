@@ -127,6 +127,19 @@ class AgentService:
         return cls._global_registry
 
     @classmethod
+    def get_all_agents(cls) -> List[Any]:
+        """Return all live coder instances tracked in the global uuid map.
+
+        Dereferences weakrefs, skipping any that have been garbage-collected.
+        """
+        agents = []
+        for ref in cls._uuid_coder_map.values():
+            coder = ref()
+            if coder is not None:
+                agents.append(coder)
+        return agents
+
+    @classmethod
     def register_subagent(cls, name: str, config: Any) -> None:
         """Register a sub-agent config by name."""
         cls._global_registry[name] = config
