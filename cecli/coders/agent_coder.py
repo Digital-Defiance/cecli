@@ -911,7 +911,9 @@ class AgentCoder(Coder):
                             else:
                                 all_results_content.append(str(res))
                                 if not getattr(tool_module, "SKIP_EXECUTE_RESULT_UI", False):
-                                    from cecli.tools.utils.output import emit_execute_result_to_ui
+                                    from cecli.tools.utils.output import (
+                                        emit_execute_result_to_ui,
+                                    )
 
                                     emit_execute_result_to_ui(self, res)
 
