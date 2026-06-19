@@ -181,11 +181,17 @@ class Tool(BaseTool):
                                 )
 
                             edit_text_raw = edit.get("text")
-                            edit_text = (
-                                strip_hashline(edit_text_raw) if edit_text_raw is not None else None
-                            )
+                            edit_text = edit.get("text")
                             edit_start_line = edit.get("start_line")
                             edit_end_line = edit.get("end_line")
+
+                            if edit_text_raw is not None:
+                                edit_text_raw = strip_hashline(edit_text_raw)
+                                while edit_text_raw != edit_text:
+                                    edit_text_raw = strip_hashline(edit_text_raw)
+                                    edit_text = strip_hashline(edit_text)
+
+                                edit_text = edit_text_raw
 
                             # Try to resolve line content values to content IDs
                             # This handles cases where LLMs pass actual line content
