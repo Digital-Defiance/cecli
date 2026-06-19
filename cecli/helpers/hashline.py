@@ -41,7 +41,7 @@ def strip_hashline(text: str) -> str:
 
 def normalize_hashline(hashline_str: str) -> str:
     """
-    Normalize a hashline string to the 4-character hash fragment.
+    Normalize a hashline string to the content id hash fragment.
     """
     if hashline_str in ("@000", "000@"):
         return hashline_str
@@ -479,8 +479,8 @@ def get_hashline_diff(
 
     # Strip line endings for difflib comparison but keep them in the actual lines
     diff = difflib.unified_diff(
-        [line.rstrip("\r\n") for line in find_lines],
-        [line.rstrip("\r\n") for line in replace_lines],
+        [strip_hashline(line.rstrip("\r\n")) for line in find_lines],
+        [strip_hashline(line.rstrip("\r\n")) for line in replace_lines],
         lineterm="",
         n=1,
     )

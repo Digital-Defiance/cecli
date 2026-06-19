@@ -437,7 +437,7 @@ class Tool(BaseTool):
                 start_line = edit.get("start_line")
                 end_line = edit.get("end_line")
                 # Show output based on operation type
-                if operation == "replace":
+                if operation in ("replace", "delete"):
                     # Show diff for replace operations
                     diff_output = ""
 
@@ -451,7 +451,7 @@ class Tool(BaseTool):
                                     original_content=strip_hashline(original_content),
                                     start_line_hash=start_line,
                                     end_line_hash=end_line,
-                                    operation="replace",
+                                    operation=operation,
                                     text=strip_hashline(text),
                                 )
                         except ContentHashError as e:
@@ -468,15 +468,5 @@ class Tool(BaseTool):
                     if text:
                         coder.io.tool_output(text)
                         coder.io.tool_output("")
-
-                elif operation == "delete":
-                    # Show deletion summary
-                    range_info = (
-                        f"Deleted {start_line} - {end_line}"
-                        if start_line and end_line
-                        else "specified range"
-                    )
-                    coder.io.tool_output(range_info)
-                    coder.io.tool_output("")
 
         tool_footer(coder=coder, tool_response=tool_response, params=params)
