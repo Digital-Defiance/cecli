@@ -108,6 +108,7 @@ class AgentCoder(Coder):
 
     def post_init(self):
         super().post_init()
+        self.coroutines = self.io.coroutines
         # Populate per-instance tool and server filters from config
         self.registered_tools["included"] = set(
             map(str.lower, self.agent_config.get("tools_includelist", []))

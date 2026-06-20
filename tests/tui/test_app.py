@@ -197,6 +197,8 @@ def test_handle_output_message_error_with_agent_name(tui_instance, monkeypatch):
         if isinstance(selector, type):
             name = selector.__name__
         else:
+            if selector == "#status-bar" or selector == "#status-bar, StatusBar":
+                return mock_status_bar
             if "," in selector or "#" in selector:
                 return mock_input_area
             return mock_footer
@@ -216,9 +218,6 @@ def test_handle_output_message_error_with_agent_name(tui_instance, monkeypatch):
     mock_coder.uuid = "primary_uuid"
     tui_instance.worker = MagicMock()
     tui_instance.worker.coder = mock_coder
-
-    # Stub status_bar reference
-    tui_instance.status_bar = mock_status_bar
 
     # Mock AgentService - unknown UUID should return None (no prefix)
     monkeypatch.setattr(

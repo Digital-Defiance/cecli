@@ -722,7 +722,8 @@ class TUI(App):
 
     def show_error(self, message, agent_name: str | None = None):
         """Show an error message in the status bar."""
-        self.status_bar.show_notification(
+        status_bar = self.query_one("#status-bar", StatusBar)
+        status_bar.show_notification(
             message, severity="error", timeout=5, agent_name=agent_name
         )
 
