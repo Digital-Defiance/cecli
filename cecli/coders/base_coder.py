@@ -412,9 +412,10 @@ class Coder(metaclass=UsageMeta):
         security_config=None,
         uuid: str = "",
         parent_uuid: str = "",
+        **kwargs,
     ):
-        # initialize from args.map_cache_dir
-        self.coroutines = coroutines
+        self.original_kwargs = kwargs
+        self.original_kwargs = kwargs
         # Per-instance tool and server filtering dictionaries
         # Each contains "included" and "excluded" sets that filter from the global singletons
         self.registered_tools = {"included": set(), "excluded": set()}

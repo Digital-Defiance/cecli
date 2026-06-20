@@ -54,7 +54,7 @@ async def test_remove_mcp_tool_success():
     coder.mcp_manager.get_server.return_value = server
     coder.mcp_manager.connected_servers = {"test-server": server}
 
-    # Mock disconnect_server as an async function that returns (True, False)
+    # Mock disconnect_server as an AsyncMock that returns (True, False)
     async def mock_disconnect(server_name):
         return True, False
 
@@ -67,8 +67,10 @@ async def test_remove_mcp_tool_success():
     coder.coroutines = MagicMock()
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
+
     # Execute
     result = await RemoveMcpTool.execute(coder, ["test-server"])
+
     # Assertions
     assert "Removed server: test-server" in result
     coder.mcp_manager.disconnect_server.assert_awaited_once_with("test-server")
@@ -86,8 +88,10 @@ async def test_remove_mcp_tool_non_existent():
     coder.mcp_manager.servers = [existing_server]
     # But the one we're looking for doesn't exist
     coder.mcp_manager.get_server.return_value = None
+
     # Execute
     result = await RemoveMcpTool.execute(coder, ["non-existent-server"])
+
     # Assertions
     assert "MCP server non-existent-server does not exist." in result
 
@@ -102,7 +106,9 @@ async def test_remove_mcp_tool_not_connected():
     coder.mcp_manager.servers = [server]
     coder.mcp_manager.get_server.return_value = server
     coder.mcp_manager.connected_servers = {}
+
     result = await RemoveMcpTool.execute(coder, ["test-server"])
+
     assert "Server test-server is not currently connected." in result
 
 
@@ -111,6 +117,7 @@ async def test_remove_mcp_tool_wildcard():
     """Test removing all servers with wildcard '*'."""
     coder = MagicMock()
     coder.mcp_manager = MagicMock()
+
     server1 = MagicMock()
     server1.name = "server1"
     server2 = MagicMock()
@@ -118,20 +125,21 @@ async def test_remove_mcp_tool_wildcard():
     coder.mcp_manager.servers = [server1, server2]
     coder.mcp_manager.connected_servers = {"server1": server1, "server2": server2}
 
-    # Mock disconnect_server as an async function that returns (True, False)
+    # Mock disconnect_server as an AsyncMock that returns (True, False)
     async def mock_disconnect(server_name):
         return True, False
 
     coder.mcp_manager.disconnect_server = mock_disconnect
 
-    # Mock interruptible to execute the coroutine without interruption
     async def mock_interruptible(coro, event):
         return await coro, False
 
     coder.coroutines = MagicMock()
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
+
     result = await RemoveMcpTool.execute(coder, ["*"])
+
     assert "Removed server: server1" in result
     assert "Removed server: server2" in result
 
@@ -157,7 +165,9 @@ async def test_remove_mcp_tool_interrupted():
 
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
+
     result = await RemoveMcpTool.execute(coder, ["test-server"])
+
     assert "Interrupted: test-server" in result
 
 
@@ -182,7 +192,9 @@ async def test_remove_mcp_tool_failed():
 
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
+
     result = await RemoveMcpTool.execute(coder, ["test-server"])
+
     assert "Unable to remove server: test-server" in result
 
 
@@ -192,7 +204,9 @@ async def test_remove_mcp_tool_no_servers_configured():
     coder = MagicMock()
     coder.mcp_manager = MagicMock()
     coder.mcp_manager.servers = []
+
     result = await RemoveMcpTool.execute(coder, servers=["test"])
+
     assert result == "No MCP servers are configured."
 
 
@@ -210,6 +224,7 @@ async def test_remove_mcp_tool_mixed_results():
     coder.mcp_manager.get_server.side_effect = lambda name: next(
         (s for s in [server1, server2] if s.name == name), None
     )
+
     call_count = 0
 
     async def mock_disconnect(server_name):
@@ -225,7 +240,9 @@ async def test_remove_mcp_tool_mixed_results():
 
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
+
     result = await RemoveMcpTool.execute(coder, servers=["server1", "server2"])
+
     assert "Removed server: server1" in result
     assert "Unable to remove server: server2" in result
 
@@ -255,7 +272,9 @@ async def test_remove_mcp_tool_dictionary_iteration_fix():
 
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
+
     result = await RemoveMcpTool.execute(coder, servers=["*"])
+
     # Should successfully remove both servers using dictionary keys
     assert "Removed server: server1" in result
     assert "Removed server: server2" in result

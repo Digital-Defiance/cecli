@@ -194,16 +194,16 @@ class TestLoadMcpTool:
         coder.mcp_manager.get_server.side_effect = lambda name: next(
             (s for s in [server1, server2] if s.name == name), None
         )
+        connect_calls = []
 
-        coder.coroutines.interruptible.return_value = (True, False)
-
-        async def mock_interruptible(coro, event):
-            server_name = coro.cr_frame.f_locals["server_name"]
+        async def mock_connect_server(server_name):
+            connect_calls.append(server_name)
             if server_name == "server2":
                 return True, False
             return False, False
 
-        coder.coroutines.interruptible.side_effect = mock_interruptible
+        coder.mcp_manager.connect_server.side_effect = mock_connect_server
+        coder.coroutines.interruptible.side_effect = mock_connect_server
         result = await LoadMcpTool.execute(coder, servers=["*"])
 
         # Should only attempt to load server2 (server1 should be skipped)

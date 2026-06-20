@@ -17,9 +17,11 @@ from . import (
     git_show,
     git_status,
     grep,
+    load_mcp_tool,
     load_skill,
     ls,
     read_range,
+    remove_mcp_tool,
     remove_skill,
     thinking,
     undo_change,
@@ -49,4 +51,6 @@ TOOL_MODULES = [
     thinking,
     undo_change,
     update_todo_list,
+    load_mcp_tool,
+    remove_mcp_tool,
 ]
