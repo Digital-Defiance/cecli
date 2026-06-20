@@ -771,7 +771,7 @@ class AgentCoder(Coder):
                     async def gather_and_await():
                         return await asyncio.gather(*tasks, return_exceptions=True)
 
-                    task_results, interrupted = await interruptible(
+                    task_results, interrupted = await self.coroutines.interruptible(
                         gather_and_await(), self.interrupt_event
                     )
 
