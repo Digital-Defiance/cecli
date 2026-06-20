@@ -32,7 +32,7 @@ from cecli.utils import copy_tool_call, tool_call_to_dict
 
 from .base_coder import Coder
 
-from cecli.helpers.coroutines import interruptible  # isort:skip
+from cecli.helpers import coroutines  # isort:skip
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ class AgentCoder(Coder):
 
     def post_init(self):
         super().post_init()
-        self.coroutines = self.io.coroutines
+        self.coroutines = coroutines
         # Populate per-instance tool and server filters from config
         self.registered_tools["included"] = set(
             map(str.lower, self.agent_config.get("tools_includelist", []))
@@ -328,7 +328,9 @@ class AgentCoder(Coder):
                 self.io.tool_warning(f"Executing {tool_name} on {server.name} failed:\nError: {e}")
                 return f"Error executing tool call {tool_name}: {e}"
 
-        result, interrupted = await interruptible(_exec_async(), self.interrupt_event)
+        result, interrupted = await self.coroutines.interruptible(
+            _exec_async(), self.interrupt_event
+        )
 
         if interrupted:
             return "Tool execution interrupted by user."
