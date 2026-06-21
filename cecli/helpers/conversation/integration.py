@@ -18,7 +18,7 @@ class ConversationChunks:
     def __init__(self, coder):
         self.coder = weakref.ref(coder)
         self.uuid = coder.uuid
-        self._last_clear_count = 0
+        self.last_clear_count = 0
         self._deferred_removals = set()
 
     @classmethod
@@ -282,14 +282,14 @@ class ConversationChunks:
         if diff_count > 0 and other_count > 0 and diff_count / other_count > 20:
             should_clear = True
 
-        self._last_clear_count += 1
+        self.last_clear_count += 1
 
         if (
             should_clear
-            and self._last_clear_count >= 20
+            and self.last_clear_count >= 20
             and diff_tokens + other_tokens > coder.context_compaction_max_tokens * 0.5
         ):
-            self._last_clear_count = 0
+            self.last_clear_count = 0
 
             # Clear all diff messages
             ConversationService.get_manager(coder).clear_tag(MessageTag.DIFFS)

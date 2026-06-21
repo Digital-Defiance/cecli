@@ -1991,12 +1991,24 @@ class Coder(metaclass=UsageMeta):
         done_messages = manager.get_messages_dict(MessageTag.DONE)
         cur_messages = manager.get_messages_dict(MessageTag.CUR)
         diff_messages = manager.get_messages_dict(MessageTag.DIFFS)
+        all_messages = manager.get_messages_dict()
 
         # Exclude first cur_message since that's the user's initial input
         done_tokens = self.summarizer.count_tokens(done_messages)
         cur_tokens = self.summarizer.count_tokens(cur_messages[1:] if len(cur_messages) > 1 else [])
         diff_tokens = self.summarizer.count_tokens(diff_messages)
+        all_tokens = self.summarizer.count_tokens(all_messages)
+
         combined_tokens = done_tokens + cur_tokens + diff_tokens
+
+        if force or (
+            all_tokens >= self.context_compaction_max_tokens * 0.9
+            and ConversationService.get_chunks(self).last_clear_count > 10
+        ):
+            manager.clear_tag(MessageTag.DIFFS)
+            manager.clear_tag(MessageTag.FILE_CONTEXTS)
+            ConversationService.get_files(self).clear_file_cache()
+            ConversationService.get_chunks(self).flush_removals()
 
         if not force and combined_tokens < self.context_compaction_max_tokens:
             return
