@@ -723,9 +723,7 @@ class TUI(App):
     def show_error(self, message, agent_name: str | None = None):
         """Show an error message in the status bar."""
         status_bar = self.query_one("#status-bar", StatusBar)
-        status_bar.show_notification(
-            message, severity="error", timeout=5, agent_name=agent_name
-        )
+        status_bar.show_notification(message, severity="error", timeout=5, agent_name=agent_name)
 
     def on_resize(self) -> None:
         file_list = self.query_one("#file-list", FileList)

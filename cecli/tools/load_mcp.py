@@ -8,7 +8,7 @@ class Tool(BaseTool):
     SCHEMA = {
         "type": "function",
         "function": {
-            "name": "load-mcp",
+            "name": "LoadMCP",
             "description": "Load MCP server(s) by name, or use '*' to load all enabled servers.",
             "parameters": {
                 "type": "object",

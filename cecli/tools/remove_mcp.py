@@ -8,9 +8,9 @@ class Tool(BaseTool):
     SCHEMA = {
         "type": "function",
         "function": {
-            "name": "remove-mcp",
+            "name": "RemoveMCP",
             "description": (
-                "Remove MCP server(s) by name, or use '*' to remove all connected servers."
+                "Remove (unload) MCP server(s) by name, or use '*' to remove all connected servers."
             ),
             "parameters": {
                 "type": "object",
