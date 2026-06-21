@@ -17,6 +17,7 @@ from . import (
     git_show,
     git_status,
     grep,
+    list_mcp,
     load_mcp,
     load_skill,
     ls,
