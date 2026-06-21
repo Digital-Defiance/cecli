@@ -7,7 +7,7 @@ class Tool(BaseTool):
         "type": "function",
         "function": {
             "name": "ListMcp",
-            "description": "List all loaded and available MCP servers.",
+            "description": "List all loaded and configured MCP servers.",
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -18,15 +18,15 @@ class Tool(BaseTool):
 
     @classmethod
     def execute(cls, coder, **kwargs):
-        """List all loaded and available MCP servers."""
+        """List all loaded and configured MCP servers."""
         if not coder.mcp_manager:
-            return "MCP manager is not available."
+            return "MCP manager is not configured."
 
         all_servers = coder.mcp_manager.servers
         connected_servers = coder.mcp_manager.connected_servers
 
         loaded_server_names = {server.name for server in connected_servers}
-        available_servers = [
+        configured_servers = [
             server for server in all_servers if server.name not in loaded_server_names
         ]
 
@@ -40,11 +40,11 @@ class Tool(BaseTool):
 
         result.append("")
 
-        if available_servers:
-            result.append("Available MCP Servers:")
-            for server in sorted(available_servers, key=lambda s: s.name):
+        if configured_servers:
+            result.append("Configured MCP Servers:")
+            for server in sorted(configured_servers, key=lambda s: s.name):
                 result.append(f"- {server.name}")
         else:
-            result.append("No other MCP servers are available to load.")
+            result.append("No other MCP servers are configured.")
 
         return "\n".join(result)
