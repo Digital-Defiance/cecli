@@ -1,6 +1,6 @@
 ---
 parent: Usage
-nav_order: 25
+nav_order: 20
 description: Tips for AI pair programming with cecli.
 ---
 

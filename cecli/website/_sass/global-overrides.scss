@@ -17,7 +17,7 @@
         // Grid layout for documentation pages on large screens
         display: grid !important;
         grid-template-columns: 300px 1fr; // Sidebar on left, main content on right
-        grid-template-rows: auto 1fr; // Top nav bar, then main content
+        grid-template-rows: 100vh; // Top nav bar, then main content
         grid-template-areas:
             "sidebar topnav"
             "sidebar main";
