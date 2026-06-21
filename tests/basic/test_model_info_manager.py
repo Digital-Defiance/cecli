@@ -54,7 +54,7 @@ class TestModelInfoManager(TestCase):
 
             # Verify cache was loaded
             self.assertTrue(self.manager._cache_loaded)
-            self.assertIsNotNone(self.manager.content)
+            self.assertIsNotNone(self.manager._raw_content)
             self.assertEqual(result, {"max_tokens": 4096})
 
             # Verify _update_cache was not called since cache exists and is valid

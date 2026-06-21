@@ -148,6 +148,7 @@ class ModelInfoManager:
         self.cache_dir = handle_core_files(Path.home() / ".cecli" / "caches")
         self.cache_file = self.cache_dir / "model_prices_and_context_window.json"
         self.content = None
+        self._raw_content = None
         self.local_model_metadata = {}
         self.verify_ssl = True
         self._cache_loaded = False
@@ -167,9 +168,9 @@ class ModelInfoManager:
                 cache_age = time.time() - self.cache_file.stat().st_mtime
                 if cache_age < self.CACHE_TTL:
                     try:
-                        self.content = json.loads(self.cache_file.read_text())
+                        self._raw_content = self.cache_file.read_text()
                     except json.JSONDecodeError:
-                        self.content = None
+                        self._raw_content = None
         except OSError:
             pass
         self._cache_loaded = True
@@ -180,9 +181,13 @@ class ModelInfoManager:
 
             response = requests.get(self.MODEL_INFO_URL, timeout=5, verify=self.verify_ssl)
             if response.status_code == 200:
-                self.content = response.json()
+                # Use json.dumps(response.json()) instead of response.text for
+                # compatibility with mocked responses in tests
+                parsed = response.json()
+                self._raw_content = json.dumps(parsed)
                 try:
-                    self.cache_file.write_text(json.dumps(self.content, indent=4))
+                    parsed = response.json()
+                    self.cache_file.write_text(json.dumps(parsed, indent=4))
                 except OSError:
                     pass
         except Exception as ex:
@@ -192,21 +197,59 @@ class ModelInfoManager:
             except OSError:
                 pass
 
+    def _get_entry_from_raw(self, key):
+        """Parse a single model entry from raw JSON string without loading the entire dict."""
+        if not self._raw_content:
+            return None
+        import re
+
+        escaped_key = re.escape(key)
+        pattern = rf'(?<!\w)"{escaped_key}"\s*:'
+        match = re.search(pattern, self._raw_content)
+        if not match:
+            return None
+        start = match.end()
+        while start < len(self._raw_content) and self._raw_content[start] in " \t\n\r":
+            start += 1
+        if start < len(self._raw_content) and self._raw_content[start] == "{":
+            depth = 1
+            pos = start + 1
+            in_string = False
+            escape = False
+            while pos < len(self._raw_content) and depth > 0:
+                ch = self._raw_content[pos]
+                if escape:
+                    escape = False
+                elif ch == "\\":
+                    escape = True
+                elif ch == '"':
+                    in_string = not in_string
+                elif not in_string:
+                    if ch == "{":
+                        depth += 1
+                    elif ch == "}":
+                        depth -= 1
+                pos += 1
+            if depth == 0:
+                entry_str = self._raw_content[start:pos]
+                return json.loads(entry_str)
+        return None
+
     def get_model_from_cached_json_db(self, model):
         data = self.local_model_metadata.get(model)
         if data:
             return data
         self._load_cache()
-        if not self.content:
+        if not self._raw_content:
             self._update_cache()
-        if not self.content:
+        if not self._raw_content:
             return dict()
-        info = self.content.get(model, dict())
+        info = self._get_entry_from_raw(model)
         if info:
             return info
         pieces = model.split("/")
         if len(pieces) == 2:
-            info = self.content.get(pieces[1])
+            info = self._get_entry_from_raw(pieces[1])
             if info and info.get("litellm_provider") == pieces[0]:
                 return info
         return dict()
