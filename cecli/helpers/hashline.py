@@ -430,8 +430,8 @@ def get_hashline_diff(
             original_lines = original_content.splitlines()
             text_lines = text.splitlines()
             # Get up to 3 lines of context before (ending at found_end) and after the insertion point
-            ctx_before = original_lines[max(0, found_end - 2) : found_end + 1]
-            ctx_after = original_lines[found_end + 1 : min(len(original_lines), found_end + 4)]
+            ctx_before = original_lines[max(0, found_end - 6) : found_end]
+            ctx_after = original_lines[found_end + 1 : min(len(original_lines), found_end + 7)]
             # Build a mini document with context so HashPos computes correct neighborhood hashes
             mini_lines = ctx_before + text_lines + ctx_after
             mini_text = "\n".join(mini_lines)
@@ -453,8 +453,8 @@ def get_hashline_diff(
             original_lines = original_content.splitlines()
             text_lines = text.splitlines()
             # Get up to 3 lines of context before and after the range
-            ctx_before = original_lines[max(0, found_start - 3) : found_start]
-            ctx_after = original_lines[found_end + 1 : min(len(original_lines), found_end + 4)]
+            ctx_before = original_lines[max(0, found_start - 6) : found_start]
+            ctx_after = original_lines[found_end + 1 : min(len(original_lines), found_end + 7)]
             # Build a mini document with context so HashPos computes correct neighborhood hashes
             mini_lines = ctx_before + text_lines + ctx_after
             mini_text = "\n".join(mini_lines)
