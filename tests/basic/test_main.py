@@ -162,7 +162,7 @@ def test_main_copy_paste_model_overrides(dummy_io, git_temp_dir):
 
 
 def test_main_copy_paste_flag_sets_mode(dummy_io, git_temp_dir, mocker):
-    mock_watcher = mocker.patch("cecli.main.ClipboardWatcher")
+    mock_watcher = mocker.patch("cecli.helpers.copypaste.ClipboardWatcher")
     mock_watcher.return_value = MagicMock()
     coder = main(
         ["--no-git", "--exit", "--yes-always", "--copy-paste"], **dummy_io, return_coder=True
@@ -346,12 +346,17 @@ def test_encodings_arg(dummy_io, git_temp_dir, mocker):
     MockCoder = mocker.patch("cecli.coders.Coder.create")
     mock_coder_instance = MockCoder.return_value
     mock_coder_instance._autosave_future = mock_autosave_future()
-    MockSend = mocker.patch("cecli.main.InputOutput")
+    MockSend = mocker.patch("cecli.io.InputOutput")
 
     def side_effect(*args, **kwargs):
         assert kwargs["encoding"] == "iso-8859-15"
         mock_io = MagicMock()
         mock_io.confirm_ask = AsyncMock(return_value=True)
+        mock_io = MagicMock()
+        mock_io.confirm_ask = AsyncMock(return_value=True)
+        mock_io.offer_url = AsyncMock()
+        mock_io.tool_output = MagicMock()
+        mock_io.tool_error = MagicMock()
         return mock_io
 
     MockSend.side_effect = side_effect
@@ -359,9 +364,10 @@ def test_encodings_arg(dummy_io, git_temp_dir, mocker):
 
 
 def test_main_exit_calls_version_check(dummy_io, git_temp_dir, mocker):
-    mock_check_version = mocker.patch("cecli.main.check_version")
-    mock_input_output = mocker.patch("cecli.main.InputOutput")
+    mock_check_version = mocker.patch("cecli.versioncheck.check_version")
+    mock_input_output = mocker.patch("cecli.io.InputOutput")
     mock_input_output.return_value.confirm_ask = AsyncMock(return_value=True)
+    mock_input_output.return_value.offer_url = AsyncMock()
     main(["--exit", "--check-update"], **dummy_io)
     mock_check_version.assert_called_once()
     mock_input_output.assert_called_once()
@@ -369,7 +375,7 @@ def test_main_exit_calls_version_check(dummy_io, git_temp_dir, mocker):
 
 def test_main_message_adds_to_input_history(dummy_io, mocker):
     mocker.patch("cecli.coders.base_coder.Coder.run")
-    MockInputOutput = mocker.patch("cecli.main.InputOutput", autospec=True)
+    MockInputOutput = mocker.patch("cecli.io.InputOutput", autospec=True)
     test_message = "test message"
     mock_io_instance = MockInputOutput.return_value
     mock_io_instance.pretty = True
@@ -379,7 +385,7 @@ def test_main_message_adds_to_input_history(dummy_io, mocker):
 
 def test_yes_always(dummy_io, mocker):
     mocker.patch("cecli.coders.base_coder.Coder.run")
-    MockInputOutput = mocker.patch("cecli.main.InputOutput", autospec=True)
+    MockInputOutput = mocker.patch("cecli.io.InputOutput", autospec=True)
     test_message = "test message"
     MockInputOutput.return_value.pretty = True
     main(["--yes-always", "--message", test_message])
@@ -389,7 +395,7 @@ def test_yes_always(dummy_io, mocker):
 
 def test_default_of_yes_all_is_none(dummy_io, mocker):
     mocker.patch("cecli.coders.base_coder.Coder.run")
-    MockInputOutput = mocker.patch("cecli.main.InputOutput", autospec=True)
+    MockInputOutput = mocker.patch("cecli.io.InputOutput", autospec=True)
     test_message = "test message"
     MockInputOutput.return_value.pretty = True
     main(["--message", test_message])
@@ -403,8 +409,9 @@ def test_default_of_yes_all_is_none(dummy_io, mocker):
     ids=["dark_mode", "light_mode"],
 )
 def test_mode_sets_code_theme(mode_flag, expected_theme, dummy_io, git_temp_dir, mocker):
-    MockInputOutput = mocker.patch("cecli.main.InputOutput")
+    MockInputOutput = mocker.patch("cecli.io.InputOutput")
     MockInputOutput.return_value.get_input.return_value = None
+    MockInputOutput.return_value.offer_url = AsyncMock()
     main([mode_flag, "--no-git", "--exit"], **dummy_io)
     MockInputOutput.assert_called_once()
     _, kwargs = MockInputOutput.call_args
@@ -429,8 +436,10 @@ def test_env_file_variables(
     env_file_path.write_text(env_content)
     is_dark_mode_test = check_attribute == "code_theme"
     if is_dark_mode_test:
-        MockInputOutput = mocker.patch("cecli.main.InputOutput")
+        MockInputOutput = mocker.patch("cecli.io.InputOutput")
         MockInputOutput.return_value.get_input.return_value = None
+        MockInputOutput.return_value.get_input.confirm_ask = True
+        MockInputOutput.return_value.offer_url = AsyncMock()
         MockInputOutput.return_value.get_input.confirm_ask = True
     args = ["--no-git", "--exit" if is_dark_mode_test else "--yes-always"]
     if use_flag:
@@ -1293,7 +1302,7 @@ def test_model_accepts_settings_attribute(dummy_io, git_temp_dir, mocker):
 )
 def test_stream_cache_warning(dummy_io, git_temp_dir, mocker, flags, should_warn):
     """Test warning shown only when both streaming and caching are enabled."""
-    MockInputOutput = mocker.patch("cecli.main.InputOutput", autospec=True)
+    MockInputOutput = mocker.patch("cecli.io.InputOutput", autospec=True)
     mock_io_instance = MockInputOutput.return_value
     mock_io_instance.pretty = True
     args = flags + ["--exit", "--yes-always"]

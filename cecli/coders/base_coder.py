@@ -31,12 +31,6 @@ from typing import List
 from urllib.parse import urlparse
 from uuid import uuid4 as generate_unique_id
 
-import httpx
-from litellm import experimental_mcp_client
-from litellm.types.utils import ModelResponse
-from prompt_toolkit.patch_stdout import patch_stdout
-from rich.console import Console
-
 import cecli.prompts.utils.system as prompts
 from cecli import __version__, models, urls, utils
 from cecli.commands import Commands, SwitchCoderSignal
@@ -1489,6 +1483,8 @@ class Coder(metaclass=UsageMeta):
             return await self._run_linear(with_message, preproc)
 
         if self.io.prompt_session:
+            from prompt_toolkit.patch_stdout import patch_stdout
+
             with patch_stdout(raw=True):
                 return await self._run_parallel(with_message, preproc)
         else:
@@ -1973,7 +1969,10 @@ class Coder(metaclass=UsageMeta):
 
     def keyboard_interrupt(self):
         # Ensure cursor is visible on exit
-        Console().show_cursor(True)
+        if not self.tui:
+            from rich.console import Console
+
+            Console().show_cursor(True)
 
         self.io.tool_warning("^C KeyboardInterrupt")
         self.interrupt_event.set()
@@ -2900,6 +2899,8 @@ class Coder(metaclass=UsageMeta):
 
     async def _execute_mcp_tools(self, server, tool_calls):
         """Execute MCP tools via LiteLLM."""
+        import httpx
+
         tool_responses = []
         try:
             # Connect to the server once
@@ -2947,6 +2948,8 @@ class Coder(metaclass=UsageMeta):
                             continue
 
                         async def do_tool_call():
+                            from litellm import experimental_mcp_client
+
                             return await experimental_mcp_client.call_openai_tool(
                                 session=session,
                                 openai_tool=new_tool_call,
@@ -3385,6 +3388,8 @@ class Coder(metaclass=UsageMeta):
             return prompts.added_files.format(fnames=", ".join(added_fnames))
 
     async def send(self, messages, model=None, functions=None, tools=None):
+        from litellm.types.utils import ModelResponse
+
         self.interrupt_event.clear()
         self.got_reasoning_content = False
         self.ended_reasoning_content = False
@@ -3471,6 +3476,8 @@ class Coder(metaclass=UsageMeta):
                     self.io.ai_output(json.dumps(args, indent=4))
 
     async def show_send_output(self, completion):
+        from litellm.types.utils import ModelResponse
+
         if self.verbose:
             print(completion)
 

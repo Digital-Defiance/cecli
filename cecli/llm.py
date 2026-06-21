@@ -16,6 +16,7 @@ APP_NAME = "cecli"
 os.environ["OR_SITE_URL"] = SITE_URL
 os.environ["OR_APP_NAME"] = APP_NAME
 os.environ["LITELLM_MODE"] = "PRODUCTION"
+os.environ["LITELLM_LOCAL_MODEL_COST"] = "true"
 
 # `import litellm` takes 1.5 seconds, defer it!
 

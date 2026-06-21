@@ -71,16 +71,19 @@ class FileSystemService:
         cls._instance = None
 
     @classmethod
-    def get_instance(cls, root: str = ".", repo=None) -> "FileSystemService":
+    def get_instance(cls, root: str | None = None, repo=None) -> "FileSystemService":
         """
         Return the global singleton.
 
         On first call, creates and builds the instance using root/repo.
-        Subsequent calls return the existing instance (root/repo
-        parameters are ignored). This ensures all agents share one
-        file index regardless of when they're spawned.
+        Subsequent calls return the existing instance. If a non-None root
+        is explicitly provided and differs from the current root, the
+        singleton is rebuilt (e.g. when a new coder is created in a
+        different working directory).
         """
         if cls._instance is None:
+            cls._instance = cls._create(root=root or ".", repo=repo)
+        elif root is not None and root != cls._instance.root:
             cls._instance = cls._create(root=root, repo=repo)
         return cls._instance
 
