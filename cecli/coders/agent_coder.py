@@ -627,7 +627,8 @@ class AgentCoder(Coder):
                 if percentage > 80:
                     result += "\n\n⚠ **Context is getting full!**\n"
                     result += "- Remove non-essential files via the `ContextManager` tool.\n"
-                    result += "- Keep only essential files in context for best performance"
+                    result += "- Remove unused MCP servers via the `RemoveMcp` tool to free context space.\n"
+                    result += "- Keep only essential files and MCP servers in context for best performance"
             result += "\n</context>"
             if not hasattr(self, "context_blocks_cache"):
                 self.context_blocks_cache = {}
@@ -661,7 +662,9 @@ class AgentCoder(Coder):
                     result += f"- Git repository: {rel_repo_dir} with {num_files:,} files\n"
                 except Exception:
                     result += "- Git repository: active but details unavailable\n"
-            else:
+                if self.mcp_manager and self.mcp_manager.connected_servers:
+                    num_mcp_servers = len(self.mcp_manager.connected_servers)
+                    result += f"- Connected MCP servers: {num_mcp_servers}\n"
                 result += "- Git repository: none\n"
             result += "</context>"
             return result
