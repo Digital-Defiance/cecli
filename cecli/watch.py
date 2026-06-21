@@ -7,7 +7,6 @@ from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 from cecli.dump import dump  # noqa
-from cecli.helpers.grep_ast import TreeContext
 from cecli.watch_prompts import watch_ask_prompt, watch_code_prompt
 
 
@@ -185,6 +184,7 @@ class FileWatcher:
 
     def process_changes(self):
         """Get any detected file changes"""
+        from cecli.helpers.grep_ast import TreeContext
 
         has_action = None
         added = False

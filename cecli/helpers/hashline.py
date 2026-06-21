@@ -1,8 +1,6 @@
 import difflib
 import re
 
-from cecli.helpers.grep_ast.parsers import filename_to_lang
-from cecli.helpers.grep_ast.tsl import get_language, get_parser
 from cecli.helpers.hashpos.hashpos import HashPos
 
 HASHLINE_PREFIX_RE = HashPos.HASH_PREFIX_RE
@@ -1450,6 +1448,9 @@ def _apply_closure_safeguard(
         return resolved_ops
 
     # Determine language from file path
+    from cecli.helpers.grep_ast.parsers import filename_to_lang
+    from cecli.helpers.grep_ast.tsl import get_language, get_parser
+
     lang = filename_to_lang(file_path)
     if not lang:
         return resolved_ops
