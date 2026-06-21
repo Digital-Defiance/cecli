@@ -220,7 +220,7 @@ class Scraper:
         return None, None
 
     def try_pandoc(self):
-        if self.pandoc_available:
+        if self.pandoc_available is not None:
             return
 
         try:
@@ -232,11 +232,9 @@ class Scraper:
 
         try:
             pypandoc.download_pandoc(delete_installer=True)
-        except Exception as err:
-            self.print_error(f"Unable to install pandoc: {err}")
-            return
-
-        self.pandoc_available = True
+            self.pandoc_available = True
+        except Exception:
+            self.pandoc_available = False
 
     def html_to_markdown(self, page_source):
         from bs4 import BeautifulSoup
