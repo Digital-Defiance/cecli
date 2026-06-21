@@ -1,5 +1,9 @@
 from typing import List
 
+from cecli.commands.utils.helpers import (
+    is_server_globally_excluded,
+    update_server_registration,
+)
 from cecli.tools.utils.base_tool import BaseTool
 
 
@@ -39,13 +43,13 @@ class Tool(BaseTool):
 
         # Determine which servers to act on
         if servers == ["*"]:
-            servers_to_action.extend(coder.mcp_manager.connected_servers.keys())
+            servers_to_action.extend(s.name for s in coder.mcp_manager.connected_servers)
         else:
             for server_name in servers:
                 server = coder.mcp_manager.get_server(server_name)
                 if not server:
                     results.append(f"MCP server {server_name} does not exist.")
-                elif server.name not in coder.mcp_manager.connected_servers:
+                elif server.name not in {s.name for s in coder.mcp_manager.connected_servers}:
                     results.append(f"Server {server_name} is not currently connected.")
                 else:
                     servers_to_action.append(server.name)
@@ -58,20 +62,34 @@ class Tool(BaseTool):
         if not servers_to_action:
             return "No servers to remove."
 
-        # Process the removal
+        # Process the removal with server registration awareness
         for server_name in servers_to_action:
-            coder.interrupt_event.clear()
-            did_disconnect, interrupted = await coder.coroutines.interruptible(
-                coder.mcp_manager.disconnect_server(server_name),
-                coder.interrupt_event,
-            )
-
-            if interrupted:
-                results.append(f"Interrupted: {server_name}")
+            # Never remove the "local" server
+            if server_name == "Local":
+                results.append("Cannot remove 'Local' server")
                 continue
-            if did_disconnect:
-                results.append(f"Removed server: {server_name}")
+
+            # Force-exclude on the primary (active) coder
+            update_server_registration(coder, server_name, "exclude", force=True)
+
+            # Check if all coders in the hierarchy have this server excluded
+            all_excluded = is_server_globally_excluded(coder, server_name)
+
+            if all_excluded:
+                coder.interrupt_event.clear()
+                did_disconnect, interrupted = await coder.coroutines.interruptible(
+                    coder.mcp_manager.disconnect_server(server_name),
+                    coder.interrupt_event,
+                )
+
+                if interrupted:
+                    results.append(f"Interrupted: {server_name}")
+                    continue
+                if did_disconnect:
+                    results.append(f"Removed server: {server_name}")
+                else:
+                    results.append(f"Unable to remove server: {server_name}")
             else:
-                results.append(f"Unable to remove server: {server_name}")
+                results.append(f"Removed from active coder, still active for others: {server_name}")
 
         return "\n".join(results)
