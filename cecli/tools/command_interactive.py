@@ -2,6 +2,8 @@
 import asyncio
 import fnmatch
 
+import xxhash
+
 from cecli.run_cmd import run_cmd
 from cecli.tools.utils.base_tool import BaseTool
 
@@ -9,6 +11,7 @@ from cecli.tools.utils.base_tool import BaseTool
 class Tool(BaseTool):
     NORM_NAME = "commandinteractive"
     TRACK_INVOCATIONS = False
+    ALLOWED_SESSION_COMMANDS = {}
     SCHEMA = {
         "type": "function",
         "function": {
@@ -36,11 +39,61 @@ class Tool(BaseTool):
         """Check if command matches any allowed_commands patterns."""
         if hasattr(coder, "agent_config"):
             allowed_commands = coder.agent_config.get("allowed_commands", [])
-            for pattern in allowed_commands:
-                if fnmatch.fnmatch(command_string, pattern):
-                    return True
-
+            if allowed_commands:
+                for pattern in allowed_commands:
+                    if fnmatch.fnmatch(command_string, pattern):
+                        return True
         return False
+
+    @staticmethod
+    def _hash_command(command):
+        """Compute an xxhash of the full command text for session tracking."""
+        if not command:
+            return command
+
+        return xxhash.xxh64(command).hexdigest()
+
+    @classmethod
+    async def _get_confirmation(cls, coder, command_string):
+        """Get user confirmation for command execution."""
+        # Hash command for dict key lookup
+        command_hash = cls._hash_command(command_string)
+
+        # Check if command is already handled for this session
+        if command_hash in cls.ALLOWED_SESSION_COMMANDS:
+            if cls.ALLOWED_SESSION_COMMANDS[command_hash]:
+                return True  # Previously approved for session
+            # Previously declined - skip session question, continue to normal confirmation
+
+        if coder.skip_cli_confirmations:
+            return True
+
+        # Check if command matches any allowed_commands patterns
+        if cls._is_command_allowed(coder, command_string):
+            return True
+
+        formatted_command = coder.format_command_with_prefix(command_string)
+
+        confirmed = await coder.io.confirm_ask(
+            "Allow execution of this command?",
+            subject=formatted_command,
+            explicit_yes_required=True,
+            allow_never=True,
+            group_response="Command Interactive Tool",
+        )
+
+        if not confirmed:
+            return False
+
+        # Ask if user wants to allow for the entire session (only once per command)
+        if command_hash not in cls.ALLOWED_SESSION_COMMANDS:
+            session_allowed = await coder.io.confirm_ask(
+                "Allow this command for the rest of the session?",
+                subject=formatted_command,
+            )
+            cls.ALLOWED_SESSION_COMMANDS[command_hash] = session_allowed
+
+        return True
 
     @classmethod
     async def execute(cls, coder, command_string, **kwargs):
@@ -48,27 +101,11 @@ class Tool(BaseTool):
         Execute an interactive shell command using run_cmd (which uses pexpect/PTY).
         """
         try:
-            command_string = coder.format_command_with_prefix(command_string)
-
-            confirmed = (
-                True
-                if coder.skip_cli_confirmations or cls._is_command_allowed(coder, command_string)
-                else await coder.io.confirm_ask(
-                    "Allow execution of this command?",
-                    subject=command_string,
-                    explicit_yes_required=True,  # Require explicit 'yes' or 'always'
-                    allow_never=True,  # Enable the 'Always' option
-                    group_response="Command Interactive Tool",
-                )
-            )
-
+            confirmed = await cls._get_confirmation(coder, command_string)
             if not confirmed:
-                # This happens if the user explicitly says 'no' this time.
-                # If 'Always' was chosen previously, confirm_ask returns True directly.
-                coder.io.tool_output(
-                    f"Skipped execution of shell command: {command_string}", type="tool-result"
-                )
                 return "Shell command execution skipped by user."
+
+            command_string = coder.format_command_with_prefix(command_string)
 
             coder.io.tool_output(
                 f"⛭ Starting interactive shell command: {command_string}", type="tool-result"
@@ -86,7 +123,6 @@ class Tool(BaseTool):
                 )
 
             if tui:
-                # Notify user and suspend TUI for interactive command
                 coder.io.tool_output(
                     ">>> Suspending TUI for interactive command <<<", type="tool-result"
                 )
@@ -107,10 +143,8 @@ class Tool(BaseTool):
 
             # Format the output for the result message, include more content
             output_content = combined_output or ""
-            # Use the existing token threshold constant as the character limit for truncation
             output_limit = coder.large_file_token_threshold
             if coder.context_management_enabled and len(output_content) > output_limit:
-                # Truncate and add a clear message using the constant value
                 output_content = (
                     output_content[:output_limit]
                     + f"\n... (output truncated at {output_limit} characters, based on"

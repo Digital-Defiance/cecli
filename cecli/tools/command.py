@@ -3,6 +3,8 @@ import fnmatch
 import os
 import platform
 
+import xxhash
+
 from cecli.helpers.background_commands import BackgroundCommandManager
 from cecli.run_cmd import run_cmd_subprocess
 from cecli.tools.utils.base_tool import BaseTool
@@ -14,6 +16,7 @@ from cecli.tools.validations import ToolValidations
 class Tool(BaseTool):
     NORM_NAME = "command"
     TRACK_INVOCATIONS = False
+    ALLOWED_SESSION_COMMANDS = {}
     SCHEMA = {
         "type": "function",
         "function": {
@@ -70,6 +73,14 @@ class Tool(BaseTool):
             return command.split("::", 1)[1].strip()
         return None
 
+    @staticmethod
+    def _hash_command(command):
+        """Compute an xxhash of the full command text for session tracking."""
+        if not command:
+            return command
+
+        return xxhash.xxh64(command).hexdigest()
+
     @classmethod
     async def execute(
         cls, coder, command, background=False, stop=None, stdin=None, pty=False, **kwargs
@@ -124,6 +135,8 @@ class Tool(BaseTool):
         if not confirmed:
             return "Command execution skipped by user."
 
+        command = coder.format_command_with_prefix(command)
+
         # Determine timeout from agent_config (default: 30 seconds)
         timeout = 0
         if hasattr(coder, "agent_config"):
@@ -139,6 +152,15 @@ class Tool(BaseTool):
     @classmethod
     async def _get_confirmation(cls, coder, command_string, background):
         """Get user confirmation for command execution."""
+        # Hash command for dict key lookup
+        command_hash = cls._hash_command(command_string)
+
+        # Check if command is already handled for this session
+        if command_hash in cls.ALLOWED_SESSION_COMMANDS:
+            if cls.ALLOWED_SESSION_COMMANDS[command_hash]:
+                return True  # Previously approved for session
+            # Previously declined - skip session question, continue to normal confirmation
+
         if coder.skip_cli_confirmations:
             return True
 
@@ -150,20 +172,31 @@ class Tool(BaseTool):
                     if fnmatch.fnmatch(command_string, pattern):
                         return True
 
-        command_string = coder.format_command_with_prefix(command_string)
+        formatted_command = coder.format_command_with_prefix(command_string)
 
         if background:
             prompt = "Allow execution of this background command?"
         else:
             prompt = "Allow execution of this command?"
 
-        return await coder.io.confirm_ask(
+        confirmed = await coder.io.confirm_ask(
             prompt,
-            subject=command_string,
+            subject=formatted_command,
             explicit_yes_required=True,
             allow_never=True,
             group_response="Command Tool",
         )
+
+        if confirmed:
+            # Ask if user wants to allow for the entire session (only once per command)
+            if command_hash not in cls.ALLOWED_SESSION_COMMANDS:
+                session_allowed = await coder.io.confirm_ask(
+                    "Allow this command for the rest of the session?",
+                    subject=formatted_command,
+                )
+                cls.ALLOWED_SESSION_COMMANDS[command_hash] = session_allowed
+
+        return confirmed
 
     @classmethod
     async def _execute_background(cls, coder, command_string, use_pty=False):
