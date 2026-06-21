@@ -37,7 +37,7 @@ class ListMcpCommand(BaseCommand):
         else:
             result.append("No other MCP servers are configured.")
 
-        return format_command_result(io, cls.NORM_NAME, "", "\n".join(result))
+        return format_command_result(io, cls.NORM_NAME, "\n".join(result))
 
     @classmethod
     def get_help(cls) -> str:
