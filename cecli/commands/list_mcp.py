@@ -15,21 +15,44 @@ class ListMcpCommand(BaseCommand):
         all_servers = coder.mcp_manager.servers
         connected_servers = coder.mcp_manager.connected_servers
 
-        loaded_server_names = {server.name for server in connected_servers}
+        connected_server_names = {s.name for s in connected_servers}
+
+        # Apply per-coder registered_servers filtering to determine active status
+        incl = coder.registered_servers["included"]
+        excl = coder.registered_servers["excluded"]
+
+        active_servers = []
+        inactive_servers = []
+
+        for server in connected_servers:
+            name = server.name
+            # Same filtering logic used in base_coder.get_tool_list()
+            if incl and name not in incl:
+                inactive_servers.append(name)
+            elif name in excl:
+                inactive_servers.append(name)
+            else:
+                active_servers.append(name)
+
         configured_servers = [
-            server for server in all_servers if server.name not in loaded_server_names
+            server for server in all_servers if server.name not in connected_server_names
         ]
 
         result = []
-        if loaded_server_names:
-            result.append("Loaded MCP Servers:")
-            for name in sorted(list(loaded_server_names)):
+        if active_servers:
+            result.append("Active MCP Servers:")
+            for name in sorted(active_servers):
                 result.append(f"- {name}")
         else:
-            result.append("No MCP servers are currently loaded.")
+            result.append("No MCP servers are active for this coder.")
+
+        if inactive_servers:
+            result.append("")
+            result.append("Inactive (Filtered) MCP Servers:")
+            for name in sorted(inactive_servers):
+                result.append(f"- {name}")
 
         result.append("")
-
         if configured_servers:
             result.append("Configured MCP Servers:")
             for server in sorted(configured_servers, key=lambda s: s.name):
@@ -44,5 +67,5 @@ class ListMcpCommand(BaseCommand):
         """Get help text for the list-mcp command."""
         help_text = super().get_help()
         help_text += "\nUsage:\n"
-        help_text += "  /list-mcp  # Lists all loaded and configured MCP servers\n"
+        help_text += "  /list-mcp  # Lists MCP servers with coder-sensitive active/inactive/configured status\n"
         return help_text
