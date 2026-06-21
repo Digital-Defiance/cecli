@@ -183,6 +183,7 @@ class AgentCoder(Coder):
                     "todo_list",
                     "sub_agents",
                     "skills",
+                    "mcp_servers",
                 },
             )
         )
@@ -364,6 +365,7 @@ class AgentCoder(Coder):
                 "skills",
                 "sub_agents",
                 "loaded_skills",
+                "mcp_servers",
             ]
             for block_type in block_types:
                 if block_type in self.allowed_context_blocks:
@@ -402,6 +404,8 @@ class AgentCoder(Coder):
             not self.parent_uuid or self.agent_config.get("allow_nested_delegation", False)
         ):
             content = self.get_sub_agents_context()
+        elif block_name == "mcp_servers":
+            content = self.get_mcp_servers_context()
         if content is not None:
             self.context_blocks_cache[block_name] = content
         return content
@@ -1510,6 +1514,51 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
             return result
         except Exception as e:
             self.io.tool_error(f"Error generating sub-agents context: {str(e)}")
+            return None
+
+    def get_mcp_servers_context(self):
+        """
+        Generate a context block for available and loaded MCP servers.
+
+        Returns:
+            Formatted context block string or None if no MCP manager is available.
+        """
+        if not self.use_enhanced_context or not self.mcp_manager:
+            return None
+
+        try:
+            result = '<context name="mcp_servers" from="agent">\n'
+            result += "## MCP Servers\n\n"
+
+            all_servers = self.mcp_manager.servers
+            connected_servers = self.mcp_manager.connected_servers
+
+            loaded_server_names = {server.name for server in connected_servers}
+            available_servers = [
+                server for server in all_servers if server.name not in loaded_server_names
+            ]
+
+            if loaded_server_names:
+                result += "### Loaded Servers\n"
+                result += "The following MCP servers are currently loaded and their tools are available:\n"
+                for name in sorted(list(loaded_server_names)):
+                    result += f"- {name}\n"
+                result += "\n"
+            else:
+                result += "No MCP servers are currently loaded.\n\n"
+
+            if available_servers:
+                result += "### Available Servers\n"
+                result += "The following MCP servers are available to be loaded:\n"
+                for server in sorted(available_servers, key=lambda s: s.name):
+                    result += f"- {server.name}\n"
+                result += "\n"
+
+            result += "Use the `LoadMcp` and `RemoveMcp` tools to manage servers.\n"
+            result += "</context>"
+            return result
+        except Exception as e:
+            self.io.tool_error(f"Error generating MCP servers context: {str(e)}")
             return None
 
     def get_child_agent_states(self):
