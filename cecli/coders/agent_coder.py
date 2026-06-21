@@ -1512,7 +1512,6 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
             self.io.tool_error(f"Error generating sub-agents context: {str(e)}")
             return None
 
-
     def get_child_agent_states(self):
         """Get the state of all active child sub-agents.
 
