@@ -32,7 +32,7 @@ from cecli.utils import copy_tool_call, tool_call_to_dict
 
 from .base_coder import Coder
 
-from cecli.helpers import coroutines  # isort:skip
+from cecli.helpers.coroutines import interruptible  # isort:skip
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class AgentCoder(Coder):
 
     def post_init(self):
         super().post_init()
-        self.coroutines = coroutines
+
         if not self._inherited_tools:
             # Populate per-instance tool and server filters from config
             self.registered_tools["included"] = set(
@@ -325,9 +325,7 @@ class AgentCoder(Coder):
                 self.io.tool_warning(f"Executing {tool_name} on {server.name} failed:\nError: {e}")
                 return f"Error executing tool call {tool_name}: {e}"
 
-        result, interrupted = await self.coroutines.interruptible(
-            _exec_async(), self.interrupt_event
-        )
+        result, interrupted = await interruptible(_exec_async(), self.interrupt_event)
 
         if interrupted:
             return "Tool execution interrupted by user."
@@ -771,7 +769,7 @@ class AgentCoder(Coder):
                     async def gather_and_await():
                         return await asyncio.gather(*tasks, return_exceptions=True)
 
-                    task_results, interrupted = await self.coroutines.interruptible(
+                    task_results, interrupted = await interruptible(
                         gather_and_await(), self.interrupt_event
                     )
 
@@ -811,9 +809,7 @@ class AgentCoder(Coder):
         if self.auto_lint and used_write_tool:
             edited = list(self.files_edited_by_tools)
             lint_coro = self.lint_edited(edited, show_output=False)
-            lint_errors, interrupted = await self.coroutines.interruptible(
-                lint_coro, self.interrupt_event
-            )
+            lint_errors, interrupted = await interruptible(lint_coro, self.interrupt_event)
             if interrupted:
                 raise KeyboardInterrupt("Interrupted during linting")
 
@@ -933,9 +929,7 @@ class AgentCoder(Coder):
             )
             self.io.tool_output(waiting_msg)
             sleep_coro = asyncio.sleep(command_timeout / 2)
-            _res, interrupted = await self.coroutines.interruptible(
-                sleep_coro, self.interrupt_event
-            )
+            _res, interrupted = await interruptible(sleep_coro, self.interrupt_event)
             if interrupted:
                 raise KeyboardInterrupt("Interrupted while waiting for background commands")
             return True
