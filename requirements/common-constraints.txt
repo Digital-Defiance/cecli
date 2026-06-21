@@ -175,6 +175,8 @@ joblib==1.5.2
     # via
     #   nltk
     #   scikit-learn
+json-repair==0.60.1
+    # via -r requirements/requirements.in
 json5==0.12.1
     # via -r requirements/requirements.in
 jsonschema==4.25.1
@@ -200,6 +202,8 @@ llama-index-workflows==2.11.5
     # via llama-index-core
 lox==1.0.0
     # via -r requirements/requirements-dev.in
+marisa-trie==1.4.1
+    # via -r requirements/requirements.in
 markdown-it-py[linkify]==4.0.0
     # via
     #   mdit-py-plugins
@@ -237,6 +241,8 @@ networkx==3.6
     # via
     #   llama-index-core
     #   torch
+ngram==4.0.3
+    # via -r requirements/requirements.in
 nltk==3.9.2
     # via llama-index-core
 nodeenv==1.9.1
@@ -423,6 +429,8 @@ pyyaml==6.0.3
     #   llama-index-core
     #   pre-commit
     #   transformers
+rapidfuzz==3.14.5
+    # via -r requirements/requirements.in
 referencing==0.37.0
     # via
     #   jsonschema

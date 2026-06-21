@@ -1,9 +1,11 @@
 import asyncio
-import json
 import logging
 
+from cecli.helpers.threading import ThreadSafeEvent
 from cecli.tools.utils.base_tool import BaseTool
+from cecli.tools.utils.helpers import ToolError
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
+from cecli.tools.validations import ToolValidations
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,10 @@ class Tool(BaseTool):
         "type": "function",
         "function": {
             "name": "Yield",
-            "description": "Yield control back to the user, indicating all sub-goals are complete.",
+            "description": (
+                "Yield control to subagents, to await their results or back to the user,"
+                " indicating all sub-goals are complete."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -40,7 +45,7 @@ class Tool(BaseTool):
 
         This gives the LLM explicit control over when it can stop looping
         """
-        from cecli.helpers.agents.service import AgentService
+        from cecli.helpers.agents.service import AgentService, SubAgentStatus
 
         cls.clear_invocation_cache()
 
@@ -64,7 +69,7 @@ class Tool(BaseTool):
                     # the interrupt event, avoiding nested asyncio.wait() calls.
                     interrupt_event = coder.interrupt_event
                     if interrupt_event is None:
-                        interrupt_event = asyncio.Event()
+                        interrupt_event = ThreadSafeEvent()
 
                     interrupt_task = asyncio.create_task(interrupt_event.wait())
                     pending = set(active_tasks) | {interrupt_task}
@@ -104,6 +109,50 @@ class Tool(BaseTool):
                         except asyncio.CancelledError:
                             pass
 
+                    # Wait for non-independent child agents to reach a terminal status
+                    children = agent_service.get_children(coder)
+                    non_independent_children = [info for info in children if not info.independent]
+
+                    if non_independent_children:
+                        interrupt_event = coder.interrupt_event
+                        if interrupt_event is None:
+                            interrupt_event = ThreadSafeEvent()
+
+                        interrupt_task = asyncio.create_task(interrupt_event.wait())
+
+                        while True:
+                            refreshed_children = agent_service.get_children(coder)
+                            non_dependent_active = [
+                                info
+                                for info in refreshed_children
+                                if not info.independent
+                                and info.status
+                                not in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR)
+                            ]
+
+                            if not non_dependent_active:
+                                break
+
+                            done, _ = await asyncio.wait(
+                                [interrupt_task],
+                                timeout=2,
+                                return_when=asyncio.FIRST_COMPLETED,
+                            )
+
+                            if interrupt_task in done:
+                                # Interrupted — stop waiting
+                                if not interrupt_task.done():
+                                    interrupt_task.cancel()
+                                break
+
+                        if not interrupt_task.done():
+                            interrupt_task.cancel()
+                            try:
+                                await interrupt_task
+                            except asyncio.CancelledError:
+                                pass
+
+                    await agent_service.reap_all_finished_agents(parent=coder)
                     # Don't mark as finished — the coder should review sub-agent
                     # outputs and decide how to proceed
                     return (
@@ -150,9 +199,17 @@ class Tool(BaseTool):
     @classmethod
     def format_output(cls, coder, mcp_server, tool_response):
         color_start, color_end = color_markers(coder)
-        params = json.loads(tool_response.function.arguments)
 
+        # Output header
         tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+
+        try:
+            params = ToolValidations.validate_params(
+                tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+            )
+        except ToolError:
+            coder.io.tool_error("Invalid Tool JSON")
+            return
 
         summary = params.get("summary")
         if summary:
@@ -161,4 +218,4 @@ class Tool(BaseTool):
             coder.io.tool_output(summary)
             coder.io.tool_output("")
 
-        tool_footer(coder=coder, tool_response=tool_response)
+        tool_footer(coder=coder, tool_response=tool_response, params=params)

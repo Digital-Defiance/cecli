@@ -121,6 +121,7 @@ def get_parser(default_config_files, git_root):
     )
     group.add_argument(
         "--model-overrides",
+        "--model-settings",
         metavar="MODEL_OVERRIDES_JSON",
         help=(
             'Specify model tag overrides directly as JSON/YAML string (e.g., \'{"gpt-4o": {"high":'
@@ -275,7 +276,10 @@ def get_parser(default_config_files, git_root):
     group.add_argument(
         "--retries",
         metavar="RETRIES_JSON",
-        help="Specify LLM retry configuration as a JSON string",
+        help=(
+            'Specify LLM retry configuration as a JSON/YAML string (e.g., \'{"retry_on_empty": '
+            "true}')"
+        ),
         default=None,
     )
 

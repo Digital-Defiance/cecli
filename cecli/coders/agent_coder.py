@@ -51,6 +51,7 @@ class AgentCoder(Coder):
         if kwargs.get("uuid", None):
             self.uuid = kwargs.get("uuid")
 
+        self.start_up_errors = []
         self.recently_removed = {}
         self.tool_usage_history = []
         self.loaded_custom_tools = []
@@ -91,6 +92,7 @@ class AgentCoder(Coder):
         self.allowed_context_blocks = set()
         self.context_block_tokens = {}
         self.context_blocks_cache = {}
+        self.current_tasks = []
         self.hot_reload_enabled = False
         self.tokens_calculated = False
         self.skip_cli_confirmations = False
@@ -109,19 +111,25 @@ class AgentCoder(Coder):
     def post_init(self):
         super().post_init()
         self.coroutines = coroutines
-        # Populate per-instance tool and server filters from config
-        self.registered_tools["included"] = set(
-            map(str.lower, self.agent_config.get("tools_includelist", []))
-        )
-        self.registered_tools["excluded"] = set(
-            map(str.lower, self.agent_config.get("tools_excludelist", []))
-        )
-        self.registered_servers["included"] = set(
-            map(str.lower, self.agent_config.get("servers_includelist", []))
-        )
-        self.registered_servers["excluded"] = set(
-            map(str.lower, self.agent_config.get("servers_excludelist", []))
-        )
+        if not self._inherited_tools:
+            # Populate per-instance tool and server filters from config
+            self.registered_tools["included"] = set(
+                map(str.lower, self.agent_config.get("tools_includelist", []))
+            )
+            self.registered_tools["excluded"] = set(
+                map(str.lower, self.agent_config.get("tools_excludelist", []))
+            )
+            self.registered_servers["included"] = set(
+                map(str.lower, self.agent_config.get("servers_includelist", []))
+            )
+            self.registered_servers["excluded"] = set(
+                map(str.lower, self.agent_config.get("servers_excludelist", []))
+            )
+
+        for err in self.start_up_errors:
+            self.io.tool_warning(err)
+
+        self.start_up_errors = []
 
     def _setup_agent(self):
         os.makedirs(".cecli/temp", exist_ok=True)
@@ -143,7 +151,7 @@ class AgentCoder(Coder):
             try:
                 config = json.loads(self.args.agent_config)
             except (json.JSONDecodeError, TypeError) as e:
-                self.io.tool_warning(f"Failed to parse agent-config JSON: {e}")
+                self.start_up_errors.append(f"Failed to parse agent-config JSON: {e}")
                 return {}
 
         config["large_file_token_threshold"] = nested.getter(
@@ -153,6 +161,7 @@ class AgentCoder(Coder):
             config, "skip_cli_confirmations", nested.getter(config, "yolo", [])
         )
         config["command_timeout"] = nested.getter(config, "command_timeout", 30)
+        config["allowed_commands"] = nested.getter(config, "allowed_commands", [])
         config["hot_reload"] = nested.getter(config, "hot_reload", False)
         config["allow_nested_delegation"] = nested.getter(config, "allow_nested_delegation", False)
 
@@ -161,7 +170,9 @@ class AgentCoder(Coder):
             config, ["tools_includelist", "tools_whitelist"], []
         )
         config["tools_excludelist"] = nested.getter(
-            config, ["tools_excludelist", "tools_blacklist"], []
+            config,
+            ["tools_excludelist", "tools_blacklist"],
+            ["gitbranch", "gitdiff", "gitlog", "gitremote", "gitshow", "gitstatus"],
         )
 
         config["servers_includelist"] = nested.getter(
@@ -175,7 +186,7 @@ class AgentCoder(Coder):
                 config,
                 "include_context_blocks",
                 {
-                    "context_summary",
+                    # "context_summary",
                     # "directory_structure",
                     "environment_info",
                     # "git_status",
@@ -239,20 +250,6 @@ class AgentCoder(Coder):
         super().show_announcements()
         if self.loaded_custom_tools:
             self.io.tool_output(f"Loaded custom tools: {', '.join(self.loaded_custom_tools)}")
-
-        skills = self.skills_manager.find_skills()
-        if skills:
-            skills_list = []
-            for skill in skills:
-                skills_list.append(skill.name)
-            joined_skills = ", ".join(skills_list)
-            self.io.tool_output(f"Available Skills: {joined_skills}")
-
-        registry = AgentService.get_registry()
-        if registry:
-            names = sorted(registry.keys())
-            joined_names = ", ".join(names)
-            self.io.tool_output(f"Available Subagents: {joined_names}")
 
     def get_local_tool_schemas(self):
         """Returns the JSON schemas for all local tools using the tool registry."""
@@ -628,7 +625,7 @@ class AgentCoder(Coder):
                 percentage = total_tokens / max_input_tokens * 100
                 result += f" ({percentage:.1f}% of limit)"
                 if percentage > 80:
-                    result += "\n\n⚠️ **Context is getting full!**\n"
+                    result += "\n\n⚠ **Context is getting full!**\n"
                     result += "- Remove non-essential files via the `ContextManager` tool.\n"
                     result += "- Keep only essential files in context for best performance"
             result += "\n</context>"
@@ -824,6 +821,9 @@ class AgentCoder(Coder):
                     "# Fix any linting errors below, if possible.",
                     "# Fix any linting errors below, if possible and then continue with your task.",
                     1,
+                )
+                ConversationService.get_manager(self).remove_message_by_hash_key(
+                    ("lint_errors", "agent")
                 )
                 ConversationService.get_manager(self).add_message(
                     message_dict=dict(role="user", content=lint_errors),
@@ -1118,7 +1118,7 @@ class AgentCoder(Coder):
             context_parts.append("## File Editing Tools Disabled")
             context_parts.append(
                 "File editing tools are currently disabled. Use `ReadRange` to determine the"
-                " current content hash prefixes needed to perform an edit and activate them when"
+                " current content ID prefixes needed to perform an edit and activate them when"
                 " you are ready to edit a file."
             )
 
@@ -1282,16 +1282,20 @@ class AgentCoder(Coder):
         abs_path = self.abs_root_path(file_path)
         rel_path = self.get_rel_fname(abs_path)
         if not os.path.isfile(abs_path):
-            self.io.tool_output(f"⚠️ File '{file_path}' not found")
+            self.io.tool_output(f"⚠ File '{file_path}' not found", type="tool-result")
             return "File not found"
         if abs_path in self.abs_fnames:
             if explicit:
-                self.io.tool_output(f"📎 File '{file_path}' already in context as editable")
+                self.io.tool_output(
+                    f"🗀  File '{file_path}' already in context as editable", type="tool-result"
+                )
                 return "File already in context as editable"
             return "File already in context as editable"
         if abs_path in self.abs_read_only_fnames:
             if explicit:
-                self.io.tool_output(f"📎 File '{file_path}' already in context as read-only")
+                self.io.tool_output(
+                    f"🗀  File '{file_path}' already in context as read-only", type="tool-result"
+                )
                 return "File already in context as read-only"
             return "File already in context as read-only"
         try:
@@ -1302,13 +1306,18 @@ class AgentCoder(Coder):
                 file_tokens = self.get_active_model().token_count(content)
                 if file_tokens > self.large_file_token_threshold:
                     self.io.tool_output(
-                        f"⚠️ '{file_path}' is very large ({file_tokens} tokens). Use"
-                        " /context-management to toggle truncation off if needed."
+                        (
+                            f"⚠ '{file_path}' is very large ({file_tokens} tokens). Use"
+                            " /context-management to toggle truncation off if needed."
+                        ),
+                        type="tool-result",
                     )
             self.abs_read_only_fnames.add(abs_path)
             self.files_added_in_exploration.add(rel_path)
             if explicit:
-                self.io.tool_output(f"📎 Viewed '{file_path}' (added to context as read-only)")
+                self.io.tool_output(
+                    f"🗀  Viewed '{file_path}' (added to context as read-only)", type="tool-result"
+                )
                 return "Viewed file (added to context as read-only)"
             else:
                 return "Added file to context as read-only"
@@ -1435,10 +1444,11 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
             content = self.io.read_text(abs_path)
             if content is None or not content.strip():
                 return None
+
+            current_tasks = "\n".join(self.current_tasks)
             result = '<context name="todo_list" from="agent">\n'
-            result += "## Current Todo List\n\n"
-            result += "Below is the current todo list managed via the `UpdateTodoList` tool:\n\n"
-            result += f"```\n{content}\n```\n"
+            result += "## Current Active Tasks\n\n"
+            result += f"```{current_tasks}```\n"
             result += "</context>"
             return result
         except Exception as e:
@@ -1531,15 +1541,20 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
         try:
             service = AgentService.get_instance(self)
             children = service.get_children(self)
-
             if not children:
+                return None
+
+            # Filter to non-independent children only
+            dependent_children = [info for info in children if not info.independent]
+
+            if not dependent_children:
                 return None
 
             result = '<context name="sub_agent_states" from="agent">\n'
             result += "## Active Sub-Agent States\n\n"
-            result += f"Found {len(children)} active child sub-agent(s):\n\n"
+            result += f"Found {len(dependent_children)} active child sub-agent(s):\n\n"
 
-            for info in children:
+            for info in dependent_children:
                 result += f"**{info.name}**:\n"
                 result += f"  - UUID: `{info.coder.uuid}`\n"
                 result += f"  - Status: {info.status.value}\n"

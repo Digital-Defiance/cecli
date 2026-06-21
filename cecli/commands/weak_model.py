@@ -9,7 +9,6 @@ from cecli.helpers.conversation import ConversationService
 class WeakModelCommand(BaseCommand):
     NORM_NAME = "weak-model"
     DESCRIPTION = "Switch the Weak Model to a new LLM"
-    show_completion_notification = False
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
@@ -108,7 +107,7 @@ class WeakModelCommand(BaseCommand):
     @classmethod
     def get_completions(cls, io, coder, args) -> List[str]:
         """Get completion options for weak-model command."""
-        return models.get_chat_model_names()
+        return models.get_chat_model_names(query=args)
 
     @classmethod
     def get_help(cls) -> str:

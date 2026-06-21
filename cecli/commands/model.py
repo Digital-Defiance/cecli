@@ -9,7 +9,6 @@ from cecli.helpers.conversation import ConversationService
 class ModelCommand(BaseCommand):
     NORM_NAME = "model"
     DESCRIPTION = "Switch the Main Model to a new LLM"
-    show_completion_notification = False
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
@@ -112,7 +111,7 @@ class ModelCommand(BaseCommand):
     @classmethod
     def get_completions(cls, io, coder, args) -> List[str]:
         """Get completion options for model command."""
-        return models.get_chat_model_names()
+        return models.get_chat_model_names(query=args)
 
     @classmethod
     def get_help(cls) -> str:

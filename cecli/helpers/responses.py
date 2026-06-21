@@ -3,6 +3,7 @@ import re
 import time
 from typing import List, Optional
 
+import json_repair
 from litellm.types.utils import ChatCompletionMessageToolCall, Function
 
 from cecli import utils
@@ -46,17 +47,18 @@ def extract_tools_from_content_json(content: str) -> Optional[List[ChatCompletio
             chunk_index += 1
             try:
                 json_obj = json.loads(chunk)
+                name_keys = ["name", "function"]
                 arg_keys = ["arguments", "parameters", "params"]
 
                 if (
                     isinstance(json_obj, dict)
-                    and "name" in json_obj
+                    and nested.getter(json_obj, name_keys) is not None
                     and any(key in json_obj for key in arg_keys)
                 ):
                     # Create a Pydantic model for the tool call
                     json_args = nested.getter(json_obj, arg_keys)
                     function_obj = Function(
-                        name=json_obj["name"],
+                        name=nested.getter(json_obj, name_keys),
                         arguments=(
                             json.dumps(json_args)
                             if isinstance(json_args, (dict, list))
@@ -73,12 +75,12 @@ def extract_tools_from_content_json(content: str) -> Optional[List[ChatCompletio
                     for item in json_obj:
                         if (
                             isinstance(item, dict)
-                            and "name" in item
+                            and nested.getter(item, name_keys) is not None
                             and any(key in item for key in arg_keys)
                         ):
                             item_args = nested.getter(item, arg_keys)
                             function_obj = Function(
-                                name=item["name"],
+                                name=nested.getter(item, name_keys),
                                 arguments=(
                                     json.dumps(item_args)
                                     if isinstance(item_args, (dict, list))
@@ -109,17 +111,17 @@ def extract_tools_from_content_xml(content: str) -> Optional[List[ChatCompletion
     </parameter>
     </function>
     """
-    if not content or "<function=" not in content:
+    if not content or ("<function=" not in content and "<name=" not in content):
         return None
 
     try:
         extracted_calls = []
-        # Find all blocks between <function=...> and </function>
-        func_blocks = re.finditer(r"<function=(.*?)>(.*?)</function>", content, re.DOTALL)
+        # Find all blocks between <function=...> or <name=...> and their closing tag
+        func_blocks = re.finditer(r"<(function|name)=(.*?)>(.*?)</\1>", content, re.DOTALL)
 
         for i, block_match in enumerate(func_blocks):
-            func_name = block_match.group(1).strip()
-            block_content = block_match.group(2).strip()
+            func_name = block_match.group(2).strip()
+            block_content = block_match.group(3).strip()
 
             params_dict = {}
             param_pattern = r"<parameter=(.*?)>(.*?)</parameter>"
@@ -367,7 +369,8 @@ def parse_tool_arguments(args_string: str) -> dict:
         if isinstance(lone, dict):
             return lone
         try:
-            single = json.loads(chunks[0])
+            json_string = json_repair.repair_json(chunks[0], ensure_ascii=False)
+            single = json.loads(json_string)
         except json.JSONDecodeError as err:
             return {"@error": f"Malformed JSON arguments: {err}"}
         return single if isinstance(single, dict) else {}

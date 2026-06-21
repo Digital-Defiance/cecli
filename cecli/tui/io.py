@@ -134,6 +134,7 @@ class TextualInputOutput(InputOutput):
         """
         # Pop coder_uuid from kwargs before passing to console
         coder_uuid = kwargs.pop("coder_uuid", None)
+        kwargs.pop("type", None)
 
         # Capture Rich rendering with forced ANSI output
         console = self._get_tui_console()
@@ -314,7 +315,8 @@ class TextualInputOutput(InputOutput):
 
         # Check if this is a tool result (comes right after tool call)
         if self._expect_tool_result and text.strip():
-            self._expect_tool_result = False
+            if msg_type != "tool-result":
+                self._expect_tool_result = False
             msg = {
                 "type": "tool_result",
                 "text": text,
@@ -639,34 +641,6 @@ class TextualInputOutput(InputOutput):
                                     return bool(response)
                         except queue.Empty:
                             continue
-
-                    # Fall back to shared queue (blocking with timeout)
-                    result = self.input_queue.get(timeout=0.1)
-
-                    if "confirmed" in result:
-                        response = result["confirmed"]
-
-                        # Handle special responses
-                        if response == "never":
-                            self.never_prompts.add(question_id)
-                            return False
-                        elif response == "tweak":
-                            return "tweak"
-                        elif response == "all":
-                            if group:
-                                group.preference = "all"
-                            if group_response:
-                                self.group_responses[group_response] = True
-                            return True
-                        elif response == "skip":
-                            if group:
-                                group.preference = "skip"
-                            if group_response:
-                                self.group_responses[group_response] = False
-                            return False
-                        else:
-                            # Regular boolean response
-                            return bool(response)
                 except queue.Empty:
                     await asyncio.sleep(0.1)
         except asyncio.CancelledError:

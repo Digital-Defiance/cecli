@@ -1,16 +1,20 @@
 """Delegate tool - allows the primary agent to spawn sub-agents."""
 
 import asyncio
-import json
 
 from cecli.tools.utils.base_tool import BaseTool
+from cecli.tools.utils.helpers import ToolError
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
+from cecli.tools.validations import ToolValidations
 
 
 class Tool(BaseTool):
     NORM_NAME = "delegate"
     TRACK_INVOCATIONS = True
-    LIST_PARAMS = ["delegations"]
+    VALIDATIONS = {
+        "delegations": ["coerce_list"],
+        "delegations[]": ["coerce_dict"],
+    }
     SCHEMA = {
         "type": "function",
         "function": {
@@ -86,9 +90,9 @@ class Tool(BaseTool):
         lines = []
         for name, result in started_agents:
             if result.startswith("failed:"):
-                lines.append(f"❌ **{name}**: {result}")
+                lines.append(f"✗ **{name}**: {result}")
             else:
-                lines.append(f"✅ **{name}** agent started with id `{result}`")
+                lines.append(f"✓ **{name}** agent started with id `{result}`")
 
         n_total = len(started_agents)
         n_ok = sum(1 for _, r in started_agents if not r.startswith("failed:"))
@@ -100,13 +104,16 @@ class Tool(BaseTool):
         """Format output for Delegate tool - show each delegation's agent and task."""
         color_start, color_end = color_markers(coder)
 
+        # Output header
+        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
+
         try:
-            params = json.loads(tool_response.function.arguments)
-        except json.JSONDecodeError:
+            params = ToolValidations.validate_params(
+                tool_response.function.arguments, cls.VALIDATIONS, cls.SCHEMA
+            )
+        except ToolError:
             coder.io.tool_error("Invalid Tool JSON")
             return
-
-        tool_header(coder=coder, mcp_server=mcp_server, tool_response=tool_response)
 
         delegations = params.get("delegations", [])
         if delegations:
@@ -120,4 +127,4 @@ class Tool(BaseTool):
                 if i < len(delegations) - 1:
                     coder.io.tool_output("")
 
-        tool_footer(coder=coder, tool_response=tool_response)
+        tool_footer(coder=coder, tool_response=tool_response, params=params)

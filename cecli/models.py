@@ -592,11 +592,25 @@ class Model(ModelSettings):
 
             valid_model_settings_fields = {f.name for f in fields(ModelSettings)}
 
+            # Detect structured keys: api_settings, api, llm_settings, or llm keys indicate the new format
+            has_structured_keys = any(
+                k in self.override_kwargs
+                for k in (
+                    "api_settings",
+                    "api-settings",
+                    "llm_settings",
+                    "llm-settings",
+                    "api",
+                    "llm",
+                    "agent",
+                )
+            )
+
             for key, value in self.override_kwargs.items():
-                if key == "model_settings" or key == "model-settings":
+                if key in ("agent", "model_settings", "model-settings"):
                     if not isinstance(value, dict):
                         raise ValueError(
-                            f"override_kwargs 'model_settings' must be a dict, got {type(value)}"
+                            f"override_kwargs '{key}' must be a dict, got {type(value)}"
                         )
                     for setting_key, setting_value in value.items():
                         if setting_key not in valid_model_settings_fields:
@@ -605,6 +619,26 @@ class Model(ModelSettings):
                                 f"Must be one of: {sorted(valid_model_settings_fields)}"
                             )
                         setattr(self, setting_key, setting_value)
+                elif has_structured_keys and key in ("api", "api_settings", "api-settings"):
+                    # api_settings: merge each sub-key into extra_params
+                    if not isinstance(value, dict):
+                        raise ValueError(
+                            f"override_kwargs '{key}' must be a dict, got {type(value)}"
+                        )
+                    for api_key, api_value in value.items():
+                        if isinstance(api_value, dict) and isinstance(
+                            self.extra_params.get(api_key), dict
+                        ):
+                            self.extra_params[api_key] = {**self.extra_params[api_key], **api_value}
+                        else:
+                            self.extra_params[api_key] = api_value
+                elif has_structured_keys and key in ("llm", "llm_settings", "llm-settings"):
+                    # llm_settings: merge into self.info
+                    if not isinstance(value, dict):
+                        raise ValueError(
+                            f"override_kwargs '{key}' must be a dict, got {type(value)}"
+                        )
+                    self.info = {**self.info, **value}
                 elif isinstance(value, dict) and isinstance(self.extra_params.get(key), dict):
                     self.extra_params[key] = {**self.extra_params[key], **value}
                 else:
@@ -1193,6 +1227,7 @@ class Model(ModelSettings):
                 pass
 
             kwargs["tools"] = sorted_tools
+            kwargs["tool_choice"] = "auto"
 
         if functions and len(functions) == 1:
             function = functions[0]
@@ -1200,6 +1235,7 @@ class Model(ModelSettings):
                 tool_name = function.get("name")
                 if tool_name:
                     kwargs["tool_choice"] = {"type": "function", "function": {"name": tool_name}}
+
         if self.extra_params:
             kwargs.update(self.extra_params)
         if max_tokens:
@@ -1231,13 +1267,6 @@ class Model(ModelSettings):
                 {"location": "message", "index": -1},
                 {"location": "message", "index": -2},
             ]
-
-        if "GITHUB_COPILOT_TOKEN" in os.environ or self.name.startswith("github_copilot/"):
-            if "extra_headers" not in kwargs:
-                kwargs["extra_headers"] = {
-                    "Editor-Version": f"cecli/{__version__}",
-                    "Copilot-Integration-Id": "vscode-chat",
-                }
 
         if kwargs.get("headers", None):
             kwargs["headers"].update(
@@ -1281,6 +1310,9 @@ class Model(ModelSettings):
 
                 if override_kwargs:
                     kwargs = deep_merge(kwargs, override_kwargs)
+
+                kwargs = deep_merge(kwargs, {"allowed_openai_params": ["tools", "tool_choice"]})
+
                 completion_coro = litellm.acompletion(**kwargs)
                 res, interrupted = await coroutines.interruptible(completion_coro, interrupt_event)
                 if interrupted:
@@ -1554,7 +1586,7 @@ async def check_for_dependencies(io, model_name):
         )
 
 
-def get_chat_model_names():
+def get_chat_model_names(query: str = "") -> list:
     chat_models = set()
     model_metadata = list(litellm.model_cost.items())
     model_metadata += list(model_info_manager.local_model_metadata.items())
@@ -1572,7 +1604,38 @@ def get_chat_model_names():
                 fq_model = f"{provider}/{orig_model}"
             chat_models.add(fq_model)
         chat_models.add(orig_model)
-    return sorted(chat_models)
+
+    sorted_models = sorted(chat_models)
+
+    # Fuzzy match against the query when one is provided
+    if query:
+        try:
+            from ngram import NGram
+            from rapidfuzz import fuzz, process
+
+            score_cutoff = int(0.3 * 100)
+            results = process.extract(
+                query,
+                sorted_models,
+                scorer=fuzz.partial_ratio,
+                limit=20,
+                score_cutoff=score_cutoff,
+            )
+            match_names = [match for match, score, _ in results]
+
+            # Re-rank with ngram trigram similarity when result set is small
+            if len(match_names) < 100:
+                ng = NGram(match_names, N=3)
+                reranked = ng.search(query, threshold=0.0)
+                match_names = [item for item, score in reranked]
+
+            return match_names
+        except ImportError:
+            # Fall back to simple substring matching if fuzzy libs unavailable
+            query_lower = query.lower()
+            return [m for m in sorted_models if query_lower in m.lower()]
+
+    return sorted_models
 
 
 def fuzzy_match_models(name):

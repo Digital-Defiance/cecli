@@ -3,7 +3,7 @@ import os
 import tempfile
 import uuid
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import git
 import pytest
@@ -38,8 +38,11 @@ class TestCoder:
         self.mock_webbrowser = self.webbrowser_patcher.start()
         # Reset conversation system before each test
         ConversationService.get_chunks(self).reset()
-        yield
+        # Reset FileSystemService singleton for test isolation
+        from cecli.helpers.file_system import FileSystemService
 
+        FileSystemService.reset_instance()
+        yield
         # Cleanup after each test
         self.webbrowser_patcher.stop()
         # Reset conversation system after each test as well
@@ -190,6 +193,9 @@ class TestCoder:
             mock = MagicMock()
             mock.return_value = set([str(fname), str(other_fname)])
             coder.repo.get_tracked_files = mock
+            from cecli.helpers.file_system import FileSystemService
+
+            FileSystemService.get_instance().build()
 
             await coder.check_for_file_mentions(f"Please check {fname}!")
 
@@ -216,6 +222,9 @@ class TestCoder:
             mock = MagicMock()
             mock.return_value = set([str(fname1), str(fname2), str(fname3)])
             coder.repo.get_tracked_files = mock
+            from cecli.helpers.file_system import FileSystemService
+
+            FileSystemService.get_instance().build()
 
             # Check that file mentions of a pure basename skips files with duplicate basenames
             mentioned = coder.get_file_mentions(f"Check {fname2.name} and {fname3}")
@@ -282,6 +291,9 @@ class TestCoder:
             mock = MagicMock()
             mock.return_value = set([str(fname)])
             coder.repo.get_tracked_files = mock
+            from cecli.helpers.file_system import FileSystemService
+
+            FileSystemService.get_instance().build()
 
             await coder.check_for_file_mentions(f"Please check `{fname}`")
 
@@ -310,6 +322,13 @@ class TestCoder:
                 fpath = Path(fname)
                 fpath.parent.mkdir(parents=True, exist_ok=True)
                 fpath.touch()
+            # Stage files and rebuild FileSystemService index
+            _gi = git.Repo()
+            for _f in test_files:
+                _gi.git.add(_f)
+            from cecli.helpers.file_system import FileSystemService
+
+            FileSystemService.get_instance().build()
 
             # Mock get_addable_relative_files to return our test files
             coder.get_addable_relative_files = MagicMock(return_value=set(test_files))
@@ -382,6 +401,13 @@ class TestCoder:
                 fpath = Path(fname)
                 fpath.parent.mkdir(parents=True, exist_ok=True)
                 fpath.touch()
+            # Stage files and rebuild FileSystemService index
+            _gi = git.Repo()
+            for _f in test_files:
+                _gi.git.add(_f)
+            from cecli.helpers.file_system import FileSystemService
+
+            FileSystemService.get_instance().build()
 
             # Mock get_addable_relative_files to return our test files
             coder.get_addable_relative_files = MagicMock(return_value=set(test_files))
@@ -1418,7 +1444,10 @@ This command will print 'Hello, World!' to the console."""
                 with pytest.raises(SwitchCoderSignal):
                     await coder.reply_completed()
                 io.confirm_ask.assert_called_once_with(
-                    "Edit the files?", allow_tweak=False, explicit_yes_required=False
+                    "Edit the files?",
+                    allow_tweak=False,
+                    explicit_yes_required=False,
+                    coder_uuid=ANY,
                 )
                 mock_editor.generate.assert_called_once()
 
@@ -1445,7 +1474,10 @@ This command will print 'Hello, World!' to the console."""
                     await coder.reply_completed()
 
                 io.confirm_ask.assert_called_once_with(
-                    "Edit the files?", allow_tweak=False, explicit_yes_required=True
+                    "Edit the files?",
+                    allow_tweak=False,
+                    explicit_yes_required=True,
+                    coder_uuid=ANY,
                 )
                 mock_editor.generate.assert_called_once()
 
@@ -1467,7 +1499,10 @@ This command will print 'Hello, World!' to the console."""
 
                 assert result is None
                 io.confirm_ask.assert_called_once_with(
-                    "Edit the files?", allow_tweak=False, explicit_yes_required=True
+                    "Edit the files?",
+                    allow_tweak=False,
+                    explicit_yes_required=True,
+                    coder_uuid=ANY,
                 )
                 mock_create.assert_not_called()
 
@@ -1642,7 +1677,9 @@ This command will print 'Hello, World!' to the console."""
             assert not result
 
             # Verify that confirm_ask was called
-            io.confirm_ask.assert_called_once_with("Run tools?", group_response="Run MCP Tools")
+            io.confirm_ask.assert_called_once_with(
+                "Run tools?", group_response="Run MCP Tools", coder_uuid=ANY
+            )
 
             # Verify that no messages were added
             assert len(coder.cur_messages) == 0

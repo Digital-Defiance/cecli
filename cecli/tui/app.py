@@ -15,9 +15,11 @@ from textual import events
 from textual.app import App, ComposeResult
 from textual.theme import Theme
 
+from cecli import __version__
 from cecli.editor import pipe_editor
 from cecli.helpers.agents.service import AgentService
 from cecli.helpers.coroutines import is_active
+from cecli.helpers.file_system import FileSystemService
 from cecli.io import CommandCompletionException
 from cecli.tui.io import TextualInputOutput
 
@@ -56,6 +58,7 @@ class TUI(App):
         self.output_queue = output_queue
         self.input_queue = input_queue
         self.args = args  # Store args for _get_config
+
         # Cache for code symbols (functions, classes, variables)
         self._symbols_cache = None
         self._symbols_files_hash = None
@@ -65,6 +68,11 @@ class TUI(App):
         # Sub-agent tracking
         self._sub_agent_containers = {}  # uuid -> OutputContainer
         self._primary_coder_uuid = self.worker.coder.uuid
+
+        # Confirmation lock and pending queue — ensures one confirmation at a time
+        self._confirmation_lock = False
+        self._confirmation_coder_uuid = None
+        self._confirmations_pending: list[tuple[dict, str | None]] = []
 
         self.tui_config = self._get_config()
 
@@ -353,7 +361,7 @@ class TUI(App):
 [bold {BANNER_COLORS[2]}]  ▒▒║     ▒▒▒▒▒╗  ▒▒║     ▒▒║     ▒▒║[/bold {BANNER_COLORS[2]}]
 [bold {BANNER_COLORS[3]}]  ▒▒║     ▒▒╔══╝  ▒▒║     ▒▒║     ▒▒║[/bold {BANNER_COLORS[3]}]
 [bold {BANNER_COLORS[4]}]  ╚▒▒▒▒▒▒╗▒▒▒▒▒▒▒╗╚▒▒▒▒▒▒╗▒▒▒▒▒▒▒╗▒▒║[/bold {BANNER_COLORS[4]}]
-[bold {BANNER_COLORS[5]}]   ╚═════╝╚══════╝ ╚═════╝╚══════╝╚═╝[/bold {BANNER_COLORS[5]}]
+[bold {BANNER_COLORS[5]}]   ╚═════╝╚══════╝ ╚═════╝╚══════╝╚═╝ v{__version__}[/bold {BANNER_COLORS[5]}]
 
 """
 
@@ -651,9 +659,28 @@ class TUI(App):
 
     def show_confirmation(self, msg, agent_name: str | None = None):
         """Show inline confirmation bar."""
+
+        # Safety: clear stale lock if no confirmation bar is active
+        if self._confirmation_lock:
+            status_bar = self.query_one("#status-bar", StatusBar)
+            if status_bar.mode != "confirm":
+                self._confirmation_lock = False
+
+        # Check confirmation lock: only one confirmation at a time
+        if self._confirmation_lock:
+            self._confirmations_pending.append((msg, agent_name))
+            return
+        self._confirmation_lock = True
+
         # Disable input while confirm bar is active
         input_area = self.query_one("#input", InputArea)
         input_area.disabled = True
+
+        # Switch to the agent that requested this confirmation
+        coder_uuid = msg.get("coder_uuid")
+        self._confirmation_coder_uuid = coder_uuid
+        if coder_uuid:
+            self._switch_to_container(coder_uuid, suppress_input_enable=True)
 
         # Show confirmation in status bar with all options
         status_bar = self.query_one("#status-bar", StatusBar)
@@ -1092,8 +1119,14 @@ class TUI(App):
             next_uuid = uuids[0]
         self._switch_to_container(next_uuid)
 
-    def _switch_to_container(self, uuid: str) -> None:
-        """Internal helper to switch active container."""
+    def _switch_to_container(self, uuid: str, suppress_input_enable: bool = False) -> None:
+        """Internal helper to switch active container.
+
+        Args:
+            uuid: The container UUID to switch to.
+            suppress_input_enable: If True, skip re-enabling the input area.
+                Used during confirmations to avoid undoing input disabling.
+        """
         # Update foreground agent in AgentService
         agent_service = AgentService.get_instance(self.worker.coder)
         primary_uuid = str(self.worker.coder.uuid)
@@ -1123,13 +1156,26 @@ class TUI(App):
         self._sync_sub_agent_display()
 
         # Update input autocomplete data for the active agent
-        coder = agent_service.foreground_coder
-        self.enable_input({}, coder=coder)
+        if (
+            not suppress_input_enable
+            and not self._confirmation_lock
+            and not self._confirmations_pending
+        ):
+            coder = agent_service.foreground_coder
+            self.enable_input({}, coder=coder)
 
     def create_sub_agent_container(self, uuid: str, name: str) -> None:
         """Create an OutputContainer for a sub-agent."""
+        from cecli.helpers.agents.service import AgentService
+
         if uuid in self._sub_agent_containers:
+            agent_service = AgentService.get_instance(self.worker.coder)
+            sub_agent_info = agent_service.sub_agents.get(uuid)
+            if sub_agent_info:
+                sub_agent_info.coder.show_announcements()
+
             return
+
         container = OutputContainer(id=f"output-{uuid}", classes="subagent-output")
         container.display = False  # Hidden initially
         self._sub_agent_containers[uuid] = container
@@ -1145,8 +1191,6 @@ class TUI(App):
 
         # Show announcements from the sub-agent's coder
         try:
-            from cecli.helpers.agents.service import AgentService
-
             agent_service = AgentService.get_instance(self.worker.coder)
             sub_agent_info = agent_service.sub_agents.get(uuid)
             if sub_agent_info:
@@ -1281,12 +1325,7 @@ class TUI(App):
         input_area.disabled = False
         input_area.focus()
 
-        foreground_coder = AgentService.get_instance(self.worker.coder).foreground_coder
-        coder_uuid = (
-            str(foreground_coder.uuid)
-            if foreground_coder and hasattr(foreground_coder, "uuid")
-            else None
-        )
+        coder_uuid = self._confirmation_coder_uuid
         # Route to per-coder queue when available
         if coder_uuid and coder_uuid in TextualInputOutput._per_coder_queues:
             TextualInputOutput._per_coder_queues[coder_uuid].put(
@@ -1294,6 +1333,15 @@ class TUI(App):
             )
         else:
             self.input_queue.put({"confirmed": message.result, "coder_uuid": coder_uuid})
+        # Release the confirmation lock and process any pending confirmations
+        self._confirmation_lock = False
+        self._process_pending_confirmation()
+
+    def _process_pending_confirmation(self) -> None:
+        """Process the next pending confirmation from the queue, if any."""
+        if self._confirmations_pending:
+            next_msg, next_agent_name = self._confirmations_pending.pop(0)
+            self.show_confirmation(next_msg, agent_name=next_agent_name)
 
     # Commands that use path-based completion
     PATH_COMPLETION_COMMANDS = {"/add", "/read-only", "/read-only-stub", "/rules", "/load", "/save"}
@@ -1319,9 +1367,6 @@ class TUI(App):
         # Also add filenames as completable symbols
         if hasattr(coder, "get_inchat_relative_files"):
             symbols.update(coder.get_inchat_relative_files())
-        if hasattr(coder, "get_all_relative_files"):
-            # Add all project files too
-            symbols.update(coder.get_all_relative_files())
 
         # Limit files to tokenize for performance
         files_to_process = inchat_files[:30]
@@ -1358,20 +1403,46 @@ class TUI(App):
         """Get symbol completions for @ mentions."""
         symbols = self._extract_symbols()
         prefix_lower = prefix.lower()
+        should_sort = True
 
         if prefix:
-            matches = [s for s in symbols if prefix_lower in s.lower()]
+            matches = self._get_path_completions(prefix)
+            matches.extend(sorted([s for s in symbols if prefix_lower in s.lower()]))
+            should_sort = False
         else:
             matches = list(symbols)
 
-        return sorted(matches)[:50]
+        matches = list(dict.fromkeys(matches))
+        return matches[:50] if not should_sort else sorted(matches)[:50]
 
     def _get_path_completions(self, prefix: str) -> list[str]:
-        """Get filesystem path completions relative to coder root."""
+        """Get filesystem path completions relative to coder root.
+
+        Uses FileSystemService when available for efficient trie/trigram
+        lookups, with fallback to legacy filesystem iteration.
+        """
         coder = self.worker.coder
         root = Path(coder.root) if hasattr(coder, "root") else Path.cwd()
 
-        # Handle the prefix - could be partial path like "src/ma" or just "ma"
+        # Try FileSystemService first for efficient lookups
+        try:
+            fs = FileSystemService.get_instance()
+            if prefix:
+                if fs.trie:
+                    is_fuzzy = False
+                    if fs.trie:
+                        matches = fs.list_prefix(prefix)
+
+                    if not matches:
+                        is_fuzzy = True
+                        matches = fs.search(prefix, threshold=0.1)
+
+                    if matches:
+                        return matches if is_fuzzy else sorted(matches)
+        except Exception:
+            pass
+
+        # Fallback: iterate filesystem directory
         if "/" in prefix:
             # Has directory component
             dir_part, file_part = prefix.rsplit("/", 1)
@@ -1470,9 +1541,18 @@ class TUI(App):
                 else:
                     # Use standard command completions (no file fallback)
                     try:
-                        cmd_completions = commands.get_completions(cmd_name, coder=active_coder)
+                        cmd_completions = commands.get_completions(
+                            cmd_name, args=arg_prefix, coder=active_coder
+                        )
                         if cmd_completions:
-                            if arg_prefix:
+                            exempt_from_substring_matching = {
+                                "/model",
+                                "/models",
+                                "/agent-model",
+                                "/editor-model",
+                                "/weak-model",
+                            }
+                            if arg_prefix and cmd_name not in exempt_from_substring_matching:
                                 suggestions = [
                                     c for c in cmd_completions if arg_prefix_lower in str(c).lower()
                                 ]

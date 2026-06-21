@@ -107,7 +107,7 @@ class ConversationFiles:
                 # Use coder.io.read_text() - coder should always be available
                 coder = self.get_coder()
                 try:
-                    content = coder.io.read_text(abs_fname)
+                    content = coder.io.read_text(abs_fname, silent=True)
                     if coder.hashlines:
                         content = hashline(content)
                 except Exception:
@@ -224,7 +224,7 @@ class ConversationFiles:
         coder = self.get_coder()
         rel_fname = coder.get_rel_fname(fname)
         try:
-            current_content = coder.io.read_text(abs_fname)
+            current_content = coder.io.read_text(abs_fname, silent=True)
             if coder.hashlines:
                 current_content = hashline(current_content)
         except Exception:
@@ -272,23 +272,29 @@ class ConversationFiles:
             self._file_diffs[abs_fname] = diff
 
             rel_fname = fname
+            prefix_str = ""
 
             if coder:
                 rel_fname = coder.get_rel_fname(fname)
+                prefix_str = "content ID prefixed " if getattr(coder, "hashlines") else ""
 
             # Add diff message to conversation
             content_hash = xxhash.xxh3_128_hexdigest(diff.encode("utf-8"))
+
             diff_message = {
                 "role": "user",
                 "content": (
-                    f"{rel_fname} has been updated. Here is a git diff of the changes to"
-                    f" review:\n\n{diff}"
+                    f"{rel_fname} has been updated. Review this {prefix_str}diff of the changes to"
+                    f" ensure all modifications are appropriate:\n\n{diff}"
                 ),
             }
 
             assistant_msg = {
                 "role": "assistant",
-                "content": f"Thank you for sharing this diff of the updates to {rel_fname}.",
+                "content": (
+                    f"Thank you for sharing this {prefix_str}diff of the updates to {rel_fname}."
+                    " I will review their contents."
+                ),
             }
 
             ConversationService.get_manager(coder).add_message(
@@ -519,7 +525,7 @@ class ConversationFiles:
 
         # Read file content
         try:
-            content = coder.io.read_text(abs_fname)
+            content = coder.io.read_text(abs_fname, silent=True)
             if not content:
                 return ""
         except Exception:

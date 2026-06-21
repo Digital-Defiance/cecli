@@ -10,6 +10,7 @@ from cecli.run_cmd import run_cmd_async
 class RunCommand(BaseCommand):
     NORM_NAME = "run"
     DESCRIPTION = "Run a shell command and optionally add the output to the chat (alias: !)"
+    show_completion_notification = True
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
@@ -36,7 +37,7 @@ class RunCommand(BaseCommand):
         )
 
         if coder.args.tui:
-            print(combined_output)
+            coder.io.tool_warning(combined_output)
         else:
             # This print statement, for whatever reason,
             # allows the thread to properly yield control of the terminal

@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import copy
 import hashlib
 import json
 import locale
@@ -42,9 +43,11 @@ from cecli.commands import Commands, SwitchCoderSignal
 from cecli.exceptions import LiteLLMExceptions
 from cecli.helpers import command_parser, coroutines, nested, responses
 from cecli.helpers.conversation import ConversationService, MessageTag
+from cecli.helpers.file_system import FileSystemService
 from cecli.helpers.io_proxy import IOProxy
 from cecli.helpers.observations.service import ObservationService
 from cecli.helpers.profiler import TokenProfiler
+from cecli.helpers.threading import ThreadSafeEvent
 from cecli.history import ChatSummary
 from cecli.hooks import HookIntegration
 from cecli.io import ConfirmGroup, InputOutput
@@ -87,6 +90,10 @@ class MissingAPIKeyError(ValueError):
 
 
 class FinishReasonLength(Exception):
+    pass
+
+
+class EmptyResponseError(Exception):
     pass
 
 
@@ -308,6 +315,8 @@ class Coder(metaclass=UsageMeta):
                 ignore_mentions=from_coder.ignore_mentions,
                 file_watcher=from_coder.file_watcher,
                 mcp_manager=from_coder.mcp_manager,
+                registered_tools=copy.deepcopy(from_coder.registered_tools),
+                registered_servers=copy.deepcopy(from_coder.registered_servers),
                 uuid=from_coder.uuid,
                 parent_uuid=from_coder.parent_uuid,
                 repo=from_coder.repo,
@@ -410,18 +419,31 @@ class Coder(metaclass=UsageMeta):
         repomap_in_memory=False,
         linear_output=False,
         security_config=None,
+        registered_tools=None,
+        registered_servers=None,
         uuid: str = "",
         parent_uuid: str = "",
         **kwargs,
     ):
+        from cecli.helpers.agents.service import AgentService
+
         self.original_kwargs = kwargs
-        self.original_kwargs = kwargs
+        # initialize from args.map_cache_dir
+        self.coroutines = coroutines
         # Per-instance tool and server filtering dictionaries
         # Each contains "included" and "excluded" sets that filter from the global singletons
         self.registered_tools = {"included": set(), "excluded": set()}
         self.registered_servers = {"included": set(), "excluded": set()}
-        self.interrupt_event = asyncio.Event()
+        self._inherited_tools = False
+
+        if registered_tools is not None or registered_servers is not None:
+            self.registered_tools = registered_tools
+            self.registered_servers = registered_servers
+            self._inherited_tools = True
+
+        self.interrupt_event = ThreadSafeEvent()
         self.uuid = str(generate_unique_id())
+        self.reflected_message = None
 
         if uuid:
             self.uuid = str(uuid)
@@ -460,9 +482,7 @@ class Coder(metaclass=UsageMeta):
 
         self.context_compaction_max_tokens = context_compaction_max_tokens
         self.context_compaction_summary_tokens = context_compaction_summary_tokens
-        self.max_reflections = (
-            3 if self.edit_format == "agent" else nested.getter(self.args, "max_reflections", 3)
-        )
+        self.max_reflections = nested.getter(self.args, "max_reflections", 3)
 
         if not fnames:
             fnames = []
@@ -540,15 +560,16 @@ class Coder(metaclass=UsageMeta):
 
         self.show_diffs = show_diffs
 
-        # Initialize conversation system if enabled
+        # Initialize all registry sub systems
+        AgentService.get_instance(self)
         ConversationService.get_chunks(self).initialize_conversation_system()
+        ObservationService.get_instance(self)
 
         self.commands = commands or Commands(self.io, self, args=args)
         self.commands.coder = self
 
         self.data_cache = {
             "repo": {"last_key": "", "read_only_count": None},
-            "relative_files": None,
         }
 
         self.repo = repo
@@ -594,6 +615,12 @@ class Coder(metaclass=UsageMeta):
 
         if not self.repo:
             self.root = utils.find_common_root(self.abs_fnames)
+
+        # Initialize the FileSystemService singleton for all agents
+        FileSystemService.get_instance(
+            root=self.root if hasattr(self, "root") else ".",
+            repo=self.repo if hasattr(self, "repo") else None,
+        )
 
         if read_only_fnames:
             self.abs_read_only_fnames = set()
@@ -770,91 +797,118 @@ class Coder(metaclass=UsageMeta):
         """Get CUR messages from ConversationManager."""
         return ConversationService.get_manager(self).get_messages_dict(MessageTag.CUR)
 
+    @staticmethod
+    def _strip_provider(model_name: str) -> str:
+        """Remove provider prefix from model name (e.g., 'openai/gpt-4' -> 'gpt-4')."""
+        if "/" in model_name:
+            return model_name.split("/", 1)[1]
+        return model_name
+
     def get_announcements(self):
-        lines = []
-        lines.append(f"cecli v{__version__}")
+        sections = {}
 
-        # Model
+        # --- MODELS ---
         main_model = self.main_model
-        weak_model = main_model.weak_model
+
+        models_items = [f"{self._strip_provider(main_model.name)} (main)"]
         agent_model = main_model.agent_model
+        weak_model = main_model.weak_model
 
-        if weak_model is not main_model:
-            prefix = "Main model"
-        else:
-            prefix = "Model"
+        if agent_model and agent_model.name != main_model.name:
+            models_items.append(f"{self._strip_provider(agent_model.name)} (agent)")
 
-        output = f"{prefix}: {main_model.name} with {self.edit_format} edit format"
+        if weak_model and weak_model.name != main_model.name:
+            models_items.append(f"{self._strip_provider(weak_model.name)} (weak)")
+        if self.edit_format == "architect":
+            models_items.append(f"{self._strip_provider(main_model.editor_model.name)} (editor)")
 
-        # Check for thinking token budget
+        sections["Models"] = {"items": models_items}
+
+        # --- SETTINGS ---
+        settings_items = []
+
+        # Edit format
+        settings_items.append(f"{self.edit_format} (edit format)")
+
+        # Thinking tokens
         thinking_tokens = main_model.get_thinking_tokens()
         if thinking_tokens:
-            output += f", {thinking_tokens} think tokens"
+            settings_items.append(f"{thinking_tokens} think tokens")
 
-        # Check for reasoning effort
+        # Reasoning effort
         reasoning_effort = main_model.get_reasoning_effort()
         if reasoning_effort:
-            output += f", reasoning {reasoning_effort}"
+            settings_items.append(f"reasoning {reasoning_effort}")
 
+        # Prompt cache
         if self.add_cache_headers or main_model.caches_by_default:
-            output += ", prompt cache"
+            settings_items.append("prompt cache")
+
+        # Infinite output
         if main_model.info.get("supports_assistant_prefill"):
-            output += ", infinite output"
+            settings_items.append("infinite output")
+
+        # Copy/paste mode
         if self.copy_paste_mode:
-            output += ", copy/paste mode"
+            settings_items.append("copy/paste mode")
 
-        lines.append(output)
+        if settings_items:
+            sections["Settings"] = {"items": settings_items}
 
-        if self.edit_format == "architect":
-            output = (
-                f"Editor model: {main_model.editor_model.name} with"
-                f" {main_model.editor_edit_format} edit format"
-            )
-            lines.append(output)
+        # --- ENVIRONMENT ---
+        env_items = []
+        repo_map_tokens = None  # Track for later warning check
 
-        if weak_model is not main_model:
-            output = f"Weak model: {weak_model.name}"
-            lines.append(output)
-
-        if agent_model is not main_model:
-            output = f"Agent model: {agent_model.name}"
-            lines.append(output)
-
-        # Repo
         if self.repo:
             rel_repo_dir = self.repo.get_rel_repo_dir()
             num_files = len(self.repo.get_tracked_files())
-
-            lines.append(f"Git repo: {rel_repo_dir} with {num_files:,} files")
+            env_items.append(f"{rel_repo_dir} ({num_files:,} files)")
             if num_files > 1000:
-                lines.append(
+                env_items.append(
                     "Warning: For large repos, consider using --subtree-only and .cecli_ignore"
                 )
-                lines.append(f"See: {urls.large_repos}")
+                env_items.append(f"See: {urls.large_repos}")
         else:
-            lines.append("Git repo: none")
+            env_items.append("no git repo")
 
-        # Repo-map
         if self.repo_map:
             map_tokens = self.repo_map.max_map_tokens
             if map_tokens > 0:
                 refresh = self.repo_map.refresh
-                lines.append(f"Repo-map: using {map_tokens} tokens, {refresh} refresh")
-                max_map_tokens = self.get_active_model().get_repo_map_tokens() * 2
-                if map_tokens > max_map_tokens:
-                    lines.append(
-                        f"Warning: map-tokens > {max_map_tokens} is not recommended. Too much"
-                        " irrelevant code can confuse LLMs."
-                    )
+                env_items.append(f"map ({map_tokens} tokens, {refresh} refresh)")
+                repo_map_tokens = map_tokens
             else:
-                lines.append("Repo-map: disabled because map_tokens == 0")
+                env_items.append("repo-map disabled")
         else:
-            lines.append("Repo-map: disabled")
+            env_items.append("repo-map disabled")
 
+        sections["Environment"] = {"items": env_items}
+        # --- CAPABILITIES ---
+        capabilities = {}
+
+        # Sub-agents
+        try:
+            from cecli.helpers.agents.service import AgentService
+
+            registry = AgentService.get_registry()
+            if registry:
+                capabilities["Subagents"] = sorted(registry.keys())
+        except Exception:
+            pass
+
+        # Skills
+        if hasattr(self, "skills_manager") and self.skills_manager:
+            try:
+                skills = self.skills_manager.find_skills()
+                if skills:
+                    capabilities["Skills"] = [s.name for s in skills]
+            except Exception:
+                pass
+
+        # MCP Servers
         if self.mcp_tools:
             mcp_servers = []
             for server_name, server_tools in self.mcp_tools:
-                # Filter servers per instance configuration
                 if (
                     self.registered_servers["included"]
                     and server_name not in self.registered_servers["included"]
@@ -863,17 +917,49 @@ class Coder(metaclass=UsageMeta):
                 if server_name in self.registered_servers["excluded"]:
                     continue
                 mcp_servers.append(server_name)
-
             if mcp_servers:
-                lines.append(f"MCP servers configured: {', '.join(mcp_servers)}")
+                capabilities["Servers"] = mcp_servers
 
+        if capabilities:
+            # sections["Extensions"] = {"subsections": capabilities}
+            sections["Environment"]["subsections"] = capabilities
+
+        # --- RENDER ---
+        lines = []
+
+        # Version line (CLI only; TUI has its own banner)
+        if not self.args.tui:
+            lines.append(f"cecli v{__version__}")
+
+        for name, section in sections.items():
+            if "items" in section:
+                lines.append(f"{name:15s}" + " • ".join(section["items"]))
+            if "subsections" in section:
+                last_key = next(reversed(section["subsections"]))
+                # lines.append(name)
+                for sub_name, sub_items in section["subsections"].items():
+                    connector = "└─" if sub_name == last_key else "├─"
+                    lines.append(f" {connector} {sub_name:10} {' • '.join(sub_items)}")
+
+        # Repo-map max_tokens warning
+        if repo_map_tokens is not None:
+            max_map_tokens = self.get_active_model().get_repo_map_tokens() * 2
+            if repo_map_tokens > max_map_tokens:
+                lines.append(
+                    f"Warning: map-tokens > {max_map_tokens} is not recommended. Too much"
+                    " irrelevant code can confuse LLMs."
+                )
+
+        # Read-only stubs
         for fname in self.abs_read_only_stubs_fnames:
             rel_fname = self.get_rel_fname(fname)
             lines.append(f"Added {rel_fname} to the chat (read-only stub).")
 
+        # Restored conversation
         if ConversationService.get_manager(self).get_messages_dict(MessageTag.DONE):
             lines.append("Restored previous conversation history.")
 
+        # Multiline mode
         if self.io.multiline_mode and not self.args.tui:
             lines.append("Multiline mode: Enabled. Enter inserts newline, Alt-Enter submits text")
 
@@ -1040,7 +1126,7 @@ class Coder(metaclass=UsageMeta):
 
                             # Add message about showing definitions instead of full content
                             # self.io.tool_output(
-                            #    f"⚠️ '{relative_fname}' is very large ({file_tokens} tokens). "
+                            #    f"⚠ '{relative_fname}' is very large ({file_tokens} tokens). "
                             #    "Use /context-management to toggle truncation off if needed."
                             # )
 
@@ -1108,7 +1194,7 @@ class Coder(metaclass=UsageMeta):
 
                         # Add message about showing definitions instead of full content
                         # self.io.tool_output(
-                        #    f"⚠️ '{relative_fname}' is very large ({file_tokens} tokens). "
+                        #    f"⚠ '{relative_fname}' is very large ({file_tokens} tokens). "
                         #    "Use /context-management to toggle truncation off if needed."
                         # )
 
@@ -1640,6 +1726,7 @@ class Coder(metaclass=UsageMeta):
 
     async def generate(self, user_message, preproc):
         await asyncio.sleep(0.1)
+        self.interrupt_event.clear()
 
         try:
             if self.enable_context_compaction:
@@ -2399,6 +2486,39 @@ class Coder(metaclass=UsageMeta):
                     async for chunk in self.send(messages, tools=self.get_tool_list()):
                         yield chunk
                     break
+                except EmptyResponseError:
+                    self.io.tool_warning(self.empty_llm_tool_warning())
+
+                    retry_on_empty = False
+                    retries_config = self.get_active_model().retries
+                    if isinstance(retries_config, str):
+                        try:
+                            retries_config = json.loads(retries_config)
+                        except json.JSONDecodeError:
+                            self.io.tool_warning(
+                                f"Could not parse retries config: {retries_config}"
+                            )
+                            retries_config = {}
+                    if isinstance(retries_config, dict):
+                        retry_on_empty = retries_config.get("retry_on_empty", False)
+
+                    if not retry_on_empty:
+                        break
+
+                    retry_delay *= 2
+                    if retry_delay > RETRY_TIMEOUT:
+                        self.io.tool_error("Retry timeout exceeded on empty response.")
+                        break
+
+                    self.io.tool_output(f"Retrying in {retry_delay:.1f} seconds...")
+
+                    _res, interrupted_sleep = await coroutines.interruptible(
+                        asyncio.sleep(retry_delay), self.interrupt_event
+                    )
+                    if interrupted_sleep:
+                        interrupted = True
+                        break
+                    continue
                 except litellm_ex.exceptions_tuple() as err:
                     ex_info = litellm_ex.get_ex_info(err)
 
@@ -2459,7 +2579,9 @@ class Coder(metaclass=UsageMeta):
                     return
         finally:
             if self.mdstream:
-                content_to_show = self.live_incremental_response(True)
+                content_to_show = (
+                    "" if self.tui and self.tui() else self.live_incremental_response(True)
+                )
                 self.stream_wrapper(content_to_show, final=True)
             self.mdstream = None
 
@@ -3227,7 +3349,7 @@ class Coder(metaclass=UsageMeta):
         group = ConfirmGroup(new_mentions)
         for rel_fname in sorted(new_mentions):
             message = "Add file to the chat?"
-            if self.args.tui:
+            if self.args and self.args.tui:
                 message = f"Add file to the chat? ({rel_fname})"
 
             if await self.io.confirm_ask(
@@ -3249,6 +3371,7 @@ class Coder(metaclass=UsageMeta):
         self.interrupt_event.clear()
         self.got_reasoning_content = False
         self.ended_reasoning_content = False
+        self.empty_response = False
 
         self._streaming_buffer_length = 0
         self.io.reset_streaming_response()
@@ -3298,6 +3421,9 @@ class Coder(metaclass=UsageMeta):
                     yield chunk
             else:
                 await self.show_send_output(completion)
+
+            if self.empty_response:
+                raise EmptyResponseError
 
             response, func_err, content_err = self.consolidate_chunks()
 
@@ -3379,7 +3505,8 @@ class Coder(metaclass=UsageMeta):
             and not len(self.partial_response_tool_calls)
             and not len(self.partial_response_reasoning_content)
         ):
-            self.io.tool_warning(self.empty_llm_tool_warning())
+            self.empty_response = True
+            return
 
         self.io.assistant_output(show_resp, pretty=self.show_pretty())
 
@@ -3477,30 +3604,35 @@ class Coder(metaclass=UsageMeta):
                         except AttributeError:
                             reasoning_content = None
 
-                    if reasoning_content:
-                        if nested.getter(self.args, "show_thinking"):
-                            if not self.got_reasoning_content:
-                                text += f"<{REASONING_TAG}>\n\n"
-                            text += reasoning_content
-                            self.got_reasoning_content = True
-                            received_content = True
-                        self.token_profiler.on_token()
-                        self.io.update_spinner_suffix(reasoning_content)
-                        self.partial_response_reasoning_content += reasoning_content
-
                     try:
                         content = chunk.choices[0].delta.content
                         if content:
                             if self.got_reasoning_content and not self.ended_reasoning_content:
                                 text += f"\n\n</{self.reasoning_tag_name}>\n\n"
-                                self.ended_reasoning_content = True
 
+                            self.ended_reasoning_content = True
                             text += content
                             received_content = True
                             self.token_profiler.on_token()
                             self.io.update_spinner_suffix(content)
                     except AttributeError:
                         pass
+
+                    if reasoning_content:
+                        if (
+                            nested.getter(self.args, "show_thinking")
+                            and not self.ended_reasoning_content
+                        ):
+                            if not self.got_reasoning_content:
+                                text += f"<{REASONING_TAG}>\n\n"
+
+                            text += reasoning_content
+                            self.got_reasoning_content = True
+                            received_content = True
+
+                        self.token_profiler.on_token()
+                        self.io.update_spinner_suffix(reasoning_content)
+                        self.partial_response_reasoning_content += reasoning_content
 
                 self.partial_response_content += text
 
@@ -3528,6 +3660,16 @@ class Coder(metaclass=UsageMeta):
         except (asyncio.CancelledError, KeyboardInterrupt):
             raise KeyboardInterrupt
 
+        if (
+            self.show_pretty()
+            and nested.getter(self.args, "show_thinking")
+            and self.got_reasoning_content
+            and not self.ended_reasoning_content
+        ):
+            self.partial_response_content += f"\n\n</{self.reasoning_tag_name}>\n\n"
+            content_to_show = self.live_incremental_response(False)
+            self.stream_wrapper(content_to_show, final=False)
+
         # The Part Doing the Heavy Lifting Now
         self.consolidate_chunks()
 
@@ -3536,7 +3678,8 @@ class Coder(metaclass=UsageMeta):
             return
 
         if not received_content and len(self.partial_response_tool_calls) == 0:
-            self.io.tool_warning(self.empty_llm_tool_warning())
+            self.empty_response = True
+            return
 
     def consolidate_chunks(self):
         if self.partial_response_consolidated:
@@ -3549,6 +3692,12 @@ class Coder(metaclass=UsageMeta):
         )
         func_err = None
         content_err = None
+
+        if len(self.partial_response_chunks):
+            last_chunk = self.partial_response_chunks[len(self.partial_response_chunks) - 1]
+            if last_chunk:
+                if getattr(last_chunk, "usage", None):
+                    response.usage = last_chunk.usage
 
         # Collect provider-specific fields from chunks to preserve them
         # We need to track both by ID (primary) and index (fallback) since
@@ -3741,6 +3890,7 @@ class Coder(metaclass=UsageMeta):
             cache_hit_tokens = (
                 getattr(completion.usage, "prompt_cache_hit_tokens", 0)
                 or getattr(completion.usage, "cache_read_input_tokens", 0)
+                or nested.getter(completion.usage, "prompt_tokens_details.cached_tokens", 0)
                 or 0
             )
             cache_write_tokens = getattr(completion.usage, "cache_creation_input_tokens", 0) or 0
@@ -3910,37 +4060,16 @@ class Coder(metaclass=UsageMeta):
             return
 
     def get_all_relative_files(self):
-        if self.repo_map and self.repo:
-            try:
-                staged_files_hash = hash(
-                    str([item.a_path for item in self.repo.repo.index.diff("HEAD")])
-                )
-                if (
-                    staged_files_hash == self.data_cache["repo"]["last_key"]
-                    and self.data_cache["relative_files"]
-                ):
-                    return self.data_cache["relative_files"]
-            except ANY_GIT_ERROR as err:
-                # Handle git errors gracefully - fall back to getting tracked files
-                if self.verbose:
-                    self.io.tool_warning(f"Git error while checking staged files: {err}")
-                # Continue to get tracked files normally
-
-        if self.repo:
-            if hasattr(self.repo, "workspace_path") and self.repo.workspace_path:
-                files = self.repo.get_workspace_files()
-            elif not self.repo.cecli_ignore_file or not self.repo.cecli_ignore_file.is_file():
-                files = self.repo.get_tracked_files()
-            else:
-                files = self.repo.get_non_ignored_files_from_root()
-        else:
-            files = self.get_inchat_relative_files()
-        # This is quite slow in large repos
-        # files = [fname for fname in files if self.is_file_safe(fname)]
-
-        self.data_cache["relative_files"] = sorted(set(files))
-
-        return self.data_cache["relative_files"]
+        """Get all files known to the file service singleton."""
+        fs = FileSystemService.get_instance()
+        if fs.trie:
+            # Auto-rebuild if the repository state has changed
+            # (e.g., new commits, staged files, or HEAD change)
+            if fs.needs_rebuild():
+                fs.rebuild()
+            files = fs.list_all()
+            return files
+        return self.get_inchat_relative_files()
 
     def get_all_abs_files(self):
         files = self.get_all_relative_files()
@@ -4377,7 +4506,7 @@ class Coder(metaclass=UsageMeta):
             if output:
                 accumulated_output += f"Output from {command}\n{output}\n"
 
-        print(accumulated_output)
+        self.io.tool_output(accumulated_output)
 
         if accumulated_output.strip() and await self.io.confirm_ask(
             "Add command output to the chat?", allow_never=True

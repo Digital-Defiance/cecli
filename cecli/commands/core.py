@@ -1,4 +1,3 @@
-import asyncio
 import json
 import re
 import sys
@@ -7,6 +6,7 @@ from pathlib import Path
 from cecli.commands.utils.registry import CommandRegistry
 from cecli.helpers import nested, plugin_manager
 from cecli.helpers.file_searcher import handle_core_files
+from cecli.helpers.threading import ThreadSafeEvent
 from cecli.repo import ANY_GIT_ERROR
 
 
@@ -31,6 +31,25 @@ class SwitchCoderSignal(BaseException):
         self.kwargs = kwargs
         self.placeholder = placeholder
         super().__init__()
+
+
+class ReloadProgramSignal(BaseException):
+    """
+    Signal to reload the entire program configuration.
+
+    This is NOT an error - it's a control flow signal used to trigger
+    a full program reload, re-parsing config files and re-initializing
+    all components. Useful for hot-reloading when configuration files
+    change.
+
+    Note: Inherits from BaseException (like KeyboardInterrupt and SystemExit)
+    to avoid being caught by generic `except Exception` handlers.
+    """
+
+    def __init__(self, message="Reloading program configuration...", **kwargs):
+        self.kwargs = kwargs
+        self.message = message
+        super().__init__(self.message)
 
 
 class Commands:
@@ -94,7 +113,7 @@ class Commands:
         self.custom_commands = nested.getter(customizations, "command-paths", [])
         self._load_custom_commands(self.custom_commands)
 
-        self.cmd_running_event = asyncio.Event()
+        self.cmd_running_event = ThreadSafeEvent()
         self.cmd_running_event.set()
         self.last_command_show_notification = True
 

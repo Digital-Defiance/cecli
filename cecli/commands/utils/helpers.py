@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from typing import List
 
+from cecli.helpers.file_system import FileSystemService
+
 
 class CommandError(Exception):
     """Custom exception for command-specific errors."""
@@ -136,6 +138,9 @@ def get_file_completions(
     This function provides unified file completion logic that can be used by
     multiple commands (add, read-only, read-only-stub, etc.).
 
+    Uses FileSystemService when available for efficient trie/trigram lookups,
+    with fallback to legacy behavior.
+
     Args:
         coder: Coder instance
         args: Command arguments to complete
@@ -153,6 +158,10 @@ def get_file_completions(
 
     root = Path(coder.root) if hasattr(coder, "root") else Path.cwd()
 
+    # Try using FileSystemService for efficient lookups
+    fs = FileSystemService.get_instance()
+    fs_available = fs.trie is not None or fs.ngram is not None
+
     if completion_type == "glob":
         # Handle glob pattern completion
         if not args.strip():
@@ -166,6 +175,7 @@ def get_file_completions(
 
     elif completion_type == "directory":
         # Handle directory-based prefix matching (like read-only commands)
+        # Fallback: iterate filesystem directory
         if "/" in args:
             # Has directory component
             dir_part, file_part = args.rsplit("/", 1)
@@ -199,12 +209,19 @@ def get_file_completions(
 
     else:  # "all" completion type
         # Get all available files
-        if filter_in_chat:
-            files = set(coder.get_all_relative_files())
-            files = files - set(coder.get_inchat_relative_files())
-            completions = list(files)
+        if fs_available and fs.trie:
+            all_files = fs.list_all()
+            if filter_in_chat:
+                inchat = set(coder.get_inchat_relative_files())
+                all_files = [f for f in all_files if f not in inchat]
+            completions = all_files
         else:
-            completions = coder.get_all_relative_files()
+            if filter_in_chat:
+                files = set(coder.get_all_relative_files())
+                files = files - set(coder.get_inchat_relative_files())
+                completions = list(files)
+            else:
+                completions = coder.get_all_relative_files()
 
     # Quote filenames with spaces
     completions = [quote_filename(fn) for fn in completions]
@@ -256,7 +273,7 @@ def format_command_result(
         io.tool_error(f"Error in {command_name}: {str(error)}")
         return f"Error: {str(error)}"
     else:
-        io.tool_output(f"✅ {success_message}")
+        io.tool_output(f"✓ {success_message}")
         return f"Successfully executed {command_name}."
 
 
@@ -287,6 +304,92 @@ def expand_subdir(file_path: Path) -> List[Path]:
         for file in file_path.rglob("*"):
             if file.is_file():
                 files.append(file)
-        return files
 
     return []
+
+
+def iter_all_coders(root_coder):
+    """
+    Recursively iterate over all coders in the agent/sub-agent hierarchy.
+
+    Yields the root coder first, then all sub-agents (and their sub-agents)
+    at every nesting level.
+
+    Args:
+        root_coder: The top-level coder instance to start from.
+
+    Yields:
+        Coder instances from the entire hierarchy.
+    """
+
+    try:
+        from cecli.helpers.agents.service import AgentService
+
+        for coder in AgentService.get_all_agents():
+            yield coder
+    except Exception:
+        pass
+
+
+def update_server_registration(coder, server_name, operation, force=False):
+    """
+    Unify include/exclude server registration with optional force.
+
+    When *force* is True, the operation always succeeds and the
+    opposing set is cleaned up to be non-conflicting.  When *force*
+    is False (safe mode), the operation is a no-op if the server
+    is already present in the opposing set.
+
+    Args:
+        coder: A coder instance with ``registered_servers`` attribute.
+        server_name: Name of the server to register.
+        operation: ``"include"`` or ``"exclude"``.
+        force: When True, always perform the operation.
+               When False, respect the opposing set (excluded wins
+               for include, included wins for exclude).
+    """
+    name = server_name
+    included = coder.registered_servers["included"]
+    excluded = coder.registered_servers["excluded"]
+
+    if operation == "include":
+        if force or name not in excluded:
+            included.add(name)
+            excluded.discard(name)
+    elif operation == "exclude":
+        if force or name not in included:
+            excluded.add(name)
+            included.discard(name)
+
+
+def is_server_globally_excluded(coder, server_name):
+    """
+    Check whether *server_name* is excluded from *all* coders in the hierarchy.
+
+    A server is considered "globally excluded" when every coder in the tree
+    either:
+      - has it in ``registered_servers["excluded"]``, or
+      - does **not** have it in ``registered_servers["included"]``
+        (empty included means "include all", so the server would be available).
+
+    Args:
+        coder: Any coder in the hierarchy (used to discover the full tree).
+        server_name: Name of the MCP server to check.
+
+    Returns:
+        True if the server is excluded from every coder.
+    """
+    name = server_name
+    for other in iter_all_coders(coder):
+        incl = other.registered_servers["included"]
+        excl = other.registered_servers["excluded"]
+
+        # Empty included => implicitly includes all servers
+        if not incl:
+            if name not in excl:
+                return False
+        else:
+            if name in incl:
+                return False
+            # Non-empty included means it's an allowlist: not in included => excluded
+    return True
