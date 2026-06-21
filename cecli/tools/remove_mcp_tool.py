@@ -3,7 +3,7 @@ from typing import List
 from cecli.tools.utils.base_tool import BaseTool
 
 
-class RemoveMcpTool(BaseTool):
+class RemoveMcp(BaseTool):
     NORM_NAME = "remove-mcp"
     SCHEMA = {
         "type": "function",

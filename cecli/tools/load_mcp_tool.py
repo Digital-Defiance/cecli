@@ -3,7 +3,7 @@ from typing import List
 from cecli.tools.utils.base_tool import BaseTool
 
 
-class LoadMcpTool(BaseTool):
+class LoadMcp(BaseTool):
     NORM_NAME = "load-mcp"
     SCHEMA = {
         "type": "function",
