@@ -11,9 +11,7 @@
 
 
 ## Installation Instructions
-This project can be installed using several methods:
-
-### One Liners
+All installation methods export a `cecli` command that can start the application. This project can be installed using several methods:
 
 #### Linux & Mac
 
@@ -45,8 +43,6 @@ or
 ```bash
 uv pip install --native-tls cecli-dev
 ```
-
-The package exports a `cecli` command that can start the application
 
 ### Tool Installation
 ```bash
