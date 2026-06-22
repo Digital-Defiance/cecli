@@ -34,14 +34,15 @@ powershell -ExecutionPolicy ByPass -c "irm https://cecli.dev/install.ps1 | iex"
 ```
 
 ### Package Installation
+
 ```bash
-pip install cecli-dev
+uv pip install --native-tls cecli-dev
 ```
 
 or
 
 ```bash
-uv pip install --native-tls cecli-dev
+pip install cecli-dev
 ```
 
 ### Tool Installation
