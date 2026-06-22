@@ -1,6 +1,5 @@
 import asyncio
 
-from cecli.llm import litellm
 from cecli.mcp.server import LocalServer, McpServer
 from cecli.tools.utils.registry import ToolRegistry
 
@@ -112,6 +111,8 @@ class McpServerManager:
         Returns:
             Boolean indicating success or failure
         """
+        from litellm import experimental_mcp_client
+
         server = self.get_server(name)
         if not server:
             self._log_warning(f"MCP server not found: {name}")
@@ -131,9 +132,7 @@ class McpServerManager:
 
         try:
             session = await server.connect()
-            tools = await litellm.experimental_mcp_client.load_mcp_tools(
-                session=session, format="openai"
-            )
+            tools = await experimental_mcp_client.load_mcp_tools(session=session, format="openai")
             self._server_tools[server.name] = tools
             self._connected_servers.add(server)
             self._log_verbose(f"Connected to MCP server: {name}")

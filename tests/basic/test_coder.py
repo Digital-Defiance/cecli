@@ -1684,9 +1684,7 @@ This command will print 'Hello, World!' to the console."""
             # Verify that no messages were added
             assert len(coder.cur_messages) == 0
 
-    @patch(
-        "cecli.coders.base_coder.experimental_mcp_client.call_openai_tool", new_callable=AsyncMock
-    )
+    @patch("litellm.experimental_mcp_client.call_openai_tool", new_callable=AsyncMock)
     async def test_execute_tool_calls(self, mock_call_tool):
         """Test that _execute_tool_calls executes tool calls correctly."""
         with GitTemporaryDirectory():
@@ -1783,7 +1781,7 @@ This command will print 'Hello, World!' to the console."""
             coder.repo.get_commit_message.assert_called_once()
 
     @patch(
-        "cecli.coders.base_coder.experimental_mcp_client.call_openai_tool",
+        "litellm.experimental_mcp_client.call_openai_tool",
         new_callable=AsyncMock,
     )
     async def test_execute_tool_calls_multiple_content(self, mock_call_openai_tool):
@@ -1835,7 +1833,7 @@ This command will print 'Hello, World!' to the console."""
             assert server_responses[0]["content"] == "First part. Second part."
 
     @patch(
-        "cecli.coders.base_coder.experimental_mcp_client.call_openai_tool",
+        "litellm.experimental_mcp_client.call_openai_tool",
         new_callable=AsyncMock,
     )
     async def test_execute_tool_calls_blob_content(self, mock_call_openai_tool):

@@ -93,8 +93,8 @@ async def test_compact_context_with_observations():
     # 2. compact (DONE)
     # 3. compact (CUR)
     # 4. compact (DIFFS)
-    mock_conv_manager.get_messages_dict.side_effect = [cur_messages, [], cur_messages, []]
-
+    # 5. compact (ALL)
+    mock_conv_manager.get_messages_dict.side_effect = [cur_messages, [], cur_messages, [], []]
     with patch(
         "cecli.coders.base_coder.ConversationService.get_manager", return_value=mock_conv_manager
     ):
@@ -154,8 +154,8 @@ async def test_compact_context_with_observations_integration():
     # 2. compact (DONE)
     # 3. compact (CUR)
     # 4. compact (DIFFS)
-    mock_conv_manager.get_messages_dict.side_effect = [cur_messages, [], cur_messages, []]
-
+    # 5. compact (ALL)
+    mock_conv_manager.get_messages_dict.side_effect = [cur_messages, [], cur_messages, [], []]
     with patch(
         "cecli.coders.base_coder.ConversationService.get_manager", return_value=mock_conv_manager
     ):

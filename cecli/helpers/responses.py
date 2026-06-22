@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 import json
 import re
 import time
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import json_repair
-from litellm.types.utils import ChatCompletionMessageToolCall, Function
 
 from cecli import utils
 from cecli.helpers import nested
+
+if TYPE_CHECKING:
+    from litellm.types.utils import ChatCompletionMessageToolCall, Function  # noqa
 
 
 def preprocess_json(response: str) -> str:
@@ -35,6 +39,8 @@ def extract_tools_from_content_json(content: str) -> Optional[List[ChatCompletio
     Simple extraction of JSON-like structures that look like tool calls.
     This handles models that write JSON in text instead of using native calling.
     """
+    from litellm.types.utils import ChatCompletionMessageToolCall, Function  # noqa
+
     if not content or ("{" not in content and "[" not in content):
         return None
 
@@ -111,6 +117,8 @@ def extract_tools_from_content_xml(content: str) -> Optional[List[ChatCompletion
     </parameter>
     </function>
     """
+    from litellm.types.utils import ChatCompletionMessageToolCall, Function  # noqa
+
     if not content or ("<function=" not in content and "<name=" not in content):
         return None
 
@@ -160,6 +168,8 @@ def extract_tools_from_pseudo_json(content: str) -> Optional[List[ChatCompletion
     Example:
     [Local--ReadRange(show=[{"file_path": "agent.py", "start_text": "class A"}], verbose=true, mode="strict")]
     """
+    from litellm.types.utils import ChatCompletionMessageToolCall, Function  # noqa
+
     if not content or "[" not in content:
         return None
 
@@ -278,6 +288,8 @@ def prefix_tool_call(tool_call, server_name: str):
     Returns:
         New tool call with prefixed function name (same type as input)
     """
+    from litellm.types.utils import ChatCompletionMessageToolCall, Function  # noqa
+
     # Handle ChatCompletionMessageToolCall objects
     if hasattr(tool_call, "function") and hasattr(tool_call.function, "name"):
         # Create a copy of the tool call object
@@ -316,6 +328,8 @@ def unprefix_tool_call(tool_call):
         Tuple of (server_name, unprefixed_tool_call) where server_name may be empty string
         if no prefix is found (same type as input)
     """
+    from litellm.types.utils import ChatCompletionMessageToolCall, Function  # noqa
+
     # Handle ChatCompletionMessageToolCall objects
     if hasattr(tool_call, "function") and hasattr(tool_call.function, "name"):
         server_name, unprefixed_name = unprefix_tool_name(tool_call.function.name)

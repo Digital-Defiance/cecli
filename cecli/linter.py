@@ -10,8 +10,6 @@ from pathlib import Path
 import oslex
 
 from cecli.dump import dump  # noqa: F401
-from cecli.helpers.grep_ast import TreeContext, filename_to_lang
-from cecli.helpers.grep_ast.tsl import get_parser  # noqa: E402
 from cecli.helpers.threading import ThreadSafeEvent
 from cecli.run_cmd import run_cmd_async, run_cmd_subprocess  # noqa: F401
 
@@ -80,6 +78,8 @@ class Linter:
         return LintResult(text=errors, lines=linenums)
 
     async def lint(self, fname, cmd=None):
+        from cecli.helpers.grep_ast import filename_to_lang
+
         rel_fname = self.get_rel_fname(fname)
         try:
             code = Path(fname).read_text(encoding=self.encoding, errors="replace")
@@ -204,6 +204,9 @@ def basic_lint(fname, code):
     Use tree-sitter to look for syntax errors, display them with tree context.
     """
 
+    from cecli.helpers.grep_ast import filename_to_lang
+    from cecli.helpers.grep_ast.tsl import get_parser
+
     lang = filename_to_lang(fname)
     if not lang:
         return
@@ -233,6 +236,8 @@ def basic_lint(fname, code):
 
 
 def tree_context(fname, code, line_nums):
+    from cecli.helpers.grep_ast import TreeContext
+
     context = TreeContext(
         fname,
         code,

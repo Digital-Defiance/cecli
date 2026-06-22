@@ -1,5 +1,5 @@
 ---
-nav_order: 30
+nav_order: 55
 has_children: true
 description: How to use cecli to pair program with AI and edit code in your local git repo.
 ---

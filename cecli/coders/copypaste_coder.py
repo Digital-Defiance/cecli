@@ -78,14 +78,13 @@ class CopyPasteCoder(Coder):
             coders = None
 
         target_coder_class = None
-        if coders is not None:
-            for coder_cls in getattr(coders, "__all__", []):
-                if (
-                    hasattr(coder_cls, "edit_format")
-                    and coder_cls.edit_format == selected_edit_format
-                ):
-                    target_coder_class = coder_cls
-                    break
+        if coders is not None and selected_edit_format:
+            # Use EDIT_FORMAT_MAP from base_coder to find the right coder class by edit_format
+            from cecli.coders.base_coder import EDIT_FORMAT_MAP
+
+            coder_name = EDIT_FORMAT_MAP.get(selected_edit_format)
+            if coder_name:
+                target_coder_class = getattr(coders, coder_name, None)
 
         # Mirror prompt pack + edit_format where available.
         if target_coder_class is not None:

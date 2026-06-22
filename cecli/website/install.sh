@@ -1829,4 +1829,6 @@ verify_checksum() {
     fi
 }
 
+
+# Run the installer
 download_binary_and_run_installer "$@" || exit 1

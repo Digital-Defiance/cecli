@@ -10,10 +10,7 @@ from collections import defaultdict, namedtuple
 from importlib import resources
 from pathlib import Path
 
-import tree_sitter
 from diskcache import Cache
-from pygments.lexers import guess_lexer_for_filename
-from pygments.token import Token
 
 from cecli.dump import dump
 from cecli.helpers.similarity import (
@@ -22,17 +19,8 @@ from cecli.helpers.similarity import (
     normalize_vector,
 )
 from cecli.special import filter_important_files
-from cecli.tools.utils.helpers import ToolError
 
-# tree_sitter is throwing a FutureWarning
 warnings.simplefilter("ignore", category=FutureWarning)
-
-from cecli.helpers.grep_ast import TreeContext, filename_to_lang  # noqa: E402
-from cecli.helpers.grep_ast.tsl import (  # noqa: E402
-    USING_TSL_PACK,
-    get_language,
-    get_parser,
-)
 
 
 # Define the Tag namedtuple with a default for specific_kind to maintain compatibility
@@ -117,9 +105,11 @@ Tag = TagBase
 SQLITE_ERRORS = (sqlite3.OperationalError, sqlite3.DatabaseError, OSError)
 
 
-CACHE_VERSION = 7
-if USING_TSL_PACK:
-    CACHE_VERSION = 9
+# CACHE_VERSION determines tags cache format.
+# Set to 9 to ensure fresh cache when tree-sitter features are available.
+# tree_sitter is loaded lazily inside get_tags_raw(), so we don't
+# import it at module level here.
+CACHE_VERSION = 9
 
 UPDATING_REPO_MAP_MESSAGE = "Updating repo map"
 
@@ -517,6 +507,8 @@ class RepoMap:
         Raises:
             ToolError: If the symbol is not found, not unique, or not a definition.
         """
+        from cecli.tools.utils.helpers import ToolError
+
         abs_path = self.io.root_abs_path(file_path)  # Assuming io has this helper or similar
         rel_path = self.get_rel_fname(abs_path)  # Ensure we use consistent relative path
 
@@ -605,6 +597,13 @@ class RepoMap:
         return False
 
     def get_tags_raw(self, fname, rel_fname):
+        import tree_sitter
+        from pygments.lexers import guess_lexer_for_filename
+        from pygments.token import Token
+
+        from cecli.helpers.grep_ast import filename_to_lang
+        from cecli.helpers.grep_ast.tsl import USING_TSL_PACK, get_language, get_parser
+
         lang = filename_to_lang(fname)
         if not lang:
             return
@@ -1279,6 +1278,8 @@ class RepoMap:
     def render_tree(
         self, abs_fname, rel_fname, lois, line_numbers=False, start_line=None, end_line=None
     ):
+        from cecli.helpers.grep_ast import TreeContext
+
         mtime = self.get_mtime(abs_fname)
         key = (rel_fname, tuple(sorted(lois)), mtime, start_line, end_line)
 
@@ -1444,6 +1445,8 @@ def find_src_files(directory):
 
 
 def get_scm_fname(lang):
+    from cecli.helpers.grep_ast.tsl import USING_TSL_PACK
+
     # Load the tags queries
     if USING_TSL_PACK:
         subdir = "tree-sitter-language-pack"

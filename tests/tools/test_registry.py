@@ -28,17 +28,17 @@ class TestToolRegistry:
         assert len(tools) > 0, "Registry should have tools after initialization"
 
         # Check that essential tools are registered
-        essential_tools = {"contextmanager", "edittext", "yield"}
+        essential_tools = {"resourcemanager", "edittext", "yield"}
         for tool in essential_tools:
             assert tool in tools, f"Essential tool {tool} should be registered"
 
     def test_get_tool(self):
         """Test getting individual tools by name"""
         # Get existing tool
-        tool_class = ToolRegistry.get_tool("contextmanager")
-        assert tool_class is not None, "Should get contextmanager tool"
+        tool_class = ToolRegistry.get_tool("resourcemanager")
+        assert tool_class is not None, "Should get resourcemanager tool"
         assert hasattr(tool_class, "NORM_NAME"), "Tool class should have NORM_NAME"
-        assert tool_class.NORM_NAME == "contextmanager", "Tool name should match"
+        assert tool_class.NORM_NAME == "resourcemanager", "Tool name should match"
 
         # Get non-existent tool
         non_existent = ToolRegistry.get_tool("nonexistenttool")
@@ -52,18 +52,18 @@ class TestToolRegistry:
         assert len(registry) > 0, "Should return tools with empty config"
 
         # Essential tools should always be included
-        assert "contextmanager" in registry, "Essential tool should be included"
+        assert "resourcemanager" in registry, "Essential tool should be included"
         assert "edittext" in registry, "Essential tool should be included"
         assert "yield" in registry, "Essential tool should be included"
 
     def test_build_registry_with_includelist(self):
         """Test filtering with tools_includelist"""
-        config = {"tools_includelist": ["contextmanager", "edittext"]}
+        config = {"tools_includelist": ["resourcemanager", "edittext"]}
         registry = ToolRegistry.build_registry(config)
 
         # Should only include tools from includelist, plus essential tools
         assert len(registry) == 3, "Should include 2 from list + 1 essential"
-        assert "contextmanager" in registry
+        assert "resourcemanager" in registry
         assert "edittext" in registry
         assert "yield" in registry  # Essential
         assert "command" not in registry, "Should not include tools not in includelist"
@@ -76,15 +76,15 @@ class TestToolRegistry:
         # Should exclude specified tools (except essentials)
         assert "command" not in registry, "Should exclude command"
         assert "commandinteractive" not in registry, "Should exclude commandinteractive"
-        assert "contextmanager" in registry, "Essential tool should still be included"
+        assert "resourcemanager" in registry, "Essential tool should still be included"
 
     def test_build_registry_exclude_essential(self):
         """Test that essential tools cannot be excluded"""
-        config = {"tools_excludelist": ["contextmanager", "edittext", "finished", "command"]}
+        config = {"tools_excludelist": ["resourcemanager", "edittext", "finished", "command"]}
         registry = ToolRegistry.build_registry(config)
 
         # Essential tools should still be included despite excludelist
-        assert "contextmanager" in registry, "Essential tool cannot be excluded"
+        assert "resourcemanager" in registry, "Essential tool cannot be excluded"
         assert "edittext" in registry, "Essential tool cannot be excluded"
         assert "yield" in registry, "Essential tool cannot be excluded"
         assert "command" not in registry, "Non-essential tool should be excluded"
@@ -92,14 +92,14 @@ class TestToolRegistry:
     def test_build_registry_combined_filters(self):
         """Test combined filtering with includelist and excludelist"""
         config = {
-            "tools_includelist": ["contextmanager", "edittext", "command"],
+            "tools_includelist": ["resourcemanager", "edittext", "command"],
             "tools_excludelist": ["commandinteractive"],
         }
         registry = ToolRegistry.build_registry(config)
 
         # Should respect all filters
         assert len(registry) == 4, "Should include exactly 4 tools (3 from list + yield)"
-        assert "contextmanager" in registry
+        assert "resourcemanager" in registry
         assert "edittext" in registry
         assert "yield" in registry
         assert "command" in registry
@@ -107,35 +107,35 @@ class TestToolRegistry:
 
     def test_get_filtered_tools(self):
         """Test get_filtered_tools method"""
-        config = {"tools_includelist": ["contextmanager", "edittext"]}
+        config = {"tools_includelist": ["resourcemanager", "edittext"]}
         ToolRegistry.build_registry(config)
         tool_names = ToolRegistry.get_registered_tools()
 
         # Should return list of tool names
         assert isinstance(tool_names, list)
-        # Should include contextmanager, edittext, and finished (essential)
+        # Should include resourcemanager, edittext, and finished (essential)
         assert len(tool_names) == 3
-        assert "contextmanager" in tool_names
+        assert "resourcemanager" in tool_names
         assert "edittext" in tool_names
         assert "yield" in tool_names  # Essential tool always included
 
     def test_legacy_config_names(self):
         """Test backward compatibility with legacy config names (whitelist/blacklist)"""
         config = {
-            "tools_whitelist": ["contextmanager", "edittext"],
+            "tools_whitelist": ["resourcemanager", "edittext"],
             "tools_blacklist": ["command"],
         }
         registry = ToolRegistry.build_registry(config)
 
         # Should work with legacy names
-        assert "contextmanager" in registry
+        assert "resourcemanager" in registry
         assert "edittext" in registry
         assert "command" not in registry
 
     def test_config_precedence(self):
         """Test that new config names take precedence over legacy names"""
         config = {
-            "tools_includelist": ["contextmanager"],
+            "tools_includelist": ["resourcemanager"],
             "tools_whitelist": ["command"],  # Should be ignored
             "tools_excludelist": ["commandinteractive"],
             "tools_blacklist": ["finished"],  # Should be ignored for essential tool
@@ -143,7 +143,7 @@ class TestToolRegistry:
         registry = ToolRegistry.build_registry(config)
 
         # New names should take precedence
-        assert "contextmanager" in registry, "Should use tools_includelist"
+        assert "resourcemanager" in registry, "Should use tools_includelist"
         assert (
             "command" not in registry
         ), "Should not use tools_whitelist when tools_includelist present"
@@ -152,7 +152,7 @@ class TestToolRegistry:
 
     def test_registry_consistency(self):
         """Test that registry methods return consistent results"""
-        config = {"tools_includelist": ["contextmanager", "edittext"]}
+        config = {"tools_includelist": ["resourcemanager", "edittext"]}
 
         # build_registry should return consistent results
         registry = ToolRegistry.build_registry(config)
@@ -163,21 +163,24 @@ class TestToolRegistry:
         ), "Methods should return consistent results"
         assert len(registry) == len(filtered_names), "Methods should return consistent counts"
 
-    def test_skill_tool_detection(self):
-        """Test that skill tools are correctly identified"""
-        # Get the actual tool classes to verify
-        loadskill_tool = ToolRegistry.get_tool("loadskill")
-        removeskill_tool = ToolRegistry.get_tool("removeskill")
+    def test_skill_and_mcp_tools_in_context_manager(self):
+        """Test that skill/MCP functionality is now part of context_manager."""
+        # The individual load_skill, remove_skill, load_mcp, remove_mcp tools
+        # have been merged into context_manager
+        ctx_tool = ToolRegistry.get_tool("resourcemanager")
+        assert ctx_tool is not None, "resourcemanager tool should be registered"
+        assert ctx_tool.NORM_NAME == "resourcemanager"
 
-        # These should exist in the registry
-        assert loadskill_tool is not None, "loadskill tool should be registered"
-        assert removeskill_tool is not None, "removeskill tool should be registered"
+        # Verify the merged tools no longer exist as separate entries
+        assert ToolRegistry.get_tool("loadskill") is None
+        assert ToolRegistry.get_tool("removeskill") is None
 
-        # Verify they have the correct NORM_NAME
-        if loadskill_tool:
-            assert loadskill_tool.NORM_NAME == "loadskill"
-        if removeskill_tool:
-            assert removeskill_tool.NORM_NAME == "removeskill"
+        # Verify context_manager has the new schema parameters
+        params = ctx_tool.SCHEMA["function"]["parameters"]["properties"]
+        assert "load_skill" in params, "context_manager should have load_skill param"
+        assert "remove_skill" in params, "context_manager should have remove_skill param"
+        assert "load_mcp" in params, "context_manager should have load_mcp param"
+        assert "remove_mcp" in params, "context_manager should have remove_mcp param"
 
 
 if __name__ == "__main__":

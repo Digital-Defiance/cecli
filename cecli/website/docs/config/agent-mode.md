@@ -48,10 +48,9 @@ Agent Mode uses a centralized local tool registry that manages all available too
 
 - **File Discovery Tools**: `ExploreCode`, `Ls`, `Grep`
 - **Editing Tools**: `EditText`,
-- **Context Management Tools**: `ContextManager`, `GetLines`
+- **Context Management Tools**: `ResourceManager`, `GetLines`
 - **Git Tools**: `GitDiff`, `GitLog`, `GitShow`, `GitStatus`
 - **Utility Tools**: `UpdateTodoList`, `UndoChange`, `Yield`
-- **Skill Management**: `LoadSkill`, `RemoveSkill`
 - **Sub-Agent Tools**: `Delegate` - Delegate sub-tasks to specialized sub-agents
 
 #### Enhanced Context Management
@@ -168,7 +167,7 @@ Agent Mode can also be configured directly in your configuration file. See the [
 
 Certain tools are always available regardless of includelist/excludelist settings:
 
-- `ContextManager` - Add, drop, and make files editable in the context
+- `ResourceManager` - Add, drop, and make files editable in the context
 - `edittext` - Basic text replacement
 - `finished` - Complete the task
 
@@ -263,7 +262,7 @@ agent: true
 # Agent Mode configuration
 agent-config:
   # Tool configuration
-  tools_includelist: ["contextmanager", "edittext", "finished"]  # Optional: Whitelist of tools
+  tools_includelist: ["resourcemanager", "edittext", "finished"]  # Optional: Whitelist of tools
   tools_excludelist: ["command", "commandinteractive"]  # Optional: Blacklist of tools
   tools_paths: ["./custom-tools", "~/my-tools"]  # Optional: Directories or files containing custom tools
   
@@ -310,7 +309,6 @@ agent-config:
 For complete documentation on creating and using skills, including skill directory structure, SKILL.md format, and best practices, see the [Skills documentation](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/skills.md).
 
 ### Benefits
-
 - **Autonomous operation**: Reduces need for manual file management
 - **Context awareness**: Real-time project information improves decision making
 - **Precision editing**: Granular tools reduce errors compared to SEARCH/REPLACE

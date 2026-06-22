@@ -8,8 +8,6 @@ try:
 except Exception:
     pass
 
-from cecli.helpers.file_searcher import handle_core_files
-
 try:
     if not os.getenv("CECLI_DEFAULT_TLS"):
         import truststore
@@ -43,28 +41,6 @@ if sys.platform == "win32":
     if hasattr(asyncio, "set_event_loop_policy"):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from prompt_toolkit.enums import EditingMode
-
-from cecli import __version__, models, urls, utils
-from cecli.args import get_parser
-from cecli.coders import AgentCoder, Coder
-from cecli.coders.base_coder import UnknownEditFormat
-from cecli.commands import Commands, ReloadProgramSignal, SwitchCoderSignal
-from cecli.deprecated_args import handle_deprecated_model_args
-from cecli.format_settings import format_settings, scrub_sensitive_info
-from cecli.helpers.conversation import ConversationService, MessageTag
-from cecli.helpers.copypaste import ClipboardWatcher
-from cecli.helpers.file_searcher import generate_search_path_list
-from cecli.history import ChatSummary
-from cecli.hooks import HookService
-from cecli.io import InputOutput
-from cecli.llm import litellm
-from cecli.mcp import McpServerManager, load_mcp_servers
-from cecli.models import ModelSettings
-from cecli.onboarding import offer_openrouter_oauth, select_default_model
-from cecli.repo import ANY_GIT_ERROR, GitRepo
-from cecli.report import report_uncaught_exceptions, set_args_error_data
-from cecli.versioncheck import check_version
-from cecli.watch import FileWatcher
 
 from .dump import dump  # noqa
 
@@ -129,6 +105,8 @@ def get_git_root():
 
 def guessed_wrong_repo(io, git_root, fnames, git_dname):
     """After we parse the args, we can determine the real repo. Did we guess wrong?"""
+    from cecli.repo import ANY_GIT_ERROR, GitRepo
+
     try:
         check_repo = Path(GitRepo(io, fnames, git_dname).root).resolve()
     except (OSError,) + ANY_GIT_ERROR:
@@ -157,6 +135,8 @@ def validate_tui_args(args):
 
 
 async def make_new_repo(git_root, io):
+    from cecli.repo import ANY_GIT_ERROR
+
     try:
         repo = git.Repo.init(git_root)
         await check_gitignore(git_root, io, False)
@@ -169,6 +149,8 @@ async def make_new_repo(git_root, io):
 
 
 async def setup_git(git_root, io):
+    from cecli.repo import ANY_GIT_ERROR
+
     if git is None:
         return
     try:
@@ -216,6 +198,8 @@ async def setup_git(git_root, io):
 
 
 async def check_gitignore(git_root, io, ask=True):
+    from cecli.repo import ANY_GIT_ERROR
+
     if not git_root:
         return
     try:
@@ -288,6 +272,9 @@ def parse_lint_cmds(lint_cmds, io):
 
 
 def register_models(git_root, model_settings_fname, io, verbose=False):
+    from cecli import models
+    from cecli.helpers.file_searcher import generate_search_path_list
+
     model_settings_files = generate_search_path_list(
         ".cecli.model.settings.yml", git_root, model_settings_fname
     )
@@ -317,6 +304,8 @@ def register_models(git_root, model_settings_fname, io, verbose=False):
 
 
 def load_dotenv_files(git_root, dotenv_fname, encoding="utf-8"):
+    from cecli.helpers.file_searcher import generate_search_path_list, handle_core_files
+
     dotenv_files = generate_search_path_list(".env", git_root, dotenv_fname)
     oauth_keys_file = handle_core_files(Path.home() / ".cecli" / "oauth-keys.env")
     if oauth_keys_file.exists():
@@ -336,6 +325,9 @@ def load_dotenv_files(git_root, dotenv_fname, encoding="utf-8"):
 
 
 def register_litellm_models(git_root, model_metadata_fname, io, verbose=False):
+    from cecli import models
+    from cecli.helpers.file_searcher import generate_search_path_list
+
     model_metadata_files = []
     resource_metadata = importlib_resources.files("cecli.resources").joinpath("model-metadata.json")
     model_metadata_files.append(str(resource_metadata))
@@ -361,15 +353,22 @@ def register_litellm_models(git_root, model_metadata_fname, io, verbose=False):
 
 def load_model_overrides(git_root, model_overrides_fname, io, verbose=False):
     """Load model tag overrides from a YAML file."""
+    from cecli import models
+
     models.ModelOverrides.load_from_file(git_root, model_overrides_fname, io, verbose=verbose)
 
 
 def load_model_overrides_from_string(model_overrides_str, io):
     """Load model tag overrides from a JSON/YAML string."""
+    from cecli import models
+
     models.ModelOverrides.load_from_string(model_overrides_str, io)
 
 
 async def sanity_check_repo(repo, io):
+    from cecli import urls
+    from cecli.repo import ANY_GIT_ERROR
+
     if not repo:
         return True
     if not repo.repo.working_tree_dir:
@@ -471,6 +470,9 @@ def custom_tracer(frame, event, arg):
 
 
 def main(argv=None, input=None, output=None, force_git_root=None, return_coder=False):
+    from cecli.commands import ReloadProgramSignal
+    from cecli.hooks import HookService
+
     # Tracks the coder instance from a ReloadProgramSignal so the new
     # main_async() can pass it as from_coder to Coder.create(), preserving
     # UUID, edit_format, and other state across the reload cycle.
@@ -519,6 +521,28 @@ async def main_async(
     return_coder=False,
     from_coder=None,
 ):
+    from cecli import models, urls, utils
+    from cecli.args import get_parser
+    from cecli.coders import Coder
+    from cecli.coders.base_coder import UnknownEditFormat
+    from cecli.commands import Commands, ReloadProgramSignal, SwitchCoderSignal
+    from cecli.deprecated_args import handle_deprecated_model_args
+    from cecli.format_settings import format_settings, scrub_sensitive_info
+    from cecli.helpers.conversation import ConversationService, MessageTag
+    from cecli.helpers.copypaste import ClipboardWatcher
+    from cecli.helpers.file_searcher import handle_core_files
+    from cecli.history import ChatSummary
+    from cecli.hooks import HookService
+    from cecli.io import InputOutput
+    from cecli.llm import litellm
+    from cecli.mcp import McpServerManager, load_mcp_servers
+    from cecli.models import ModelSettings
+    from cecli.onboarding import offer_openrouter_oauth, select_default_model
+    from cecli.repo import GitRepo
+    from cecli.report import report_uncaught_exceptions, set_args_error_data
+    from cecli.versioncheck import check_version
+    from cecli.watch import FileWatcher
+
     report_uncaught_exceptions()
     if argv is None:
         argv = sys.argv[1:]
@@ -1319,7 +1343,10 @@ async def main_async(
             old_coder = coder
             coder = await Coder.create(**kwargs)
 
-            if isinstance(old_coder, AgentCoder) and not isinstance(coder, AgentCoder):
+            if old_coder.edit_format in ("agent", "subagent") and coder.edit_format not in (
+                "agent",
+                "subagent",
+            ):
                 if coder.mcp_manager and coder.mcp_manager.get_server("Local"):
                     await coder.mcp_manager.disconnect_server("Local")
 
@@ -1344,6 +1371,9 @@ async def main_async(
 
 def is_first_run_of_new_version(io, verbose=False):
     """Check if this is the first run of a new version/executable combination"""
+    from cecli import __version__
+    from cecli.helpers.file_searcher import handle_core_files
+
     installs_file = handle_core_files(Path.home() / ".cecli" / "installs.json")
     key = __version__, sys.executable
     if ".dev" in __version__:
@@ -1378,6 +1408,8 @@ def is_first_run_of_new_version(io, verbose=False):
 
 
 async def check_and_load_imports(io, is_first_run, verbose=False):
+    from cecli import urls
+
     try:
         if is_first_run:
             if verbose:

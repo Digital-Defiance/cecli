@@ -1,5 +1,5 @@
 ---
-nav_order: 55
+nav_order: 40
 has_children: true
 description: Information on all of cecli's settings and how to use them.
 ---

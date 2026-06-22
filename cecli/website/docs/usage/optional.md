@@ -1,6 +1,6 @@
 ---
-parent: Installation
-nav_order: 20
+parent: Usage
+nav_order: 25
 ---
 
 # Optional steps

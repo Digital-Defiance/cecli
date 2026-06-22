@@ -31,12 +31,6 @@ from typing import List
 from urllib.parse import urlparse
 from uuid import uuid4 as generate_unique_id
 
-import httpx
-from litellm import experimental_mcp_client
-from litellm.types.utils import ModelResponse
-from prompt_toolkit.patch_stdout import patch_stdout
-from rich.console import Console
-
 import cecli.prompts.utils.system as prompts
 from cecli import __version__, models, urls, utils
 from cecli.commands import Commands, SwitchCoderSignal
@@ -110,6 +104,28 @@ all_fences = [
     wrap_fence("codeblock"),
     wrap_fence("sourcecode"),
 ]
+
+# Map of edit_format values to coder class names.
+# Used by Coder.create() to find the right coder class by edit_format
+# without importing all coder modules.
+EDIT_FORMAT_MAP = {
+    "help": "HelpCoder",
+    "ask": "AskCoder",
+    "diff": "EditBlockCoder",
+    "diff-fenced": "EditBlockFencedCoder",
+    "whole": "WholeFileCoder",
+    "patch": "PatchCoder",
+    "udiff": "UnifiedDiffCoder",
+    "udiff-simple": "UnifiedDiffSimpleCoder",
+    "architect": "ArchitectCoder",
+    "editor-diff": "EditorEditBlockCoder",
+    "editor-whole": "EditorWholeFileCoder",
+    "editor-diff-fenced": "EditorDiffFencedCoder",
+    "context": "ContextCoder",
+    "agent": "AgentCoder",
+    "hashline": "HashLineCoder",
+    "subagent": "SubAgentCoder",
+}
 
 
 class UsageMeta(type):
@@ -335,9 +351,10 @@ class Coder(metaclass=UsageMeta):
             res = coders.CopyPasteCoder(main_model, io, args=args, **kwargs)
 
         if not res:
-            for coder in coders.__all__:
-                if hasattr(coder, "edit_format") and coder.edit_format == edit_format:
-                    res = coder(main_model, io, args=args, **kwargs)
+            coder_name = EDIT_FORMAT_MAP.get(edit_format)
+            if coder_name:
+                coder_cls = getattr(coders, coder_name)
+                res = coder_cls(main_model, io, args=args, **kwargs)
 
         if res is not None:
             if from_coder:
@@ -359,11 +376,7 @@ class Coder(metaclass=UsageMeta):
             res.original_kwargs = dict(kwargs)
             return res
 
-        valid_formats = [
-            str(c.edit_format)
-            for c in coders.__all__
-            if hasattr(c, "edit_format") and c.edit_format is not None
-        ]
+        valid_formats = list(EDIT_FORMAT_MAP.keys())
         raise UnknownEditFormat(edit_format, valid_formats)
 
     async def clone(self, **kwargs):
@@ -1470,6 +1483,8 @@ class Coder(metaclass=UsageMeta):
             return await self._run_linear(with_message, preproc)
 
         if self.io.prompt_session:
+            from prompt_toolkit.patch_stdout import patch_stdout
+
             with patch_stdout(raw=True):
                 return await self._run_parallel(with_message, preproc)
         else:
@@ -1954,7 +1969,10 @@ class Coder(metaclass=UsageMeta):
 
     def keyboard_interrupt(self):
         # Ensure cursor is visible on exit
-        Console().show_cursor(True)
+        if not self.tui:
+            from rich.console import Console
+
+            Console().show_cursor(True)
 
         self.io.tool_warning("^C KeyboardInterrupt")
         self.interrupt_event.set()
@@ -1973,12 +1991,24 @@ class Coder(metaclass=UsageMeta):
         done_messages = manager.get_messages_dict(MessageTag.DONE)
         cur_messages = manager.get_messages_dict(MessageTag.CUR)
         diff_messages = manager.get_messages_dict(MessageTag.DIFFS)
+        all_messages = manager.get_messages_dict()
 
         # Exclude first cur_message since that's the user's initial input
         done_tokens = self.summarizer.count_tokens(done_messages)
         cur_tokens = self.summarizer.count_tokens(cur_messages[1:] if len(cur_messages) > 1 else [])
         diff_tokens = self.summarizer.count_tokens(diff_messages)
+        all_tokens = self.summarizer.count_tokens(all_messages)
+
         combined_tokens = done_tokens + cur_tokens + diff_tokens
+
+        if force or (
+            all_tokens >= self.context_compaction_max_tokens * 0.9
+            and ConversationService.get_chunks(self).last_clear_count > 10
+        ):
+            manager.clear_tag(MessageTag.DIFFS)
+            manager.clear_tag(MessageTag.FILE_CONTEXTS)
+            ConversationService.get_files(self).clear_file_cache()
+            ConversationService.get_chunks(self).flush_removals()
 
         if not force and combined_tokens < self.context_compaction_max_tokens:
             return
@@ -2881,6 +2911,8 @@ class Coder(metaclass=UsageMeta):
 
     async def _execute_mcp_tools(self, server, tool_calls):
         """Execute MCP tools via LiteLLM."""
+        import httpx
+
         tool_responses = []
         try:
             # Connect to the server once
@@ -2928,6 +2960,8 @@ class Coder(metaclass=UsageMeta):
                             continue
 
                         async def do_tool_call():
+                            from litellm import experimental_mcp_client
+
                             return await experimental_mcp_client.call_openai_tool(
                                 session=session,
                                 openai_tool=new_tool_call,
@@ -3366,6 +3400,8 @@ class Coder(metaclass=UsageMeta):
             return prompts.added_files.format(fnames=", ".join(added_fnames))
 
     async def send(self, messages, model=None, functions=None, tools=None):
+        from litellm.types.utils import ModelResponse
+
         self.interrupt_event.clear()
         self.got_reasoning_content = False
         self.ended_reasoning_content = False
@@ -3452,6 +3488,8 @@ class Coder(metaclass=UsageMeta):
                     self.io.ai_output(json.dumps(args, indent=4))
 
     async def show_send_output(self, completion):
+        from litellm.types.utils import ModelResponse
+
         if self.verbose:
             print(completion)
 

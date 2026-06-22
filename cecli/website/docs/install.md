@@ -8,24 +8,6 @@ description: How to install and get started pair programming with cecli.
 # Installation
 {: .no_toc }
 
-
-## Get started quickly with uv
-
-We recommend using [uv](https://docs.astral.sh/uv/) for installing cecli as it provides the best experience and isolates cecli from your development environment.
-
-```bash
-uv tool install --native-tls --python python3.12 cecli-dev
-```
-
-This will install cecli in its own separate python environment.
-If needed, 
-uv will also install a separate version of python 3.12 to use with cecli (cecli supports Python 3.10-3.14).
-
-Once cecli is installed,
-there are also some [optional install steps](/docs/install/optional.html).
-
-See the [usage instructions](https://cecli.dev/docs/usage.html) to start coding with cecli.
-
 ## One-liners
 
 These one-liners will install cecli, along with python 3.12 if needed (cecli supports Python 3.10-3.14).
@@ -51,7 +33,6 @@ wget -qO- https://cecli.dev/install.sh | sh
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://cecli.dev/install.ps1 | iex"
 ```
-
 
 ## Install with uv
 
@@ -106,17 +87,43 @@ or
 uv pip install --native-tls cecli-dev
 ```
 
-{% include python-m-aider.md %}
+## Basic Configuration
 
-#### Installing with package managers
+We highly recommend using an `.cecli.conf.yml` file in your project directories. A good place to get started is:
 
-It's best to install cecli using one of methods
-recommended above.
-While cecli is available in a number of system package managers,
-they often install cecli with incorrect dependencies.
+```yaml
+model: <model of your choice>
+agent: true
+auto-commits: true
+auto-save: true
+cache-prompts: true
+check-update: true
+enable-context-compaction: true
+context-compaction-max-tokens: 0.8
+show-model-warnings: true
+
+agent-config:
+  large_file_token_threshold: 8192
+  skip_cli_confirmations: false
+
+mcp-servers:
+  mcpServers:
+    context7:
+      transport: http
+      url: https://mcp.context7.com/mcp
+```
+
+### Run Program
+
+If you are in the directory with your .cecli.conf.yml file, then simply running `cecli` will start the agent with your configuration. For best results, since terminal emulators can be finicky, we highly suggest running:
+
+```bash
+cecli --terminal-setup
+```
+
+On first run to configure keybindings for the program (notably `shift+enter`). Support for terminals is ongoing so feel free to make a github issue or chat in the discord for us to figure out what's needed to support automatically setting up a given terminal.
 
 ## Next steps...
 
-There are some [optional install steps](/docs/install/optional.html) you could consider.
 See the [usage instructions](https://cecli.dev/docs/usage.html) to start coding with cecli.
 

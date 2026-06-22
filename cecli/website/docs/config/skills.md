@@ -3,6 +3,7 @@ parent: Configuration
 nav_order: 35
 description: Extend AI capabilities with custom instructions, reference materials, scripts, and assets through the skills system.
 ---
+
 # Skills System
 
 Agent Mode includes a powerful skills system that allows you to extend the AI's capabilities with custom instructions, reference materials, scripts, and assets. Skills are organized collections of knowledge and tools that help the AI perform specific tasks more effectively.
