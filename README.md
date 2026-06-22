@@ -5,8 +5,8 @@
 
 ### Links
 
+[Documentation](https://cecli.dev/docs/) 🞄
 [Discord Chat](https://discord.gg/AX9ZEA7nJn) 🞄
-[Changelog](https://github.com/dwash96/cecli/blob/main/CHANGELOG.md) 🞄
 [Issue Queue](https://github.com/dwash96/cecli/issues)
 
 
