@@ -14,7 +14,7 @@ These one-liners will install cecli, along with python 3.12 if needed (cecli sup
 They are based on the 
 [uv installers](https://docs.astral.sh/uv/getting-started/installation/).
 
-#### Mac & Linux
+#### Linux & Mac
 
 Use curl to download the script and execute it with sh:
 

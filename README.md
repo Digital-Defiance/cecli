@@ -9,24 +9,31 @@
 [Changelog](https://github.com/dwash96/cecli/blob/main/CHANGELOG.md) 🞄
 [Issue Queue](https://github.com/dwash96/cecli/issues)
 
-## Documentation/Other Notes:
-
-* [Agent Mode](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/agent-mode.md)
-* [MCP Configuration](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/mcp.md)
-* [TUI Configuration](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/tui.md)
-* [Skills](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/skills.md)
-* [Subagents](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/subagents.md)
-* [Session Management](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/sessions.md)
-* [Hooks](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/hooks.md)
-* [Workspaces](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/workspaces.md)
-* [Custom Commands](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/custom-commands.md)
-* [Custom System Prompts](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/custom-system-prompts.md)
-* [Custom Tools](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/agent-mode.md#creating-custom-tools)
-* [Advanced Model Configuration](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/model-aliases.md#advanced-model-settings)
-* [Additional Documentation](https://cecli.dev/)
 
 ## Installation Instructions
 This project can be installed using several methods:
+
+### One Liners
+
+#### Linux & Mac
+
+Use curl to download the script and execute it with sh:
+
+```bash
+curl -LsSf https://cecli.dev/install.sh | sh
+```
+
+If your system doesn't have curl, you can use wget:
+
+```bash
+wget -qO- https://cecli.dev/install.sh | sh
+```
+
+#### Windows
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://cecli.dev/install.ps1 | iex"
+```
 
 ### Package Installation
 ```bash
@@ -111,6 +118,22 @@ docker run \
 ```
 
 This command will make sure all commands ran by the coding agent happen in context of the docker container to protect the host file system from any infamous agentic mishap
+
+## Documentation/Other Notes:
+
+* [Agent Mode](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/agent-mode.md)
+* [MCP Configuration](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/mcp.md)
+* [TUI Configuration](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/tui.md)
+* [Skills](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/skills.md)
+* [Subagents](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/subagents.md)
+* [Session Management](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/sessions.md)
+* [Hooks](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/hooks.md)
+* [Workspaces](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/workspaces.md)
+* [Custom Commands](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/custom-commands.md)
+* [Custom System Prompts](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/custom-system-prompts.md)
+* [Custom Tools](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/agent-mode.md#creating-custom-tools)
+* [Advanced Model Configuration](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/model-aliases.md#advanced-model-settings)
+* [Additional Documentation](https://cecli.dev/)
 
 ## Project Roadmap/Goals
 
