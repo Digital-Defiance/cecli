@@ -1,12 +1,7 @@
 ## Why `cecli`?
 
-`cecli` (probably pronounced like "Cecily") is yet another cli agent crafted for extensibility and customization. Originally a fork of the [Aider](https://cecli.dev/) AI pair programming tool, we aim to make agentic coding as maximally effective as it can be based on the growing capabilities of large language models.
+`cecli` (probably pronounced like "Cecily") is yet another cli agent crafted for extensibility and customization. Originally a fork of the [Aider](https://cecli.dev/) AI pair programming tool, we aim to make agentic coding as maximally effective as it can be based on the incredible capabilities of large language models.
 
-We aim to foster an open, collaborative ecosystem where new features, experiments, and improvements can be developed and shared rapidly. We believe in the principles of FOSS and actively welcome contributors of all skill levels.
-
-If you are looking for bleeding-edge features or want to get your hands dirty with the internals of an AI coding agent, here's your sign.
-
-LLMs are a part of our lives from here on out so join us in learning about and crafting the future.
 
 ### Links
 
@@ -63,17 +58,11 @@ model: <model of your choice>
 agent: true
 auto-commits: true
 auto-save: true
-auto-load: false
 cache-prompts: true
 check-update: true
-debug: false
 enable-context-compaction: true
 context-compaction-max-tokens: 0.8
-env-file: .cecli.env
 show-model-warnings: true
-use-enhanced-map: true
-watch-files: false
-tui: true
 
 agent-config:
   large_file_token_threshold: 8192
