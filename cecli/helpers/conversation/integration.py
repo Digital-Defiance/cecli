@@ -890,7 +890,7 @@ class ConversationChunks:
         """
         Add static context blocks to conversation (priority 50).
 
-        Static blocks include: environment_info, directory_structure, skills
+        Static blocks include: environment_info, directory_structure, skills, servers, sub_agents
         """
         coder = self.get_coder()
         if not coder:
@@ -922,6 +922,10 @@ class ConversationChunks:
                 block = coder._generate_context_block("skills")
                 if block:
                     message_blocks["skills"] = block
+            if "servers" in coder.allowed_context_blocks:
+                block = coder._generate_context_block("servers")
+                if block:
+                    message_blocks["servers"] = block
 
         # Add static blocks to conversation manager with stable hash keys
         for block_type, block_content in message_blocks.items():

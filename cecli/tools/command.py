@@ -310,8 +310,8 @@ class Tool(BaseTool):
                     output_content = (
                         f"[Large Response ({total_size} characters). "
                         "Output saved to paginated files.]\n"
-                        f"File Aliases (for use with ContextManager):\n{alias_list_str}\n"
-                        "Use the `ContextManager` tool to view these files."
+                        f"File Aliases (for use with ResourceManager):\n{alias_list_str}\n"
+                        "Use the `ResourceManager` tool to view these files."
                         "Do not use standard cli tools to view these files."
                         "Remove them from context after taking notes on the relevant information "
                         "to prevent overfilling stale context."
@@ -397,8 +397,8 @@ class Tool(BaseTool):
             output_content = (
                 f"[Large Response ({total_size} characters). "
                 "Output saved to paginated files.]\n"
-                f"File Aliases (for use with ContextManager):\n{alias_list_str}\n"
-                "Use the `ContextManager` tool to view these files."
+                f"File Aliases (for use with ResourceManager):\n{alias_list_str}\n"
+                "Use the `ResourceManager` tool to view these files."
                 "Do not use standard cli tools to view these files."
                 "Remove them from context after taking note of the relevant information "
                 "in the output to prevent overfilling stale context."

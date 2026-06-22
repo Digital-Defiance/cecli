@@ -212,7 +212,7 @@ class Tool(BaseTool):
                                 f"File {rel_path} is empty.",
                                 (
                                     "Next: use EditText with start_line @000 and end_line @000 to"
-                                    " write content, or ContextManager to scaffold — do not call"
+                                    " write content, or ResourceManager to scaffold — do not call"
                                     " ReadRange again on this empty file."
                                 ),
                             ]

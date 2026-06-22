@@ -6,8 +6,7 @@ import pytest
 
 from cecli.coders.agent_coder import AgentCoder
 from cecli.coders.sub_agent_coder import SubAgentCoder
-from cecli.tools.load_mcp_tool import LoadMcpTool
-from cecli.tools.remove_mcp_tool import RemoveMcpTool
+from cecli.tools.resource_manager import Tool as ResourceManagerTool
 
 
 @pytest.fixture
@@ -90,10 +89,9 @@ async def sub_agent_coder(agent_coder):
 @pytest.mark.asyncio
 async def test_agent_can_load_mcp_server(agent_coder, mock_mcp_manager):
     """Verify an agent can load an MCP server."""
-    tool = LoadMcpTool()
     server_name = "test_server"
 
-    await tool.execute(agent_coder, servers=[server_name])
+    await ResourceManagerTool.execute(agent_coder, load_mcp=[server_name])
 
     mock_mcp_manager.connect_server.assert_called_once_with(server_name)
     assert server_name in mock_mcp_manager.connected_servers
@@ -102,11 +100,10 @@ async def test_agent_can_load_mcp_server(agent_coder, mock_mcp_manager):
 @pytest.mark.asyncio
 async def test_agent_can_remove_mcp_server(agent_coder, mock_mcp_manager):
     """Verify an agent can remove an MCP server."""
-    tool = RemoveMcpTool()
     server_name = "test_server"
     mock_mcp_manager.connected_servers[server_name] = "connected"
 
-    await tool.execute(agent_coder, servers=[server_name])
+    await ResourceManagerTool.execute(agent_coder, remove_mcp=[server_name])
 
     mock_mcp_manager.disconnect_server.assert_called_once_with(server_name)
     assert server_name not in mock_mcp_manager.connected_servers
@@ -115,10 +112,9 @@ async def test_agent_can_remove_mcp_server(agent_coder, mock_mcp_manager):
 @pytest.mark.asyncio
 async def test_sub_agent_can_load_mcp_server(sub_agent_coder, mock_mcp_manager):
     """Verify a subagent can load an MCP server."""
-    tool = LoadMcpTool()
     server_name = "sub_test_server"
 
-    await tool.execute(sub_agent_coder, servers=[server_name])
+    await ResourceManagerTool.execute(sub_agent_coder, load_mcp=[server_name])
 
     mock_mcp_manager.connect_server.assert_called_once_with(server_name)
     assert server_name in mock_mcp_manager.connected_servers
@@ -127,11 +123,10 @@ async def test_sub_agent_can_load_mcp_server(sub_agent_coder, mock_mcp_manager):
 @pytest.mark.asyncio
 async def test_sub_agent_can_remove_mcp_server(sub_agent_coder, mock_mcp_manager):
     """Verify a subagent can remove an MCP server."""
-    tool = RemoveMcpTool()
     server_name = "sub_test_server"
     mock_mcp_manager.connected_servers[server_name] = "connected"
 
-    await tool.execute(sub_agent_coder, servers=[server_name])
+    await ResourceManagerTool.execute(sub_agent_coder, remove_mcp=[server_name])
 
     mock_mcp_manager.disconnect_server.assert_called_once_with(server_name)
     assert server_name not in mock_mcp_manager.connected_servers

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from cecli.tools.load_mcp_tool import LoadMcpTool
+from cecli.tools.resource_manager import Tool as ResourceManagerTool
 
 
 class DummyIO:
@@ -27,6 +27,8 @@ class DummyCoder:
         self.mcp_manager.connected_servers = {}
         self.coroutines = MagicMock()
         self.interrupt_event = MagicMock()
+        self.registered_servers = {"included": set(), "excluded": set()}
+        self.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
 
 
 @pytest.fixture
@@ -48,7 +50,7 @@ def mock_server():
 async def test_no_mcp_servers_found(coder):
     """Test when no MCP servers are configured."""
     coder.mcp_manager.servers = []
-    result = await LoadMcpTool.execute(coder, servers=["test"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["test"])
     assert result == "No MCP servers found, nothing to load."
 
 
@@ -57,7 +59,7 @@ async def test_server_not_found(coder, mock_server):
     """Test when requested server doesn't exist."""
     coder.mcp_manager.servers = [mock_server]
     coder.mcp_manager.get_server.return_value = None
-    result = await LoadMcpTool.execute(coder, servers=["nonexistent"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["nonexistent"])
     assert "MCP server nonexistent does not exist." in result
 
 
@@ -71,12 +73,11 @@ async def test_server_already_loaded(coder, mock_server):
     # Set up connect_server as AsyncMock so assert_not_called works
     coder.mcp_manager.connect_server = AsyncMock()
 
-    # Mock interruptible to just execute the coroutine
     async def mock_interruptible(coro, event):
         return await coro, False
 
     coder.coroutines.interruptible = mock_interruptible
-    result = await LoadMcpTool.execute(coder, servers=["test-server"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["test-server"])
     assert "Server already loaded: test-server" in result
     # connect_server should not have been called since it was already loaded
     coder.mcp_manager.connect_server.assert_not_called()
@@ -87,9 +88,13 @@ async def test_server_not_enabled_by_default(coder, mock_server):
     """Test when server is not enabled by default."""
     mock_server.config = {"enabled": False}
     coder.mcp_manager.servers = [mock_server]
+    coder.mcp_manager.connected_servers = {}
     coder.mcp_manager.get_server.return_value = mock_server
-    result = await LoadMcpTool.execute(coder, servers=["*"])
-    assert "Skipping server (not enabled by default): test-server" in result
+    coder.mcp_manager.connect_server = AsyncMock()
+    result = await ResourceManagerTool.execute(coder, load_mcp=["*"])
+    # Non-enabled servers are silently filtered by wildcard expansion
+    assert result == ""
+    coder.mcp_manager.connect_server.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -110,7 +115,7 @@ async def test_successful_load(coder, mock_server):
         return await coro, False
 
     coder.coroutines.interruptible = mock_interruptible
-    result = await LoadMcpTool.execute(coder, servers=["test-server"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["test-server"])
     assert "Loaded server: test-server" in result
 
 
@@ -132,7 +137,7 @@ async def test_load_interrupted(coder, mock_server):
         return False, True
 
     coder.coroutines.interruptible = mock_interruptible
-    result = await LoadMcpTool.execute(coder, servers=["test-server"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["test-server"])
     assert "Interrupted: test-server" in result
 
 
@@ -144,17 +149,14 @@ async def test_load_failed(coder, mock_server):
     coder.mcp_manager.get_server.return_value = mock_server
 
     # Set up connect_server as AsyncMock that returns failure
-    async def mock_connect_server(server_name):
-        return False, False
-
-    coder.mcp_manager.connect_server = mock_connect_server
+    coder.mcp_manager.connect_server = AsyncMock(return_value=False)
 
     # Mock interruptible to just execute the coroutine
     async def mock_interruptible(coro, event):
         return await coro, False
 
     coder.coroutines.interruptible = mock_interruptible
-    result = await LoadMcpTool.execute(coder, servers=["test-server"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["test-server"])
     assert "Unable to load server: test-server" in result
 
 
@@ -184,7 +186,7 @@ async def test_load_all_servers(coder):
         return await coro, False
 
     coder.coroutines.interruptible = mock_interruptible
-    result = await LoadMcpTool.execute(coder, servers=["*"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["*"])
     assert "Loaded server: server1" in result
     assert "Loaded server: server2" in result
 
@@ -219,7 +221,7 @@ async def test_mixed_results(coder):
         return await coro, False
 
     coder.coroutines.interruptible = mock_interruptible
-    result = await LoadMcpTool.execute(coder, servers=["server1", "server2"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["server1", "server2"])
     assert "Loaded server: server1" in result
     assert "Unable to load server: server2" in result
 
@@ -234,7 +236,7 @@ async def test_duplicate_iteration_bug_fix(coder, mock_server):
     coder.mcp_manager.get_server.return_value = mock_server
     # Set up connect_server as AsyncMock
     coder.mcp_manager.connect_server = AsyncMock()
-    result = await LoadMcpTool.execute(coder, servers=["test-server"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["test-server"])
     # Should only report server already loaded once
     assert result.count("Server already loaded: test-server") == 1
     # connect_server should not have been called since it was already loaded
@@ -261,8 +263,8 @@ async def test_wildcard_with_duplicate_iteration_fix(coder):
     async def mock_connect_server(server_name):
         connect_calls.append(server_name)
         if server_name == "server2":
-            return True, False
-        return False, False
+            return True
+        return False
 
     coder.mcp_manager.connect_server = mock_connect_server
 
@@ -271,8 +273,9 @@ async def test_wildcard_with_duplicate_iteration_fix(coder):
         return await coro, False
 
     coder.coroutines.interruptible = mock_interruptible
-    result = await LoadMcpTool.execute(coder, servers=["*"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["*"])
     # Should only attempt to load server2 (server1 should be skipped)
-    assert "Server already loaded: server1" in result
+    # server1 is already connected so it's skipped silently by wildcard expansion
+    assert "Server already loaded: server1" not in result
     assert "Loaded server: server2" in result
     assert connect_calls == ["server2"]  # Only server2 should have been connected

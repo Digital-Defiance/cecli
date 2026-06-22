@@ -194,6 +194,7 @@ class AgentCoder(Coder):
                     "todo_list",
                     "sub_agents",
                     "skills",
+                    "servers",
                 },
             )
         )
@@ -357,6 +358,7 @@ class AgentCoder(Coder):
                 "git_status",
                 "symbol_outline",
                 "skills",
+                "servers",
                 "sub_agents",
                 "loaded_skills",
             ]
@@ -391,6 +393,8 @@ class AgentCoder(Coder):
             content = self.get_todo_list()
         elif block_name == "skills":
             content = self.get_skills_context()
+        elif block_name == "servers":
+            content = self.get_servers_context()
         elif block_name == "loaded_skills":
             content = self.get_skills_content()
         elif block_name == "sub_agents" and (
@@ -624,9 +628,8 @@ class AgentCoder(Coder):
                 result += f" ({percentage:.1f}% of limit)"
                 if percentage > 80:
                     result += "\n\n⚠ **Context is getting full!**\n"
-                    result += "- Remove non-essential files via the `ContextManager` tool.\n"
-                    result += "- Remove unused MCP servers via the `RemoveMcp` tool to free context space.\n"
-                    result += "- Keep only essential files and MCP servers in context for best performance"
+                    result += "- Remove non-essential files, skills and tool servers via the `ResourceManager` tool.\n"
+                    result += "- Keep only essential files, skills, and MCP servers in context for best performance"
             result += "\n</context>"
             if not hasattr(self, "context_blocks_cache"):
                 self.context_blocks_cache = {}
@@ -1328,7 +1331,7 @@ class AgentCoder(Coder):
 
         Override parent's method to disable implicit file mention handling in agent mode.
         Files should only be added via explicit tool commands
-        (`ContextManager`).
+        (`ResourceManager`).
         """
         pass
 
@@ -1480,6 +1483,81 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
             return self.skills_manager.get_skills_content()
         except Exception as e:
             self.io.tool_error(f"Error generating skills content context: {str(e)}")
+            return None
+
+    def get_servers_context(self):
+        """
+        Generate a context block for available MCP servers.
+
+        Categorizes servers as:
+        - Active: Connected and passing includelist/excludelist filters
+        - Inactive: Connected but filtered out by includelist/excludelist
+        - Available (Disconnected): Managed but not currently connected
+
+        Returns:
+            Formatted context block string or None if no servers available
+        """
+        if not self.use_enhanced_context:
+            return None
+        try:
+            if not self.mcp_manager:
+                return None
+
+            all_servers = self.mcp_manager.servers
+            connected_servers = self.mcp_manager.connected_servers
+            connected_server_names = {s.name for s in connected_servers}
+
+            if not all_servers:
+                return None
+
+            # Apply registered_servers filtering to determine active vs inactive
+            incl = self.registered_servers.get("included", set())
+            excl = self.registered_servers.get("excluded", set())
+
+            active_servers = []
+            inactive_servers = []
+            for server in connected_servers:
+                name = server.name
+                if incl and name not in incl:
+                    inactive_servers.append(name)
+                elif name in excl:
+                    inactive_servers.append(name)
+                else:
+                    active_servers.append(name)
+
+            # Servers managed but not currently connected
+            disconnected_servers = [
+                server.name for server in all_servers if server.name not in connected_server_names
+            ]
+
+            result = '<context name="servers" from="agent">\n'
+            result += "## Connected MCP Servers\n\n"
+
+            if active_servers:
+                result += f"Active ({len(active_servers)}):\n"
+                for name in sorted(active_servers):
+                    result += f"- {name}\n"
+                result += "\n"
+
+            if inactive_servers:
+                result += f"Inactive (Filtered) ({len(inactive_servers)}):\n"
+                for name in sorted(inactive_servers):
+                    result += f"- {name}\n"
+                result += "\n"
+
+            if disconnected_servers:
+                result += f"Available (Disconnected) ({len(disconnected_servers)}):\n"
+                for name in sorted(disconnected_servers):
+                    result += f"- {name}\n"
+                result += "\n"
+
+            if not active_servers and not inactive_servers and not disconnected_servers:
+                result += "No MCP servers currently available.\n\n"
+
+            result += "</context>"
+            return result
+        except Exception as e:
+            self.io.tool_error(f"Error generating servers context: {str(e)}")
             return None
 
     def get_sub_agents_context(self):

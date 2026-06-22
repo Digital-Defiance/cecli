@@ -1,10 +1,10 @@
 """Unit tests for RemoveMcpTool.execute."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from cecli.tools.remove_mcp_tool import RemoveMcpTool
+from cecli.tools.resource_manager import Tool as ResourceManagerTool
 
 
 class DummyIO:
@@ -48,6 +48,7 @@ async def test_remove_mcp_tool_success():
     """Test successful removal of an MCP server."""
     # Setup
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = MagicMock()
     server = MagicMock()
     server.name = "test-server"
@@ -58,17 +59,17 @@ async def test_remove_mcp_tool_success():
     async def mock_disconnect(server_name):
         return True, False
 
-    coder.mcp_manager.disconnect_server = mock_disconnect
+    coder.mcp_manager.disconnect_server = AsyncMock(side_effect=mock_disconnect)
 
     # Mock the interruptible method to execute the coroutine directly without interruption
     async def mock_interruptible(coro, event):
-        return await coro, False
+        return await coro
 
     coder.coroutines = MagicMock()
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
     # Execute
-    result = await RemoveMcpTool.execute(coder, ["test-server"])
+    result = await ResourceManagerTool.execute(coder, remove_mcp=["test-server"])
     # Assertions
     assert "Removed server: test-server" in result
     coder.mcp_manager.disconnect_server.assert_awaited_once_with("test-server")
@@ -79,6 +80,7 @@ async def test_remove_mcp_tool_non_existent():
     """Test removing a non-existent MCP server."""
     # Setup
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = MagicMock()
     # Create a mock server that exists (to bypass the 'no servers' check)
     existing_server = MagicMock()
@@ -87,7 +89,7 @@ async def test_remove_mcp_tool_non_existent():
     # But the one we're looking for doesn't exist
     coder.mcp_manager.get_server.return_value = None
     # Execute
-    result = await RemoveMcpTool.execute(coder, ["non-existent-server"])
+    result = await ResourceManagerTool.execute(coder, remove_mcp=["non-existent-server"])
     # Assertions
     assert "MCP server non-existent-server does not exist." in result
 
@@ -96,13 +98,14 @@ async def test_remove_mcp_tool_non_existent():
 async def test_remove_mcp_tool_not_connected():
     """Test removing a server that is not connected."""
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = MagicMock()
     server = MagicMock()
     server.name = "test-server"
     coder.mcp_manager.servers = [server]
     coder.mcp_manager.get_server.return_value = server
     coder.mcp_manager.connected_servers = {}
-    result = await RemoveMcpTool.execute(coder, ["test-server"])
+    result = await ResourceManagerTool.execute(coder, remove_mcp=["test-server"])
     assert "Server test-server is not currently connected." in result
 
 
@@ -110,6 +113,7 @@ async def test_remove_mcp_tool_not_connected():
 async def test_remove_mcp_tool_wildcard():
     """Test removing all servers with wildcard '*'."""
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = MagicMock()
     server1 = MagicMock()
     server1.name = "server1"
@@ -117,21 +121,24 @@ async def test_remove_mcp_tool_wildcard():
     server2.name = "server2"
     coder.mcp_manager.servers = [server1, server2]
     coder.mcp_manager.connected_servers = {"server1": server1, "server2": server2}
+    coder.mcp_manager.get_server.side_effect = lambda name: next(
+        (s for s in [server1, server2] if s.name == name), None
+    )
 
     # Mock disconnect_server as an async function that returns (True, False)
     async def mock_disconnect(server_name):
         return True, False
 
-    coder.mcp_manager.disconnect_server = mock_disconnect
+    coder.mcp_manager.disconnect_server = AsyncMock(side_effect=mock_disconnect)
 
     # Mock interruptible to execute the coroutine without interruption
     async def mock_interruptible(coro, event):
-        return await coro, False
+        return await coro
 
     coder.coroutines = MagicMock()
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
-    result = await RemoveMcpTool.execute(coder, ["*"])
+    result = await ResourceManagerTool.execute(coder, remove_mcp=["*"])
     assert "Removed server: server1" in result
     assert "Removed server: server2" in result
 
@@ -140,6 +147,7 @@ async def test_remove_mcp_tool_wildcard():
 async def test_remove_mcp_tool_interrupted():
     """Test when removal is interrupted."""
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = MagicMock()
     server = MagicMock()
     server.name = "test-server"
@@ -150,14 +158,14 @@ async def test_remove_mcp_tool_interrupted():
     async def mock_disconnect(server_name):
         return False, True
 
-    coder.mcp_manager.disconnect_server = mock_disconnect
+    coder.mcp_manager.disconnect_server = AsyncMock(side_effect=mock_disconnect)
 
     async def mock_interruptible(coro, event):
         return False, True
 
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
-    result = await RemoveMcpTool.execute(coder, ["test-server"])
+    result = await ResourceManagerTool.execute(coder, remove_mcp=["test-server"])
     assert "Interrupted: test-server" in result
 
 
@@ -165,6 +173,7 @@ async def test_remove_mcp_tool_interrupted():
 async def test_remove_mcp_tool_failed():
     """Test when removal fails."""
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = MagicMock()
     server = MagicMock()
     server.name = "test-server"
@@ -175,14 +184,14 @@ async def test_remove_mcp_tool_failed():
     async def mock_disconnect(server_name):
         return False, False
 
-    coder.mcp_manager.disconnect_server = mock_disconnect
+    coder.mcp_manager.disconnect_server = AsyncMock(side_effect=mock_disconnect)
 
     async def mock_interruptible(coro, event):
-        return await coro, False
+        return await coro
 
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
-    result = await RemoveMcpTool.execute(coder, ["test-server"])
+    result = await ResourceManagerTool.execute(coder, remove_mcp=["test-server"])
     assert "Unable to remove server: test-server" in result
 
 
@@ -190,9 +199,10 @@ async def test_remove_mcp_tool_failed():
 async def test_remove_mcp_tool_no_servers_configured():
     """Test when no MCP servers are configured at all."""
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = MagicMock()
     coder.mcp_manager.servers = []
-    result = await RemoveMcpTool.execute(coder, servers=["test"])
+    result = await ResourceManagerTool.execute(coder, remove_mcp=["test"])
     assert result == "No MCP servers are configured."
 
 
@@ -200,6 +210,7 @@ async def test_remove_mcp_tool_no_servers_configured():
 async def test_remove_mcp_tool_mixed_results():
     """Test mixed success/failure results."""
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = MagicMock()
     server1 = MagicMock()
     server1.name = "server1"
@@ -218,14 +229,14 @@ async def test_remove_mcp_tool_mixed_results():
         call_count += 1
         return result
 
-    coder.mcp_manager.disconnect_server = mock_disconnect
+    coder.mcp_manager.disconnect_server = AsyncMock(side_effect=mock_disconnect)
 
     async def mock_interruptible(coro, event):
-        return await coro, False
+        return await coro
 
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
-    result = await RemoveMcpTool.execute(coder, servers=["server1", "server2"])
+    result = await ResourceManagerTool.execute(coder, remove_mcp=["server1", "server2"])
     assert "Removed server: server1" in result
     assert "Unable to remove server: server2" in result
 
@@ -234,6 +245,7 @@ async def test_remove_mcp_tool_mixed_results():
 async def test_remove_mcp_tool_dictionary_iteration_fix():
     """Test that dictionary iteration bug is fixed - iterates over keys correctly."""
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = MagicMock()
     server1 = MagicMock()
     server1.name = "server1"
@@ -248,14 +260,14 @@ async def test_remove_mcp_tool_dictionary_iteration_fix():
     async def mock_disconnect(server_name):
         return True, False
 
-    coder.mcp_manager.disconnect_server = mock_disconnect
+    coder.mcp_manager.disconnect_server = AsyncMock(side_effect=mock_disconnect)
 
     async def mock_interruptible(coro, event):
-        return await coro, False
+        return await coro
 
     coder.coroutines.interruptible = mock_interruptible
     coder.interrupt_event = MagicMock()
-    result = await RemoveMcpTool.execute(coder, servers=["*"])
+    result = await ResourceManagerTool.execute(coder, remove_mcp=["*"])
     # Should successfully remove both servers using dictionary keys
     assert "Removed server: server1" in result
     assert "Removed server: server2" in result

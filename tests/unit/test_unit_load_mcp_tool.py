@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from cecli.tools.load_mcp_tool import LoadMcpTool
+from cecli.tools.resource_manager import Tool as ResourceManagerTool
 
 
 @pytest.fixture
@@ -58,10 +58,10 @@ def mock_mcp_manager():
 @pytest.mark.asyncio
 async def test_load_mcp_tool_success(mock_mcp_manager):
     """Test loading a single MCP server successfully."""
-    tool = LoadMcpTool()
 
     # Mock the coder
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = mock_mcp_manager
 
     # Mock interruptible to return (await coro, False)
@@ -71,8 +71,8 @@ async def test_load_mcp_tool_success(mock_mcp_manager):
     coder.coroutines = MagicMock()
     coder.coroutines.interruptible.side_effect = mock_interruptible
     coder.interrupt_event = MagicMock()
-
-    result = await tool.execute(coder, servers=["test-server"])
+    coder.registered_servers = {"included": set(), "excluded": set()}
+    result = await ResourceManagerTool.execute(coder, load_mcp=["test-server"])
 
     assert "Loaded server: test-server" in result
     mock_mcp_manager.connect_server.assert_awaited_once_with("test-server")
@@ -82,12 +82,11 @@ async def test_load_mcp_tool_success(mock_mcp_manager):
 async def test_load_mcp_tool_non_existent(mock_mcp_manager):
     """Test loading a non-existent MCP server."""
 
-    tool = LoadMcpTool()
-
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = mock_mcp_manager
 
-    result = await tool.execute(coder, servers=["non-existent-server"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["non-existent-server"])
 
     assert "MCP server non-existent-server does not exist." in result
     mock_mcp_manager.connect_server.assert_not_awaited()
@@ -96,14 +95,14 @@ async def test_load_mcp_tool_non_existent(mock_mcp_manager):
 @pytest.mark.asyncio
 async def test_load_mcp_tool_already_loaded(mock_mcp_manager):
     """Test loading an already loaded MCP server."""
-    tool = LoadMcpTool()
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = mock_mcp_manager
     # Pre-populate connected_servers
     server = mock_mcp_manager.get_server("test-server")
     coder.mcp_manager.connected_servers = {"test-server": server}
 
-    result = await tool.execute(coder, servers=["test-server"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["test-server"])
 
     assert "Server already loaded: test-server" in result
     mock_mcp_manager.connect_server.assert_not_awaited()
@@ -112,8 +111,8 @@ async def test_load_mcp_tool_already_loaded(mock_mcp_manager):
 @pytest.mark.asyncio
 async def test_load_mcp_tool_wildcard_and_duplicate_fix(mock_mcp_manager):
     """Test loading with wildcard and duplicate fix."""
-    tool = LoadMcpTool()
     coder = MagicMock()
+    coder.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
     coder.mcp_manager = mock_mcp_manager
 
     # Mock interruptible to return (await coro, False)
@@ -128,12 +127,12 @@ async def test_load_mcp_tool_wildcard_and_duplicate_fix(mock_mcp_manager):
     server1 = mock_mcp_manager.get_server("test-server")
     coder.mcp_manager.connected_servers = {"test-server": server1}
 
-    result = await tool.execute(coder, servers=["*"])
+    result = await ResourceManagerTool.execute(coder, load_mcp=["*"])
 
     # Check results
-    assert "Server already loaded: test-server" in result
+    # Wildcard expansion skips already-connected servers; no "already loaded" message is produced
     assert "Loaded server: server2" in result
-    assert "Skipping server (not enabled by default): server3" in result
+    # Non-enabled servers are filtered out silently by wildcard expansion
 
     # Verify connect_server was called only once for server2
     mock_mcp_manager.connect_server.assert_awaited_once_with("server2")

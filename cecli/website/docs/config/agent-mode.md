@@ -48,10 +48,9 @@ Agent Mode uses a centralized local tool registry that manages all available too
 
 - **File Discovery Tools**: `ExploreCode`, `Ls`, `Grep`
 - **Editing Tools**: `EditText`,
-- **Context Management Tools**: `ContextManager`, `GetLines`
+- **Context Management Tools**: `ResourceManager`, `GetLines`
 - **Git Tools**: `GitDiff`, `GitLog`, `GitShow`, `GitStatus`
 - **Utility Tools**: `UpdateTodoList`, `UndoChange`, `Yield`
-- **Skill Management**: `LoadSkill`, `RemoveSkill`
 - **Sub-Agent Tools**: `Delegate` - Delegate sub-tasks to specialized sub-agents
 
 #### Enhanced Context Management
@@ -168,7 +167,7 @@ Agent Mode can also be configured directly in your configuration file. See the [
 
 Certain tools are always available regardless of includelist/excludelist settings:
 
-- `ContextManager` - Add, drop, and make files editable in the context
+- `ResourceManager` - Add, drop, and make files editable in the context
 - `edittext` - Basic text replacement
 - `finished` - Complete the task
 
@@ -263,7 +262,7 @@ agent: true
 # Agent Mode configuration
 agent-config:
   # Tool configuration
-  tools_includelist: ["contextmanager", "edittext", "finished"]  # Optional: Whitelist of tools
+  tools_includelist: ["resourcemanager", "edittext", "finished"]  # Optional: Whitelist of tools
   tools_excludelist: ["command", "commandinteractive"]  # Optional: Blacklist of tools
   tools_paths: ["./custom-tools", "~/my-tools"]  # Optional: Directories or files containing custom tools
   
@@ -308,25 +307,6 @@ agent-config:
 ```
 
 For complete documentation on creating and using skills, including skill directory structure, SKILL.md format, and best practices, see the [Skills documentation](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/skills.md).
-
-### MCP Server Management
-
-MCP (Model Context Protocol) servers provide external tools to the agent, but each connected server and its tools consume context tokens. To maintain optimal performance:
-
-- **Remove unused servers**: If an MCP server is no longer needed for the current task, remove it using the `RemoveMcp` tool to free up context space.
-- **Load servers on demand**: Only load MCP servers when their tools are actually required. Use the `LoadMcp` tool to add servers as needed.
-- **Monitor context usage**: The context summary block shows total token usage. Removing unnecessary MCP servers can significantly reduce context overhead.
-- **List active servers**: Use the `ListMcp` tool to see which servers are currently connected and consuming context.
-
-### Benefits
-### MCP Server Management
-
-MCP (Model Context Protocol) servers provide external tools to the agent, but each connected server and its tools consume context tokens. To maintain optimal performance:
-
-- **Remove unused servers**: If an MCP server is no longer needed for the current task, remove it using the `RemoveMcp` tool to free up context space.
-- **Load servers on demand**: Only load MCP servers when their tools are actually required. Use the `LoadMcp` tool to add servers as needed.
-- **Monitor context usage**: The context summary block shows total token usage. Removing unnecessary MCP servers can significantly reduce context overhead.
-- **List active servers**: Use the `ListMcp` tool to see which servers are currently connected and consuming context.
 
 ### Benefits
 - **Autonomous operation**: Reduces need for manual file management

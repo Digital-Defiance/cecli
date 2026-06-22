@@ -1,10 +1,10 @@
 """Unit tests for RemoveMcpTool.execute."""
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from cecli.tools.remove_mcp_tool import RemoveMcpTool
+from cecli.tools.resource_manager import Tool as ResourceManagerTool
 
 
 class DummyIO:
@@ -29,6 +29,8 @@ class DummyCoder:
         self.coroutines.interruptible = AsyncMock()
 
         self.interrupt_event = Mock()
+        self.registered_servers = {"included": set(), "excluded": set()}
+        self.agent_config = {"include_context_blocks": {"servers"}, "exclude_context_blocks": set()}
 
 
 @pytest.fixture
@@ -48,11 +50,20 @@ def mock_server():
 class TestRemoveMcpTool:
     """Test cases for RemoveMcpTool."""
 
+    @pytest.fixture(autouse=True)
+    def _patch_global_exclusion(self):
+        """Patch is_server_globally_excluded to prevent test isolation issues with AgentService."""
+        with patch(
+            "cecli.tools.resource_manager.is_server_globally_excluded",
+            return_value=True,
+        ):
+            yield
+
     @pytest.mark.asyncio
     async def test_no_configured_servers(self, coder):
         """Test when no MCP servers are configured at all."""
         coder.mcp_manager.servers = []
-        result = await RemoveMcpTool.execute(coder, servers=["test"])
+        result = await ResourceManagerTool.execute(coder, remove_mcp=["test"])
         assert result == "No MCP servers are configured."
 
     @pytest.mark.asyncio
@@ -61,7 +72,7 @@ class TestRemoveMcpTool:
         coder.mcp_manager.servers = [mock_server]
         coder.mcp_manager.connected_servers = {"existing": "server"}
         coder.mcp_manager.get_server.return_value = None
-        result = await RemoveMcpTool.execute(coder, servers=["nonexistent"])
+        result = await ResourceManagerTool.execute(coder, remove_mcp=["nonexistent"])
         assert "MCP server nonexistent does not exist." in result
 
     @pytest.mark.asyncio
@@ -70,7 +81,7 @@ class TestRemoveMcpTool:
         coder.mcp_manager.servers = [mock_server]
         coder.mcp_manager.connected_servers = {}
         coder.mcp_manager.get_server.return_value = mock_server
-        result = await RemoveMcpTool.execute(coder, servers=["test-server"])
+        result = await ResourceManagerTool.execute(coder, remove_mcp=["test-server"])
         assert "Server test-server is not currently connected." in result
 
     @pytest.mark.asyncio
@@ -80,7 +91,7 @@ class TestRemoveMcpTool:
         coder.mcp_manager.connected_servers = {"test-server": mock_server}
         coder.mcp_manager.get_server.return_value = mock_server
         coder.coroutines.interruptible.return_value = (True, False)
-        result = await RemoveMcpTool.execute(coder, servers=["test-server"])
+        result = await ResourceManagerTool.execute(coder, remove_mcp=["test-server"])
         assert "Removed server: test-server" in result
 
     @pytest.mark.asyncio
@@ -90,7 +101,7 @@ class TestRemoveMcpTool:
         coder.mcp_manager.connected_servers = {"test-server": mock_server}
         coder.mcp_manager.get_server.return_value = mock_server
         coder.coroutines.interruptible.return_value = (False, True)
-        result = await RemoveMcpTool.execute(coder, servers=["test-server"])
+        result = await ResourceManagerTool.execute(coder, remove_mcp=["test-server"])
         assert "Interrupted: test-server" in result
 
     @pytest.mark.asyncio
@@ -100,7 +111,7 @@ class TestRemoveMcpTool:
         coder.mcp_manager.connected_servers = {"test-server": mock_server}
         coder.mcp_manager.get_server.return_value = mock_server
         coder.coroutines.interruptible.return_value = (False, False)
-        result = await RemoveMcpTool.execute(coder, servers=["test-server"])
+        result = await ResourceManagerTool.execute(coder, remove_mcp=["test-server"])
         assert "Unable to remove server: test-server" in result
 
     @pytest.mark.asyncio
@@ -116,7 +127,7 @@ class TestRemoveMcpTool:
             (s for s in [server1, server2] if s.name == name), None
         )
         coder.coroutines.interruptible.return_value = (True, False)
-        result = await RemoveMcpTool.execute(coder, servers=["*"])
+        result = await ResourceManagerTool.execute(coder, remove_mcp=["*"])
         assert "Removed server: server1" in result
         assert "Removed server: server2" in result
 
@@ -141,6 +152,6 @@ class TestRemoveMcpTool:
             return result
 
         coder.coroutines.interruptible.side_effect = mock_interruptible_func
-        result = await RemoveMcpTool.execute(coder, servers=["server1", "server2"])
+        result = await ResourceManagerTool.execute(coder, remove_mcp=["server1", "server2"])
         assert "Removed server: server1" in result
         assert "Unable to remove server: server2" in result
