@@ -214,7 +214,15 @@ class Tool(BaseTool):
         for f in view_files:
             messages.append(cls._view(coder, f))
         for f in editable_files:
-            messages.append(cls._editable(coder, f))
+            try:
+                abs_path = coder.abs_root_path(f)
+            except Exception:
+                abs_path = None
+            if abs_path is not None and not os.path.isfile(abs_path):
+                coder.io.tool_output(f"ℹ️ `{f}` missing on disk — using **create** instead of add")
+                messages.append(cls._create(coder, f))
+            else:
+                messages.append(cls._editable(coder, f))
         for key in stop_keys:
             messages.append(cls._stop_command(coder, key))
         for skill_name in load_skill_names:
