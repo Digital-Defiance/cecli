@@ -289,24 +289,10 @@ class ConversationFiles:
                 ),
             }
 
-            assistant_msg = {
-                "role": "assistant",
-                "content": (
-                    f"Thank you for sharing this {prefix_str}diff of the updates to {rel_fname}."
-                    " I will review their contents."
-                ),
-            }
-
             ConversationService.get_manager(coder).add_message(
                 message_dict=diff_message,
                 tag=MessageTag.DIFFS,
                 hash_key=("file_diff_user", rel_fname, content_hash),
-            )
-
-            ConversationService.get_manager(coder).add_message(
-                message_dict=assistant_msg,
-                tag=MessageTag.DIFFS,
-                hash_key=("file_diff_assistant", rel_fname, content_hash),
             )
 
         return diff
