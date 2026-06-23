@@ -876,9 +876,8 @@ class Coder(metaclass=UsageMeta):
             env_items.append(f"{rel_repo_dir} ({num_files:,} files)")
             if num_files > 1000:
                 env_items.append(
-                    "Warning: For large repos, consider using --subtree-only and .cecli_ignore"
+                    "Warning: For large repos, consider using --subtree-only and .cecli.ignore"
                 )
-                env_items.append(f"See: {urls.large_repos}")
         else:
             env_items.append("no git repo")
 

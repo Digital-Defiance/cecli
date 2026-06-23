@@ -122,7 +122,7 @@ These settings will be merged with any model-specific settings, with the
 Below are all the pre-configured model settings to give a sense for the settings which are supported.
 
 You can also look at the `ModelSettings` class in
-[models.py](https://github.com/dwash96/cecli/blob/main/cecli/models.py)
+[models.py](https://github.com/cecli-dev/cecli/blob/main/cecli/models.py)
 file for more details about all of the model setting that cecli supports.
 
 The first entry shows all the settings, with their default values.

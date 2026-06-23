@@ -306,7 +306,7 @@ agent-config:
   skills_init: ["python-refactoring"]
 ```
 
-For complete documentation on creating and using skills, including skill directory structure, SKILL.md format, and best practices, see the [Skills documentation](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/skills.md).
+For complete documentation on creating and using skills, including skill directory structure, SKILL.md format, and best practices, see the [Skills documentation](https://github.com/cecli-dev/cecli/blob/main/cecli/website/docs/config/skills.md).
 
 ### Benefits
 - **Autonomous operation**: Reduces need for manual file management
