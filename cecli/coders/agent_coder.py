@@ -1666,6 +1666,11 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
                 command_str = command_info.get(command_key, {}).get("command", command_key)
                 output += f"\n[bg: {command_str}]\n{cmd_output}\n"
 
+        # Clean up stale (finished) background commands after reading their output
+        for command_key, info in command_info.items():
+            if not info.get("running", False):
+                BackgroundCommandManager.stop_background_command(command_key)
+
         return output
 
     def get_git_status(self):

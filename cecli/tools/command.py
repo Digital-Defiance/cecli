@@ -3,6 +3,15 @@ import fnmatch
 import os
 import platform
 
+# PTY support for interactive commands (avoids pipe buffering issues)
+try:
+    import pty
+    import termios
+
+    HAS_PTY = True
+except ImportError:
+    HAS_PTY = False
+
 import xxhash
 
 from cecli.helpers.background_commands import BackgroundCommandManager
@@ -21,15 +30,15 @@ class Tool(BaseTool):
         "type": "function",
         "function": {
             "name": "Command",
-            "description": "Execute a shell command.",
+            "description": "Execute a shell command or interact with background processes.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {
                         "type": "string",
                         "description": (
-                            "The shell command to execute. To send stdin to an existing background"
-                            " command, use the format 'command_key::{key}'."
+                            "The shell command to execute. "
+                            "Required unless background_key is provided."
                         ),
                     },
                     "background": {
@@ -37,42 +46,44 @@ class Tool(BaseTool):
                         "description": "Run command in background (non-blocking).",
                         "default": False,
                     },
-                    "stop": {
-                        "type": "boolean",
+                    "background_key": {
+                        "type": "string",
                         "description": (
-                            "If true, stop the background command specified in the 'command'"
-                            " parameter (format 'command_key::{key}')."
+                            "Key of an existing background command to interact with. "
+                            "Use with 'action' (stdin/stop)."
                         ),
-                        "default": False,
                     },
-                    "pty": {
-                        "type": "boolean",
+                    "action": {
+                        "type": "string",
+                        "enum": ["stdin", "stop"],
                         "description": (
-                            "Run the command in a pseudo-terminal (PTY). Useful for interactive"
-                            " programs like 'vi' or 'top'."
+                            "Action on a background command. Requires background_key: "
+                            "'stdin' to send input, 'stop' to terminate."
                         ),
-                        "default": False,
                     },
                     "stdin": {
                         "type": "string",
                         "description": (
-                            "Input to send to the command's stdin. Supports escape sequences like"
-                            " \\n, \\r, \\t, and hex escapes like \\x1b."
+                            "Input to send. Use with background=True to send at "
+                            "start time, or with background_key + action='stdin'."
                         ),
                     },
+                    "pty": {
+                        "type": "boolean",
+                        "description": (
+                            "Use a pseudo-terminal (PTY). Auto-enabled on Unix for "
+                            "background commands. Useful for interactive programs "
+                            "like 'vi' or 'top'."
+                        ),
+                        "default": False,
+                    },
                 },
-                "required": ["command"],
+                "required": [],
             },
         },
     }
 
     @staticmethod
-    def _parse_command_key(command):
-        """Extract command key from command string if it follows the pattern."""
-        if command and command.startswith("command_key::"):
-            return command.split("::", 1)[1].strip()
-        return None
-
     @staticmethod
     def _hash_command(command):
         """Compute an xxhash of the full command text for session tracking."""
@@ -83,38 +94,41 @@ class Tool(BaseTool):
 
     @classmethod
     async def execute(
-        cls, coder, command, background=False, stop=None, stdin=None, pty=False, **kwargs
+        cls,
+        coder,
+        command=None,
+        background=False,
+        background_key=None,
+        action=None,
+        stdin=None,
+        pty=False,
+        **kwargs,
     ):
         """
-        Execute a shell command, optionally in background.
+        Execute a shell command or interact with background processes.
+
+        For new commands: provide 'command' (and optionally 'background', 'stdin', 'pty').
+        For background interactions: provide 'background_key' + 'action' (stdin/stop).
+
         Commands run with timeout based on agent_config['command_timeout'] (default: 30 seconds).
         """
-        command_key = cls._parse_command_key(command)
+        # Handle interactions with an existing background command
+        if background_key:
+            if action == "stdin":
+                if not stdin:
+                    return "Error: 'stdin' is required when action='stdin'."
+                cls.clear_invocation_cache()
+                success = BackgroundCommandManager.send_command_input(background_key, stdin)
+                if success:
+                    return f"Sent input to background command {background_key}: {stdin}"
+                else:
+                    return f"Error: Background command {background_key} not found or not running."
 
-        # Handle stopping background commands
-        if stop:
-            if not command_key:
-                return (
-                    "Error: 'command' in format 'command_key::{key}' is required when 'stop' is"
-                    " true."
-                )
-            return await cls._stop_background_command(coder, command_key)
+            elif action == "stop":
+                return await cls._stop_background_command(coder, background_key)
 
-        # Handle sending stdin to an existing background command
-        if stdin:
-            if not command_key:
-                return (
-                    "Error: 'command' in format 'command_key::{key}' is required when using"
-                    " 'stdin'."
-                )
-
-            cls.clear_invocation_cache()
-
-            success = BackgroundCommandManager.send_command_input(command_key, stdin)
-            if success:
-                return f"Sent input to background command {command_key}: {stdin}"
             else:
-                return f"Error: Background command {command_key} not found or not running."
+                return f"Error: Unknown action '{action}'. " "Use one of: stdin, stop."
 
         if not command:
             return "Error: 'command' must be provided."
@@ -143,7 +157,7 @@ class Tool(BaseTool):
             timeout = coder.agent_config.get("command_timeout", 30)
 
         if background:
-            return await cls._execute_background(coder, command, use_pty=pty)
+            return await cls._execute_background(coder, command, use_pty=pty, stdin=stdin)
         elif timeout > 0:
             return await cls._execute_with_timeout(coder, command, timeout, use_pty=pty)
         else:
@@ -199,11 +213,19 @@ class Tool(BaseTool):
         return confirmed
 
     @classmethod
-    async def _execute_background(cls, coder, command_string, use_pty=False):
+    async def _execute_background(cls, coder, command_string, use_pty=None, stdin=None):
         """
         Execute command in background.
+
+        Args:
+            stdin: Optional text to send to the command's stdin after starting
         """
         coder.io.tool_output(f"⛭ Starting background command: {command_string}", type="tool-result")
+
+        # Default to PTY on Unix platforms for proper line-buffered output
+        # (Python and other programs buffer output aggressively on pipes)
+        if use_pty is None:
+            use_pty = platform.system() != "Windows"
 
         # Use static manager to start background command
         command_key = BackgroundCommandManager.start_background_command(
@@ -214,6 +236,10 @@ class Tool(BaseTool):
             use_pty=use_pty,
         )
 
+        # Send stdin to the background command if provided
+        if stdin:
+            BackgroundCommandManager.send_command_input(command_key, stdin)
+
         return (
             f"Background command started: {command_string}\n"
             f"Command key: {command_key}\n"
@@ -221,13 +247,13 @@ class Tool(BaseTool):
         )
 
     @classmethod
-    async def _execute_with_timeout(cls, coder, command_string, timeout, use_pty=False):
+    async def _execute_with_timeout(cls, coder, command_string, timeout, use_pty=None):
         """
         Execute command with timeout. If timeout elapses, move to background.
 
-        IMPORTANT: We use a different approach to avoid pipe conflicts.
-        Instead of reading pipes directly, we let BackgroundCommandManager
-        handle all pipe reading from the start.
+        When use_pty is True (or auto-defaulted on Unix), a pseudo-terminal
+        is used to avoid the full-buffering issue that occurs when stdout is
+        connected to a pipe instead of a TTY.
         """
         import asyncio
         import subprocess
@@ -239,24 +265,59 @@ class Tool(BaseTool):
             f"⛭ Executing shell command with {timeout}s timeout.", type="tool-result"
         )
 
-        shell = os.environ.get("SHELL", "/bin/sh")
+        # Auto-default to PTY on Unix unless explicitly set otherwise
+        if use_pty is None:
+            use_pty = platform.system() != "Windows"
 
         # Create output buffer
         buffer = CircularBuffer(max_size=4096)
 
-        # Start process with pipes for output capture
-        process = subprocess.Popen(
-            command_string,
-            shell=True,
-            executable=shell if platform.system() != "Windows" else None,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=subprocess.PIPE,
-            cwd=coder.root,
-            text=True,
-            bufsize=1,
-            universal_newlines=True,
-        )
+        # Decide whether to use PTY
+        master_fd = None
+
+        if use_pty and HAS_PTY and platform.system() != "Windows":
+            master_fd, slave_fd = pty.openpty()
+
+            # Disable echo on the slave PTY
+            attr = termios.tcgetattr(slave_fd)
+            attr[3] = attr[3] & ~termios.ECHO
+            termios.tcsetattr(slave_fd, termios.TCSANOW, attr)
+
+            process = subprocess.Popen(
+                command_string,
+                shell=True,
+                executable=os.environ.get("SHELL", "/bin/sh"),
+                stdout=slave_fd,
+                stderr=slave_fd,
+                stdin=slave_fd,
+                cwd=coder.root,
+                close_fds=True,
+                text=True,
+                bufsize=1,
+                universal_newlines=True,
+            )
+            os.close(slave_fd)
+        else:
+            # Start process with pipes for output capture
+            # When PTY was requested but unavailable, wrap with stdbuf for line-buffered output
+            resolved_cmd = (
+                BackgroundCommandManager._wrap_line_buffered(command_string)
+                if use_pty and not HAS_PTY
+                else command_string
+            )
+            shell = os.environ.get("SHELL", "/bin/sh")
+            process = subprocess.Popen(
+                resolved_cmd,
+                shell=True,
+                executable=shell if platform.system() != "Windows" else None,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE,
+                cwd=coder.root,
+                text=True,
+                bufsize=1,
+                universal_newlines=True,
+            )
 
         # Immediately register with background manager to handle pipe reading
         command_key = BackgroundCommandManager.start_background_command(
@@ -267,6 +328,7 @@ class Tool(BaseTool):
             existing_process=process,
             existing_buffer=buffer,
             persist=True,
+            master_fd=master_fd,
         )
 
         # Now monitor the process with timeout
@@ -340,7 +402,7 @@ class Tool(BaseTool):
             if elapsed >= timeout:
                 # Timeout elapsed, process continues in background
                 coder.io.tool_output(
-                    f"⏱️ Command exceeded {timeout}s timeout, continuing in background...",
+                    f"\u23f1\ufe0f Command exceeded {timeout}s timeout, continuing in background...",
                     type="tool-result",
                 )
 
@@ -428,6 +490,7 @@ class Tool(BaseTool):
         else:
             return output  # Error message from manager
 
+    @classmethod
     async def _handle_errors(cls, coder, command_string, e):
         """Handle errors during command execution."""
         coder.io.tool_error(f"Error executing shell command: {str(e)}")
@@ -451,7 +514,8 @@ class Tool(BaseTool):
 
         command = params.get("command", "")
         background = params.get("background", False)
-        stop = params.get("stop", False)
+        background_key = params.get("background_key")
+        action = params.get("action")
         stdin = params.get("stdin")
         pty = params.get("pty", False)
 
@@ -461,8 +525,8 @@ class Tool(BaseTool):
         extras = []
         if background:
             extras.append("background=True")
-        if stop:
-            extras.append("stop=True")
+        if action:
+            extras.append(f"action={action}")
         if pty:
             extras.append("pty=True")
 
@@ -473,8 +537,13 @@ class Tool(BaseTool):
             coder.io.tool_output(f"{color_start}Stdin:{color_end}")
             coder.io.tool_output(stdin)
 
-        coder.io.tool_output(f"{color_start}Command:{color_end}")
-        coder.io.tool_output(command)
+        if background_key and action:
+            coder.io.tool_output(f"{color_start}Background Key:{color_end} {background_key}")
+            coder.io.tool_output(f"{color_start}Action:{color_end} {action}")
+        elif command:
+            coder.io.tool_output(f"{color_start}Command:{color_end}")
+            coder.io.tool_output(command)
+
         coder.io.tool_output("")
 
         # Output footer
