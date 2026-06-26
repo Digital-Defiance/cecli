@@ -256,6 +256,8 @@ class ModelInfoManager:
 
     def get_model_info(self, model):
         cached_info = self.get_model_from_cached_json_db(model)
+        if cached_info:
+            return cached_info
         litellm_info = None
         if litellm._lazy_module or not cached_info:
             try:
@@ -268,6 +270,10 @@ class ModelInfoManager:
             return provider_info
         if litellm_info:
             return litellm_info
+        if not cached_info and model.startswith("openai/"):
+            stripped = model[7:]
+            if stripped:
+                return self.get_model_info(stripped)
         return cached_info
 
     def _resolve_via_provider(self, model, cached_info):
