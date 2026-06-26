@@ -119,7 +119,11 @@ class HashPos:
                 if use_private_ids
                 else self.generate_public_id(line, i)
             )
-            formatted_lines.append(f"{prefix}::{line}")
+            if line.strip():
+                formatted_lines.append(f"{prefix}::{line}")
+            else:
+                formatted_lines.append(f"{line}")
+
         return "\n".join(formatted_lines)
 
     def resolve_to_lines(self, public_id: str, start_line: int = 1) -> list[int]:
