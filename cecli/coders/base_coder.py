@@ -4023,7 +4023,9 @@ class Coder(metaclass=UsageMeta):
         input_cost_per_token = self.get_active_model().info.get("input_cost_per_token") or 0
         output_cost_per_token = self.get_active_model().info.get("output_cost_per_token") or 0
         input_cost_per_token_cache_hit = (
-            self.get_active_model().info.get("input_cost_per_token_cache_hit") or 0
+            self.get_active_model().info.get("input_cost_per_token_cache_hit")
+            or self.get_active_model().info.get("cache_read_input_token_cost")
+            or 0
         )
 
         # deepseek
@@ -4035,14 +4037,13 @@ class Coder(metaclass=UsageMeta):
         #    == total tokens that were
 
         if input_cost_per_token_cache_hit:
-            # must be deepseek
-            cost += input_cost_per_token_cache_hit * cache_hit_tokens
-            cost += (prompt_tokens - input_cost_per_token_cache_hit) * input_cost_per_token
+            cost += cache_hit_tokens * input_cost_per_token_cache_hit
+            cost += (prompt_tokens - cache_hit_tokens) * input_cost_per_token
         else:
             # hard code the anthropic adjustments, no-ops for other models since cache_x_tokens==0
             cost += cache_write_tokens * input_cost_per_token * 1.25
             cost += cache_hit_tokens * input_cost_per_token * 0.10
-            cost += prompt_tokens * input_cost_per_token
+            cost += (prompt_tokens - cache_hit_tokens) * input_cost_per_token
 
         cost += completion_tokens * output_cost_per_token
         return cost
