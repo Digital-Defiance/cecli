@@ -3248,6 +3248,12 @@ class Coder(metaclass=UsageMeta):
                 res += errors
                 res += "\n"
 
+        if self.edit_format in ("agent", "subagent"):
+            if self.agent_config.get("show_lint_errors"):
+                show_output = True
+            else:
+                show_output = False
+
         if res and show_output:
             self.io.tool_warning(res)
 

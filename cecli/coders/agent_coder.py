@@ -157,9 +157,11 @@ class AgentCoder(Coder):
         config["large_file_token_threshold"] = nested.getter(
             config, "large_file_token_threshold", 8192
         )
+        config["show_lint_errors"] = nested.getter(config, "show_lint_errors", False)
         config["skip_cli_confirmations"] = nested.getter(
             config, "skip_cli_confirmations", nested.getter(config, "yolo", [])
         )
+
         config["command_timeout"] = nested.getter(config, "command_timeout", 30)
         config["allowed_commands"] = nested.getter(config, "allowed_commands", [])
         config["hot_reload"] = nested.getter(config, "hot_reload", False)
