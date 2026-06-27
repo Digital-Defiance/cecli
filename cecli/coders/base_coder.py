@@ -1439,7 +1439,10 @@ class Coder(metaclass=UsageMeta):
             if mime_type.startswith("image/") and supports_images:
                 content = [
                     {"type": "text", "text": f"Image file: {rel_fname}"},
-                    {"type": "image_url", "image_url": {"url": image_url, "detail": "high"}},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": image_url, "detail": "high", "format": mime_type},
+                    },
                 ]
             elif mime_type == "application/pdf" and supports_pdfs:
                 content = [
@@ -2001,8 +2004,8 @@ class Coder(metaclass=UsageMeta):
         combined_tokens = done_tokens + cur_tokens + diff_tokens
 
         if force or (
-            all_tokens >= self.context_compaction_max_tokens * 0.9
-            and ConversationService.get_chunks(self).last_clear_count > 10
+            all_tokens >= self.context_compaction_max_tokens * 1.25
+            and ConversationService.get_chunks(self).last_clear_count > 20
         ):
             manager.clear_tag(MessageTag.DIFFS)
             manager.clear_tag(MessageTag.FILE_CONTEXTS)
