@@ -1503,7 +1503,9 @@ class Model(ModelSettings):
         """
         os.makedirs(".cecli/logs/messages", exist_ok=True)
         with open(f".cecli/logs/messages/{name}-{time.time()}.log", "w") as f:
-            json.dump(messages, f, indent=4, default=lambda o: "<not serializable>")
+            json.dump(
+                messages, f, indent=4, ensure_ascii=False, default=lambda o: "<not serializable>"
+            )
 
     def _log_request(self, model_call_dict):
         """
@@ -1513,7 +1515,13 @@ class Model(ModelSettings):
         log_file_path = f".cecli/logs/litellm/request-{time.time()}.log"
 
         with open(log_file_path, "a", encoding="utf-8") as f:
-            json.dump(model_call_dict, f, indent=4, default=lambda o: "<not serializable>")
+            json.dump(
+                model_call_dict,
+                f,
+                indent=4,
+                ensure_ascii=False,
+                default=lambda o: "<not serializable>",
+            )
             f.write(",\n")
 
 
