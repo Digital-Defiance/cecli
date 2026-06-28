@@ -534,6 +534,7 @@ class Tool(BaseTool):
                 original_context_content = ConversationService.get_files(coder).get_file_context(
                     abs_path,
                     all_ranges=True,
+                    check_versions=False,
                 )
                 update_tuple = ConversationService.get_files(coder).update_file_context(
                     abs_path, start_line, end_line, auto_remove=False
@@ -541,6 +542,7 @@ class Tool(BaseTool):
                 new_context_content = ConversationService.get_files(coder).get_file_context(
                     abs_path,
                     all_ranges=True,
+                    check_versions=False,
                 )
 
                 is_already_up_to_date = False
@@ -573,19 +575,15 @@ class Tool(BaseTool):
                     and e_idx < len(hashed_lines)
                 ):
                     # hashed_slice = hashed_lines[s_idx : e_idx + 1]
-                    if is_already_up_to_date:
-                        model_response = cls.format_model_response(
-                            coder, rel_path, s_idx, e_idx, hashed_lines, current=True
-                        )
+                    model_response = cls.format_model_response(
+                        coder, rel_path, s_idx, e_idx, hashed_lines, current=is_already_up_to_date
+                    )
 
+                    if is_already_up_to_date:
                         if model_response not in already_up_to_set:
                             already_up_to_set.add(model_response)
                             already_up_to_details.append(model_response)
                     else:
-                        model_response = cls.format_model_response(
-                            coder, rel_path, s_idx, e_idx, hashed_lines
-                        )
-
                         if model_response not in new_context_set:
                             new_context_set.add(model_response)
                             new_context_details.append(model_response)
@@ -726,7 +724,7 @@ class Tool(BaseTool):
 
                     prefixed = "".join(snapshot_parts)
                     result = {
-                        "file_name": rel_path,
+                        "file_path": rel_path,
                         "start_line": start_stub_s + 1,
                         "end_line": end_stub_e if has_second_range else start_stub_e,
                         "partial": True,
@@ -746,18 +744,115 @@ class Tool(BaseTool):
             if total <= 15:
                 prefixed = hashed_content
             else:
-                head = "\n".join(hashed_lines[s_idx : s_idx + 5])
-                tail = "\n".join(hashed_lines[e_idx - 4 : e_idx + 1])
-                prefixed = f"{head}\n...⋮...\n{tail}"
+                prefixed = cls.content_splitter(coder, hashed_lines, s_idx, e_idx)
 
         result = {
-            "file_name": rel_path,
+            "file_path": rel_path,
             "start_line": s_idx + 1,
             "end_line": e_idx + 1,
             "partial": True,
             "prefixed_contents": prefixed,
         }
         return json.dumps(result, ensure_ascii=False)
+
+    @classmethod
+    def content_splitter(cls, coder, hashed_lines, s_idx, e_idx):
+        """Edges in, middle out: progressively selects lines from edges
+        inward and middle outward, tracking token budget until exhausted.
+
+        Returns a string with hashed lines joined by newlines, with
+        "...⋮..." separators between non-contiguous groups.
+        """
+        total_lines = e_idx - s_idx + 1
+        max_tokens = min(coder.large_file_token_threshold / 16, 512)
+
+        selected = set()
+
+        # Round 0: first 2 lines
+        selected.add(s_idx)
+        if s_idx + 1 <= e_idx:
+            selected.add(s_idx + 1)
+
+        # Round 0: middle 1 or 2 lines
+        if total_lines % 2 == 1:  # odd
+            mid_start = s_idx + total_lines // 2
+            selected.add(mid_start)
+            mid_end = mid_start
+        else:  # even
+            mid_start = s_idx + total_lines // 2 - 1
+            mid_end = s_idx + total_lines // 2
+            selected.add(mid_start)
+            selected.add(mid_end)
+
+        # Round 0: last 2 lines
+        if e_idx - 1 >= s_idx:
+            selected.add(e_idx - 1)
+        selected.add(e_idx)
+
+        round_num = 1
+        while True:
+            next_selected = selected.copy()
+
+            # Add 2 lines to the top
+            new_top_1 = s_idx + 2 * round_num
+            if new_top_1 <= e_idx:
+                next_selected.add(new_top_1)
+            new_top_2 = s_idx + 2 * round_num + 1
+            if new_top_2 <= e_idx:
+                next_selected.add(new_top_2)
+
+            # Add 1 line on either end of the middle
+            left_mid = mid_start - round_num
+            if left_mid >= s_idx:
+                next_selected.add(left_mid)
+            right_mid = mid_end + round_num
+            if right_mid <= e_idx:
+                next_selected.add(right_mid)
+
+            # Add 2 lines before the bottom
+            new_bottom_1 = e_idx - 1 - 2 * round_num
+            if new_bottom_1 >= s_idx:
+                next_selected.add(new_bottom_1)
+            new_bottom_2 = e_idx - 2 * round_num
+            if new_bottom_2 >= s_idx:
+                next_selected.add(new_bottom_2)
+
+            # Check token count
+            sorted_indices = sorted(next_selected)
+            candidate_lines = [hashed_lines[i] for i in sorted_indices]
+            candidate_content = "\n".join(candidate_lines)
+            candidate_tokens = coder.main_model.token_count(candidate_content)
+
+            if candidate_tokens > max_tokens:
+                break
+
+            selected = next_selected
+            round_num += 1
+
+            if len(selected) == total_lines:
+                break
+
+        # Build output with "...⋮..." between non-contiguous ranges
+        sorted_indices = sorted(selected)
+        output_parts = []
+        current_chunk = [sorted_indices[0]]
+
+        for i in range(1, len(sorted_indices)):
+            if sorted_indices[i] == sorted_indices[i - 1] + 1:
+                current_chunk.append(sorted_indices[i])
+            else:
+                output_parts.append(current_chunk)
+                current_chunk = [sorted_indices[i]]
+        output_parts.append(current_chunk)
+
+        output_lines = []
+        for chunk_idx, chunk in enumerate(output_parts):
+            if chunk_idx > 0:
+                output_lines.append("...⋮...")
+            for idx in chunk:
+                output_lines.append(hashed_lines[idx])
+
+        return "\n".join(output_lines)
 
     @classmethod
     def _reposition_indices(
@@ -982,7 +1077,7 @@ class Tool(BaseTool):
         if stub and stub != "# No outline available":
             result = json.dumps(
                 {
-                    "file_name": rel_path,
+                    "file_path": rel_path,
                     "outline": stub,
                 },
                 ensure_ascii=False,
@@ -1038,7 +1133,7 @@ class Tool(BaseTool):
         parts.append(
             json.dumps(
                 {
-                    "file_name": rel_path,
+                    "file_path": rel_path,
                     "truncated": "\n".join(file_contents),
                 },
                 ensure_ascii=False,

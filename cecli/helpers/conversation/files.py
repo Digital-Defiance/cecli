@@ -33,6 +33,7 @@ class ConversationFiles:
         self._file_timestamps: Dict[str, float] = {}
         self._file_diffs: Dict[str, str] = {}
         self._file_diff_versions: Dict[str, int] = {}
+        self._file_context_versions: Dict[str, int] = {}
         self._file_stub_contents: Dict[str, str] = {}
         self._file_to_message_id: Dict[str, str] = {}
         self._image_files: Dict[str, bool] = {}
@@ -385,6 +386,7 @@ class ConversationFiles:
             self._file_timestamps.clear()
             self._file_diffs.clear()
             self._file_diff_versions.clear()
+            self._file_context_versions.clear()
             self._file_stub_contents.clear()
             self._file_json_contents.clear()
             self._file_to_message_id.clear()
@@ -397,6 +399,7 @@ class ConversationFiles:
             self._file_timestamps.pop(abs_fname, None)
             self._file_diffs.pop(abs_fname, None)
             self._file_diff_versions.pop(abs_fname, None)
+            self._file_context_versions.pop(abs_fname, None)
             self._file_stub_contents.pop(abs_fname, None)
             self._file_json_contents.pop(abs_fname, None)
             self._file_to_message_id.pop(abs_fname, None)
@@ -450,6 +453,8 @@ class ConversationFiles:
             The merged range (start_line, end_line) that contains the input range.
         """
         abs_fname = os.path.abspath(file_path)
+        diff_version = self._file_diff_versions.get(abs_fname, 0)
+        context_version = self._file_context_versions.get(abs_fname, 0)
 
         # Validate range
         if start_line > end_line:
@@ -457,6 +462,11 @@ class ConversationFiles:
 
         # Get existing ranges
         existing_ranges = self._numbered_contexts.get(abs_fname, [])
+
+        # auto clear on edit
+        if diff_version != context_version:
+            self._file_context_versions[abs_fname] = diff_version
+            existing_ranges = []
 
         # Add new range
         new_range = (start_line, end_line)
@@ -529,7 +539,7 @@ class ConversationFiles:
             abs_fname = os.path.abspath(file_path)
             self._last_merged_ranges.pop(abs_fname, None)
 
-    def get_file_context(self, file_path: str, all_ranges=False) -> str:
+    def get_file_context(self, file_path: str, all_ranges=False, check_versions=True) -> str:
         """
         Generate hashline representation of cached context ranges.
 
@@ -569,6 +579,8 @@ class ConversationFiles:
         # Generate hashline representations for each range
         results = []
         content_lines = content.splitlines()
+        diff_version = self._file_diff_versions.get(abs_fname, 0)
+        context_version = self._file_context_versions.get(abs_fname, 0)
 
         for i, (start_line, end_line) in enumerate(ranges):
             # Note: hashline uses 1-based line numbers, so no conversion needed
@@ -583,6 +595,16 @@ class ConversationFiles:
 
             # Generate JSON for this range using hashline_formatted()
             range_content = "\n".join(lines)
+
+            # Don't duplicate whole contents that are already in context
+            if (
+                check_versions
+                and range_content == content
+                and (abs_fname in coder.abs_fnames or abs_fname in coder.abs_read_only_fnames)
+                and diff_version == context_version
+            ):
+                continue
+
             _, json_str = hashline_formatted(
                 range_content, file_name=abs_fname, partial=True, start_line=start_line_adj
             )
@@ -590,12 +612,15 @@ class ConversationFiles:
 
         # Build and return the top-level JSON structure
         # version = self._file_diff_versions.get(abs_fname, 0)
-        result = {
-            "file_path": file_path,
-            "results": results,
-            # "version": version,
-        }
-        return json.dumps(result, ensure_ascii=False)
+        if results:
+            result = {
+                "file_path": file_path,
+                "results": results,
+                # "version": version,
+            }
+            return json.dumps(result, ensure_ascii=False)
+
+        return None
 
     def remove_file_context(self, file_path: str) -> None:
         """

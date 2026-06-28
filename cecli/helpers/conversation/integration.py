@@ -192,7 +192,7 @@ class ConversationChunks:
                     " the current data."
                 ),
                 (
-                    "You’ve got what you need, please invoke the right tools to keep making"
+                    "Based on what you know, please invoke the right tools to keep making"
                     " progress towards our goal."
                 ),
                 (

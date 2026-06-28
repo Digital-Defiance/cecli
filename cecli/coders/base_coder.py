@@ -2004,7 +2004,7 @@ class Coder(metaclass=UsageMeta):
         combined_tokens = done_tokens + cur_tokens + diff_tokens
 
         if force or (
-            all_tokens >= self.context_compaction_max_tokens * 1.25
+            all_tokens >= self.context_compaction_max_tokens * 0.9
             and ConversationService.get_chunks(self).last_clear_count > 20
         ):
             manager.clear_tag(MessageTag.LINT)
