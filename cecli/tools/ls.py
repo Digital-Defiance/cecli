@@ -77,7 +77,7 @@ class Tool(BaseTool):
 
             if contents:
                 coder.io.tool_output(
-                    f"📋 Listed {len(contents)} file(s) in '{dir_path}'", type="tool-result"
+                    f"🗐  Listed {len(contents)} file(s) in '{dir_path}'", type="tool-result"
                 )
                 sorted_contents = sorted(contents)
                 if len(sorted_contents) > 10:
@@ -87,7 +87,7 @@ class Tool(BaseTool):
                 else:
                     return f"Found {len(sorted_contents)} files: {', '.join(sorted_contents)}"
             else:
-                coder.io.tool_output(f"📋 No files found in '{dir_path}'", type="tool-result")
+                coder.io.tool_output(f"🗐  No files found in '{dir_path}'", type="tool-result")
                 return "No files found in directory"
         except Exception as e:
             coder.io.tool_error(f"Error in ls: {str(e)}")

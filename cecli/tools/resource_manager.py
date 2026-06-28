@@ -167,7 +167,7 @@ class Tool(BaseTool):
                 "load_skill, remove_skill, load_mcp, remove_mcp, or actions"
             )
 
-        coder.io.tool_output("\u2b6d Modifying Context", type="tool-result")
+        coder.io.tool_output("⛭ Modifying Context", type="tool-result")
         messages = []
 
         # Expand wildcards for MCP operations
