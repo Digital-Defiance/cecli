@@ -605,7 +605,10 @@ class Tool(BaseTool):
 
             ConversationService.get_chunks(coder).add_file_context_messages()
 
-            if coder.turn_count > 25:
+            if (
+                ConversationService.get_chunks(coder).last_clear_count > 10
+                and coder.context_compaction_current_ratio > 0.8
+            ):
                 cls.clear_old_messages(coder)
 
             # Log success and return the formatted context directly

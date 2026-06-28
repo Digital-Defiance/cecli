@@ -491,6 +491,7 @@ class Coder(metaclass=UsageMeta):
         self.mcp_manager = mcp_manager
         self.enable_context_compaction = enable_context_compaction
 
+        self.context_compaction_current_ratio = 0
         self.context_compaction_max_tokens = context_compaction_max_tokens
         self.context_compaction_summary_tokens = context_compaction_summary_tokens
         self.max_reflections = nested.getter(self.args, "max_reflections", 3)
@@ -2003,13 +2004,15 @@ class Coder(metaclass=UsageMeta):
 
         combined_tokens = done_tokens + cur_tokens + diff_tokens
 
+        self.context_compaction_current_ratio = all_tokens / self.context_compaction_max_tokens
+
         if force or (
             all_tokens >= self.context_compaction_max_tokens * 0.9
             and ConversationService.get_chunks(self).last_clear_count > 20
         ):
-            manager.clear_tag(MessageTag.LINT)
-            manager.clear_tag(MessageTag.DIFFS)
-            manager.clear_tag(MessageTag.FILE_CONTEXTS)
+            manager.clear_tag(MessageTag.LINT, ratio=0.33)
+            manager.clear_tag(MessageTag.DIFFS, ratio=0.33)
+            manager.clear_tag(MessageTag.FILE_CONTEXTS, ratio=0.33)
             ConversationService.get_files(self).clear_file_cache()
             ConversationService.get_chunks(self).flush_removals()
 
