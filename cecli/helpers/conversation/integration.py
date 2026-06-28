@@ -623,8 +623,8 @@ class ConversationChunks:
             ConversationService.get_files(coder).add_file(fname, force_refresh=refresh)
 
             # Get file content (with proper caching and stub generation)
-            content = ConversationService.get_files(coder).get_file_stub(fname)
-            if content:
+            json_str = ConversationService.get_files(coder).get_file_json(fname)
+            if json_str:
                 # Add user message with file path as hash_key
                 rel_fname = coder.get_rel_fname(fname)
 
@@ -638,7 +638,7 @@ class ConversationChunks:
 
                 user_msg = {
                     "role": "user",
-                    "content": f"{file_preamble}\n{rel_fname}\n\n{content}\n\n{file_postamble}",
+                    "content": f"{file_preamble}\n{rel_fname}\n\n{json_str}\n\n{file_postamble}",
                 }
 
                 ConversationService.get_manager(coder).add_message(
@@ -704,8 +704,8 @@ class ConversationChunks:
             ConversationService.get_files(coder).add_file(fname, force_refresh=refresh)
 
             # Get file content (with proper caching and stub generation)
-            content = ConversationService.get_files(coder).get_file_stub(fname)
-            if not content:
+            json_str = ConversationService.get_files(coder).get_file_json(fname)
+            if not json_str:
                 ConversationService.get_files(coder).clear_file_cache(fname)
                 continue
 
@@ -721,7 +721,7 @@ class ConversationChunks:
 
             user_msg = {
                 "role": "user",
-                "content": f"{file_preamble}\n{rel_fname}\n\n{content}\n\n{file_postamble}",
+                "content": f"{file_preamble}\n{rel_fname}\n\n{json_str}\n\n{file_postamble}",
             }
 
             # Determine tag based on editability

@@ -1,10 +1,14 @@
+import json
 import os
 import weakref
 from typing import Any, Dict, List, Optional, Tuple
 
 import xxhash
 
-from cecli.helpers.hashline import get_hashline_content_diff, hashline
+from cecli.helpers.hashline import (
+    get_hashline_content_diff,
+    hashline_formatted,
+)
 from cecli.repomap import RepoMap
 
 from .service import ConversationService
@@ -25,8 +29,10 @@ class ConversationFiles:
         self.uuid = coder.uuid
         self._file_contents_original: Dict[str, str] = {}
         self._file_contents_snapshot: Dict[str, str] = {}
+        self._file_json_contents: Dict[str, str] = {}
         self._file_timestamps: Dict[str, float] = {}
         self._file_diffs: Dict[str, str] = {}
+        self._file_diff_versions: Dict[str, int] = {}
         self._file_stub_contents: Dict[str, str] = {}
         self._file_to_message_id: Dict[str, str] = {}
         self._image_files: Dict[str, bool] = {}
@@ -109,7 +115,10 @@ class ConversationFiles:
                 try:
                     content = coder.io.read_text(abs_fname, silent=True)
                     if coder.hashlines:
-                        content = hashline(content)
+                        content, json_str = hashline_formatted(
+                            content, file_name=abs_fname, partial=False
+                        )
+                        self._file_json_contents[abs_fname] = json_str
                 except Exception:
                     content = ""  # Empty content for unreadable files
 
@@ -226,7 +235,9 @@ class ConversationFiles:
         try:
             current_content = coder.io.read_text(abs_fname, silent=True)
             if coder.hashlines:
-                current_content = hashline(current_content)
+                current_content, _ = hashline_formatted(
+                    current_content, file_name=abs_fname, partial=False
+                )
         except Exception:
             return None
 
@@ -238,6 +249,9 @@ class ConversationFiles:
         snapshot_content = self._file_contents_snapshot.get(
             abs_fname, self._file_contents_original[abs_fname]
         )
+
+        if not snapshot_content:
+            return None
 
         # Generate diff between snapshot and current content using hashline helper
         diff_text = get_hashline_content_diff(
@@ -265,10 +279,14 @@ class ConversationFiles:
         """
         coder = self.get_coder()
         diff = self.generate_diff(fname)
+        diff_output = diff
 
         if diff:
-            # Store diff
+            # Increment diff version counter
             abs_fname = os.path.abspath(fname)
+            self._file_diff_versions[abs_fname] = self._file_diff_versions.get(abs_fname, 0) + 1
+
+            # Store diff
             self._file_diffs[abs_fname] = diff
 
             rel_fname = fname
@@ -278,6 +296,16 @@ class ConversationFiles:
                 rel_fname = coder.get_rel_fname(fname)
                 prefix_str = "content ID prefixed " if getattr(coder, "hashlines") else ""
 
+            if coder.hashlines:
+                # Wrap diff in JSON structure
+                diff_output = json.dumps(
+                    {
+                        "file_name": rel_fname,
+                        "prefixed_diff": diff,
+                    },
+                    ensure_ascii=False,
+                )
+
             # Add diff message to conversation
             content_hash = xxhash.xxh3_128_hexdigest(diff.encode("utf-8"))
 
@@ -285,7 +313,7 @@ class ConversationFiles:
                 "role": "user",
                 "content": (
                     f"{rel_fname} has been updated. Review this {prefix_str}diff of the changes to"
-                    f" ensure all modifications are appropriate:\n\n{diff}"
+                    f" ensure all modifications are appropriate:\n\n{diff_output}"
                 ),
             }
 
@@ -328,6 +356,22 @@ class ConversationFiles:
 
         return content or ""
 
+    def get_file_json(self, fname: str) -> Optional[str]:
+        """
+        Get the cached JSON metadata for a file, if available.
+
+        The JSON is generated and cached during add_file() and contains
+        file_name, start_line, end_line, partial, and prefixed_contents.
+
+        Args:
+            fname: Absolute file path
+
+        Returns:
+            JSON-formatted string, or None if not cached
+        """
+        abs_fname = os.path.abspath(fname)
+        return self._file_json_contents.get(abs_fname)
+
     def clear_file_cache(self, fname: Optional[str] = None, clear_contexts=True) -> None:
         """
         Clear cache for specific file or all files.
@@ -340,7 +384,9 @@ class ConversationFiles:
             self._file_contents_snapshot.clear()
             self._file_timestamps.clear()
             self._file_diffs.clear()
+            self._file_diff_versions.clear()
             self._file_stub_contents.clear()
+            self._file_json_contents.clear()
             self._file_to_message_id.clear()
             if clear_contexts:
                 self._numbered_contexts.clear()
@@ -350,7 +396,9 @@ class ConversationFiles:
             self._file_contents_snapshot.pop(abs_fname, None)
             self._file_timestamps.pop(abs_fname, None)
             self._file_diffs.pop(abs_fname, None)
+            self._file_diff_versions.pop(abs_fname, None)
             self._file_stub_contents.pop(abs_fname, None)
+            self._file_json_contents.pop(abs_fname, None)
             self._file_to_message_id.pop(abs_fname, None)
             self._image_files.pop(abs_fname, None)
             if clear_contexts:
@@ -489,7 +537,8 @@ class ConversationFiles:
             file_path: Absolute file path
 
         Returns:
-            Hashline representation of cached ranges, or empty string if no ranges
+            JSON-formatted string with file_path, version, and results array,
+            or empty string if no ranges
         """
         abs_fname = os.path.abspath(file_path)
 
@@ -518,7 +567,7 @@ class ConversationFiles:
             return ""
 
         # Generate hashline representations for each range
-        context_parts = []
+        results = []
         content_lines = content.splitlines()
 
         for i, (start_line, end_line) in enumerate(ranges):
@@ -532,15 +581,21 @@ class ConversationFiles:
             # Extract lines for this range (0-based indexing for list)
             lines = content_lines[start_line_adj - 1 : end_line_adj]
 
-            # Generate hashline representation using the hashline() function
-            # Join lines back with newlines for hashline()
+            # Generate JSON for this range using hashline_formatted()
             range_content = "\n".join(lines)
-            hashline_content = hashline(range_content, start_line=start_line_adj)
+            _, json_str = hashline_formatted(
+                range_content, file_name=abs_fname, partial=True, start_line=start_line_adj
+            )
+            results.append(json.loads(json_str))
 
-            context_parts.append(hashline_content.strip())
-
-        # Join with ellipsis separator
-        return "\n...\n\n".join(context_parts)
+        # Build and return the top-level JSON structure
+        # version = self._file_diff_versions.get(abs_fname, 0)
+        result = {
+            "file_path": file_path,
+            "results": results,
+            # "version": version,
+        }
+        return json.dumps(result, ensure_ascii=False)
 
     def remove_file_context(self, file_path: str) -> None:
         """

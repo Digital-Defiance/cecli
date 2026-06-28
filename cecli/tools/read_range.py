@@ -1,7 +1,8 @@
+import json
 import os
 from typing import Dict, List
 
-from cecli.helpers.hashline import hashline, strip_hashline
+from cecli.helpers.hashline import hashline_formatted, strip_hashline
 from cecli.tools.utils.base_tool import BaseTool
 from cecli.tools.utils.helpers import (
     ToolError,
@@ -510,7 +511,7 @@ class Tool(BaseTool):
                 # output_lines = [f"Displaying context around {found_by} in {rel_path}:"]
 
                 # Generate hashline for the entire file
-                hashed_content = hashline(content)
+                hashed_content, _ = hashline_formatted(content, file_name=abs_path, partial=False)
                 hashed_lines = hashed_content.splitlines()
 
                 # Extract the context window from hashed lines
@@ -605,7 +606,9 @@ class Tool(BaseTool):
                 ConversationService.get_files(coder).push_range(abs_path, tuples)
 
             ConversationService.get_chunks(coder).add_file_context_messages()
-            cls.clear_old_messages(coder)
+
+            if coder.turn_count > 25:
+                cls.clear_old_messages(coder)
 
             # Log success and return the formatted context directly
             coder.edit_allowed = True
@@ -682,8 +685,6 @@ class Tool(BaseTool):
         except Exception:
             pass
 
-        lines = []
-
         # Try to return structural stub information instead of raw hashed lines
         try:
             if hashed_lines and current and coder.turn_count - last_turn >= 2:
@@ -709,46 +710,54 @@ class Tool(BaseTool):
                     end_found = False
 
                 if start_found or end_found:
+                    snapshot_parts = []
                     if start_found:
-                        lines.append(
-                            f"File {rel_path} Current Snapshot (Lines {start_stub_s + 1} - {start_stub_e + 1}):"
-                        )
-                        lines.extend(hashed_lines[start_stub_s:start_stub_e])
+                        snapshot_parts.extend(hashed_lines[start_stub_s:start_stub_e])
 
-                    if (
+                    has_second_range = (
                         end_found
                         and start_stub_s != end_stub_s
                         and start_stub_e != end_stub_e
                         and end_stub_e != e_idx
-                    ):
-                        lines.append("...⋮...")
-                        lines.append(
-                            f"File {rel_path} Current Snapshot (Lines {end_stub_s + 1} - {end_stub_e + 1}):"
-                        )
-                        lines.extend(hashed_lines[end_stub_s:end_stub_e])
+                    )
+                    if has_second_range:
+                        snapshot_parts.append("...⋮...\n")
+                        snapshot_parts.extend(hashed_lines[end_stub_s:end_stub_e])
 
-                    lines.append("")
-                    return "\n".join(lines)
+                    prefixed = "".join(snapshot_parts)
+                    result = {
+                        "file_name": rel_path,
+                        "start_line": start_stub_s + 1,
+                        "end_line": end_stub_e if has_second_range else start_stub_e,
+                        "partial": True,
+                        "prefixed_contents": prefixed,
+                    }
+                    return json.dumps(result, ensure_ascii=False)
         except Exception:
             pass
 
-        lines = [f"File {rel_path} Current Snapshot (Lines {s_idx + 1} - {e_idx + 1}):"]
-        total = e_idx - s_idx
         hashed_content = "\n".join(hashed_lines[s_idx : e_idx + 1])
         token_count = coder.main_model.token_count(hashed_content)
 
         if token_count <= min(coder.large_file_token_threshold / 16, 512):
-            lines.extend(hashed_lines[s_idx : e_idx + 1])
+            prefixed = hashed_content
         else:
+            total = e_idx - s_idx
             if total <= 15:
-                lines.extend(hashed_lines[s_idx : e_idx + 1])
+                prefixed = hashed_content
             else:
-                lines.extend(hashed_lines[s_idx : s_idx + 5])
-                lines.append("...⋮...")
-                lines.extend(hashed_lines[e_idx - 4 : e_idx + 1])
+                head = "\n".join(hashed_lines[s_idx : s_idx + 5])
+                tail = "\n".join(hashed_lines[e_idx - 4 : e_idx + 1])
+                prefixed = f"{head}\n...⋮...\n{tail}"
 
-        lines.append("")
-        return "\n".join(lines)
+        result = {
+            "file_name": rel_path,
+            "start_line": s_idx + 1,
+            "end_line": e_idx + 1,
+            "partial": True,
+            "prefixed_contents": prefixed,
+        }
+        return json.dumps(result, ensure_ascii=False)
 
     @classmethod
     def _reposition_indices(
@@ -969,16 +978,16 @@ class Tool(BaseTool):
             abs_path, io, start_line=start_idx, end_line=end_idx, line_numbers=line_numbers
         )
 
-        # If get_file_stub returned a useful structural outline, wrap it with headers
+        # If get_file_stub returned a useful structural outline, wrap it as JSON
         if stub and stub != "# No outline available":
-            total_lines = end_idx - start_idx + 1
-            parts = [
-                f"Showing structural information for {rel_path}:",
-                "Use this information to further narrow your search",
-                "",
-                stub,
-            ]
-            return "\n".join(parts), True
+            result = json.dumps(
+                {
+                    "file_name": rel_path,
+                    "outline": stub,
+                },
+                ensure_ascii=False,
+            )
+            return result, True
 
         content = io.read_text(abs_path)
         if not content:
@@ -1019,8 +1028,21 @@ class Tool(BaseTool):
             f"Showing {len(sample_lines)} equally-spaced lines from the range:",
             "",
         ]
+
+        file_contents = []
         for idx, line_content in sample_lines:
             line_num = idx + 1
-            parts.append(f"  {line_num:>5} | {line_content}")
+            file_contents.append(f"{line_num}|{line_content}")
+            file_contents.append("...")
+
+        parts.append(
+            json.dumps(
+                {
+                    "file_name": rel_path,
+                    "truncated": "\n".join(file_contents),
+                },
+                ensure_ascii=False,
+            )
+        )
 
         return "\n".join(parts), False
