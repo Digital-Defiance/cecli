@@ -168,8 +168,8 @@ class ConversationChunks:
         if not coder:
             return
 
-        # if self._cancel_post_message_injections():
-        #     return
+        if self._cancel_post_message_injections():
+            return
 
         message = random.choice(
             [
@@ -999,14 +999,25 @@ class ConversationChunks:
     def flush_removals(self):
         self._deferred_removals.clear()
 
-    def _cancel_post_message_injections(self):
+    def _cancel_post_message_injections(self, modulus=10):
         coder = self.get_coder()
         if not coder:
             return False
 
         # Add system reminder as a pre-prompt context block
-        if coder.edit_format in ("agent", "subagent") and coder.turn_count % 5 != 0:
-            return True
+        if coder.edit_format in ("agent", "subagent"):
+            if coder.turn_count < modulus:
+                return True
+
+            if coder.edit_allowed and not coder._get_repetitive_tools():
+                return True
+
+            if coder.turn_count % modulus != 0:
+                # and coder.turn_count % modulus != 0
+                if not coder.edit_allowed:
+                    return False
+                else:
+                    return True
 
         return False
 

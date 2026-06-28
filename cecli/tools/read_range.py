@@ -605,11 +605,11 @@ class Tool(BaseTool):
 
             ConversationService.get_chunks(coder).add_file_context_messages()
 
-            if (
-                ConversationService.get_chunks(coder).last_clear_count > 20
-                and coder.context_compaction_current_ratio > 0.8
-            ):
-                cls.clear_old_messages(coder)
+            # if (
+            #    ConversationService.get_chunks(coder).last_clear_count > 20
+            #    and coder.context_compaction_current_ratio > 0.8
+            # ):
+            #    cls.clear_old_messages(coder)
 
             # Log success and return the formatted context directly
             coder.edit_allowed = True
@@ -688,7 +688,7 @@ class Tool(BaseTool):
 
         # Try to return structural stub information instead of raw hashed lines
         try:
-            if hashed_lines and current and coder.turn_count - last_turn >= 2:
+            if hashed_lines and current and coder.turn_count - last_turn <= 2:
                 num_lines = len(hashed_lines)
 
                 start_stub_s, start_stub_e = cls._extend_range_with_stub(
