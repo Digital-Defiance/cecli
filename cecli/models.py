@@ -688,6 +688,13 @@ class Model(ModelSettings):
                             f"override_kwargs '{key}' must be a dict, got {type(value)}"
                         )
                     self.info = {**self.info, **value}
+
+                    if not litellm.model_cost.get(model):
+                        litellm.model_cost[model] = {}
+
+                    litellm.model_cost[model].update(self.info)
+                    litellm.utils._invalidate_model_cost_lowercase_map()
+                    litellm.add_known_models(model_cost_map=litellm.model_cost)
                 elif isinstance(value, dict) and isinstance(self.extra_params.get(key), dict):
                     self.extra_params[key] = {**self.extra_params[key], **value}
                 else:
@@ -1329,6 +1336,16 @@ class Model(ModelSettings):
                 "User-Agent": f"cecli/{__version__}",
                 "Connection": "close",
             }
+
+        if "GITHUB_COPILOT_TOKEN" in os.environ or self.name.startswith("github_copilot/"):
+            kwargs["extra_headers"] = kwargs.get("extra_headers", {}) or {}
+
+            kwargs["extra_headers"].update(
+                {
+                    "editor-version": "vscode/1.126.0",
+                    "editor-plugin-version": "copilot/1.155.0",
+                }
+            )
 
         litellm_ex = LiteLLMExceptions()
         retry_delay = 0.125
