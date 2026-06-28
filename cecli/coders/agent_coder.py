@@ -818,6 +818,11 @@ class AgentCoder(Coder):
             if interrupted:
                 raise KeyboardInterrupt("Interrupted during linting")
 
+            has_errors = False
+
+            if self.lint_outcome is False:
+                has_errors = True
+
             self.lint_outcome = not lint_errors
 
             if lint_errors:
@@ -826,21 +831,27 @@ class AgentCoder(Coder):
                     "# Fix any linting errors below, if possible and then continue with your task.",
                     1,
                 )
-                ConversationService.get_manager(self).remove_message_by_hash_key(
-                    ("lint_errors", "agent")
-                )
                 ConversationService.get_manager(self).add_message(
                     message_dict=dict(role="user", content=lint_errors),
-                    tag=MessageTag.CUR,
-                    hash_key=("lint_errors", "agent"),
+                    tag=MessageTag.LINT,
+                    hash_key=("lint_errors", "agent", lint_errors),
                     promotion=ConversationService.get_manager(self).DEFAULT_TAG_PROMOTION_VALUE,
                     mark_for_demotion=1,
-                    force=True,
                 )
             else:
-                ConversationService.get_manager(self).remove_message_by_hash_key(
-                    ("lint_errors", "agent")
-                )
+                if has_errors:
+                    ConversationService.get_manager(self).add_message(
+                        message_dict=dict(
+                            role="user",
+                            content=(
+                                '<context name="linting_confirmation" from="agent">'
+                                "All linting errors resolved."
+                                "</context>"
+                            ),
+                        ),
+                        tag=MessageTag.LINT,
+                        hash_key=("lint_errors", "agent", str(time.monotonic_ns())),
+                    )
 
         return tool_responses
 

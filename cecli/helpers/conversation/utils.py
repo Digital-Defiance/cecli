@@ -1,6 +1,7 @@
-import hashlib
 import json
 from typing import Any, Dict, Optional, Tuple
+
+import xxhash
 
 
 def generate_message_hash(
@@ -35,7 +36,7 @@ def generate_message_hash(
         else:
             key_data = f"{role}:{content or ''}"
 
-    return hashlib.md5(key_data.encode("utf-8")).hexdigest()
+    return xxhash.xxh3_128_hexdigest(key_data.encode("utf-8"))
 
 
 def validate_message_dict(message_dict: Dict[str, Any]) -> bool:

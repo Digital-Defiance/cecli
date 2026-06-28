@@ -2007,6 +2007,7 @@ class Coder(metaclass=UsageMeta):
             all_tokens >= self.context_compaction_max_tokens * 1.25
             and ConversationService.get_chunks(self).last_clear_count > 20
         ):
+            manager.clear_tag(MessageTag.LINT)
             manager.clear_tag(MessageTag.DIFFS)
             manager.clear_tag(MessageTag.FILE_CONTEXTS)
             ConversationService.get_files(self).clear_file_cache()
