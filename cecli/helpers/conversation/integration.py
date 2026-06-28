@@ -286,13 +286,14 @@ class ConversationChunks:
 
         if (
             should_clear
+            and coder.context_compaction_current_ratio > 0.8
             and self.last_clear_count >= 20
             and diff_tokens + other_tokens > coder.context_compaction_max_tokens * 0.5
         ):
             self.last_clear_count = 0
 
             # Clear all diff messages
-            ConversationService.get_manager(coder).clear_tag(MessageTag.DIFFS)
+            ConversationService.get_manager(coder).clear_tag(MessageTag.DIFFS, 0.33)
             # Clear ConversationFiles caches to force regeneration
             ConversationService.get_files(coder).clear_file_cache(clear_contexts=False)
 

@@ -606,7 +606,7 @@ class Tool(BaseTool):
             ConversationService.get_chunks(coder).add_file_context_messages()
 
             if (
-                ConversationService.get_chunks(coder).last_clear_count > 10
+                ConversationService.get_chunks(coder).last_clear_count > 20
                 and coder.context_compaction_current_ratio > 0.8
             ):
                 cls.clear_old_messages(coder)
