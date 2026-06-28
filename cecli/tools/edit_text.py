@@ -466,8 +466,9 @@ class Tool(BaseTool):
                                     operation=operation,
                                     text=strip_hashline(text),
                                 )
-                        except ContentHashError as e:
-                            diff_output = f"content ID verification failed: {str(e)}"
+                        except ContentHashError:
+                            # diff_output = f"content ID verification failed: {str(e)}"
+                            diff_output = "Preview Unavailable: Content ID Verification Failed"
                         except Exception:
                             pass
 
