@@ -463,10 +463,10 @@ class ConversationFiles:
         # Get existing ranges
         existing_ranges = self._numbered_contexts.get(abs_fname, [])
 
-        # auto clear on edit
         if diff_version != context_version:
             self._file_context_versions[abs_fname] = diff_version
-            existing_ranges = []
+        # auto clear on edit
+        # existing_ranges = []
 
         # Add new range
         new_range = (start_line, end_line)
