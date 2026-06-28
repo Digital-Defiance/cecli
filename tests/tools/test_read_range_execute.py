@@ -122,8 +122,11 @@ class TestReadRangeExecute:
         sh_patch.start()
         self.patches.append(sh_patch)
 
-        # Patch hashline to be identity
-        hl_patch = patch("cecli.tools.read_range.hashline", side_effect=lambda x: x)
+        # Patch hashline_formatted to return (text, json)
+        hl_patch = patch(
+            "cecli.tools.read_range.hashline_formatted",
+            side_effect=lambda text, file_name, partial, start_line=1: (text, "{}"),
+        )
         hl_patch.start()
         self.patches.append(hl_patch)
 
@@ -168,7 +171,7 @@ class TestReadRangeExecute:
         try:
             show = [{"file_path": self.test_file, "range_start": "5", "range_end": "10"}]
             result = self.Tool.execute(self.coder, show)
-            assert "Snapshot" in result
+            assert "prefixed_contents" in result
             assert "line5" in result
             assert "line10" in result
         finally:
@@ -302,7 +305,7 @@ class TestReadRangeExecute:
                 }
             ]
             result = self.Tool.execute(self.coder, show)
-            assert "Snapshot" in result
+            assert "prefixed_contents" in result
             assert "def foo()" in result
             assert "def bar()" in result
         finally:
@@ -332,7 +335,7 @@ class TestReadRangeExecute:
         try:
             show = [{"file_path": self.test_file, "range_start": "def foo", "range_end": "def bar"}]
             result = self.Tool.execute(self.coder, show)
-            assert "Snapshot" in result
+            assert "prefixed_contents" in result
         finally:
             self._teardown()
 
@@ -446,7 +449,10 @@ class TestReadRangeExecute:
         sh_patch = patch("cecli.tools.read_range.strip_hashline", side_effect=lambda x: x)
         sh_patch.start()
 
-        hl_patch = patch("cecli.tools.read_range.hashline", side_effect=lambda x: x)
+        hl_patch = patch(
+            "cecli.tools.read_range.hashline_formatted",
+            side_effect=lambda text, file_name, partial, start_line=1: (text, "{}"),
+        )
         hl_patch.start()
 
         ip_patch = patch(
@@ -518,7 +524,7 @@ def func_f():
                 }
             ]
             result = self.Tool.execute(self.coder, show)
-            assert "Snapshot" in result
+            assert "prefixed_contents" in result
         finally:
             self._teardown()
 
