@@ -835,8 +835,16 @@ class AgentCoder(Coder):
                     message_dict=dict(role="user", content=lint_errors),
                     tag=MessageTag.LINT,
                     hash_key=("lint_errors", "agent", lint_errors),
+                )
+                ConversationService.get_manager(self).add_message(
+                    message_dict=dict(
+                        role="user", content="Please address the latest linting errors."
+                    ),
+                    tag=MessageTag.LINT,
+                    hash_key=("lint_errors", "agent", lint_errors, "cta"),
                     promotion=ConversationService.get_manager(self).DEFAULT_TAG_PROMOTION_VALUE,
                     mark_for_demotion=1,
+                    mark_for_delete=0,
                 )
             else:
                 if has_errors:
