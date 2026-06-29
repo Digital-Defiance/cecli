@@ -256,6 +256,8 @@ class ModelInfoManager:
 
     def get_model_info(self, model):
         cached_info = self.get_model_from_cached_json_db(model)
+        if cached_info:
+            return cached_info
         litellm_info = None
         if litellm._lazy_module or not cached_info:
             try:
@@ -268,6 +270,10 @@ class ModelInfoManager:
             return provider_info
         if litellm_info:
             return litellm_info
+        if not cached_info and model.startswith("openai/"):
+            stripped = model[7:]
+            if stripped:
+                return self.get_model_info(stripped)
         return cached_info
 
     def _resolve_via_provider(self, model, cached_info):
@@ -682,6 +688,13 @@ class Model(ModelSettings):
                             f"override_kwargs '{key}' must be a dict, got {type(value)}"
                         )
                     self.info = {**self.info, **value}
+
+                    if not litellm.model_cost.get(model):
+                        litellm.model_cost[model] = {}
+
+                    litellm.model_cost[model].update(self.info)
+                    litellm.utils._invalidate_model_cost_lowercase_map()
+                    litellm.add_known_models(model_cost_map=litellm.model_cost)
                 elif isinstance(value, dict) and isinstance(self.extra_params.get(key), dict):
                     self.extra_params[key] = {**self.extra_params[key], **value}
                 else:
@@ -1324,6 +1337,16 @@ class Model(ModelSettings):
                 "Connection": "close",
             }
 
+        if "GITHUB_COPILOT_TOKEN" in os.environ or self.name.startswith("github_copilot/"):
+            kwargs["extra_headers"] = kwargs.get("extra_headers", {}) or {}
+
+            kwargs["extra_headers"].update(
+                {
+                    "editor-version": "vscode/1.126.0",
+                    "editor-plugin-version": "copilot/1.155.0",
+                }
+            )
+
         litellm_ex = LiteLLMExceptions()
         retry_delay = 0.125
 
@@ -1497,7 +1520,9 @@ class Model(ModelSettings):
         """
         os.makedirs(".cecli/logs/messages", exist_ok=True)
         with open(f".cecli/logs/messages/{name}-{time.time()}.log", "w") as f:
-            json.dump(messages, f, indent=4, default=lambda o: "<not serializable>")
+            json.dump(
+                messages, f, indent=4, ensure_ascii=False, default=lambda o: "<not serializable>"
+            )
 
     def _log_request(self, model_call_dict):
         """
@@ -1507,7 +1532,13 @@ class Model(ModelSettings):
         log_file_path = f".cecli/logs/litellm/request-{time.time()}.log"
 
         with open(log_file_path, "a", encoding="utf-8") as f:
-            json.dump(model_call_dict, f, indent=4, default=lambda o: "<not serializable>")
+            json.dump(
+                model_call_dict,
+                f,
+                indent=4,
+                ensure_ascii=False,
+                default=lambda o: "<not serializable>",
+            )
             f.write(",\n")
 
 

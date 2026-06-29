@@ -1,7 +1,8 @@
+import json
 import os
 from typing import Dict, List
 
-from cecli.helpers.hashline import hashline, strip_hashline
+from cecli.helpers.hashline import hashline_formatted, strip_hashline
 from cecli.tools.utils.base_tool import BaseTool
 from cecli.tools.utils.helpers import (
     ToolError,
@@ -510,7 +511,7 @@ class Tool(BaseTool):
                 # output_lines = [f"Displaying context around {found_by} in {rel_path}:"]
 
                 # Generate hashline for the entire file
-                hashed_content = hashline(content)
+                hashed_content, _ = hashline_formatted(content, file_name=abs_path, partial=False)
                 hashed_lines = hashed_content.splitlines()
 
                 # Extract the context window from hashed lines
@@ -533,6 +534,7 @@ class Tool(BaseTool):
                 original_context_content = ConversationService.get_files(coder).get_file_context(
                     abs_path,
                     all_ranges=True,
+                    check_versions=False,
                 )
                 update_tuple = ConversationService.get_files(coder).update_file_context(
                     abs_path, start_line, end_line, auto_remove=False
@@ -540,6 +542,7 @@ class Tool(BaseTool):
                 new_context_content = ConversationService.get_files(coder).get_file_context(
                     abs_path,
                     all_ranges=True,
+                    check_versions=False,
                 )
 
                 is_already_up_to_date = False
@@ -572,19 +575,15 @@ class Tool(BaseTool):
                     and e_idx < len(hashed_lines)
                 ):
                     # hashed_slice = hashed_lines[s_idx : e_idx + 1]
-                    if is_already_up_to_date:
-                        model_response = cls.format_model_response(
-                            coder, rel_path, s_idx, e_idx, hashed_lines, current=True
-                        )
+                    model_response = cls.format_model_response(
+                        coder, rel_path, s_idx, e_idx, hashed_lines, current=is_already_up_to_date
+                    )
 
+                    if is_already_up_to_date:
                         if model_response not in already_up_to_set:
                             already_up_to_set.add(model_response)
                             already_up_to_details.append(model_response)
                     else:
-                        model_response = cls.format_model_response(
-                            coder, rel_path, s_idx, e_idx, hashed_lines
-                        )
-
                         if model_response not in new_context_set:
                             new_context_set.add(model_response)
                             new_context_details.append(model_response)
@@ -605,7 +604,12 @@ class Tool(BaseTool):
                 ConversationService.get_files(coder).push_range(abs_path, tuples)
 
             ConversationService.get_chunks(coder).add_file_context_messages()
-            cls.clear_old_messages(coder)
+
+            # if (
+            #    ConversationService.get_chunks(coder).last_clear_count > 20
+            #    and coder.context_compaction_current_ratio > 0.8
+            # ):
+            #    cls.clear_old_messages(coder)
 
             # Log success and return the formatted context directly
             coder.edit_allowed = True
@@ -682,11 +686,9 @@ class Tool(BaseTool):
         except Exception:
             pass
 
-        lines = []
-
         # Try to return structural stub information instead of raw hashed lines
         try:
-            if hashed_lines and current and coder.turn_count - last_turn >= 2:
+            if hashed_lines and current and coder.turn_count - last_turn <= 2:
                 num_lines = len(hashed_lines)
 
                 start_stub_s, start_stub_e = cls._extend_range_with_stub(
@@ -709,46 +711,151 @@ class Tool(BaseTool):
                     end_found = False
 
                 if start_found or end_found:
+                    snapshot_parts = []
                     if start_found:
-                        lines.append(
-                            f"File {rel_path} Current Snapshot (Lines {start_stub_s + 1} - {start_stub_e + 1}):"
-                        )
-                        lines.extend(hashed_lines[start_stub_s:start_stub_e])
+                        snapshot_parts.extend(hashed_lines[start_stub_s:start_stub_e])
 
-                    if (
+                    has_second_range = (
                         end_found
                         and start_stub_s != end_stub_s
                         and start_stub_e != end_stub_e
                         and end_stub_e != e_idx
-                    ):
-                        lines.append("...⋮...")
-                        lines.append(
-                            f"File {rel_path} Current Snapshot (Lines {end_stub_s + 1} - {end_stub_e + 1}):"
-                        )
-                        lines.extend(hashed_lines[end_stub_s:end_stub_e])
+                    )
+                    if has_second_range:
+                        snapshot_parts.append("...⋮...\n")
+                        snapshot_parts.extend(hashed_lines[end_stub_s:end_stub_e])
 
-                    lines.append("")
-                    return "\n".join(lines)
+                    prefixed = "".join(snapshot_parts)
+                    result = {
+                        "file_path": rel_path,
+                        "start_line": start_stub_s + 1,
+                        "end_line": end_stub_e if has_second_range else start_stub_e,
+                        "partial": True,
+                        "prefixed_contents": prefixed,
+                    }
+                    return json.dumps(result, ensure_ascii=False)
         except Exception:
             pass
 
-        lines = [f"File {rel_path} Current Snapshot (Lines {s_idx + 1} - {e_idx + 1}):"]
-        total = e_idx - s_idx
         hashed_content = "\n".join(hashed_lines[s_idx : e_idx + 1])
         token_count = coder.main_model.token_count(hashed_content)
 
         if token_count <= min(coder.large_file_token_threshold / 16, 512):
-            lines.extend(hashed_lines[s_idx : e_idx + 1])
+            prefixed = hashed_content
         else:
+            total = e_idx - s_idx
             if total <= 15:
-                lines.extend(hashed_lines[s_idx : e_idx + 1])
+                prefixed = hashed_content
             else:
-                lines.extend(hashed_lines[s_idx : s_idx + 5])
-                lines.append("...⋮...")
-                lines.extend(hashed_lines[e_idx - 4 : e_idx + 1])
+                prefixed = cls.content_splitter(coder, hashed_lines, s_idx, e_idx)
 
-        lines.append("")
-        return "\n".join(lines)
+        result = {
+            "file_path": rel_path,
+            "start_line": s_idx + 1,
+            "end_line": e_idx + 1,
+            "partial": True,
+            "prefixed_contents": prefixed,
+        }
+        return json.dumps(result, ensure_ascii=False)
+
+    @classmethod
+    def content_splitter(cls, coder, hashed_lines, s_idx, e_idx):
+        """Edges in, middle out: progressively selects lines from edges
+        inward and middle outward, tracking token budget until exhausted.
+
+        Returns a string with hashed lines joined by newlines, with
+        "...⋮..." separators between non-contiguous groups.
+        """
+        total_lines = e_idx - s_idx + 1
+        max_tokens = min(coder.large_file_token_threshold / 16, 512)
+
+        selected = set()
+
+        # Round 0: first 2 lines
+        selected.add(s_idx)
+        if s_idx + 1 <= e_idx:
+            selected.add(s_idx + 1)
+
+        # Round 0: middle 1 or 2 lines
+        if total_lines % 2 == 1:  # odd
+            mid_start = s_idx + total_lines // 2
+            selected.add(mid_start)
+            mid_end = mid_start
+        else:  # even
+            mid_start = s_idx + total_lines // 2 - 1
+            mid_end = s_idx + total_lines // 2
+            selected.add(mid_start)
+            selected.add(mid_end)
+
+        # Round 0: last 2 lines
+        if e_idx - 1 >= s_idx:
+            selected.add(e_idx - 1)
+        selected.add(e_idx)
+
+        round_num = 1
+        while True:
+            next_selected = selected.copy()
+
+            # Add 2 lines to the top
+            new_top_1 = s_idx + 2 * round_num
+            if new_top_1 <= e_idx:
+                next_selected.add(new_top_1)
+            new_top_2 = s_idx + 2 * round_num + 1
+            if new_top_2 <= e_idx:
+                next_selected.add(new_top_2)
+
+            # Add 1 line on either end of the middle
+            left_mid = mid_start - round_num
+            if left_mid >= s_idx:
+                next_selected.add(left_mid)
+            right_mid = mid_end + round_num
+            if right_mid <= e_idx:
+                next_selected.add(right_mid)
+
+            # Add 2 lines before the bottom
+            new_bottom_1 = e_idx - 1 - 2 * round_num
+            if new_bottom_1 >= s_idx:
+                next_selected.add(new_bottom_1)
+            new_bottom_2 = e_idx - 2 * round_num
+            if new_bottom_2 >= s_idx:
+                next_selected.add(new_bottom_2)
+
+            # Check token count
+            sorted_indices = sorted(next_selected)
+            candidate_lines = [hashed_lines[i] for i in sorted_indices]
+            candidate_content = "\n".join(candidate_lines)
+            candidate_tokens = coder.main_model.token_count(candidate_content)
+
+            if candidate_tokens > max_tokens:
+                break
+
+            selected = next_selected
+            round_num += 1
+
+            if len(selected) == total_lines:
+                break
+
+        # Build output with "...⋮..." between non-contiguous ranges
+        sorted_indices = sorted(selected)
+        output_parts = []
+        current_chunk = [sorted_indices[0]]
+
+        for i in range(1, len(sorted_indices)):
+            if sorted_indices[i] == sorted_indices[i - 1] + 1:
+                current_chunk.append(sorted_indices[i])
+            else:
+                output_parts.append(current_chunk)
+                current_chunk = [sorted_indices[i]]
+        output_parts.append(current_chunk)
+
+        output_lines = []
+        for chunk_idx, chunk in enumerate(output_parts):
+            if chunk_idx > 0:
+                output_lines.append("...⋮...")
+            for idx in chunk:
+                output_lines.append(hashed_lines[idx])
+
+        return "\n".join(output_lines)
 
     @classmethod
     def _reposition_indices(
@@ -969,16 +1076,16 @@ class Tool(BaseTool):
             abs_path, io, start_line=start_idx, end_line=end_idx, line_numbers=line_numbers
         )
 
-        # If get_file_stub returned a useful structural outline, wrap it with headers
+        # If get_file_stub returned a useful structural outline, wrap it as JSON
         if stub and stub != "# No outline available":
-            total_lines = end_idx - start_idx + 1
-            parts = [
-                f"Showing structural information for {rel_path}:",
-                "Use this information to further narrow your search",
-                "",
-                stub,
-            ]
-            return "\n".join(parts), True
+            result = json.dumps(
+                {
+                    "file_path": rel_path,
+                    "outline": stub,
+                },
+                ensure_ascii=False,
+            )
+            return result, True
 
         content = io.read_text(abs_path)
         if not content:
@@ -1019,8 +1126,21 @@ class Tool(BaseTool):
             f"Showing {len(sample_lines)} equally-spaced lines from the range:",
             "",
         ]
+
+        file_contents = []
         for idx, line_content in sample_lines:
             line_num = idx + 1
-            parts.append(f"  {line_num:>5} | {line_content}")
+            file_contents.append(f"{line_num}|{line_content}")
+            file_contents.append("...")
+
+        parts.append(
+            json.dumps(
+                {
+                    "file_path": rel_path,
+                    "truncated": "\n".join(file_contents),
+                },
+                ensure_ascii=False,
+            )
+        )
 
         return "\n".join(parts), False

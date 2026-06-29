@@ -112,9 +112,9 @@ like functions and methods also include their signatures.
 
 Here's a
 sample of the map of the cecli repo, just showing the maps of
-[main.py](https://github.com/dwash96/cecli/blob/main/cecli/main.py)
+[main.py](https://github.com/cecli-dev/cecli/blob/main/cecli/main.py)
 and
-[io.py](https://github.com/dwash96/cecli/blob/main/cecli/io.py)
+[io.py](https://github.com/cecli-dev/cecli/blob/main/cecli/io.py)
 :
 
 ```

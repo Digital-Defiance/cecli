@@ -157,6 +157,7 @@ class Linter:
             self.interrupt_event,
             cwd=self.root,
             encoding=self.encoding,
+            should_print=False,
         )
         if stdout == "Interrupted":
             return

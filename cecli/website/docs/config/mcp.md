@@ -1,12 +1,12 @@
 ---
 parent: Configuration
 nav_order: 120
-description: Configure Model Control Protocol (MCP) servers for enhanced AI capabilities.
+description: Configure Model Context Protocol (MCP) servers for enhanced AI capabilities.
 ---
 
-# Model Control Protocol (MCP)
+# Model Context Protocol (MCP)
 
-Model Control Protocol (MCP) servers extend cecli's capabilities by providing additional tools and functionality to the AI models. MCP servers can add features like git operations, context retrieval, and other specialized tools.
+Model Context Protocol (MCP) servers extend cecli's capabilities by providing additional tools and functionality to the AI models. MCP servers can add features like git operations, context retrieval, and other specialized tools.
 
 ## Configuring MCP Servers
 

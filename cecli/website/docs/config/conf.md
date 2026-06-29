@@ -40,7 +40,7 @@ read: [CONVENTIONS.md, anotherfile.txt, thirdfile.py]
 
 Below is a sample of the YAML config file, which you
 can also
-[download from GitHub](https://github.com/dwash96/cecli/blob/main/cecli/website/assets/sample.cecli.conf.yml).
+[download from GitHub](https://github.com/cecli-dev/cecli/blob/main/cecli/website/assets/sample.cecli.conf.yml).
 
 <!--[[[cog
 from cecli.args import get_sample_yaml
@@ -506,40 +506,5 @@ cog.outl("```")
 ## Print shell completion script for the specified SHELL and exit. Supported shells: bash, tcsh, zsh. Example: cecli --shell-completions bash
 #shell-completions: xxx
 
-############################
-# Deprecated model settings:
-
-## Use claude-3-opus-20240229 model for the main chat (deprecated, use --model)
-#opus: false
-
-## Use anthropic/claude-3-7-sonnet-20250219 model for the main chat (deprecated, use --model)
-#sonnet: false
-
-## Use claude-3-5-haiku-20241022 model for the main chat (deprecated, use --model)
-#haiku: false
-
-## Use gpt-4-0613 model for the main chat (deprecated, use --model)
-#4: false
-
-## Use gpt-4o model for the main chat (deprecated, use --model)
-#4o: false
-
-## Use gpt-4o-mini model for the main chat (deprecated, use --model)
-#mini: false
-
-## Use gpt-4-1106-preview model for the main chat (deprecated, use --model)
-#4-turbo: false
-
-## Use gpt-3.5-turbo model for the main chat (deprecated, use --model)
-#35turbo: false
-
-## Use deepseek/deepseek-chat model for the main chat (deprecated, use --model)
-#deepseek: false
-
-## Use o1-mini model for the main chat (deprecated, use --model)
-#o1-mini: false
-
-## Use o1-preview model for the main chat (deprecated, use --model)
-#o1-preview: false
 ```
 <!--[[[end]]]-->

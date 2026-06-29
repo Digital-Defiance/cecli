@@ -332,7 +332,7 @@ where we ask GPT to do something like:
 > Name the new function `_set_csrf_cookie`, exactly the same name as the existing method.
 > Update any existing `self._set_csrf_cookie` calls to work with the new `_set_csrf_cookie` function.
 
-A [simple python AST scanning script](https://github.com/dwash96/cecli/blob/main/benchmark/refactor_tools.py)
+A [simple python AST scanning script](https://github.com/cecli-dev/cecli/blob/main/benchmark/refactor_tools.py)
 found 89 suitable files
 and packaged them up as benchmark tasks.
 Each task has a test

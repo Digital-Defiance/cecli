@@ -370,8 +370,14 @@ class ConversationManager:
                 messages_dict = self._add_cache_control(messages_dict)
         return messages_dict
 
-    def clear_tag(self, tag: str) -> None:
-        """Remove all messages with given tag."""
+    def clear_tag(self, tag: str, ratio: float = 0) -> None:
+        """Remove all messages with given tag.
+
+        Args:
+            tag: The tag to remove messages for
+            ratio: If > 0, only consider the newest ratio portion of messages
+                   (e.g., 0.25 = newest 25%)
+        """
         if not isinstance(tag, MessageTag):
             try:
                 tag = MessageTag(tag)
@@ -381,7 +387,13 @@ class ConversationManager:
         tag_str = tag.value
         messages_to_remove = []
 
-        for message in self._messages:
+        # If ratio is set, only look at the newest portion of messages
+        messages = self._messages
+        if ratio > 0:
+            count = max(1, int(len(messages) * ratio))
+            messages = messages[-count:]
+
+        for message in messages:
             if message.tag == tag_str:
                 messages_to_remove.append(message)
 
@@ -394,17 +406,25 @@ class ConversationManager:
             self._tag_cache.pop(tag_str, None)
             self._tag_cache.pop(self._ALL_MESSAGES_CACHE_KEY, None)
 
-    def remove_messages_by_hash_key_pattern(self, pattern_checker) -> None:
+    def remove_messages_by_hash_key_pattern(self, pattern_checker, ratio: float = 0) -> None:
         """
         Remove messages whose hash_key matches a pattern.
 
         Args:
             pattern_checker: A function that takes a hash_key (tuple) and returns True
                             if the message should be removed
+            ratio: If > 0, only consider the newest ratio portion of messages
+                   (e.g., 0.25 = newest 25%)
         """
         messages_to_remove = []
 
-        for message in self._messages:
+        # If ratio is set, only look at the newest portion of messages
+        messages = self._messages
+        if ratio > 0:
+            count = max(1, int(len(messages) * ratio))
+            messages = messages[-count:]
+
+        for message in messages:
             if message.hash_key and pattern_checker(message.hash_key):
                 messages_to_remove.append(message)
 
@@ -421,17 +441,25 @@ class ConversationManager:
                 self._tag_cache.pop(tag, None)
             self._tag_cache.pop(self._ALL_MESSAGES_CACHE_KEY, None)
 
-    def remove_message_by_hash_key(self, hash_key: Tuple[str, ...]) -> bool:
+    def remove_message_by_hash_key(self, hash_key: Tuple[str, ...], ratio: float = 0) -> bool:
         """
         Remove a message by its exact hash key.
 
         Args:
             hash_key: The exact hash key to match
+            ratio: If > 0, only consider the newest ratio portion of messages
+                   (e.g., 0.25 = newest 25%)
 
         Returns:
             True if a message was removed, False otherwise
         """
-        messages_to_remove = [m for m in self._messages if m.hash_key == hash_key]
+        # If ratio is set, only look at the newest portion of messages
+        messages = self._messages
+        if ratio > 0:
+            count = max(1, int(len(messages) * ratio))
+            messages = messages[-count:]
+
+        messages_to_remove = [m for m in messages if m.hash_key == hash_key]
         if not messages_to_remove:
             return False
 

@@ -157,9 +157,11 @@ class AgentCoder(Coder):
         config["large_file_token_threshold"] = nested.getter(
             config, "large_file_token_threshold", 8192
         )
+        config["show_lint_errors"] = nested.getter(config, "show_lint_errors", False)
         config["skip_cli_confirmations"] = nested.getter(
             config, "skip_cli_confirmations", nested.getter(config, "yolo", [])
         )
+
         config["command_timeout"] = nested.getter(config, "command_timeout", 30)
         config["allowed_commands"] = nested.getter(config, "allowed_commands", [])
         config["hot_reload"] = nested.getter(config, "hot_reload", False)
@@ -816,6 +818,11 @@ class AgentCoder(Coder):
             if interrupted:
                 raise KeyboardInterrupt("Interrupted during linting")
 
+            has_errors = False
+
+            if self.lint_outcome is False:
+                has_errors = True
+
             self.lint_outcome = not lint_errors
 
             if lint_errors:
@@ -824,21 +831,35 @@ class AgentCoder(Coder):
                     "# Fix any linting errors below, if possible and then continue with your task.",
                     1,
                 )
-                ConversationService.get_manager(self).remove_message_by_hash_key(
-                    ("lint_errors", "agent")
-                )
                 ConversationService.get_manager(self).add_message(
                     message_dict=dict(role="user", content=lint_errors),
-                    tag=MessageTag.CUR,
-                    hash_key=("lint_errors", "agent"),
+                    tag=MessageTag.LINT,
+                    hash_key=("lint_errors", "agent", lint_errors),
+                )
+                ConversationService.get_manager(self).add_message(
+                    message_dict=dict(
+                        role="user", content="Please address the latest linting errors."
+                    ),
+                    tag=MessageTag.LINT,
+                    hash_key=("lint_errors", "agent", lint_errors, "cta"),
                     promotion=ConversationService.get_manager(self).DEFAULT_TAG_PROMOTION_VALUE,
                     mark_for_demotion=1,
-                    force=True,
+                    mark_for_delete=0,
                 )
             else:
-                ConversationService.get_manager(self).remove_message_by_hash_key(
-                    ("lint_errors", "agent")
-                )
+                if has_errors:
+                    ConversationService.get_manager(self).add_message(
+                        message_dict=dict(
+                            role="user",
+                            content=(
+                                '<context name="linting_confirmation" from="agent">'
+                                "All linting errors resolved."
+                                "</context>"
+                            ),
+                        ),
+                        tag=MessageTag.LINT,
+                        hash_key=("lint_errors", "agent", str(time.monotonic_ns())),
+                    )
 
         return tool_responses
 
@@ -1665,6 +1686,11 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
                 # Get the actual command string if available
                 command_str = command_info.get(command_key, {}).get("command", command_key)
                 output += f"\n[bg: {command_str}]\n{cmd_output}\n"
+
+        # Clean up stale (finished) background commands after reading their output
+        for command_key, info in command_info.items():
+            if not info.get("running", False):
+                BackgroundCommandManager.stop_background_command(command_key)
 
         return output
 

@@ -21,7 +21,7 @@ async def install_from_main_branch(io):
         io,
         None,
         "Install the development version of cecli from the main branch?",
-        ["git+https://github.com/dwash96/cecli.git"],
+        ["git+https://github.com/cecli-dev/cecli.git"],
         self_update=True,
     )
 

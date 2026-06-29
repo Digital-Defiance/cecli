@@ -33,7 +33,7 @@ then it should be possible to add repo map support.
 To build a repo map, cecli needs the `tags.scm` file
 from the given language's tree-sitter grammar.
 If you can find and share that file in a 
-[GitHub issue](https://github.com/dwash96/cecli/issues),
+[GitHub issue](https://github.com/cecli-dev/cecli/issues),
 then it may be possible to add repo map support.
 
 If cecli doesn't already support linting your language, 

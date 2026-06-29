@@ -107,7 +107,7 @@ def concatenate_user_messages(messages):
 
     def flush_user_messages():
         if user_messages_to_concat:
-            concatenated_content = "\n".join(get_text(c) for c in user_messages_to_concat)
+            concatenated_content = "\n\n---\n".join(get_text(c) for c in user_messages_to_concat)
             result.append({"role": "user", "content": concatenated_content})
             user_messages_to_concat.clear()
 

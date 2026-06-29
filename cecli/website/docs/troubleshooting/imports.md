@@ -50,7 +50,7 @@ cecli uses.
 
 In particular, be careful with the packages with pinned versions 
 noted at the end of
-[cecli's requirements.in file](https://github.com/dwash96/cecli/blob/main/requirements/requirements.in).
+[cecli's requirements.in file](https://github.com/cecli-dev/cecli/blob/main/requirements/requirements.in).
 These versions are pinned because cecli is known not to work with the
 latest versions of these libraries.
 

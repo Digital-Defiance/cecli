@@ -514,7 +514,6 @@ class InputOutput:
                 "lexer": PygmentsLexer(MarkdownLexer),
                 "editing_mode": self.editingmode,
                 "bottom_toolbar": self.get_bottom_toolbar,
-                "refresh_interval": 0.1,
             }
             if self.editingmode == EditingMode.VI:
                 session_kwargs["cursor"] = ModalCursorShapeConfig()

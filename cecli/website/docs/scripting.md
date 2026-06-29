@@ -83,7 +83,7 @@ coder.run("/tokens")
 ```
 
 See the
-[Coder.create() and Coder.__init__() methods](https://github.com/dwash96/cecli/blob/main/cecli/coders/base_coder.py)
+[Coder.create() and Coder.__init__() methods](https://github.com/cecli-dev/cecli/blob/main/cecli/coders/base_coder.py)
 for all the supported arguments.
 
 It can also be helpful to set the equivalent of `--yes` by doing this:

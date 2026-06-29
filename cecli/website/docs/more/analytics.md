@@ -77,7 +77,7 @@ If you say "no", analytics will be permanently disabled.
 ### Sample analytics data
 
 To get a better sense of what type of data is collected, you can review some
-[sample analytics logs](https://github.com/dwash96/cecli/blob/main/cecli/website/assets/sample-analytics.jsonl).
+[sample analytics logs](https://github.com/cecli-dev/cecli/blob/main/cecli/website/assets/sample-analytics.jsonl).
 These are the last 1,000 analytics events from the author's
 personal use of cecli, updated regularly.
 
@@ -117,7 +117,7 @@ cecli uses PostHog for analytics collection. You can configure cecli to send ana
 If you have concerns about any of the analytics that cecli is collecting
 or our data practices
 please contact us by opening a
-[GitHub Issue](https://github.com/dwash96/cecli/issues).
+[GitHub Issue](https://github.com/cecli-dev/cecli/issues).
 
 ## Privacy policy
 

@@ -26,7 +26,7 @@ If the files above exist, they will be loaded in that order. Files loaded last w
 
 Below is a sample `.env` file, which you
 can also
-[download from GitHub](https://github.com/dwash96/cecli/blob/main/cecli/website/assets/sample.env).
+[download from GitHub](https://github.com/cecli-dev/cecli/blob/main/cecli/website/assets/sample.env).
 
 <!--[[[cog
 from cecli.args import get_sample_dotenv

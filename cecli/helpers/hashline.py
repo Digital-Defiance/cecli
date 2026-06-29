@@ -1,4 +1,5 @@
 import difflib
+import json
 import re
 
 from cecli.helpers.hashpos.hashpos import HashPos
@@ -25,6 +26,39 @@ def hashline(text: str, start_line: int = 1) -> str:
     """
     hp = HashPos(text)
     return hp.format_content(start_line=start_line)
+
+
+def hashline_formatted(
+    text: str, file_name: str, partial: bool, start_line: int = 1
+) -> tuple[str, str]:
+    """
+    Generate hashline-formatted content and return it as both raw hashline text and a JSON structure.
+
+    Args:
+        text: Input text
+        file_name: The file name or path
+        partial: Whether the content represents a partial file
+        start_line: Starting line number (default 1)
+
+    Returns:
+        A tuple of (raw_hashline_text, json_text):
+        - raw_hashline_text: The HashPos-prefixed content (same as hashline())
+        - json_text: JSON-formatted string with file_name, start_line, end_line, partial, and
+          prefixed_contents
+    """
+    hp = HashPos(text)
+    prefixed = hp.format_content(start_line=start_line)
+    end_line = start_line + hp.total - 1
+
+    result = {
+        "file_name": file_name,
+        "start_line": start_line,
+        "end_line": end_line,
+        "partial": partial,
+        "prefixed_contents": prefixed,
+    }
+
+    return prefixed, json.dumps(result, ensure_ascii=False)
 
 
 # int_to_2digit_52 removed as it is no longer used by the HashPos engine.

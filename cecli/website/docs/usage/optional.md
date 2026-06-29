@@ -95,6 +95,6 @@ There are a number of 3rd party
 
 If you are interested in creating an cecli plugin for your favorite editor,
 please let us know by opening a
-[GitHub issue](https://github.com/dwash96/cecli/issues).
+[GitHub issue](https://github.com/cecli-dev/cecli/issues).
 
 

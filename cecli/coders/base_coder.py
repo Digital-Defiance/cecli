@@ -491,6 +491,7 @@ class Coder(metaclass=UsageMeta):
         self.mcp_manager = mcp_manager
         self.enable_context_compaction = enable_context_compaction
 
+        self.context_compaction_current_ratio = 0
         self.context_compaction_max_tokens = context_compaction_max_tokens
         self.context_compaction_summary_tokens = context_compaction_summary_tokens
         self.max_reflections = nested.getter(self.args, "max_reflections", 3)
@@ -876,9 +877,8 @@ class Coder(metaclass=UsageMeta):
             env_items.append(f"{rel_repo_dir} ({num_files:,} files)")
             if num_files > 1000:
                 env_items.append(
-                    "Warning: For large repos, consider using --subtree-only and .cecli_ignore"
+                    "Warning: For large repos, consider using --subtree-only and .cecli.ignore"
                 )
-                env_items.append(f"See: {urls.large_repos}")
         else:
             env_items.append("no git repo")
 
@@ -1440,7 +1440,10 @@ class Coder(metaclass=UsageMeta):
             if mime_type.startswith("image/") and supports_images:
                 content = [
                     {"type": "text", "text": f"Image file: {rel_fname}"},
-                    {"type": "image_url", "image_url": {"url": image_url, "detail": "high"}},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": image_url, "detail": "high", "format": mime_type},
+                    },
                 ]
             elif mime_type == "application/pdf" and supports_pdfs:
                 content = [
@@ -2001,12 +2004,15 @@ class Coder(metaclass=UsageMeta):
 
         combined_tokens = done_tokens + cur_tokens + diff_tokens
 
+        self.context_compaction_current_ratio = all_tokens / self.context_compaction_max_tokens
+
         if force or (
             all_tokens >= self.context_compaction_max_tokens * 0.9
-            and ConversationService.get_chunks(self).last_clear_count > 10
+            and ConversationService.get_chunks(self).last_clear_count > 20
         ):
-            manager.clear_tag(MessageTag.DIFFS)
-            manager.clear_tag(MessageTag.FILE_CONTEXTS)
+            manager.clear_tag(MessageTag.LINT, ratio=0.33)
+            manager.clear_tag(MessageTag.DIFFS, ratio=0.33)
+            manager.clear_tag(MessageTag.FILE_CONTEXTS, ratio=0.33)
             ConversationService.get_files(self).clear_file_cache()
             ConversationService.get_chunks(self).flush_removals()
 
@@ -3249,6 +3255,12 @@ class Coder(metaclass=UsageMeta):
                 res += errors
                 res += "\n"
 
+        if self.edit_format in ("agent", "subagent"):
+            if self.agent_config.get("show_lint_errors"):
+                show_output = True
+            else:
+                show_output = False
+
         if res and show_output:
             self.io.tool_warning(res)
 
@@ -4024,7 +4036,9 @@ class Coder(metaclass=UsageMeta):
         input_cost_per_token = self.get_active_model().info.get("input_cost_per_token") or 0
         output_cost_per_token = self.get_active_model().info.get("output_cost_per_token") or 0
         input_cost_per_token_cache_hit = (
-            self.get_active_model().info.get("input_cost_per_token_cache_hit") or 0
+            self.get_active_model().info.get("input_cost_per_token_cache_hit")
+            or self.get_active_model().info.get("cache_read_input_token_cost")
+            or 0
         )
 
         # deepseek
@@ -4036,14 +4050,13 @@ class Coder(metaclass=UsageMeta):
         #    == total tokens that were
 
         if input_cost_per_token_cache_hit:
-            # must be deepseek
-            cost += input_cost_per_token_cache_hit * cache_hit_tokens
-            cost += (prompt_tokens - input_cost_per_token_cache_hit) * input_cost_per_token
+            cost += cache_hit_tokens * input_cost_per_token_cache_hit
+            cost += (prompt_tokens - cache_hit_tokens) * input_cost_per_token
         else:
             # hard code the anthropic adjustments, no-ops for other models since cache_x_tokens==0
             cost += cache_write_tokens * input_cost_per_token * 1.25
             cost += cache_hit_tokens * input_cost_per_token * 0.10
-            cost += prompt_tokens * input_cost_per_token
+            cost += (prompt_tokens - cache_hit_tokens) * input_cost_per_token
 
         cost += completion_tokens * output_cost_per_token
         return cost

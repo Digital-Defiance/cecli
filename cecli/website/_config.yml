@@ -24,7 +24,7 @@ exclude:
 
 aux_links:
   "GitHub":
-    - "https://github.com/dwash96/cecli"
+    - "https://github.com/cecli-dev/cecli"
   "Discord":
     - "https://discord.gg/AX9ZEA7nJn"
   "Support":
@@ -32,7 +32,7 @@ aux_links:
 
 nav_external_links:
   - title: "GitHub"
-    url: "https://github.com/dwash96/cecli"
+    url: "https://github.com/cecli-dev/cecli"
   - title: "Discord"
     url: "https://discord.gg/AX9ZEA7nJn"
   - title: "Support"

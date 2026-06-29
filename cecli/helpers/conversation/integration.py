@@ -168,8 +168,8 @@ class ConversationChunks:
         if not coder:
             return
 
-        # if self._cancel_post_message_injections():
-        #     return
+        if self._cancel_post_message_injections():
+            return
 
         message = random.choice(
             [
@@ -192,7 +192,7 @@ class ConversationChunks:
                     " the current data."
                 ),
                 (
-                    "You’ve got what you need, please invoke the right tools to keep making"
+                    "Based on what you know, please invoke the right tools to keep making"
                     " progress towards our goal."
                 ),
                 (
@@ -286,13 +286,14 @@ class ConversationChunks:
 
         if (
             should_clear
+            and coder.context_compaction_current_ratio > 0.8
             and self.last_clear_count >= 20
             and diff_tokens + other_tokens > coder.context_compaction_max_tokens * 0.5
         ):
             self.last_clear_count = 0
 
             # Clear all diff messages
-            ConversationService.get_manager(coder).clear_tag(MessageTag.DIFFS)
+            ConversationService.get_manager(coder).clear_tag(MessageTag.DIFFS, 0.33)
             # Clear ConversationFiles caches to force regeneration
             ConversationService.get_files(coder).clear_file_cache(clear_contexts=False)
 
@@ -527,10 +528,6 @@ class ConversationChunks:
             # Create repository map messages
             dict_repo_messages = [
                 dict(role="user", content=repo_content),
-                dict(
-                    role="assistant",
-                    content="Thank you, these files will help with navigating the codebase.",
-                ),
             ]
 
             # Add messages to conversation manager with appropriate priority
@@ -579,11 +576,6 @@ class ConversationChunks:
                 "role": "user",
                 "content": f"Rules defined in {rel_fname}:\n\n{content}",
             }
-            # Create assistant message
-            assistant_msg = {
-                "role": "assistant",
-                "content": f"I understand the rules in {rel_fname} and will follow them.",
-            }
 
             # Add to ConversationManager with RULES tag
             ConversationService.get_manager(coder).add_message(
@@ -594,15 +586,7 @@ class ConversationChunks:
                 update_timestamp=False,
             )
 
-            ConversationService.get_manager(coder).add_message(
-                message_dict=assistant_msg,
-                tag=MessageTag.RULES,
-                hash_key=("rules_assistant", fname),
-                force=True,
-                update_timestamp=False,
-            )
-
-            messages.extend([user_msg, assistant_msg])
+            messages.extend([user_msg])
 
         return messages
 
@@ -640,7 +624,16 @@ class ConversationChunks:
             ConversationService.get_files(coder).add_file(fname, force_refresh=refresh)
 
             # Get file content (with proper caching and stub generation)
-            content = ConversationService.get_files(coder).get_file_stub(fname)
+            content = None
+            if coder.edit_format in ("agent", "subagent"):
+                content = ConversationService.get_files(coder).get_file_json(fname)
+            else:
+                content = ConversationService.get_files(coder).get_file_stub(fname)
+
+            if not content:
+                ConversationService.get_files(coder).clear_file_cache(fname)
+                continue
+
             if content:
                 # Add user message with file path as hash_key
                 rel_fname = coder.get_rel_fname(fname)
@@ -667,20 +660,6 @@ class ConversationChunks:
                 )
                 messages.append(user_msg)
 
-                # Add assistant message with file path as hash_key
-                assistant_msg = {
-                    "role": "assistant",
-                    "content": f"Thank you for sharing the file contents for {rel_fname}.",
-                }
-                ConversationService.get_manager(coder).add_message(
-                    message_dict=assistant_msg,
-                    tag=MessageTag.READONLY_FILES,
-                    hash_key=("file_assistant", fname),  # Use file path as part of hash_key
-                    force=True,
-                    update_timestamp=False,
-                )
-                messages.append(assistant_msg)
-
             # Check if file has changed and add diff message if needed
             if ConversationService.get_files(coder).has_file_changed(fname):
                 ConversationService.get_files(coder).update_file_diff(fname)
@@ -692,13 +671,6 @@ class ConversationChunks:
                 # Add individual image message to result
                 messages.append(img_msg)
 
-                # Add individual assistant acknowledgment for each image
-                assistant_msg = {
-                    "role": "assistant",
-                    "content": "Ok, I will use this image as a reference.",
-                }
-                messages.append(assistant_msg)
-
                 # Get the file name from the message (stored in image_file key)
                 fname = img_msg.get("image_file")
                 if fname:
@@ -707,11 +679,6 @@ class ConversationChunks:
                         message_dict=img_msg,
                         tag=MessageTag.READONLY_FILES,
                         hash_key=("image_user", fname),
-                    )
-                    ConversationService.get_manager(coder).add_message(
-                        message_dict=assistant_msg,
-                        tag=MessageTag.READONLY_FILES,
-                        hash_key=("image_assistant", fname),
                     )
 
         return messages
@@ -747,7 +714,12 @@ class ConversationChunks:
             ConversationService.get_files(coder).add_file(fname, force_refresh=refresh)
 
             # Get file content (with proper caching and stub generation)
-            content = ConversationService.get_files(coder).get_file_stub(fname)
+            content = None
+            if coder.edit_format in ("agent", "subagent"):
+                content = ConversationService.get_files(coder).get_file_json(fname)
+            else:
+                content = ConversationService.get_files(coder).get_file_stub(fname)
+
             if not content:
                 ConversationService.get_files(coder).clear_file_cache(fname)
                 continue
@@ -767,30 +739,15 @@ class ConversationChunks:
                 "content": f"{file_preamble}\n{rel_fname}\n\n{content}\n\n{file_postamble}",
             }
 
-            # Create assistant message
-            assistant_msg = {
-                "role": "assistant",
-                "content": f"Thank you for sharing the file contents for {rel_fname}.",
-            }
-
             # Determine tag based on editability
             tag = MessageTag.CHAT_FILES
-            result["chat_files"].extend([user_msg, assistant_msg])
+            result["chat_files"].extend([user_msg])
 
             # Add user message to ConversationManager with file path as hash_key
             ConversationService.get_manager(coder).add_message(
                 message_dict=user_msg,
                 tag=tag,
                 hash_key=("file_user", fname),  # Use file path as part of hash_key
-                force=True,
-                update_timestamp=False,
-            )
-
-            # Add assistant message to ConversationManager with file path as hash_key
-            ConversationService.get_manager(coder).add_message(
-                message_dict=assistant_msg,
-                tag=tag,
-                hash_key=("file_assistant", fname),  # Use file path as part of hash_key
                 force=True,
                 update_timestamp=False,
             )
@@ -806,13 +763,6 @@ class ConversationChunks:
                 # Add individual image message to result
                 result["chat_files"].append(img_msg)
 
-                # Add individual assistant acknowledgment for each image
-                assistant_msg = {
-                    "role": "assistant",
-                    "content": "Ok, I will use this image as a reference.",
-                }
-                result["chat_files"].append(assistant_msg)
-
                 # Get the file name from the message (stored in image_file key)
                 fname = img_msg.get("image_file")
                 if fname:
@@ -821,11 +771,6 @@ class ConversationChunks:
                         message_dict=img_msg,
                         tag=MessageTag.CHAT_FILES,
                         hash_key=("image_user", fname),
-                    )
-                    ConversationService.get_manager(coder).add_message(
-                        message_dict=assistant_msg,
-                        tag=MessageTag.CHAT_FILES,
-                        hash_key=("image_assistant", fname),
                     )
 
         return result
@@ -858,23 +803,12 @@ class ConversationChunks:
                 "content": f"ID-Prefixed Context For:\n{rel_fname}\n\n{context_content}",
             }
 
-            assistant_msg = {
-                "role": "assistant",
-                "content": f"Thank you for sharing the prefixed file contents for {rel_fname}.",
-            }
-
             # Add to conversation manager
             content_hash = xxhash.xxh3_128_hexdigest(context_content.encode("utf-8"))
             ConversationService.get_manager(coder).queue_message(
                 message_dict=user_msg,
                 tag=MessageTag.FILE_CONTEXTS,
                 hash_key=("file_context_user", file_path, content_hash),
-            )
-
-            ConversationService.get_manager(coder).queue_message(
-                message_dict=assistant_msg,
-                tag=MessageTag.FILE_CONTEXTS,
-                hash_key=("file_context_assistant", file_path, content_hash),
             )
 
     def reset(self) -> None:
@@ -1079,14 +1013,25 @@ class ConversationChunks:
     def flush_removals(self):
         self._deferred_removals.clear()
 
-    def _cancel_post_message_injections(self):
+    def _cancel_post_message_injections(self, modulus=10):
         coder = self.get_coder()
         if not coder:
             return False
 
         # Add system reminder as a pre-prompt context block
-        if coder.edit_format in ("agent", "subagent") and coder.turn_count % 5 != 0:
-            return True
+        if coder.edit_format in ("agent", "subagent"):
+            if coder.turn_count < modulus:
+                return True
+
+            if coder.edit_allowed and not coder._get_repetitive_tools():
+                return True
+
+            if coder.turn_count % modulus != 0:
+                # and coder.turn_count % modulus != 0
+                if not coder.edit_allowed:
+                    return False
+                else:
+                    return True
 
         return False
 

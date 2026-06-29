@@ -29,9 +29,9 @@ It shows how each of these symbols are defined, by including the critical lines 
 
 Here's a part of
 the repo map of cecli's repo, for
-[base_coder.py](https://github.com/dwash96/cecli/blob/main/cecli/coders/base_coder.py)
+[base_coder.py](https://github.com/cecli-dev/cecli/blob/main/cecli/coders/base_coder.py)
 and
-[commands.py](https://github.com/dwash96/cecli/blob/main/cecli/commands.py)
+[commands.py](https://github.com/cecli-dev/cecli/blob/main/cecli/commands.py)
 :
 
 ```

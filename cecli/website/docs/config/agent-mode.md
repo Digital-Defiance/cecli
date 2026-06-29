@@ -156,11 +156,13 @@ Agent Mode can also be configured directly in your configuration file. See the [
 - **`tools_paths`**: Array of directories or Python files containing custom tools to load
 - **`servers_includelist`**: Array of MCP server names to allow (only these servers will be available)
 - **`servers_excludelist`**: Array of MCP server names to exclude (these servers will be disabled)
+- **`show_lint_errors`**: When enabled, linting errors found during editing will be displayed in the tool output, allowing the LLM to see and address them (default: false)
 - **`subagent_paths`**: Array of directories to search for sub-agent definition `.md` files
 - **`max_sub_agents`**: Maximum number of concurrent sub-agents (default: 3)
 - **`allow_nested_delegation`**: Allow sub-agents to delegate tasks to further sub-agents (default: `false`). When enabled, the `Delegate` tool is made available in sub-agent tool schemas.
 - **`include_context_blocks`**: Array of context block names to include (overrides default set)
 - **`exclude_context_blocks`**: Array of context block names to exclude from default set
+- **`hot_reload`**: When enabled, skills configuration is hot-reloaded automatically, reflecting changes to skills without requiring a restart (default: false)
 - **`command_timeout`**: Time in seconds to wait for shell commands to finish before automatic backgrounding occurs (default: None)
 
 #### Essential Tools
@@ -283,6 +285,8 @@ agent-config:
   large_file_token_threshold: 32768  # Token threshold for large file warnings (default: 32768)
   skip_cli_confirmations: false  # YOLO mode - be brave and let the LLM cook
   allowed_commands: ["wc -l*"]  # Commands matching these glob patterns will not prompt for confirmation
+  show_lint_errors: false  # When enabled, linting errors are shown in tool output (default: false)
+  hot_reload: false  # When enabled, skills configuration is hot-reloaded automatically (default: false)
   # Skills configuration (see Skills documentation for details)
   skills_paths: ["~/my-skills", "./project-skills"]  # Directories to search for skills
   skills_includelist: ["python-refactoring", "react-components"]  # Optional: Whitelist of skills to include
@@ -306,7 +310,7 @@ agent-config:
   skills_init: ["python-refactoring"]
 ```
 
-For complete documentation on creating and using skills, including skill directory structure, SKILL.md format, and best practices, see the [Skills documentation](https://github.com/dwash96/cecli/blob/main/cecli/website/docs/config/skills.md).
+For complete documentation on creating and using skills, including skill directory structure, SKILL.md format, and best practices, see the [Skills documentation](https://github.com/cecli-dev/cecli/blob/main/cecli/website/docs/config/skills.md).
 
 ### Benefits
 - **Autonomous operation**: Reduces need for manual file management
