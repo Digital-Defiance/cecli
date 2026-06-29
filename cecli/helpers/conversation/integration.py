@@ -624,8 +624,17 @@ class ConversationChunks:
             ConversationService.get_files(coder).add_file(fname, force_refresh=refresh)
 
             # Get file content (with proper caching and stub generation)
-            json_str = ConversationService.get_files(coder).get_file_json(fname)
-            if json_str:
+            content = None
+            if coder.edit_format in ("agent", "subagent"):
+                content = ConversationService.get_files(coder).get_file_json(fname)
+            else:
+                content = ConversationService.get_files(coder).get_file_stub(fname)
+
+            if not content:
+                ConversationService.get_files(coder).clear_file_cache(fname)
+                continue
+
+            if content:
                 # Add user message with file path as hash_key
                 rel_fname = coder.get_rel_fname(fname)
 
@@ -639,7 +648,7 @@ class ConversationChunks:
 
                 user_msg = {
                     "role": "user",
-                    "content": f"{file_preamble}\n{rel_fname}\n\n{json_str}\n\n{file_postamble}",
+                    "content": f"{file_preamble}\n{rel_fname}\n\n{content}\n\n{file_postamble}",
                 }
 
                 ConversationService.get_manager(coder).add_message(
@@ -705,8 +714,13 @@ class ConversationChunks:
             ConversationService.get_files(coder).add_file(fname, force_refresh=refresh)
 
             # Get file content (with proper caching and stub generation)
-            json_str = ConversationService.get_files(coder).get_file_json(fname)
-            if not json_str:
+            content = None
+            if coder.edit_format in ("agent", "subagent"):
+                content = ConversationService.get_files(coder).get_file_json(fname)
+            else:
+                content = ConversationService.get_files(coder).get_file_stub(fname)
+
+            if not content:
                 ConversationService.get_files(coder).clear_file_cache(fname)
                 continue
 
@@ -722,7 +736,7 @@ class ConversationChunks:
 
             user_msg = {
                 "role": "user",
-                "content": f"{file_preamble}\n{rel_fname}\n\n{json_str}\n\n{file_postamble}",
+                "content": f"{file_preamble}\n{rel_fname}\n\n{content}\n\n{file_postamble}",
             }
 
             # Determine tag based on editability
