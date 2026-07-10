@@ -325,7 +325,7 @@ pillow==12.0.0
     #   llama-index-core
     #   matplotlib
     #   sentence-transformers
-pip==25.3
+pip==26.1.2
     # via pip-tools
 pip-tools==7.5.2
     # via -r requirements/requirements-dev.in
