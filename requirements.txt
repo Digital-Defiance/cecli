@@ -409,7 +409,7 @@ soundfile==0.13.1
     # via
     #   -c requirements/common-constraints.txt
     #   -r requirements/requirements.in
-soupsieve==2.8
+soupsieve==2.8.4
     # via
     #   -c requirements/common-constraints.txt
     #   beautifulsoup4
