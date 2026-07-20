@@ -43,11 +43,12 @@ class TestResourceManagerAddCreate(unittest.TestCase):
             rel = "src/new_module.py"
 
             result = asyncio.run(Tool.execute(coder, add=[rel]))
+            text = str(result)
 
             abs_path = coder.abs_root_path(rel)
             self.assertTrue(Path(abs_path).is_file())
             self.assertIn(abs_path, coder.abs_fnames)
-            self.assertIn("create", result.lower())
+            self.assertIn("create", text.lower())
             coder.io.tool_output.assert_any_call(
                 "ℹ️ `src/new_module.py` missing on disk — using **create** instead of add"
             )
@@ -60,7 +61,7 @@ class TestResourceManagerAddCreate(unittest.TestCase):
             result = asyncio.run(Tool.execute(coder, create=["README.md"]))
 
             self.assertTrue((root / "README.md").is_file())
-            self.assertIn("Created", result)
+            self.assertIn("Created", str(result))
 
 
 if __name__ == "__main__":
