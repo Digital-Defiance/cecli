@@ -62,6 +62,8 @@ def test_grep_process_response_emits_matches_to_ui(monkeypatch, tmp_path):
         },
     )
 
-    assert "Matches for" in result
+    # rc6 Grep returns ToolResponse JSON; content still names the pattern/match.
+    assert "ollama" in result
+    assert "1 match" in result or "match(es)" in result
     emitted = [str(call.args[0]) for call in io.tool_output.call_args_list]
     assert any("ollama" in line for line in emitted)
