@@ -471,7 +471,7 @@ semver==3.0.4
     # via -r requirements/requirements-dev.in
 sentence-transformers==5.1.2
     # via llama-index-embeddings-huggingface
-setuptools==80.9.0
+setuptools==83.0.0
     # via
     #   llama-index-core
     #   pip-tools
