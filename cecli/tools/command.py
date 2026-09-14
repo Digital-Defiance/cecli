@@ -2,6 +2,7 @@
 import fnmatch
 import os
 import platform
+import re
 
 # PTY support for interactive commands (avoids pipe buffering issues)
 try:
@@ -21,6 +22,40 @@ from cecli.tools.utils.helpers import ToolError
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
 from cecli.tools.utils.responses import ToolResponse
 from cecli.tools.validations import ToolValidations
+
+# Commands an LLM is likely to run during development where the user must
+# type input for the task to proceed (passwords, passphrases, host-key
+# confirmations, credential logins, editor handoffs). Matching commands run
+# with user_input_required=True so the user can respond and the command can
+# complete. Patterns are matched case-insensitively against the full command.
+#
+# Long-running commands are already moved to the background by the timeout
+# mechanism, and session-style tools (ssh, su, database REPLs) read from
+# stdin when backgrounded, so they need no special handling here.
+#
+# Read-only viewers and live-monitoring tools (less, more, man, top, htop,
+# watch, tail -f, docker logs -f) are intentionally excluded: an LLM would
+# run those in the background to watch output rather than wait for typed
+# input, so forcing interactivity would block the background use case.
+INTERACTIVE_COMMAND_PATTERNS = [
+    # Privilege escalation, user switching, and password entry
+    r"^\s*(sudo|doas|runas|passwd)\b",
+    # Remote access: passwords, key passphrases, host-key confirmations
+    r"^\s*(scp|rsync|ssh-keygen|ssh-add|ssh-copy-id)\b",
+    # Passphrase prompts (gpg is also used for commit signing)
+    r"^\s*(gpg|gpg2)\b",
+    r"^\s*openssl\s+(enc|pkcs12|pkey|genpkey|rsa|genrsa|req)\b",
+    # Interactive credential / login flows
+    r"^\s*(gh|docker|npm|yarn|pnpm|az|aws|gcloud|heroku|firebase|vercel|netlify)\s+(auth|login|logout|configure|sso)\b",
+    # Editors: the user must edit content for the task to proceed
+    r"^\s*(vi|vim|nvim|nano|emacs|pico)\b",
+    # Git flows that hand off to an editor or need hunk-by-hunk input
+    r"^\s*git\s+(add\s+(-p|--patch)|commit\s+(-e|--edit)|rebase\s+(-i|--interactive)|mergetool|config\s+(-e|--edit))\b",
+    # Windows credential / remote-execution tools
+    r"^\s*(net\s+use|get-credential|psexec|cmdkey)\b",
+    # Config editors that open an interactive editor
+    r"^\s*(crontab\s+-e|visudo)\b",
+]
 
 
 class Tool(BaseTool):
@@ -66,17 +101,19 @@ class Tool(BaseTool):
                         "type": "string",
                         "description": (
                             "Input to send. Use with background=True to send at "
-                            "start time, or with background_key + action='stdin'."
+                            "start time, or with background_key + action='stdin'. "
+                            "End the input with a newline to submit a line to an "
+                            "interactive prompt."
                         ),
                     },
                     "pty": {
                         "type": "boolean",
                         "description": (
-                            "Use a pseudo-terminal (PTY). Auto-enabled on Unix for "
-                            "background commands. Useful for interactive programs "
-                            "like 'vi' or 'top'."
+                            "Use a pseudo-terminal (PTY). Auto-enabled on Unix "
+                            "when omitted; set false to force pipe mode. A PTY lets "
+                            "you send stdin to long-running background commands."
                         ),
-                        "default": False,
+                        "default": None,
                     },
                     "user_input_required": {
                         "type": "boolean",
@@ -120,7 +157,7 @@ class Tool(BaseTool):
         background_key=None,
         action=None,
         stdin=None,
-        pty=False,
+        pty=None,
         user_input_required=False,
         timeout=0,
         **kwargs,
@@ -129,6 +166,8 @@ class Tool(BaseTool):
         Execute a shell command or interact with background processes.
 
         For new commands: provide 'command' (and optionally 'background', 'stdin', 'pty').
+        PTY is auto-enabled on Unix when 'pty' is omitted, so long-running
+        backgrounded commands can receive input via background_key + action='stdin'.
         When 'user_input_required' is True, runs the command interactively using a
         pseudo-terminal (PTY), allowing the user to provide inputs like passwords
         or navigate terminal interfaces.
@@ -181,6 +220,12 @@ class Tool(BaseTool):
         if not background and command.strip().endswith("&"):
             background = True
             command = command.strip()[:-1].strip()
+
+        # Force interactive handling for commands known to prompt for input
+        # (e.g. sudo, passphrase, credential, and editor prompts) so the user
+        # can respond and the command can complete.
+        if cls._requires_user_input(command):
+            user_input_required = True
 
         # Get user confirmation
         confirmed = await cls._get_confirmation(coder, command, background)
@@ -661,6 +706,17 @@ class Tool(BaseTool):
         response = ToolResponse(cls.NORM_NAME)
         response.append_error(f"Error executing command: {str(e)}")
         return response
+
+    @classmethod
+    def _requires_user_input(cls, command_string):
+        """Return True if command matches a known interactive-input pattern."""
+        if not command_string:
+            return False
+
+        return any(
+            re.search(pattern, command_string, re.IGNORECASE)
+            for pattern in INTERACTIVE_COMMAND_PATTERNS
+        )
 
     @classmethod
     def format_output(cls, coder, mcp_server, tool_response):
