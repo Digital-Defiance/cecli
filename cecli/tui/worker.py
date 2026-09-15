@@ -62,11 +62,7 @@ class CoderWorker:
         try:
             self.loop.run_until_complete(self._async_run())
         except BaseException as e:
-            # A normal stop() stops the loop, which makes run_until_complete
-            # raise RuntimeError; that and a cancellation after running=False
-            # are expected shutdown paths, not crashes.
-            graceful = not self.running and isinstance(e, (asyncio.CancelledError, RuntimeError))
-            if not graceful:
+            if not self._is_graceful_shutdown(e):
                 logger.error("Coder worker thread stopped unexpectedly", exc_info=e)
                 self._notify_crash(e)
         finally:
@@ -297,6 +293,15 @@ class CoderWorker:
         # Wait for thread to finish
         if self.thread and self.thread.is_alive():
             self.thread.join(timeout=2.0)
+
+    def _is_graceful_shutdown(self, exc) -> bool:
+        """Return True when a worker-loop exception is an expected shutdown artifact.
+
+        A normal stop() stops the loop, which surfaces from run_until_complete
+        as RuntimeError; a cancellation after running goes False surfaces as
+        CancelledError. Neither is a crash.
+        """
+        return not self.running and isinstance(exc, (asyncio.CancelledError, RuntimeError))
 
     def _notify_crash(self, exc):
         """Tell the TUI the worker died so it can surface the error and exit.

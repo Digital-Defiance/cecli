@@ -14,6 +14,10 @@ from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 
 from cecli.decoding import safe_open
 
+# How long ``ensure_started`` waits for the callback listener to bind before
+# giving up so the browser redirect can't race the listener coming up.
+CALLBACK_BIND_TIMEOUT_SECONDS = 5
+
 
 def create_oauth_callback_server(port, path="/callback") -> Tuple[
     Callable[[], Awaitable[Tuple[str, str]]],
@@ -35,7 +39,6 @@ def create_oauth_callback_server(port, path="/callback") -> Tuple[
     server_error = None
     callback_received = threading.Event()
     server = None
-    server_thread = None
     server_started = threading.Event()
     start_lock = threading.Lock()
 
@@ -100,27 +103,19 @@ def create_oauth_callback_server(port, path="/callback") -> Tuple[
             server_started.set()
             callback_received.set()
         finally:
-            if srv is not None:
-                try:
-                    srv.server_close()
-                except Exception:
-                    pass
+            _close_quietly(srv)
 
     def ensure_started():
         """Start the callback listener once, blocking briefly for the bind."""
-        nonlocal server_thread
         with start_lock:
             if server_started.is_set():
                 return
 
-            server_thread = threading.Thread(
-                target=start_server, daemon=True, name="oauth-callback-server"
-            )
-            server_thread.start()
+            threading.Thread(target=start_server, daemon=True, name="oauth-callback-server").start()
 
         # Wait for the bind to complete so the browser redirect cannot race the
         # listener coming up.
-        server_started.wait(timeout=5)
+        server_started.wait(timeout=CALLBACK_BIND_TIMEOUT_SECONDS)
 
     def shutdown():
         """Stop the callback listener. Idempotent and safe to call repeatedly.
@@ -142,10 +137,7 @@ def create_oauth_callback_server(port, path="/callback") -> Tuple[
         except Exception:
             pass
         finally:
-            try:
-                srv.server_close()
-            except Exception:
-                pass
+            _close_quietly(srv)
 
     async def get_auth_code() -> Tuple[str, str]:
         # Backstop for callers that didn't start the listener via the redirect
@@ -278,3 +270,14 @@ class FileBasedTokenStorage(TokenStorage):
 
         all_tokens[self.server_name]["client_info"] = json.loads(client_info.model_dump_json())
         save_mcp_oauth_tokens(all_tokens)
+
+
+def _close_quietly(server) -> None:
+    """Close an HTTP server socket, ignoring a missing server or close errors."""
+    if server is None:
+        return
+
+    try:
+        server.server_close()
+    except Exception:
+        pass

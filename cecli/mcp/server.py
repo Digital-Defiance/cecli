@@ -251,15 +251,7 @@ class McpServer:
                 stdio_client(server_params, errlog=err_file)
             )
             read, write = stdio_transport
-            session = await self.exit_stack.enter_async_context(
-                ClientSession(
-                    read,
-                    write,
-                    read_timeout_seconds=timedelta(seconds=self._request_timeout_seconds()),
-                )
-            )
-            await session.initialize()
-            self.session = session
+            session = await self._enter_client_session(read, write)
 
         return session
 
@@ -333,6 +325,25 @@ class McpServer:
             if self._session_task is asyncio.current_task():
                 self.session = None
                 self._connection_loop = None
+
+    async def _enter_client_session(self, read, write):
+        """Enter a client session on the shared exit stack and initialize it.
+
+        Builds the SDK ``ClientSession`` with the server's configured request
+        timeout so the stdio and HTTP transports share identical timeout
+        behavior, then stores the initialized session on ``self.session``.
+        """
+        session = await self.exit_stack.enter_async_context(
+            ClientSession(
+                read,
+                write,
+                read_timeout_seconds=timedelta(seconds=self._request_timeout_seconds()),
+            )
+        )
+        await session.initialize()
+        self.session = session
+
+        return session
 
     def _request_timeout_seconds(self) -> float:
         """Per-request timeout (seconds) for the MCP handshake and tool calls.
@@ -474,15 +485,7 @@ class HttpBasedMcpServer(McpServer):
 
         read, write = _unpack_transport(transport)
 
-        session = await self.exit_stack.enter_async_context(
-            ClientSession(
-                read,
-                write,
-                read_timeout_seconds=timedelta(seconds=self._request_timeout_seconds()),
-            )
-        )
-        await session.initialize()
-        self.session = session
+        session = await self._enter_client_session(read, write)
 
         await self.start_keepalive()
 
