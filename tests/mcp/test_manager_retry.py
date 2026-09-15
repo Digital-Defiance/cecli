@@ -15,6 +15,7 @@ Test categories:
 """
 
 import asyncio
+import sys
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -346,6 +347,14 @@ async def test_connect_server_treats_transport_cancellation_as_failure(mock_serv
 # ---------------------------------------------------------------------------
 
 
+# Python 3.10 cannot tell a real cancellation from a transport-level one: it has no
+# Task.cancelling(), _must_cancel is already cleared when the handler runs, and the
+# traceback loses the origin frame. task_is_cancelling() therefore reports False
+# there, so this propagation guarantee only holds on 3.11+.
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="Task.cancelling() is required to distinguish a real cancel from a transport cancel",
+)
 @pytest.mark.asyncio
 async def test_connect_server_propagates_genuine_cancellation(mock_server, mock_io):
     """TC-008b: cancelling the calling task still propagates out of connect_server."""
