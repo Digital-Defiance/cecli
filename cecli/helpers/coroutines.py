@@ -109,3 +109,22 @@ async def interruptible(coroutine, interrupt_event):
         return main_task.result(), False
     except asyncio.CancelledError:
         return None, True
+
+
+def task_is_cancelling() -> bool:
+    """Return True when the running asyncio task has a pending cancellation.
+
+    Used to tell a genuine cancellation of the caller apart from cancellation
+    errors that transports (e.g. MCP's anyio TaskGroups) surface for ordinary
+    connection failures.
+    """
+    task = asyncio.current_task()
+    if task is None:
+        return False
+
+    cancelling = getattr(task, "cancelling", None)
+    if cancelling is not None:
+        return cancelling() > 0
+
+    # Python 3.10 has no Task.cancelling(); fall back to the private flag.
+    return bool(getattr(task, "_must_cancel", False))

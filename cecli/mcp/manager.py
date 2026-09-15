@@ -1,6 +1,7 @@
 import asyncio
 
-from cecli.mcp.server import LocalServer, McpServer
+from cecli.helpers.coroutines import task_is_cancelling
+from cecli.mcp.server import DEFAULT_MCP_REQUEST_TIMEOUT, LocalServer, McpServer
 from cecli.tools.utils.registry import ToolRegistry
 
 
@@ -196,9 +197,10 @@ class McpServerManager:
             return True
 
         # Retry with exponential backoff for transient connection failures.
-        # Note: This also fixes a latent bug where asyncio.CancelledError was
-        # silently caught and treated as a connection failure. CancelledError is
-        # now re-raised to properly propagate cancellation.
+        # A genuine cancellation must still propagate, but some transports
+        # (MCP's streamable-HTTP runs its writer inside an anyio TaskGroup)
+        # surface ordinary connection failures as CancelledError, so only a
+        # real cancellation of this task is re-raised.
         # When io is None (e.g., during from_servers before IO is assigned),
         # _log_warning and _log_error silently return — retries still happen
         # but with no user-visible feedback. This is intentional.
@@ -206,38 +208,55 @@ class McpServerManager:
         delay = 1.0
         backoff = 2.0
         max_delay = 30.0
+        # Bound each attempt so a server that accepts a connection but never
+        # speaks MCP cannot wedge startup. The SDK read timeout usually fires
+        # first; this wait_for is a backstop for hangs inside the transport.
+        try:
+            base_timeout = float(server._request_timeout_seconds())
+        except (TypeError, ValueError):
+            base_timeout = DEFAULT_MCP_REQUEST_TIMEOUT
+
+        if base_timeout <= 0:
+            base_timeout = DEFAULT_MCP_REQUEST_TIMEOUT
+
+        attempt_timeout = base_timeout + 5
 
         for attempt in range(1, max_retries + 1):
+            error = None
+
             try:
-                session = await server.connect()
-                tools_result = await session.list_tools()
+                session = await asyncio.wait_for(server.connect(), timeout=attempt_timeout)
+                tools_result = await asyncio.wait_for(session.list_tools(), timeout=attempt_timeout)
                 tools = _mcp_tools_to_openai_tools(tools_result.tools)
                 self._server_tools[server.name] = tools
                 self._connected_servers.add(server)
                 self._log_verbose(f"Connected to MCP server: {name}")
                 return True
             except asyncio.CancelledError:
-                raise
+                if task_is_cancelling():
+                    raise
+                error = "connection cancelled by transport"
             except Exception as e:
-                if attempt < max_retries and server.name != "unnamed-server":
-                    self._log_warning(
-                        f"Connection attempt {attempt} failed for {name}, "
-                        f"retrying in {delay}s... ({e})"
-                    )
+                error = e
 
-                    await asyncio.sleep(delay)
-                    delay = min(delay * backoff, max_delay)
-                else:
-                    if server.name != "unnamed-server":
-                        self._log_error(
-                            f"Failed to connect to MCP server {name} "
-                            f"after {max_retries} attempts: {e}"
-                        )
-                    if server.is_connected:
-                        # Session was established but tool listing failed; tear
-                        # it down so the transport/subprocess doesn't leak.
-                        await server.disconnect()
-                    return False
+            if attempt < max_retries and server.name != "unnamed-server":
+                self._log_warning(
+                    f"Connection attempt {attempt} failed for {name}, "
+                    f"retrying in {delay}s... ({error})"
+                )
+                await asyncio.sleep(delay)
+                delay = min(delay * backoff, max_delay)
+            else:
+                if server.name != "unnamed-server":
+                    self._log_error(
+                        f"Failed to connect to MCP server {name} "
+                        f"after {max_retries} attempts: {error}"
+                    )
+                if server.is_connected:
+                    # Session was established but tool listing failed; tear
+                    # it down so the transport/subprocess doesn't leak.
+                    await server.disconnect()
+                return False
 
     async def disconnect_server(self, name: str) -> bool:
         """
