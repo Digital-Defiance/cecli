@@ -10,6 +10,7 @@ from typing import Optional
 from cecli.coders import Coder
 from cecli.commands import ReloadProgramSignal, SwitchCoderSignal
 from cecli.helpers.conversation import ConversationService, MessageTag
+from cecli.helpers.coroutines import task_is_cancelling
 
 logger = logging.getLogger(__name__)
 # Suppress asyncio task destroyed warnings during shutdown
@@ -60,10 +61,14 @@ class CoderWorker:
 
         try:
             self.loop.run_until_complete(self._async_run())
-        except BaseException:
-            # Catch anything that could bring down the thread, and just let it exit.
-            # This includes KeyboardInterrupt, SystemExit, etc.
-            pass
+        except BaseException as e:
+            # A normal stop() stops the loop, which makes run_until_complete
+            # raise RuntimeError; that and a cancellation after running=False
+            # are expected shutdown paths, not crashes.
+            graceful = not self.running and isinstance(e, (asyncio.CancelledError, RuntimeError))
+            if not graceful:
+                logger.error("Coder worker thread stopped unexpectedly", exc_info=e)
+                self._notify_crash(e)
         finally:
             self._cleanup_loop()
 
@@ -117,6 +122,14 @@ class CoderWorker:
         if mcp_manager is not None:
             try:
                 await mcp_manager.connect_all()
+            except asyncio.CancelledError:
+                # connect_all uses gather; a single transport (e.g. MCP's
+                # streamable-HTTP) can surface an ordinary connection failure
+                # as CancelledError and abort the whole gather. Only propagate
+                # a genuine cancellation of this worker.
+                if task_is_cancelling():
+                    raise
+                logger.warning("MCP connect_all was cancelled by a server transport; continuing")
             except Exception as e:
                 logger.error("Failed to connect MCP servers in worker: %s", e, exc_info=True)
 
@@ -284,6 +297,23 @@ class CoderWorker:
         # Wait for thread to finish
         if self.thread and self.thread.is_alive():
             self.thread.join(timeout=2.0)
+
+    def _notify_crash(self, exc):
+        """Tell the TUI the worker died so it can surface the error and exit.
+
+        Without this the TUI keeps running with a dead worker and appears hung.
+        """
+        try:
+            self.output_queue.put(
+                {
+                    "type": "error",
+                    "message": f"Worker stopped unexpectedly: {exc!r}",
+                    "coder_uuid": getattr(self.coder, "uuid", None),
+                }
+            )
+            self.output_queue.put({"type": "exit"})
+        except Exception:
+            pass
 
     def _create_event_loop(self):
         """Create the event loop used by the coder worker thread.
