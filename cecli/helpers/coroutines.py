@@ -117,6 +117,11 @@ def task_is_cancelling() -> bool:
     Used to tell a genuine cancellation of the caller apart from cancellation
     errors that transports (e.g. MCP's anyio TaskGroups) surface for ordinary
     connection failures.
+
+    Reliable on Python 3.11+ (``Task.cancelling()``). On 3.10 there is no public
+    signal: ``_must_cancel`` is already cleared by the time the CancelledError is
+    delivered, so this is best-effort and usually reports False. Callers must
+    therefore treat False as "not known to be cancelling" rather than proof.
     """
     task = asyncio.current_task()
     if task is None:
@@ -126,5 +131,5 @@ def task_is_cancelling() -> bool:
     if cancelling is not None:
         return cancelling() > 0
 
-    # Python 3.10 has no Task.cancelling(); fall back to the private flag.
+    # Python 3.10 fallback: best-effort only (see docstring).
     return bool(getattr(task, "_must_cancel", False))
