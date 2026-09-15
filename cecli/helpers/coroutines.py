@@ -127,9 +127,9 @@ def task_is_cancelling() -> bool:
     if task is None:
         return False
 
-    cancelling = getattr(task, "cancelling", None)
-    if cancelling is not None:
-        return cancelling() > 0
+    cancelling_fn = getattr(task, "cancelling", None)
+    if cancelling_fn is not None:
+        return cancelling_fn() > 0
 
     # Python 3.10 fallback: best-effort only (see docstring).
     return bool(getattr(task, "_must_cancel", False))

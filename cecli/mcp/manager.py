@@ -4,6 +4,10 @@ from cecli.helpers.coroutines import task_is_cancelling
 from cecli.mcp.server import DEFAULT_MCP_REQUEST_TIMEOUT, LocalServer, McpServer
 from cecli.tools.utils.registry import ToolRegistry
 
+# Slack added on top of a server's request timeout for the connect/list_tools
+# backstop, covering time the transport spends outside the SDK's read timeout.
+CONNECT_BACKSTOP_GRACE_SECONDS = 5
+
 
 class McpServerManager:
     """
@@ -204,7 +208,8 @@ class McpServerManager:
         # When io is None (e.g., during from_servers before IO is assigned),
         # _log_warning and _log_error silently return — retries still happen
         # but with no user-visible feedback. This is intentional.
-        max_retries = 3 if server.name != "unnamed-server" else 1
+        is_unnamed = server.name == "unnamed-server"
+        max_retries = 1 if is_unnamed else 3
         delay = 1.0
         backoff = 2.0
         max_delay = 30.0
@@ -219,10 +224,9 @@ class McpServerManager:
         if base_timeout <= 0:
             base_timeout = DEFAULT_MCP_REQUEST_TIMEOUT
 
-        attempt_timeout = base_timeout + 5
+        attempt_timeout = base_timeout + CONNECT_BACKSTOP_GRACE_SECONDS
 
         for attempt in range(1, max_retries + 1):
-            error = None
 
             try:
                 session = await asyncio.wait_for(server.connect(), timeout=attempt_timeout)
@@ -239,7 +243,7 @@ class McpServerManager:
             except Exception as e:
                 error = e
 
-            if attempt < max_retries and server.name != "unnamed-server":
+            if attempt < max_retries:
                 self._log_warning(
                     f"Connection attempt {attempt} failed for {name}, "
                     f"retrying in {delay}s... ({error})"
@@ -247,7 +251,7 @@ class McpServerManager:
                 await asyncio.sleep(delay)
                 delay = min(delay * backoff, max_delay)
             else:
-                if server.name != "unnamed-server":
+                if not is_unnamed:
                     self._log_error(
                         f"Failed to connect to MCP server {name} "
                         f"after {max_retries} attempts: {error}"
