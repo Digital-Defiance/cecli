@@ -1348,8 +1348,10 @@ class Model(ModelSettings):
                     temperature = float(self.use_temperature)
             kwargs["temperature"] = temperature
         else:
-            if override_kwargs and override_kwargs.get("temperature", None):
-                override_kwargs.pop("temperature", None)
+            # Omit temperature entirely when the model does not use it; the
+            # key must be dropped even when its override value is falsy (0).
+            if override_kwargs and "temperature" in override_kwargs:
+                override_kwargs.pop("temperature")
 
         effective_tools = tools
 
