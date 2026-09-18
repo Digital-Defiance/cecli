@@ -433,15 +433,15 @@ class TestCommands(TestCase):
 
         # String content
         self.assertEqual(
-            TokensCommand._extract_file_name({
-                "content": "Original File Contents For:\n/path/to/file.py\n\ncode..."
-            }),
+            TokensCommand._extract_file_name(
+                {"content": "Original File Contents For:\n/path/to/file.py\n\ncode..."}
+            ),
             "/path/to/file.py",
         )
         self.assertEqual(
-            TokensCommand._extract_file_name({
-                "content": "Current File Contents For:\n/path/to/file2.py\n\ncode..."
-            }),
+            TokensCommand._extract_file_name(
+                {"content": "Current File Contents For:\n/path/to/file2.py\n\ncode..."}
+            ),
             "/path/to/file2.py",
         )
         self.assertEqual(
@@ -455,41 +455,43 @@ class TestCommands(TestCase):
             "photo.jpg",
         )
         self.assertEqual(
-            TokensCommand._extract_file_name({
-                "image_file": "photo.jpg",
-                "content": [{"type": "image_url", "image_url": {}}],
-            }),
+            TokensCommand._extract_file_name(
+                {
+                    "image_file": "photo.jpg",
+                    "content": [{"type": "image_url", "image_url": {}}],
+                }
+            ),
             "photo.jpg",
         )
 
         # List content
         self.assertEqual(
-            TokensCommand._extract_file_name({
-                "content": [
-                    {"type": "text", "text": "Image file: nested.png"},
-                    {"type": "image_url", "image_url": {}},
-                ]
-            }),
+            TokensCommand._extract_file_name(
+                {
+                    "content": [
+                        {"type": "text", "text": "Image file: nested.png"},
+                        {"type": "image_url", "image_url": {}},
+                    ]
+                }
+            ),
             "nested.png",
         )
         self.assertEqual(
-            TokensCommand._extract_file_name({
-                "content": [
-                    {"type": "text", "text": "Original File Contents For:\nmodule.py\n\ncode"}
-                ]
-            }),
+            TokensCommand._extract_file_name(
+                {
+                    "content": [
+                        {"type": "text", "text": "Original File Contents For:\nmodule.py\n\ncode"}
+                    ]
+                }
+            ),
             "module.py",
         )
         self.assertEqual(
-            TokensCommand._extract_file_name({
-                "content": [{"image_file": "from_part.png"}]
-            }),
+            TokensCommand._extract_file_name({"content": [{"image_file": "from_part.png"}]}),
             "from_part.png",
         )
         self.assertEqual(
-            TokensCommand._extract_file_name({
-                "content": ["Image file: string_part.png"]
-            }),
+            TokensCommand._extract_file_name({"content": ["Image file: string_part.png"]}),
             "string_part.png",
         )
 
