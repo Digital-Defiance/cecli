@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List, Optional
 
 from cecli.commands.utils.base_command import BaseCommand
@@ -27,7 +28,7 @@ class TokensCommand(BaseCommand):
                 if len(lines) > 1:
                     return lines[1].strip()
             elif content.startswith("Image file: "):
-                return content[len("Image file: "):].strip()
+                return content[len("Image file: ") :].strip()
         elif isinstance(content, list):
             for part in content:
                 if isinstance(part, dict):
@@ -35,21 +36,113 @@ class TokensCommand(BaseCommand):
                         return part.get("image_file")
                     text = part.get("text")
                     if isinstance(text, str):
-                        if text.startswith(("Original File Contents For", "Current File Contents For")):
+                        if text.startswith(
+                            ("Original File Contents For", "Current File Contents For")
+                        ):
                             lines = text.split("\n", 3)
                             if len(lines) > 1:
                                 return lines[1].strip()
                         elif text.startswith("Image file: "):
-                            return text[len("Image file: "):].strip()
+                            return text[len("Image file: ") :].strip()
                 elif isinstance(part, str):
                     if part.startswith(("Original File Contents For", "Current File Contents For")):
                         lines = part.split("\n", 3)
                         if len(lines) > 1:
                             return lines[1].strip()
                     elif part.startswith("Image file: "):
-                        return part[len("Image file: "):].strip()
+                        return part[len("Image file: ") :].strip()
 
         return None
+
+    @staticmethod
+    def binary_token_count(data_url: str, bytes_per_pixel: float = 1.0) -> int:
+        """Estimate OpenAI vision tokens for a base64 media data URL.
+
+        Assumes a 4:3 aspect ratio and 1 byte per pixel, which is a reasonable middle
+        ground for binary media when the true dimensions are unknown. The tile cost is
+        inflated by 1.33 and floored to keep the estimate on the pessimistic side.
+        """
+        import math
+
+        b64_data = data_url.split(",", 1)[1] if "," in data_url else data_url
+        padding = b64_data.count("=")
+        rough_bytes = max(0, (len(b64_data) * 3 // 4) - padding)
+        total_pixels = rough_bytes / bytes_per_pixel
+        height = math.sqrt((3 / 4) * total_pixels)
+        width = (4 / 3) * height
+
+        if max(width, height) > 2048:
+            scale = 2048 / max(width, height)
+            width *= scale
+            height *= scale
+
+        if min(width, height) > 768:
+            scale = 768 / min(width, height)
+            width *= scale
+            height *= scale
+
+        tiles = math.ceil(width / 512) * math.ceil(height / 512)
+
+        return math.floor((85 + (170 * tiles)) * 1.33)
+
+    @classmethod
+    def _extract_key_paths(cls, obj: Any, prefix: str = "") -> List[str]:
+        """Return the dot-separated paths of every leaf in a nested structure.
+
+        List indices are included as numeric segments, e.g. "0.image_url.url".
+        """
+        if isinstance(obj, dict):
+            items = obj.items()
+        elif isinstance(obj, list):
+            items = enumerate(obj)
+        else:
+            return [prefix] if prefix else []
+
+        paths = []
+        for key, value in items:
+            path = f"{prefix}.{key}" if prefix else str(key)
+            paths.extend(cls._extract_key_paths(value, path))
+
+        return paths
+
+    @classmethod
+    def _get_path_value(cls, obj: Any, path: str) -> Any:
+        """Resolve a dot-separated path produced by _extract_key_paths."""
+        for part in path.split("."):
+            obj = obj[int(part)] if isinstance(obj, list) else obj[part]
+
+        return obj
+
+    @classmethod
+    def _count_value_tokens(cls, coder, key: str, value: Any) -> int:
+        """Count tokens for an extracted value, estimating data URLs as binary media."""
+        if key == "url" and isinstance(value, str) and value.startswith("data:"):
+            return cls.binary_token_count(value)
+
+        return coder.main_model.token_count(value)
+
+    @classmethod
+    def _count_message_tokens(cls, coder, msg: Dict[str, Any]) -> int:
+        """Count tokens for a message, estimating binary data URLs instead of raw base64."""
+        content = msg.get("content") if isinstance(msg, dict) else None
+
+        if not isinstance(content, (list, dict)):
+            return coder.main_model.token_count([msg])
+
+        total = 0
+
+        for path in cls._extract_key_paths(content):
+            key = path.rsplit(".", 1)[-1]
+
+            if not key.isdigit() and key not in ("text", "content", "url"):
+                continue
+
+            value = cls._get_path_value(content, path)
+
+            if isinstance(value, str):
+                total += cls._count_value_tokens(coder, key, value)
+
+        return total
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
@@ -96,6 +189,13 @@ class TokensCommand(BaseCommand):
                 system_tokens = max(0, system_tokens - context_block_total)
 
         res.append((system_tokens, "system messages", ""))
+
+        # tool definitions
+        tool_list = coder.get_tool_list()
+
+        if tool_list:
+            tokens_tools = coder.main_model.token_count(json.dumps(tool_list))
+            res.append((tokens_tools, "tool schemas", ""))
 
         # chat history
         msgs_done = ConversationService.get_manager(coder).get_messages_dict(tag=MessageTag.DONE)
@@ -167,7 +267,7 @@ class TokensCommand(BaseCommand):
             for msg in readonly_msgs:
                 fname = cls._extract_file_name(msg)
                 if fname:
-                    tokens = coder.main_model.token_count([msg])
+                    tokens = cls._count_message_tokens(coder, msg)
                     file_tokens[fname] = file_tokens.get(fname, 0) + tokens
 
             # Add to results
@@ -185,7 +285,7 @@ class TokensCommand(BaseCommand):
                 for msg in msgs:
                     fname = cls._extract_file_name(msg)
                     if fname:
-                        tokens = coder.main_model.token_count([msg])
+                        tokens = cls._count_message_tokens(coder, msg)
                         editable_file_tokens[fname] = editable_file_tokens.get(fname, 0) + tokens
 
         # Add editable files to results
