@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List, Optional
 
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
@@ -8,6 +8,48 @@ from cecli.helpers.conversation import ConversationService, MessageTag
 class TokensCommand(BaseCommand):
     NORM_NAME = "tokens"
     DESCRIPTION = "Report on the number of tokens used by the current chat context"
+
+    @classmethod
+    def _extract_file_name(cls, msg: Dict[str, Any]) -> Optional[str]:
+        """Extract file name from a message dictionary."""
+        if not isinstance(msg, dict):
+            return None
+
+        # Check explicit image_file metadata first
+        fname = msg.get("image_file")
+        if fname:
+            return fname
+
+        content = msg.get("content")
+        if isinstance(content, str):
+            if content.startswith(("Original File Contents For", "Current File Contents For")):
+                lines = content.split("\n", 3)
+                if len(lines) > 1:
+                    return lines[1].strip()
+            elif content.startswith("Image file: "):
+                return content[len("Image file: "):].strip()
+        elif isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict):
+                    if part.get("image_file"):
+                        return part.get("image_file")
+                    text = part.get("text")
+                    if isinstance(text, str):
+                        if text.startswith(("Original File Contents For", "Current File Contents For")):
+                            lines = text.split("\n", 3)
+                            if len(lines) > 1:
+                                return lines[1].strip()
+                        elif text.startswith("Image file: "):
+                            return text[len("Image file: "):].strip()
+                elif isinstance(part, str):
+                    if part.startswith(("Original File Contents For", "Current File Contents For")):
+                        lines = part.split("\n", 3)
+                        if len(lines) > 1:
+                            return lines[1].strip()
+                    elif part.startswith("Image file: "):
+                        return part[len("Image file: "):].strip()
+
+        return None
 
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
@@ -123,27 +165,10 @@ class TokensCommand(BaseCommand):
             # Group messages by file (each file has user and assistant messages)
             file_tokens = {}
             for msg in readonly_msgs:
-                # Extract file name from message content
-                content = msg.get("content", "")
-                if content.startswith("Original File Contents For"):
-                    # Extract file path from "File Contents {path}:"
-                    lines = content.split("\n", 3)
-                    if lines:
-                        file_line = lines[1]
-                        fname = file_line.strip()
-                        # Calculate tokens for this message
-                        tokens = coder.main_model.token_count([msg])
-                        if fname not in file_tokens:
-                            file_tokens[fname] = 0
-                        file_tokens[fname] += tokens
-                elif "image_file" in msg:
-                    # Handle image files
-                    fname = msg.get("image_file")
-                    if fname:
-                        tokens = coder.main_model.token_count([msg])
-                        if fname not in file_tokens:
-                            file_tokens[fname] = 0
-                        file_tokens[fname] += tokens
+                fname = cls._extract_file_name(msg)
+                if fname:
+                    tokens = coder.main_model.token_count([msg])
+                    file_tokens[fname] = file_tokens.get(fname, 0) + tokens
 
             # Add to results
             for fname, tokens in file_tokens.items():
@@ -158,27 +183,10 @@ class TokensCommand(BaseCommand):
             msgs = ConversationService.get_manager(coder).get_messages_dict(tag=tag)
             if msgs:
                 for msg in msgs:
-                    # Extract file name from message content
-                    content = msg.get("content", "")
-                    if content.startswith("Original File Contents For"):
-                        # Extract file path from "File Contents {path}:"
-                        lines = content.split("\n", 3)
-                        if lines:
-                            file_line = lines[1]
-                            fname = file_line.strip()
-                            # Calculate tokens for this message
-                            tokens = coder.main_model.token_count([msg])
-                            if fname not in editable_file_tokens:
-                                editable_file_tokens[fname] = 0
-                            editable_file_tokens[fname] += tokens
-                    elif "image_file" in msg:
-                        # Handle image files
-                        fname = msg.get("image_file")
-                        if fname:
-                            tokens = coder.main_model.token_count([msg])
-                            if fname not in editable_file_tokens:
-                                editable_file_tokens[fname] = 0
-                            editable_file_tokens[fname] += tokens
+                    fname = cls._extract_file_name(msg)
+                    if fname:
+                        tokens = coder.main_model.token_count([msg])
+                        editable_file_tokens[fname] = editable_file_tokens.get(fname, 0) + tokens
 
         # Add editable files to results
         for fname, tokens in editable_file_tokens.items():
