@@ -46,6 +46,7 @@ from cecli.helpers.loop_detect import LoopDetectedError, LoopDetector
 from cecli.helpers.memory_control import trim_memory
 from cecli.helpers.observations.service import ObservationService
 from cecli.helpers.profiler import TokenProfiler
+from cecli.helpers.sessions import SessionManager
 from cecli.helpers.threading import ThreadSafeEvent
 from cecli.history import ChatSummary
 from cecli.hooks import HookIntegration
@@ -64,7 +65,6 @@ from cecli.repo import ANY_GIT_ERROR, GitRepoProxy
 from cecli.repomap import RepoMap
 from cecli.report import update_error_prefix
 from cecli.run_cmd import run_cmd_async
-from cecli.sessions import SessionManager
 from cecli.tools.utils.output import print_tool_response
 from cecli.tools.utils.registry import ToolRegistry
 from cecli.utils import copy_tool_call, format_tokens, is_image_file
@@ -5234,6 +5234,7 @@ class Coder(metaclass=UsageMeta):
                     session_manager.save_session,
                     getattr(self.args, "auto_save_session_name", "auto-save"),
                     False,
+                    True,
                 )
             except Exception:
                 # Don't show errors for auto-save to avoid interrupting the user experience
