@@ -1487,7 +1487,7 @@ class Model(ModelSettings):
                 completion_coro = litellm.acompletion(**kwargs)
                 res, interrupted = await coroutines.interruptible(completion_coro, interrupt_event)
                 if interrupted:
-                    raise KeyboardInterrupt("Interrupted during acompletion")
+                    raise asyncio.CancelledError("Interrupted during acompletion")
 
                 return hash_object, res
             except litellm.ContextWindowExceededError as err:
@@ -1532,7 +1532,7 @@ class Model(ModelSettings):
                         asyncio.sleep(retry_delay), interrupt_event
                     )
                     if interrupted:
-                        raise KeyboardInterrupt("Interrupted during retry sleep")
+                        raise asyncio.CancelledError("Interrupted during retry sleep")
                 else:
                     await asyncio.sleep(retry_delay)
                 continue

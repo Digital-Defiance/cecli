@@ -527,11 +527,26 @@ class Tool(BaseTool):
                 f"Output captured so far:\n{output_content}\n"
             )
             return response
+        except asyncio.CancelledError:
+            # The turn was cancelled (e.g. worker.interrupt) before the process
+            # finished. Terminate and unregister it so the child, its
+            # reader/writer threads, and the wait_task thread don't outlive the
+            # interrupted turn.
+            success, _, _ = BackgroundCommandManager.stop_background_command(command_key)
+            if not success:
+                cls._terminate_process(process)
+
+            raise
         finally:
             interrupt_task.cancel()
             timeout_task.cancel()
 
-            if wait_task.done() and not wait_task.cancelled():
+            if not wait_task.done() and process.returncode is not None:
+                # The process was terminated (interrupt/cancel) but wait_task
+                # is still pending; cancel the await. The blocked executor
+                # thread is freed once the process exits.
+                wait_task.cancel()
+            elif wait_task.done() and not wait_task.cancelled():
                 # Retrieve any exception to avoid "task exception was never
                 # retrieved" warnings. On timeout the process continues in the
                 # background, so wait_task may legitimately still be pending.
@@ -844,3 +859,28 @@ class Tool(BaseTool):
 
         # Output footer
         tool_footer(coder=coder, tool_response=tool_response, params=params)
+
+    @classmethod
+    def _terminate_process(cls, process):
+        """Terminate a foreground command process, killing it if it lingers.
+
+        Best-effort and never raises, so an interrupt handler can call it while
+        unwinding without masking the original exception.
+        """
+        import subprocess
+
+        try:
+            try:
+                process.terminate()
+            except ProcessLookupError:
+                return
+
+            try:
+                process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                try:
+                    process.kill()
+                except ProcessLookupError:
+                    pass
+        except Exception:
+            pass
