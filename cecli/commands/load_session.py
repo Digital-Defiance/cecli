@@ -15,7 +15,7 @@ class LoadSessionCommand(BaseCommand):
             io.tool_output("Usage: /load-session <session-name>")
             return format_command_result(io, "load-session", "No session name provided")
 
-        from cecli import sessions
+        from cecli.helpers import sessions
 
         session_manager = sessions.SessionManager(coder, io)
         await session_manager.load_session(args.strip())
@@ -26,7 +26,7 @@ class LoadSessionCommand(BaseCommand):
     def get_completions(cls, io, coder, args) -> List[str]:
         """Get completion options for load-session command."""
         # Return available session names for completion
-        from cecli import sessions
+        from cecli.helpers import sessions
 
         session_manager = sessions.SessionManager(coder, io)
         sessions_list = session_manager.list_sessions()
@@ -41,7 +41,10 @@ class LoadSessionCommand(BaseCommand):
         help_text += "\nExamples:\n"
         help_text += "  /load-session my-feature      # Load session 'my-feature'\n"
         help_text += "  /load-session bug-fix         # Load session 'bug-fix'\n"
-        help_text += "\nSessions are loaded from the .cecli/sessions/ directory.\n"
+        help_text += (
+            "\nSessions are loaded from the .cecli/sessions/ directory. Loading a session"
+            " also restores any sub-agents saved with it.\n"
+        )
         help_text += (
             "Use /list-sessions to see saved sessions and /save-session to save a session.\n"
         )

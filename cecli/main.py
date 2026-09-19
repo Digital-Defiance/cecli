@@ -1488,7 +1488,7 @@ async def main_async(
             explicit_yes_required=True,
         ):
             try:
-                from cecli.sessions import SessionManager
+                from cecli.helpers.sessions import SessionManager
 
                 session_manager = SessionManager(coder, io)
                 await session_manager.load_session(
