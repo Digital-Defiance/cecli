@@ -8,6 +8,9 @@ from cecli.tools.utils.registry import ToolRegistry
 # backstop, covering time the transport spends outside the SDK's read timeout.
 CONNECT_BACKSTOP_GRACE_SECONDS = 5
 
+# Servers whose failures are expected in normal operation and should not warn.
+QUIET_SERVER_NAMES = {"unnamed-server", "local"}
+
 
 class McpServerManager:
     """
@@ -387,14 +390,39 @@ class McpServerManager:
 
             return (server, success, True)
 
-        results = await asyncio.gather(*(_connect(server) for server in self._servers))
+        # return_exceptions=True keeps one bad server from aborting the batch and
+        # discarding every other server's result. A CancelledError that a
+        # transport raises for an ordinary connection failure lands in the
+        # results as a value; a genuine cancellation of this task still
+        # propagates through the gather itself, so it is not swallowed here.
+        outcomes = await asyncio.gather(
+            *(_connect(server) for server in self._servers), return_exceptions=True
+        )
+
+        results = []
+        for server, outcome in zip(self._servers, outcomes):
+            if isinstance(outcome, BaseException):
+                if isinstance(outcome, asyncio.CancelledError) and task_is_cancelling():
+                    # A genuine cancellation of this task must not be downgraded
+                    # to a failed server; let it propagate to the caller.
+                    raise outcome
+
+                # CancelledError discards its arguments, so fall back to the
+                # type name rather than reporting an empty cause.
+                cause = str(outcome) or type(outcome).__name__
+
+                if server.name.lower() not in QUIET_SERVER_NAMES:
+                    self._log_warning(f"MCP server {server.name} failed to initialize: {cause}")
+
+                # Reported here with its cause already, so flag it as
+                # not-attempted to keep the generic warning below from
+                # repeating the same failure.
+                results.append((server, False, False))
+            else:
+                results.append(outcome)
 
         for server, did_connect, attempted in results:
-            if (
-                attempted
-                and not did_connect
-                and server.name.lower() not in ["unnamed-server", "local"]
-            ):
+            if attempted and not did_connect and server.name.lower() not in QUIET_SERVER_NAMES:
                 self._log_warning(
                     f"MCP tool initialization failed after multiple retries: {server.name}"
                 )

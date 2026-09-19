@@ -939,7 +939,11 @@ class AgentCoder(Coder):
             lint_coro = self.lint_edited(edited, show_output=False)
             lint_errors, interrupted = await interruptible(lint_coro, self.interrupt_event)
             if interrupted:
-                raise KeyboardInterrupt("Interrupted during linting")
+                # Abort the turn with CancelledError, which the linear run loop
+                # handles by re-prompting for input. KeyboardInterrupt is a
+                # BaseException that would escape the worker's event loop and
+                # leave it unable to accept further prompts.
+                raise asyncio.CancelledError("Interrupted during linting")
 
             has_errors = False
 
@@ -1078,7 +1082,10 @@ class AgentCoder(Coder):
             sleep_coro = asyncio.sleep(command_timeout / 2)
             _res, interrupted = await interruptible(sleep_coro, self.interrupt_event)
             if interrupted:
-                raise KeyboardInterrupt("Interrupted while waiting for background commands")
+                # Use CancelledError (not KeyboardInterrupt) so the interrupt
+                # stays inside the worker loop and re-prompts, matching the
+                # lint interrupt path above.
+                raise asyncio.CancelledError("Interrupted while waiting for background commands")
             return True
 
         # Check for recently finished commands that need reflection
