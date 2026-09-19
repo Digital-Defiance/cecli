@@ -15,7 +15,7 @@ class SaveSessionCommand(BaseCommand):
             io.tool_error("Please provide a session name to save.")
             return format_command_result(io, "save-session", "No session name provided")
 
-        from cecli import sessions
+        from cecli.helpers import sessions
 
         session_manager = sessions.SessionManager(coder, io)
         session_manager.save_session(args.strip())
@@ -26,7 +26,7 @@ class SaveSessionCommand(BaseCommand):
     def get_completions(cls, io, coder, args) -> List[str]:
         """Get completion options for save-session command."""
         # Return existing session names for completion to prevent accidental overwrites
-        from cecli import sessions
+        from cecli.helpers import sessions
 
         session_manager = sessions.SessionManager(coder, io)
         sessions_list = session_manager.list_sessions()
@@ -42,6 +42,10 @@ class SaveSessionCommand(BaseCommand):
         help_text += "  /save-session my-feature      # Save session as 'my-feature'\n"
         help_text += "  /save-session bug-fix         # Save session as 'bug-fix'\n"
         help_text += "\nSessions are saved in the .cecli/sessions/ directory as JSON files.\n"
+        help_text += (
+            "When the session has sub-agents it is saved as a folder holding the primary"
+            " and each sub-agent payload.\n"
+        )
         help_text += "Use /list-sessions to see saved sessions and /load-session to load them.\n"
         help_text += (
             "\nNote: Existing session names will be shown for tab completion to help prevent"

@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from cecli.helpers.sessions import SessionManager
 from cecli.io import InputOutput
-from cecli.sessions import SessionManager
 
 
 @pytest.fixture
