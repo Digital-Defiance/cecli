@@ -11,7 +11,7 @@ class ListSessionsCommand(BaseCommand):
     @classmethod
     async def execute(cls, io, coder, args, **kwargs):
         """Execute the list-sessions command with given parameters."""
-        from cecli import sessions
+        from cecli.helpers import sessions
 
         session_manager = sessions.SessionManager(coder, io)
         sessions_list = session_manager.list_sessions()
