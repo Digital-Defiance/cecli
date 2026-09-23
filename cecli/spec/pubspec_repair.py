@@ -188,6 +188,6 @@ def pubspec_repair_snapshot_lines(workspace: str | Path) -> list[str]:
     extra = f" (+{len(missing) - 6} more)" if len(missing) > 6 else ""
     return [
         f"- **pubspec.yaml** — missing dependencies: {preview}{extra}. "
-        "Add with **EditText** on `pubspec.yaml` or run "
+        "Add with **EditFile** on `pubspec.yaml` or run "
         "`bright-vision-tasks repair-pubspec --apply`."
     ]
