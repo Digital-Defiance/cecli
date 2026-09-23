@@ -337,9 +337,7 @@ class McpServer:
             ClientSession(
                 read,
                 write,
-                read_timeout_seconds=_client_session_read_timeout(
-                    self._request_timeout_seconds()
-                ),
+                read_timeout_seconds=_client_session_read_timeout(self._request_timeout_seconds()),
             )
         )
         await session.initialize()
