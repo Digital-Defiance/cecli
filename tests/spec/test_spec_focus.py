@@ -143,7 +143,7 @@ class TestSpecFocusGating(unittest.TestCase):
             self.assertIn("Implementation tasks", text)
             self.assertIn("Scaffold lib/", text)
             self.assertIn("Implementation turn (tools)", text)
-            self.assertIn("EditText", text)
+            self.assertIn("EditFile", text)
             self.assertIn("Workspace snapshot", text)
 
     def test_tasks_tab_implement_injects_workspace_without_spec_focus_toggle(self):
@@ -181,7 +181,7 @@ class TestSpecFocusGating(unittest.TestCase):
             self.assertIn("Workspace snapshot", text)
             self.assertIn("Implementation turn (tools)", text)
             self.assertNotIn("Spec-focus mode (BrightVision)", text)
-            self.assertIn("ContextManager create", text)
+            self.assertIn("ResourceManager create", text)
 
     def test_resume_injects_workspace_without_reinject_or_spec_focus(self):
         with tempfile.TemporaryDirectory() as tmp:

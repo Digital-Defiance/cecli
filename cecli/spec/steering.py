@@ -41,22 +41,22 @@ You are in **spec-focus**: work on the active task's requirements, design, and i
 SCAFFOLD_HINT = """\
 ## Scaffolding (this turn)
 
-Use **ContextManager create** for **missing** paths **named in the checklist** (add on missing files is upgraded to create).
-Then **ReadRange** + **EditText** on **one** target file. **No ls.**
-Do not edit or ReadRange paths **not named** in the current checklist item.
+Use **ResourceManager create** for **missing** paths **named in the checklist** (add on missing files is upgraded to create).
+Then **ReadFile** + **EditFile** on **one** target file. **No ls.**
+Do not edit or ReadFile paths **not named** in the current checklist item.
 """
 
 
 IMPLEMENTATION_TOOL_HINTS = """\
 ## Implementation turn (tools)
 
-- **Empty files:** `ReadRange` once with `@000`/`000@`, then **`EditText`** (replace `@000`–`@000`) or **`ContextManager`** create — do not re-read the same empty file.
-- **Before EditText:** always **`ReadRange`** the target file in the same turn (required for new files and after ContextManager create).
-- **Scaffolding:** prefer `ContextManager` + `EditText` over repeated `ls` / `Grep` on known paths.
+- **Empty files:** `ReadFile` once with `@000`/`000@`, then **`EditFile`** (replace `@000`–`@000`) or **`ResourceManager`** create — do not re-read the same empty file.
+- **Before EditFile:** always **`ReadFile`** the target file in the same turn (required for new files and after ResourceManager create).
+- **Scaffolding:** prefer `ResourceManager` + `EditFile` over repeated `ls` / `Grep` on known paths.
 - After a successful read, edit — do not loop on exploration.
-- **UpdateTodoList:** mark **only the current** checklist item `done: true` after **EditText** succeeded (and BrightVision **flutter test** passed when applicable) — never on failed edits or skipped verification.
+- **UpdateTodoList:** mark **only the current** checklist item `done: true` after **EditFile** succeeded (and BrightVision **flutter test** passed when applicable) — never on failed edits or skipped verification.
 - **Do not** run `flutter test` via Command — BrightVision runs it at end of implement turns.
-- When EditText errors, read the error, **ReadRange**, retry one file; do not assume success from assistant prose alone.
+- When EditFile errors, read the error, **ReadFile**, retry one file; do not assume success from assistant prose alone.
 """
 
 

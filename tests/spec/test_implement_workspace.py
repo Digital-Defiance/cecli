@@ -222,7 +222,7 @@ class TestImplementWorkspace(unittest.TestCase):
             ]
             block = build_implement_workspace_block(root, checklist, resume=False)
             self.assertIn("package.json", block)
-            self.assertIn("ContextManager create", block)
+            self.assertIn("ResourceManager create", block)
 
     def test_no_path_checklist_points_at_implementation_tasks(self):
         with tempfile.TemporaryDirectory() as tmp:

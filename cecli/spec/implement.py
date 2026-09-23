@@ -17,14 +17,14 @@ _PATH_IN_CHECKLIST = re.compile(
 _MAX_TOP_LEVEL = 20
 
 _SNAPSHOT_ORIENTATION = (
-    "- **Note:** Top-level listing is orientation only — do **not** ContextManager-add "
+    "- **Note:** Top-level listing is orientation only — do **not** ResourceManager-add "
     "these entries unless the checklist or implementation tasks name them."
 )
 
 _NO_PATH_NEXT_ACTION = (
     "This checklist item names **no file paths**. Use **## Implementation tasks** "
     "(injected above) for deliverable paths for this step — pick **one missing file**, "
-    "then **ContextManager create** → **ReadRange** → **EditText**. "
+    "then **ResourceManager create** → **ReadFile** → **EditFile**. "
     "**Do not** skip to later numbered tasks."
 )
 
@@ -308,8 +308,8 @@ def build_implement_next_action_lines(
         target = named_dart_tests[0]
         lines.append(f"Focus checklist: **{focus.text.strip()}** — `{target}` is on disk.")
         lines.append(
-            f"1. **ReadRange** `{target}` with `@000` / `000@` once\n"
-            f"2. **EditText** only if tests need fixes"
+            f"1. **ReadFile** `{target}` with `@000` / `000@` once\n"
+            f"2. **EditFile** only if tests need fixes"
         )
         if _flutter_project(workspace):
             lines.append(
@@ -318,18 +318,18 @@ def build_implement_next_action_lines(
             )
         else:
             lines.append("3. Mark this checklist item done **only after** edits succeed")
-        lines.append("**Do not** call ls, Grep, GitStatus, or repeat ReadRange on the same file.")
+        lines.append("**Do not** call ls, Grep, GitStatus, or repeat ReadFile on the same file.")
     elif is_test_related_checklist_text(focus.text) and paths and not on_disk:
         lines.append(f"Focus checklist: **{focus.text.strip()}**")
         lines.append(
-            "Create the test file(s) **named in this item** with **ContextManager create**, "
-            "then **ReadRange** + **EditText**. **No ls.**"
+            "Create the test file(s) **named in this item** with **ResourceManager create**, "
+            "then **ReadFile** + **EditFile**. **No ls.**"
         )
     elif is_test_related_checklist_text(focus.text):
         lines.append(f"Focus checklist: **{focus.text.strip()}**")
         lines.append(
-            "Name target file path(s) in the checklist, then **ContextManager** / **ReadRange** / "
-            "**EditText** on **one** file. **No ls.**"
+            "Name target file path(s) in the checklist, then **ResourceManager** / **ReadFile** / "
+            "**EditFile** on **one** file. **No ls.**"
         )
     elif on_disk:
         target = paths[0]
@@ -337,16 +337,16 @@ def build_implement_next_action_lines(
             f"Focus checklist: **{focus.text.strip()}** — paths exist on disk (`{target}`)."
         )
         lines.append(
-            "**ReadRange** the target source file, then **EditText** to finish. **No ls.**"
+            "**ReadFile** the target source file, then **EditFile** to finish. **No ls.**"
         )
     elif paths and not on_disk:
         lines.append(f"Focus checklist: **{focus.text.strip()}**")
         lines.append(
-            "Paths **named in this item** are not on disk yet — use **ContextManager create** "
-            "(not `add` on missing files), then **ReadRange** + **EditText** on **one** target file."
+            "Paths **named in this item** are not on disk yet — use **ResourceManager create** "
+            "(not `add` on missing files), then **ReadFile** + **EditFile** on **one** target file."
         )
         lines.append(
-            "**Do not** ls, Grep, or ReadRange paths **not named** in this checklist item."
+            "**Do not** ls, Grep, or ReadFile paths **not named** in this checklist item."
         )
     elif not paths:
         lines.append(f"Focus checklist: **{focus.text.strip()}**")
@@ -354,14 +354,14 @@ def build_implement_next_action_lines(
     elif resume:
         lines.append(f"Focus checklist: **{focus.text.strip()}**")
         lines.append(
-            "Use **ReadRange** + **EditText** on **one file** for this item. "
+            "Use **ReadFile** + **EditFile** on **one file** for this item. "
             "**Do not** ls, Grep, or GitStatus — use the workspace snapshot above."
         )
     else:
         lines.append(f"Focus checklist: **{focus.text.strip()}**")
         lines.append(
             "Work **this item only** — do not skip ahead to later numbered tasks. "
-            "**ContextManager** / **ReadRange** / **EditText**. **No ls.**"
+            "**ResourceManager** / **ReadFile** / **EditFile**. **No ls.**"
         )
     lines.append(
         "**Scope:** Mark **only** this checklist item done in UpdateTodoList — "
@@ -373,7 +373,7 @@ def build_implement_next_action_lines(
 _IMPLEMENT_CONTINUATION_HINT = """\
 ## Continue (trimmed — token limit / auto-continue)
 
-Work **only** the **Next action** checklist item above. One **EditText** per file.
+Work **only** the **Next action** checklist item above. One **EditFile** per file.
 Do **not** ls, Grep, or GitStatus. Do **not** re-read the full spec.
 Do **not** mark items done until edits succeed and BrightVision verifies tests (when applicable)."""
 
