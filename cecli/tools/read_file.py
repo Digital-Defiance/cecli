@@ -942,17 +942,12 @@ class Tool(BaseTool):
                 file_path = read_op.get("file_path", "")
                 range_start = strip_hashline(
                     str(
-                        nested.getter(
-                            read_op, ["range_start", "start_line", "line_start", "start"]
-                        )
+                        nested.getter(read_op, ["range_start", "start_line", "line_start", "start"])
                         or ""
                     )
                 ).strip()
                 range_end = strip_hashline(
-                    str(
-                        nested.getter(read_op, ["range_end", "end_line", "line_end", "end"])
-                        or ""
-                    )
+                    str(nested.getter(read_op, ["range_end", "end_line", "line_end", "end"]) or "")
                 ).strip()
 
                 # Format as "read: • file_path • range_start • range_end • padding"
