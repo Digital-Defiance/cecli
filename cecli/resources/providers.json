@@ -77,7 +77,8 @@
     "api_key_env": [
       "CHATGPT_API_KEY"
     ],
-    "display_name": "chatgpt"
+    "display_name": "chatgpt",
+    "mode": "responses"
   },
   "chutes": {
     "api_base": "https://llm.chutes.ai/v1/",
