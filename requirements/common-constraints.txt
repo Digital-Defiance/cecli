@@ -429,7 +429,7 @@ sounddevice==0.5.3
     #   moonshine-voice
 soundfile==0.13.1
     # via -r requirements/requirements.in
-soupsieve==2.8
+soupsieve==2.8.4
     # via beautifulsoup4
 sse-starlette==3.0.3
     # via mcp
