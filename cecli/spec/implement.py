@@ -336,18 +336,14 @@ def build_implement_next_action_lines(
         lines.append(
             f"Focus checklist: **{focus.text.strip()}** — paths exist on disk (`{target}`)."
         )
-        lines.append(
-            "**ReadFile** the target source file, then **EditFile** to finish. **No ls.**"
-        )
+        lines.append("**ReadFile** the target source file, then **EditFile** to finish. **No ls.**")
     elif paths and not on_disk:
         lines.append(f"Focus checklist: **{focus.text.strip()}**")
         lines.append(
             "Paths **named in this item** are not on disk yet — use **ResourceManager create** "
             "(not `add` on missing files), then **ReadFile** + **EditFile** on **one** target file."
         )
-        lines.append(
-            "**Do not** ls, Grep, or ReadFile paths **not named** in this checklist item."
-        )
+        lines.append("**Do not** ls, Grep, or ReadFile paths **not named** in this checklist item.")
     elif not paths:
         lines.append(f"Focus checklist: **{focus.text.strip()}**")
         lines.append(_NO_PATH_NEXT_ACTION)
