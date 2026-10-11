@@ -23,9 +23,11 @@ import pytest
 
 # Import the actual classes to test
 from cecli.commands.core import Commands
+from cecli.commands.insert_queue import InsertQueueCommand
 from cecli.commands.list_queue import ListQueueCommand
 from cecli.commands.queue import QueueCommand
 from cecli.commands.remove_queue import RemoveQueueCommand
+from cecli.commands.run_queue import RunQueueCommand
 from cecli.commands.utils.registry import CommandRegistry
 from cecli.helpers import command_queue
 from cecli.signals import ReloadProgramSignal, SwitchCoderSignal
@@ -503,10 +505,173 @@ class TestRemoveQueueCommand:
         assert "*" in completions
 
     def test_itc_20_commands_registered_in_registry(self):
-        """ITC-20: All three commands are registered and discoverable via help/registry lookup."""
+        """ITC-20: All four queue commands are registered and discoverable via registry lookup."""
         assert CommandRegistry.get_command("queue") is not None
         assert CommandRegistry.get_command("list-queue") is not None
         assert CommandRegistry.get_command("remove-queue") is not None
+        assert CommandRegistry.get_command("run-queue") is not None
+
+
+class TestRunQueueCommand:
+    """Integration tests for RunQueueCommand."""
+
+    @pytest.mark.asyncio
+    async def test_itc_21_run_queue_drains_multiple_items_fifo(self, mock_io):
+        """ITC-21: /run-queue drains every queued item in FIFO order."""
+        coder = _make_coder_with_commands(("first", "second", "third"))
+        processed = []
+
+        async def fake_drain():
+            while coder.prompt_queue:
+                item = command_queue.dequeue_prompt(coder)
+                processed.append(item["text"])
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await RunQueueCommand.execute(mock_io, coder, "")
+
+        assert result == "Successfully executed run-queue."
+        assert processed == ["first", "second", "third"]
+        assert command_queue.get_queue_length(coder) == 0
+
+    @pytest.mark.asyncio
+    async def test_itc_22_run_queue_exception_returns_formatted_error(self, mock_io):
+        """ITC-22: An exception in process_prompt_queue returns a formatted error."""
+        coder = _make_coder_with_commands(("boom",))
+
+        async def failing_drain():
+            raise RuntimeError("drain exploded")
+
+        coder.process_prompt_queue = failing_drain
+
+        result = await RunQueueCommand.execute(mock_io, coder, "")
+
+        assert "Error" in result
+        assert "drain exploded" in result
+        mock_io.tool_error.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_itc_23_run_queue_empty_queue_informs_user(self, mock_io, mock_coder):
+        """ITC-23: /run-queue on an empty queue informs the user without error."""
+        result = await RunQueueCommand.execute(mock_io, mock_coder, "")
+
+        assert result == "Successfully executed run-queue."
+        calls = [str(call) for call in mock_io.tool_output.call_args_list]
+        assert any("Queue is empty" in call for call in calls)
+
+    @pytest.mark.asyncio
+    async def test_itc_24_run_queue_handles_coder_commands_none(
+        self, mock_io, mock_coder_no_commands
+    ):
+        """ITC-24: /run-queue handles coder.commands is None with error message."""
+        result = await RunQueueCommand.execute(mock_io, mock_coder_no_commands, "")
+
+        assert "Error" in result or "not available" in result.lower()
+
+
+class TestQueueIdleImmediate:
+    """Integration tests for idle-immediate queue draining (plan step 9.8)."""
+
+    @pytest.mark.asyncio
+    async def test_itc_25_queue_idle_triggers_immediate_processing(self, mock_io):
+        """ITC-25: /queue while idle (run_one_completed=True) drains the queue now."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = True
+        coder._processing_queue = False
+        processed = []
+
+        async def fake_drain():
+            while coder.prompt_queue:
+                item = command_queue.dequeue_prompt(coder)
+                processed.append(item["text"])
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await QueueCommand.execute(mock_io, coder, "idle prompt")
+
+        assert result == "Successfully executed queue."
+        assert processed == ["idle prompt"]
+        assert command_queue.get_queue_length(coder) == 0
+
+    @pytest.mark.asyncio
+    async def test_itc_26_queue_busy_does_not_trigger_processing(self, mock_io):
+        """ITC-26: /queue while a request is in flight defers to the auto-drain."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = False
+        coder._processing_queue = False
+        drain_calls = []
+
+        async def fake_drain():
+            drain_calls.append(True)
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await QueueCommand.execute(mock_io, coder, "busy prompt")
+
+        assert result == "Successfully executed queue."
+        assert drain_calls == []
+        assert command_queue.get_queue_length(coder) == 1
+        assert coder.prompt_queue[0]["text"] == "busy prompt"
+
+    @pytest.mark.asyncio
+    async def test_itc_27_queue_guard_prevents_double_drain(self, mock_io):
+        """ITC-27: _processing_queue=True suppresses the idle drain (re-entrancy guard)."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = True
+        coder._processing_queue = True
+        drain_calls = []
+
+        async def fake_drain():
+            drain_calls.append(True)
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await QueueCommand.execute(mock_io, coder, "guarded prompt")
+
+        assert result == "Successfully executed queue."
+        assert drain_calls == []
+        assert command_queue.get_queue_length(coder) == 1
+
+    @pytest.mark.asyncio
+    async def test_itc_28_insert_queue_idle_triggers_immediate_processing(self, mock_io):
+        """ITC-28: /insert-queue while idle drains the queue immediately."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = True
+        coder._processing_queue = False
+        processed = []
+
+        async def fake_drain():
+            while coder.prompt_queue:
+                item = command_queue.dequeue_prompt(coder)
+                processed.append(item["text"])
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await InsertQueueCommand.execute(mock_io, coder, "1 idle insert")
+
+        assert result == "Successfully executed insert-queue."
+        assert processed == ["idle insert"]
+        assert command_queue.get_queue_length(coder) == 0
+
+    @pytest.mark.asyncio
+    async def test_itc_29_insert_queue_busy_does_not_trigger_processing(self, mock_io):
+        """ITC-29: /insert-queue while a request is in flight defers to auto-drain."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = False
+        coder._processing_queue = False
+        drain_calls = []
+
+        async def fake_drain():
+            drain_calls.append(True)
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await InsertQueueCommand.execute(mock_io, coder, "1 busy insert")
+
+        assert result == "Successfully executed insert-queue."
+        assert drain_calls == []
+        assert command_queue.get_queue_length(coder) == 1
+        assert coder.prompt_queue[0]["text"] == "busy insert"
 
 
 # ============================================================================
@@ -550,7 +715,12 @@ class TestQueueLifecycle:
         self, mock_io, clean_commands
     ):
         """ETC-06: Management commands do not trigger auto-processing of queued items."""
-        assert clean_commands._MANAGEMENT_COMMANDS == {"queue", "list-queue", "remove-queue"}
+        assert clean_commands._MANAGEMENT_COMMANDS == {
+            "queue",
+            "list-queue",
+            "remove-queue",
+            "run-queue",
+        }
 
     @pytest.mark.asyncio
     async def test_etc_05_prevent_infinite_loop(self, populated_queue):
@@ -639,7 +809,7 @@ class TestRegression:
         coder = clean_commands.coder
         command_queue.enqueue_prompt(coder, "item")
 
-        assert isinstance(coder._queue_lock, threading.Lock)
+        assert isinstance(coder._queue_lock, type(threading.Lock()))
 
 
 # ============================================================================
@@ -691,6 +861,7 @@ class TestCommandRegistration:
         assert "queue" in commands
         assert "list-queue" in commands
         assert "remove-queue" in commands
+        assert "run-queue" in commands
 
     def test_command_classes_have_required_attributes(self):
         """Verify command classes have NORM_NAME and DESCRIPTION."""
@@ -703,6 +874,9 @@ class TestCommandRegistration:
         assert RemoveQueueCommand.NORM_NAME == "remove-queue"
         assert RemoveQueueCommand.DESCRIPTION is not None
 
+        assert RunQueueCommand.NORM_NAME == "run-queue"
+        assert RunQueueCommand.DESCRIPTION is not None
+
     def test_command_classes_have_execute_method(self):
         """Verify command classes have async execute method."""
         assert hasattr(QueueCommand, "execute")
@@ -712,6 +886,7 @@ class TestCommandRegistration:
         assert callable(QueueCommand.execute)
         assert callable(ListQueueCommand.execute)
         assert callable(RemoveQueueCommand.execute)
+        assert callable(RunQueueCommand.execute)
 
 
 # ============================================================================
