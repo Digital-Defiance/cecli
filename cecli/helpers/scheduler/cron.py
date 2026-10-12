@@ -11,7 +11,8 @@ All returned datetimes are timezone-aware UTC. The *timezone* parameter
 selects the wall-clock zone the cron expression is interpreted in (an IANA
 name such as ``"UTC"`` or ``"America/New_York"``); the sentinel ``"local"``
 and ``None`` both mean UTC, which keeps scheduler behavior deterministic
-across machines.
+across machines. Named zones need an IANA tz database, which Windows lacks:
+``tzdata`` is therefore required there, while UTC itself never needs one.
 """
 
 from __future__ import annotations
@@ -31,6 +32,10 @@ CRON_PRESETS = {
 }
 
 _INTERVAL_RE = re.compile(r"^@every\s+(\d+)(s|m|h|d|w)$", re.IGNORECASE)
+
+# Names that mean "exactly UTC". Answered without consulting the IANA database
+# so a bare host (Windows ships none) can still schedule in UTC.
+_UTC_ALIASES = frozenset({"utc", "z", "zulu", "universal", "gmt", "etc/utc", "etc/gmt"})
 
 _INTERVAL_UNITS = {
     "s": timedelta(seconds=1),
@@ -98,7 +103,7 @@ def next_run(
 
     from croniter import croniter
 
-    zone = _resolve_zone(timezone)
+    zone = resolve_timezone(timezone)
     base = after_utc.astimezone(zone)
     nxt = croniter(value, base).get_next(datetime)
 
@@ -118,6 +123,27 @@ def is_due(
     return previous is not None and previous <= _to_utc(at_dt)
 
 
+def resolve_timezone(timezone: Optional[str]):
+    """Map a config timezone to a tzinfo (``'local'``/None/UTC aliases -> UTC).
+
+    Raises ``ValueError`` for names the IANA database does not know.
+    """
+
+    if timezone is None:
+        return dt_timezone.utc
+
+    lowered = str(timezone).strip().lower()
+    if not lowered or lowered in _UTC_ALIASES or lowered == "local":
+        return dt_timezone.utc
+
+    from zoneinfo import ZoneInfo
+
+    try:
+        return ZoneInfo(str(timezone).strip())
+    except (KeyError, ValueError) as exc:
+        raise ValueError(f"unknown timezone: {timezone!r}{_tzdb_hint()}") from exc
+
+
 # ── private helpers ─────────────────────────────────────────────────────
 
 
@@ -127,22 +153,18 @@ def _looks_like_cron(text: str) -> bool:
     return len(text.split()) == 5
 
 
-def _resolve_zone(timezone: Optional[str]):
-    """Map the config timezone sentinel to a tzinfo (``'local'``/None -> UTC)."""
+def _tzdb_hint() -> str:
+    """Suffix naming the real cause when a host simply has no tz database."""
 
-    if timezone is None:
-        return dt_timezone.utc
-
-    name = str(timezone).strip()
-    if not name or name.lower() == "local":
-        return dt_timezone.utc
-
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    from zoneinfo import available_timezones
 
     try:
-        return ZoneInfo(name)
-    except (ValueError, ZoneInfoNotFoundError) as exc:
-        raise ValueError(f"unknown timezone: {timezone!r}") from exc
+        if available_timezones():
+            return ""
+    except OSError:
+        pass
+
+    return " (no IANA tz database found - install the 'tzdata' package)"
 
 
 def _to_utc(dt: datetime) -> datetime:

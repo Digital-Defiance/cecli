@@ -315,6 +315,28 @@ def test_bad_timezone_warns_but_loads(isolated, caplog):
     assert "falls back to UTC" in caplog.text
 
 
+def test_utc_timezone_never_warns(isolated, caplog, monkeypatch):
+    """A host without a tz database (bare Windows) must still accept 'UTC'."""
+    import zoneinfo
+
+    def explode(key):
+        raise zoneinfo.ZoneInfoNotFoundError(key)
+
+    monkeypatch.setattr(zoneinfo, "ZoneInfo", explode)
+
+    _home_workflow(
+        isolated["wdir"],
+        "tzutc.yml",
+        "name: tzutc\ntimezone: UTC\nschedule: '0 9 * * *'\ntasks:\n  - prompt: x\n",
+    )
+
+    with caplog.at_level(logging.WARNING, logger=logger_name):
+        configs = load_workflows()
+
+    assert [wf.name for wf in configs] == ["tzutc"]
+    assert "falls back to UTC" not in caplog.text
+
+
 # ── Case 6: discovery precedence ────────────────────────────────────────────
 
 

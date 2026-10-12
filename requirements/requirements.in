@@ -45,6 +45,8 @@ tomlkit>=0.14.0
 
 # scheduler cron expressions (workflows)
 croniter>=6.0.5
+# zoneinfo needs an IANA tz database and Windows ships none, so pull it from PyPI there
+tzdata>=2024.1; platform_system == "Windows"
 
 # search & replace in legacy modes
 diff-match-patch>=20241021

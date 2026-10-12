@@ -153,11 +153,11 @@ def validate_workflow_config(wf: WorkflowConfig, raw: Optional[Dict[str, Any]] =
     _check_schedule(wf.schedule, where)
 
     if wf.timezone and wf.timezone != "local":
-        try:
-            from zoneinfo import ZoneInfo
+        from cecli.helpers.scheduler.cron import resolve_timezone
 
-            ZoneInfo(wf.timezone)
-        except Exception:
+        try:
+            resolve_timezone(wf.timezone)
+        except ValueError:
             warnings.append(f"unknown 'timezone' {wf.timezone!r}; scheduling falls back to UTC")
 
     warnings += _unknown_key_warnings(norm, where)

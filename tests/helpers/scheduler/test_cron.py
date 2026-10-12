@@ -3,11 +3,18 @@
 Self-contained (no conftest fixtures required).
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+from datetime import timezone
+from datetime import timezone as dt_timezone
 
 import pytest
 
-from cecli.helpers.scheduler.cron import is_due, next_run, parse_schedule
+from cecli.helpers.scheduler.cron import (
+    is_due,
+    next_run,
+    parse_schedule,
+    resolve_timezone,
+)
 
 
 def _dt(text: str) -> datetime:
@@ -141,6 +148,34 @@ def test_malformed_raises_value_error(expr):
 def test_unknown_timezone_raises_value_error():
     with pytest.raises(ValueError):
         next_run("*/30 * * * *", _dt("2026-10-10T12:00:00Z"), timezone="Mars/Olympus_Mons")
+
+
+# ── case 43b: hosts with no IANA tz database (bare Windows) ───────────
+
+
+@pytest.fixture
+def no_tzdb(monkeypatch):
+    """Pretend zoneinfo has no tz database to read (a Windows box without tzdata)."""
+    import zoneinfo
+
+    def explode(key):
+        raise zoneinfo.ZoneInfoNotFoundError(key)
+
+    monkeypatch.setattr(zoneinfo, "ZoneInfo", explode)
+    monkeypatch.setattr(zoneinfo, "available_timezones", lambda: set())
+
+
+def test_utc_needs_no_tz_database(no_tzdb):
+    base = _dt("2026-10-10T12:07:00Z")
+
+    for name in ("UTC", "utc", " Zulu ", "Etc/UTC", "GMT", "local", ""):
+        assert resolve_timezone(name) is dt_timezone.utc
+        assert next_run("*/30 * * * *", base, timezone=name) == _dt("2026-10-10T12:30:00Z")
+
+
+def test_named_zone_without_tz_database_blames_the_database(no_tzdb):
+    with pytest.raises(ValueError, match="tzdata"):
+        next_run("*/30 * * * *", _dt("2026-10-10T12:00:00Z"), timezone="Europe/Berlin")
 
 
 # ── case 44: manual schedules ─────────────────────────────────────────

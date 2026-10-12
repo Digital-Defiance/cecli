@@ -65,6 +65,8 @@ def test_register_workflow_subagents_registers_and_is_idempotent():
 
 def test_metadata_mapping(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
+    # Windows ignores HOME for ~ expansion (ntpath uses USERPROFILE)
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     root = tmp_path / "repo"
     root.mkdir()
 
