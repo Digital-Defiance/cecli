@@ -11,7 +11,7 @@ Test categories:
 - UTC-01 through UTC-20: Unit tests for queue helpers
 - ITC-01 through ITC-20: Integration tests for commands
 - ETC-01 through ETC-10: E2E tests for full lifecycle
-- RTC-01 through RTC-05: Regression tests for existing functionality
+- RTC-01 through RTC-06: Regression tests for existing functionality
 - TDS-01 through TDS-04: Test data setup and fixtures
 """
 
@@ -674,6 +674,51 @@ class TestQueueIdleImmediate:
         assert coder.prompt_queue[0]["text"] == "busy insert"
 
 
+class TestRunOneCommandPathDrain:
+    """Regression tests for the run_one() command-path drain (plan step 9.9)."""
+
+    @pytest.mark.asyncio
+    async def test_itc_30_run_one_command_path_drains_idle_queue(self, mock_io):
+        """ITC-30: A user-typed /queue while idle drains via run_one()'s command
+        early return even though run_one_completed is False while the command
+        executes inside generate() (so the command-side idle drain is skipped).
+        """
+        from cecli.coders.base_coder import Coder
+
+        coder = _make_coder_with_commands()
+        coder.io = mock_io
+        # Bug scenario: the typed /queue runs inside generate(), which has
+        # already set run_one_completed=False, so the command-side idle drain
+        # in queue.py is skipped; only run_one()'s early return can drain.
+        coder.run_one_completed = False
+        coder._processing_queue = False
+
+        calls = []
+        processed = []
+
+        async def fake_preproc(inp):
+            calls.append("preproc")
+            return await coder.commands.run(inp, coder=coder)
+
+        async def fake_drain(preproc=True):
+            calls.append("drain")
+            while coder.prompt_queue:
+                item = command_queue.dequeue_prompt(coder)
+                processed.append(item["text"])
+
+        coder.preproc_user_input = fake_preproc
+        coder.process_prompt_queue = fake_drain
+
+        await Coder.run_one(coder, "/queue tell me the color of the sun", preproc=True)
+
+        # The command ran first, then exactly one drain fired from run_one()'s
+        # command early return. A command-side idle drain would have added a
+        # second "drain" entry while still inside "preproc".
+        assert calls == ["preproc", "drain"]
+        assert processed == ["tell me the color of the sun"]
+        assert command_queue.get_queue_length(coder) == 0
+
+
 # ============================================================================
 # E2E Tests - Full Queue Lifecycle (Section 10.4, ETC-01 through ETC-10)
 # ============================================================================
@@ -810,6 +855,7 @@ class TestRegression:
         command_queue.enqueue_prompt(coder, "item")
 
         assert isinstance(coder._queue_lock, type(threading.Lock()))
+
 
 
 # ============================================================================
