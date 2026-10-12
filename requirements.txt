@@ -77,6 +77,10 @@ configargparse==1.7.1
     # via
     #   -c requirements/common-constraints.txt
     #   -r requirements/requirements.in
+croniter==6.2.4
+    # via
+    #   -c requirements/common-constraints.txt
+    #   -r requirements/requirements.in
 cryptography==46.0.3
     # via
     #   -c requirements/common-constraints.txt
@@ -408,6 +412,7 @@ pyproject-hooks==1.2.0
 python-dateutil==2.9.0.post0
     # via
     #   -c requirements/common-constraints.txt
+    #   croniter
     #   kubernetes
 python-dotenv==1.2.2
     # via

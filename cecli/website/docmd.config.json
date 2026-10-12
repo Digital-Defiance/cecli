@@ -109,6 +109,10 @@
           "path": "/config/retries/"
         },
         {
+          "title": "Scheduler",
+          "path": "/config/scheduler/"
+        },
+        {
           "title": "Security Configuration",
           "path": "/config/security/"
         },
@@ -123,6 +127,10 @@
         {
           "title": "TUI",
           "path": "/config/tui/"
+        },
+        {
+          "title": "Workflows",
+          "path": "/config/workflows/"
         },
         {
           "title": "Workspaces",

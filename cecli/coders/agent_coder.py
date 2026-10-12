@@ -1798,6 +1798,7 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
                 info
                 for info in children
                 if not info.independent
+                and not info.detached
                 and info.status not in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR)
             ]
 
@@ -1810,6 +1811,7 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
             for info in service.sub_agents.values():
                 if (
                     info.independent
+                    and not info.detached
                     and str(info.coder.uuid) != originator_uuid
                     and info.status not in (SubAgentStatus.ERROR,)
                     and info.coder.uuid not in dependent_uuids

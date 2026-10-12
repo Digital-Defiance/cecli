@@ -110,6 +110,7 @@ class Tool(BaseTool):
                     info.generate_task
                     for info in children
                     if not info.independent
+                    and not info.detached
                     and info.generate_task is not None
                     and not info.generate_task.done()
                 ]
@@ -167,7 +168,9 @@ class Tool(BaseTool):
 
                     # Wait for non-independent child agents to reach a terminal status
                     children = agent_service.get_children(coder)
-                    non_independent_children = [info for info in children if not info.independent]
+                    non_independent_children = [
+                        info for info in children if not info.independent and not info.detached
+                    ]
 
                     if non_independent_children:
                         interrupt_event = coder.interrupt_event
@@ -182,6 +185,7 @@ class Tool(BaseTool):
                                 info
                                 for info in refreshed_children
                                 if not info.independent
+                                and not info.detached
                                 and info.status
                                 not in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR)
                             ]

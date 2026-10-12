@@ -63,6 +63,7 @@ DEEP_MERGE_JSON_FIELDS: frozenset[str] = frozenset(
         "custom",
         "system_one",
         "tui_config",
+        "workflows",
     }
 )
 
@@ -427,6 +428,25 @@ def get_parser(default_config_files, git_root):
         metavar="HOOKS_CONFIG_JSON",
         help="Specify hooks configuration as a JSON string",
         default=None,
+    )
+    group.add_argument(
+        "--workflows",
+        metavar="WORKFLOWS_JSON",
+        help=(
+            "Specify workflows configuration as an inline JSON/YAML string (e.g.,"
+            ' \'[{"name": "nightly", "tasks": [...]}]\') or a path to a workflows file'
+        ),
+        default=None,
+    )
+    group.add_argument(
+        "--scheduler",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Force the workflow scheduler on (--scheduler) or off (--no-scheduler) for"
+            " this session. (default: auto, on when any enabled scheduled workflow"
+            " exists)"
+        ),
     )
     group.add_argument(
         "--system-one",

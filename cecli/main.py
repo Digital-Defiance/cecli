@@ -172,6 +172,7 @@ YAML_TO_JSON_ARG_KEYS = {
     "model_providers": "model-providers",
     "system_one": "system-one",
     "server_config": "server-config",
+    "workflows": "workflows",
 }
 
 
@@ -804,7 +805,7 @@ async def main_async(
                 convert_yaml_to_json_string(getattr(args, arg_name), config_file_value),
             )
 
-    # Interpolate environment variables in all string arguments
+    # ── Interpolate environment variables in all string arguments ──
     for key, value in vars(args).items():
         if isinstance(value, str):
             setattr(args, key, interpolate_env_vars(value))
@@ -812,6 +813,20 @@ async def main_async(
             setattr(
                 args, key, [interpolate_env_vars(v) if isinstance(v, str) else v for v in value]
             )
+
+    # ── Workflows config plumbing (consumers wired in later phases) ──
+    # A malformed workflows file must never crash startup: fall back to [].
+    try:
+        from cecli.helpers.workflows import load_workflows
+
+        _workflows = load_workflows(
+            config_arg=args.workflows, merged_config=merged_config, git_root=git_root
+        )
+    except Exception as exc:
+        logging.warning("Failed to load workflows config: %s", exc)
+
+        _workflows = []
+    args._workflows = _workflows
 
     if args.debug:
         global log_file
@@ -1387,6 +1402,24 @@ async def main_async(
     # leak into asyncio.run() shutdown (which hangs with mcp 2.x stdio tasks).
     coder.mcp_manager = mcp_manager
 
+    # Workflows: register the ``wf:{name}`` sub-agents before any mode runs, so
+    # both scheduler dispatch and /workflows run can spawn them. Registration is
+    # pure registry state; nothing here touches the scheduler DB.
+    _workflows = getattr(args, "_workflows", None) or []
+
+    # Stash the raw workflow sources on the coder so ``/workflows reload`` can
+    # re-resolve the full precedence chain (main_async's locals are long gone).
+    coder.workflows_merged_config = merged_config
+    coder.workflows_config_arg = getattr(args, "workflows", None)
+
+    if _workflows:
+        from cecli.helpers.workflows import register_workflow_subagents
+
+        try:
+            register_workflow_subagents(_workflows)
+        except Exception:
+            logging.exception("workflow sub-agent registration failed")
+
     if return_coder:
         return coder
     ignores = []
@@ -1500,6 +1533,26 @@ async def main_async(
         return await graceful_exit(coder)
     if args.exit:
         return await graceful_exit(coder)
+
+    # ── Workflow scheduler ────────────────────────────────────────────
+    # Only interactive/daemon sessions reach this point: the one-shot
+    # --message/--exit paths above return before the scheduler can tick.
+    # Auto mode turns it on iff at least one enabled scheduled workflow
+    # exists, so nothing ever touches the coordination DB otherwise.
+    _scheduler_cfg = merged_config.get("scheduler") or {}
+    if _workflows and _scheduler_enabled(args, _scheduler_cfg, _workflows):
+        from cecli.helpers.scheduler import SchedulerService
+
+        coder.scheduler = SchedulerService(
+            coder,
+            _workflows,
+            io,
+            tick_seconds=_scheduler_cfg.get("tick_seconds", 60),
+            catch_up=_scheduler_cfg.get("catch_up", True),
+            max_catchup=_scheduler_cfg.get("max_catchup", 1),
+        )
+        await coder.scheduler.start()
+
     if args.auto_load:
         if await pre_init_io.confirm_ask(
             "Do you want to load your previous session?",
@@ -1561,6 +1614,7 @@ async def main_async(
             # Clean up before full program reload (mirrors while True loop below)
             sys.settrace(None)
             await coder.auto_save_session(force=True)
+            await _stop_scheduler_quietly(coder)
             if coder.mcp_manager and coder.mcp_manager.is_connected:
                 await coder.mcp_manager.disconnect_all()
 
@@ -1625,9 +1679,38 @@ async def main_async(
             # Clean up before full program reload
             sys.settrace(None)
             await coder.auto_save_session(force=True)
+            await _stop_scheduler_quietly(coder)
             if coder.mcp_manager and coder.mcp_manager.is_connected:
                 await coder.mcp_manager.disconnect_all()
             raise
+
+
+def _scheduler_enabled(args, scheduler_cfg, workflows):
+    """Resolve whether the scheduler should run: CLI flag > config > auto."""
+
+    if getattr(args, "scheduler", None) is not None:
+        return bool(args.scheduler)
+
+    if scheduler_cfg.get("enabled", None) is not None:
+        return bool(scheduler_cfg.get("enabled"))
+
+    return any(getattr(wf, "schedule", None) and getattr(wf, "enabled", True) for wf in workflows)
+
+
+async def _stop_scheduler_quietly(coder):
+    """Best-effort scheduler shutdown used by reload/exit paths."""
+
+    import logging
+
+    scheduler = getattr(coder, "scheduler", None)
+    stop = getattr(scheduler, "stop", None)
+    if scheduler is None or not callable(stop) or asyncio.iscoroutinefunction(stop) is not True:
+        return
+
+    try:
+        await stop()
+    except Exception:
+        logging.getLogger(__name__).debug("scheduler stop failed", exc_info=True)
 
 
 def is_first_run_of_new_version(io, verbose=False):
@@ -1792,6 +1875,8 @@ async def graceful_exit(coder=None, exit_code=0):
     if coder:
         if hasattr(coder, "_autosave_future"):
             await coder._autosave_future
+
+        await _stop_scheduler_quietly(coder)
 
         if coder.mcp_manager and coder.mcp_manager.is_connected:
             await coder.mcp_manager.disconnect_all()

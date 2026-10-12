@@ -589,6 +589,133 @@ class TestWait:
 
 
 # ================================================================== #
+# Detached agents (workflow islands)
+# ================================================================== #
+
+
+class TestDetachedAgents:
+    """Detached agents stay out of the parent's context and child scans."""
+
+    @pytest.mark.asyncio
+    async def test_detached_result_is_not_injected(self, service, mock_coder):
+        import weakref
+
+        child = MagicMock()
+        child.uuid = "child-uuid"
+        service._uuid_coder_map["parent-uuid"] = weakref.ref(mock_coder)
+        info = SubAgentInfo(
+            name="wf:demo",
+            coder=child,
+            parent_uuid="parent-uuid",
+            status=SubAgentStatus.FINISHED,
+            summary="all done",
+            detached=True,
+        )
+
+        with patch(
+            "cecli.helpers.conversation.service.ConversationService.get_manager"
+        ) as get_manager:
+            await service._inject_sub_agent_result(info)
+
+        get_manager.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_attached_result_is_injected(self, service, mock_coder):
+        import weakref
+
+        child = MagicMock()
+        child.uuid = "child-uuid"
+        service._uuid_coder_map["parent-uuid"] = weakref.ref(mock_coder)
+        info = SubAgentInfo(
+            name="reviewer",
+            coder=child,
+            parent_uuid="parent-uuid",
+            status=SubAgentStatus.FINISHED,
+            summary="all done",
+        )
+
+        with patch(
+            "cecli.helpers.conversation.service.ConversationService.get_manager"
+        ) as get_manager:
+            await service._inject_sub_agent_result(info)
+
+        assert get_manager.return_value.add_message.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_wait_skips_detached_children(self, service):
+        parent_coder = MagicMock()
+        parent_coder.uuid = "parent-uuid"
+
+        detached_child = MagicMock()
+        detached_child.uuid = "detached-uuid"
+        service.sub_agents["detached-uuid"] = SubAgentInfo(
+            name="wf:demo",
+            coder=detached_child,
+            parent_uuid="parent-uuid",
+            status=SubAgentStatus.FINISHED,
+            summary="background run",
+            detached=True,
+        )
+
+        normal_child = MagicMock()
+        normal_child.uuid = "normal-uuid"
+        service.sub_agents["normal-uuid"] = SubAgentInfo(
+            name="reviewer",
+            coder=normal_child,
+            parent_uuid="parent-uuid",
+            status=SubAgentStatus.FINISHED,
+            summary="done",
+        )
+
+        result = await service.wait(parent_coder)
+
+        assert result == ["done"]
+
+
+# ================================================================== #
+# TUI notification threading
+# ================================================================== #
+
+
+class TestTuiNotify:
+    """Container notifications must work from the app thread or a worker one."""
+
+    def test_same_thread_falls_back_to_direct_call(self):
+        from cecli.helpers.agents.service import _tui_notify
+
+        hits = []
+
+        class AppThreadTui:
+            def call_from_thread(self, callback, *args):
+                raise RuntimeError(
+                    "The `call_from_thread` method must run in a different thread from the app"
+                )
+
+            def container(self, *args):
+                hits.append(args)
+
+        tui = AppThreadTui()
+        _tui_notify(tui, tui.container, "u1", "wf:demo")
+
+        assert hits == [("u1", "wf:demo")]
+
+    def test_cross_thread_uses_call_from_thread(self):
+        from cecli.helpers.agents.service import _tui_notify
+
+        class WorkerThreadTui:
+            def __init__(self):
+                self.via_thread = []
+
+            def call_from_thread(self, callback, *args):
+                self.via_thread.append(args)
+
+        tui = WorkerThreadTui()
+        _tui_notify(tui, lambda *a: None, "u2")
+
+        assert tui.via_thread == [("u2",)]
+
+
+# ================================================================== #
 # Foreground tracking
 # ================================================================== #
 
@@ -762,3 +889,76 @@ class TestKeepFiles:
         assert "fnames" not in call_kwargs
         assert "read_only_fnames" not in call_kwargs
         assert "read_only_stubs_fnames" not in call_kwargs
+
+
+# ================================================================== #
+# agent_config inheritance prefixes (ws: / wf:)
+# ================================================================== #
+
+
+class TestAgentInheritPrefixes:
+    """The AGENT_INHERIT_PREFIXES branch of _create_sub_agent_coder()."""
+
+    def _register(self, name, agent_config):
+        from cecli.helpers.agents.config import SubAgentConfig
+
+        AgentService.register_subagent(
+            name,
+            SubAgentConfig(name=name, prompt="", metadata={"agent-config": agent_config}),
+        )
+
+    async def _create(self, service, name):
+        mock_new_coder = MagicMock()
+        mock_new_coder.tui = None
+
+        with patch("cecli.coders.Coder") as MockCoder:
+            MockCoder.create = AsyncMock(return_value=mock_new_coder)
+            with patch("cecli.helpers.conversation.service.ConversationService") as MockConv:
+                MockConv.get_chunks.return_value = MagicMock()
+                await service.spawn(name, parent=service.coder)
+
+        return MockCoder.create.call_args[1]["init_metadata"]["agent_config"]
+
+    @pytest.mark.asyncio
+    async def test_wf_agent_inherits_and_merges(self, service):
+        """wf: inherits the parent agent_config, own keys win, delegation defaults on."""
+        service.coder.agent_config = {"subagent_paths": ["p"], "x": "parent"}
+        self._register("wf:demo", {"x": "child", "skip_cli_confirmations": True})
+
+        merged = await self._create(service, "wf:demo")
+
+        assert merged["subagent_paths"] == ["p"]  # inherited from parent
+        assert merged["x"] == "child"  # own config merged on top
+        assert merged["skip_cli_confirmations"] is True
+        assert merged["allow_nested_delegation"] is True  # defaulted
+
+    @pytest.mark.asyncio
+    async def test_wf_respects_explicit_optout(self, service):
+        """wf: uses setdefault, so an explicit False in the config survives."""
+        service.coder.agent_config = {"allow_nested_delegation": False}
+        self._register("wf:opt", {"skip_cli_confirmations": True})
+
+        merged = await self._create(service, "wf:opt")
+
+        assert merged["allow_nested_delegation"] is False
+
+    @pytest.mark.asyncio
+    async def test_ws_hard_set_preserved(self, service):
+        """ws: still hard-sets allow_nested_delegation=True (unchanged behavior)."""
+        service.coder.agent_config = {"allow_nested_delegation": False, "tools_paths": ["t"]}
+        self._register("ws:app", {})
+
+        merged = await self._create(service, "ws:app")
+
+        assert merged["tools_paths"] == ["t"]
+        assert merged["allow_nested_delegation"] is True
+
+    @pytest.mark.asyncio
+    async def test_plain_worker_does_not_inherit(self, service):
+        """A plain name never triggers the inheritance merge."""
+        service.coder.agent_config = {"parent_only": 1, "allow_nested_delegation": False}
+        self._register("worker", {"own": 2})
+
+        merged = await self._create(service, "worker")
+
+        assert merged == {"own": 2}

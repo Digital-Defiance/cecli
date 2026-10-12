@@ -146,6 +146,11 @@ def resolve_reload_agent_name(name: str, root: Optional[str]) -> Optional[str]:
 
         registry = AgentService.get_registry()
 
+    if name not in registry and name.startswith("wf:"):
+        ensure_wf_agent_registered(name)
+
+        registry = AgentService.get_registry()
+
     if name in registry:
         return name
 
@@ -166,6 +171,18 @@ def ensure_ws_agent_registered(name: str, root: str) -> None:
             "projects": [{"name": project_name, "path": root}],
         }
     )
+
+
+def ensure_wf_agent_registered(name: str) -> None:
+    """Re-register a ``wf:`` workflow agent from the cached definitions.
+
+    The scheduler/workflow loader caches every loaded definition, so a restored
+    session never re-runs the job: it just rebuilds the agent registry entry if
+    startup had not already registered it.
+    """
+    from cecli.helpers.workflows.subagents import ensure_wf_agent_registered as _ensure
+
+    _ensure(name)
 
 
 def _descends_from(info, root_uuid: str, infos: Dict[str, object]) -> bool:
