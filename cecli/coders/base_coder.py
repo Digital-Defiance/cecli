@@ -406,6 +406,18 @@ class Coder(metaclass=UsageMeta):
                 if from_coder.tui:
                     res.tui = from_coder.tui
 
+                # The scheduler is an active service owned by the primary
+                # coder: a switch runs inside the same event loop, so carry it
+                # over (and rebind its coder) instead of leaking a ticking
+                # zombie onto the retired coder. Recreations that keep the
+                # uuid are switches/reloads; sub-agents spawn with a fresh
+                # uuid, and a stopped scheduler (reload) is never handed on.
+                scheduler = getattr(from_coder, "scheduler", None)
+                if scheduler is not None and scheduler.running and res.uuid == from_coder.uuid:
+                    from_coder.scheduler = None
+                    res.scheduler = scheduler
+                    scheduler.coder = res
+
                 # Sub-agents get a dedicated, independent MCP manager so they
                 # can rebuild a custom tool list (their own LocalServer tools /
                 # filters) and be disconnected independently from the parent.

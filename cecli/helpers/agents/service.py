@@ -34,6 +34,11 @@ MODEL_SENTINEL_AGENT = "<agent_model>"
 MODEL_SENTINEL_MAIN = "<main_model>"
 MODEL_SENTINEL_CURRENT = "<current>"
 
+# Sub-agent name prefixes whose coder inherits the parent's ``agent_config``
+# (merged with the agent's own config on top): ``ws:`` workspace agents and
+# ``wf:`` workflow agents.
+AGENT_INHERIT_PREFIXES = ("ws:", "wf:")
+
 
 class SubAgentStatus(Enum):
     """Status of a sub-agent."""
@@ -59,6 +64,7 @@ class SubAgentInfo:
     )
     auto_reap: bool = True  # If True, agent may be automatically reaped when FINISHED
     independent: bool = False
+    detached: bool = False
 
 
 class AgentService:
@@ -383,6 +389,8 @@ class AgentService:
         def _has_unfinished_descendants(agent_uuid: str) -> bool:
             """Return True if *agent_uuid* has any non-FINISHED/non-ERROR descendant."""
             for child in parent_to_children.get(agent_uuid, []):
+                if child.detached:
+                    continue
                 if child.status not in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR):
                     return True
                 if _has_unfinished_descendants(child.coder.uuid):
@@ -425,6 +433,8 @@ class AgentService:
         def _has_unfinished_descendants(agent_uuid: str) -> bool:
             """Return True if *agent_uuid* has any non-FINISHED/non-ERROR descendant."""
             for child in parent_to_children.get(agent_uuid, []):
+                if child.detached:
+                    continue
                 if child.status not in (SubAgentStatus.FINISHED, SubAgentStatus.ERROR):
                     return True
                 if _has_unfinished_descendants(child.coder.uuid):
@@ -488,7 +498,7 @@ class AgentService:
             # their own tui attribute; only the primary coder stores it.
             tui = self._get_tui(self.coder)
             if tui is not None:
-                tui.call_from_thread(tui.remove_sub_agent_container, info.coder.uuid)
+                _tui_notify(tui, tui.remove_sub_agent_container, info.coder.uuid)
         except (AttributeError, RuntimeError):
             logger.warning("Failed to notify TUI to remove sub-agent container", exc_info=True)
 
@@ -597,15 +607,19 @@ class AgentService:
         if not configured_root and isinstance(agent_config, dict):
             configured_root = agent_config.get("root")
 
-        # Workspace sub-agents (ws:*) inherit the parent/primary coder's
-        # agent_config as their default and additionally enable nested
-        # delegation so they can themselves serve as delegation bases. The
-        # ws-agent's own metadata agent-config is merged on top.
-        if name.startswith("ws:"):
+        # Workspace/workflow sub-agents (ws:*, wf:*) inherit the parent/primary
+        # coder's agent_config as their default; the agent's own metadata
+        # agent-config is merged on top. ws: additionally hard-enables nested
+        # delegation; wf: only defaults it (setdefault) so an explicit
+        # allow_nested_delegation in the workflow metadata wins.
+        if name.startswith(AGENT_INHERIT_PREFIXES):
             inherited = dict(nested.getter(parent_coder, "agent_config", {}) or {})
             incoming = dict(agent_config)
             inherited.update(incoming)
-            inherited["allow_nested_delegation"] = True
+            if name.startswith("ws:"):
+                inherited["allow_nested_delegation"] = True
+            else:
+                inherited.setdefault("allow_nested_delegation", True)
             agent_config = inherited
 
         kwargs = dict(
@@ -685,6 +699,8 @@ class AgentService:
                 status=SubAgentStatus.CREATED,
                 auto_reap=auto_reap,
                 independent=independent,
+                detached=isinstance(agent_config, dict)
+                and bool(agent_config.get("detached", False)),
             )
             self.sub_agents[new_coder.uuid] = info
             self._sub_agent_order.append(new_coder.uuid)
@@ -693,7 +709,7 @@ class AgentService:
         try:
             tui = self._get_tui(self.coder)
             if tui is not None:
-                tui.call_from_thread(tui.create_sub_agent_container, new_uuid, name)
+                _tui_notify(tui, tui.create_sub_agent_container, new_uuid, name)
         except Exception:
             logger.warning("Failed to notify TUI to create sub-agent container", exc_info=True)
 
@@ -888,6 +904,9 @@ class AgentService:
         from cecli.helpers.conversation.service import ConversationService
         from cecli.helpers.conversation.tags import MessageTag
 
+        if info.detached:
+            return
+
         # Capture coder UUID early in case the sub-agent is cleaned up before
         # this method completes (the weakref could become invalid).
         coder_uuid = getattr(info.coder, "uuid", "(unknown)")
@@ -1019,7 +1038,11 @@ class AgentService:
             if the parent has no active children.
         """
         uid = str(parent.uuid) if hasattr(parent, "uuid") else str(parent)
-        children = [info for info in self.sub_agents.values() if info.parent_uuid == uid]
+        children = [
+            info
+            for info in self.sub_agents.values()
+            if info.parent_uuid == uid and not info.detached
+        ]
         if not children:
             logger.debug("wait(%s): no children found", uid)
             return []
@@ -1171,3 +1194,17 @@ class AgentService:
         self._spawn_locks.pop(self.coder.uuid, None)
         self._conversation_locks.pop(self.coder.uuid, None)
         self._instances.pop(self.coder.uuid, None)
+
+
+def _tui_notify(tui, callback, *args):
+    """Invoke *callback* on the TUI app, from either thread.
+
+    ``call_from_thread`` only works when the caller is not the app's own
+    thread; scheduler dispatch runs on the primary (app) event loop, so fall
+    back to calling directly, which is correct when already on that thread.
+    """
+
+    try:
+        tui.call_from_thread(callback, *args)
+    except RuntimeError:
+        callback(*args)

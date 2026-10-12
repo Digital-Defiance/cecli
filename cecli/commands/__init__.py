@@ -99,6 +99,7 @@ from .utils.registry import CommandRegistry
 from .voice import VoiceCommand
 from .weak_model import WeakModelCommand
 from .web import WebCommand
+from .workflows import WorkflowCommand
 from .workspace import WorkspaceCommand
 
 # Register commands
@@ -182,6 +183,7 @@ CommandRegistry.register(UndoCommand)
 CommandRegistry.register(VoiceCommand)
 CommandRegistry.register(WeakModelCommand)
 CommandRegistry.register(WebCommand)
+CommandRegistry.register(WorkflowCommand)
 CommandRegistry.register(WorkspaceCommand)
 
 
@@ -279,5 +281,6 @@ __all__ = [
     "VoiceCommand",
     "WeakModelCommand",
     "WebCommand",
+    "WorkflowCommand",
     "WorkspaceCommand",
 ]
