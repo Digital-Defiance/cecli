@@ -10,8 +10,9 @@ Resolution order, highest precedence first:
    ``None``, ``''``, ``'{}'``, ``'[]'`` and ``'null'`` count as *absent* so that
    lower-precedence sources still load.
 2. ``<git_root or cwd>/.cecli.workflows.yml`` / ``.cecli.workflows.yaml``.
-3. ``merged_config["workflows"]`` — the deep-merged ``.cecli.conf.yml`` value.
-4. ``~/.cecli/workflows/*.yml`` / ``*.yaml`` — globbed in stable sorted order.
+3. ``<git_root or cwd>/.cecli/workflows/*.yml`` / ``*.yaml`` — globbed in stable sorted order.
+4. ``merged_config["workflows"]`` — the deep-merged ``.cecli.conf.yml`` value.
+5. ``~/.cecli/workflows/*.yml`` / ``*.yaml`` — globbed in stable sorted order.
 
 Each source may hold a single workflow mapping or a ``workflows: [...]`` list.
 On a duplicate ``name`` the higher-precedence definition wins and the loser is
@@ -93,6 +94,7 @@ def resolve_workflow_configs(
         ordered += _entries_from_arg(str(config_arg))
 
     ordered += _entries_from_local(git_root)
+    ordered += _entries_from_local_dir(git_root)
 
     if isinstance(merged_config, dict):
         ordered += _entries(merged_config.get("workflows"), None, _CONFIG_LABEL)
@@ -289,9 +291,21 @@ def _entries_from_local(git_root: Optional[Any]) -> List[_Discovered]:
     return []
 
 
+def _entries_from_local_dir(git_root: Optional[Any]) -> List[_Discovered]:
+    """Resolve a repo-local ``.cecli/workflows/*.yml|*.yaml`` directory."""
+    base = Path(git_root).expanduser() if git_root else Path.cwd()
+
+    return _entries_from_dir(base / WORKFLOW_DIR)
+
+
 def _entries_from_home() -> List[_Discovered]:
     """Resolve ``~/.cecli/workflows/*.yml|*.yaml`` in stable sorted order."""
-    root = Path.home() / WORKFLOW_DIR
+
+    return _entries_from_dir(Path.home() / WORKFLOW_DIR)
+
+
+def _entries_from_dir(root: Path) -> List[_Discovered]:
+    """Resolve ``*.yml`` / ``*.yaml`` files under *root* in stable sorted order."""
     if not root.is_dir():
         return []
 

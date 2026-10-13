@@ -44,6 +44,14 @@ def _mapping_text(name: str, prompt: str) -> str:
     return f"name: {name}\ntasks:\n  - prompt: {prompt}\n"
 
 
+def _local_dir_workflow(repo: Path, filename: str, text: str) -> Path:
+    wdir = repo / ".cecli" / "workflows"
+    wdir.mkdir(parents=True, exist_ok=True)
+    path = wdir / filename
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
 # ── Case 1: single-mapping file, defaults ───────────────────────────────────
 
 
@@ -453,6 +461,55 @@ def test_bad_local_file_does_not_block_home_files(isolated, caplog):
 
 
 # ── Case 8: definition_hash stability ───────────────────────────────────────
+
+
+def test_local_dir_files_are_loaded(isolated):
+    _local_dir_workflow(isolated["repo"], "pipelines.yml", _mapping_text("local-dir", "check"))
+
+    configs = load_workflows(git_root=isolated["repo"])
+
+    assert [wf.name for wf in configs] == ["local-dir"]
+    assert configs[0].source_path == str(
+        isolated["repo"] / ".cecli" / "workflows" / "pipelines.yml"
+    )
+
+
+def test_local_dir_globs_stably_sorted(isolated):
+    _local_dir_workflow(isolated["repo"], "b_second.yml", _mapping_text("b", "second"))
+    _local_dir_workflow(isolated["repo"], "a_first.yml", _mapping_text("a", "first"))
+
+    configs = load_workflows(git_root=isolated["repo"])
+
+    assert [wf.name for wf in configs] == ["a", "b"]
+
+
+def test_local_dir_defaults_to_cwd(isolated):
+    _local_dir_workflow(isolated["repo"], "here.yml", _mapping_text("here", "cwd"))
+
+    configs = load_workflows()
+
+    assert [wf.name for wf in configs] == ["here"]
+
+
+def test_local_file_wins_over_local_dir(isolated):
+    _local_dir_workflow(isolated["repo"], "dir.yml", _mapping_text("dup", "dir"))
+    (isolated["repo"] / WORKFLOW_FILENAMES[0]).write_text(
+        _mapping_text("dup", "local-file"), encoding="utf-8"
+    )
+
+    configs = load_workflows(git_root=isolated["repo"])
+
+    assert [wf.tasks[0].prompt for wf in configs] == ["local-file"]
+
+
+def test_local_dir_wins_over_merged_config_and_home(isolated):
+    _local_dir_workflow(isolated["repo"], "dir.yml", _mapping_text("dup", "dir"))
+    _home_workflow(isolated["wdir"], "a_home.yml", _mapping_text("dup", "home"))
+    merged = {"workflows": [{"name": "dup", "tasks": [{"prompt": "merged"}]}]}
+
+    configs = load_workflows(merged_config=merged, git_root=isolated["repo"])
+
+    assert [wf.tasks[0].prompt for wf in configs] == ["dir"]
 
 
 def test_definition_hash_stable_across_key_order():
