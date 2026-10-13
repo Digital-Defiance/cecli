@@ -2,11 +2,13 @@
 Tests for cecli/helpers/agents/service.py — AgentService.
 """
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from cecli.helpers.agents.service import (
+    DEFAULT_SUMMARY_INTERRUPTED,
     AgentService,
     SubAgentInfo,
     SubAgentStatus,
@@ -460,6 +462,95 @@ class TestInvoke:
         call_args = mock_tui.call_from_thread.call_args[0]
         assert call_args[1] is not None  # new_uuid
         assert call_args[2] == "reviewer"  # name
+
+
+def make_sub_coder(service, generate):
+    """A sub-agent coder sharing the parent's io, as IOProxy instances share their target."""
+    sub_coder = MagicMock()
+    sub_coder.tui = None
+    sub_coder.uuid = "child-uuid"
+    sub_coder.root = "/proj"
+    sub_coder.io = service.coder.io
+    sub_coder.generate = AsyncMock(side_effect=generate)
+    return sub_coder
+
+
+class TestSubAgentEvents:
+    """Sub-agent lifecycle reported through ``io.subagent_event``, and cancelling one."""
+
+    @pytest.fixture(autouse=True)
+    def patched_coders(self, service, registry):
+        # After ``service``, which empties the registry
+        with patch("cecli.coders.Coder") as MockCoder:
+            with patch("cecli.helpers.conversation.service.ConversationService"):
+                self.MockCoder = MockCoder
+                yield
+
+    def events(self, service):
+        return [
+            (call.args[0], call.args[1], call.kwargs)
+            for call in service.coder.io.subagent_event.call_args_list
+        ]
+
+    async def test_invoke_reports_the_lifecycle(self, service):
+        async def finish(user_message, **kwargs):
+            info = service.sub_agents["child-uuid"]
+            info.status, info.summary = SubAgentStatus.FINISHED, "all good"
+
+        self.MockCoder.create = AsyncMock(return_value=make_sub_coder(service, finish))
+        assert await service.invoke("reviewer", "review this") == "all good"
+
+        events = self.events(service)
+        assert [(uuid, event) for uuid, event, _ in events] == [
+            ("child-uuid", "created"),
+            ("child-uuid", "message"),
+            ("child-uuid", "running"),
+            ("parent-uuid", "message"),
+            ("child-uuid", "idle"),
+        ]
+        created, delegation, _, result, idle = (kwargs for _, _, kwargs in events)
+        assert created["parent_uuid"] == "parent-uuid"
+        assert created["name"] == "reviewer" and created["root"] == "/proj"
+        assert delegation == {"sender_uuid": "parent-uuid", "text": "review this"}
+        assert result["sender_uuid"] == "child-uuid" and "all good" in result["text"]
+        assert idle == {"stop_reason": "end_turn", "error": None}
+
+    def start_work(self, service, absorb):
+        """Invoke a sub-agent that works until cancelled; returns (invoking task, started)."""
+        started = asyncio.Event()
+
+        async def work(user_message, **kwargs):
+            started.set()
+            try:
+                await asyncio.sleep(3600)
+            except asyncio.CancelledError:
+                if not absorb:
+                    raise
+                # Streaming turns a cancellation into a ^C, and generate() returns
+
+        self.MockCoder.create = AsyncMock(return_value=make_sub_coder(service, work))
+        return asyncio.create_task(service.invoke("reviewer", "review this")), started
+
+    @pytest.mark.parametrize("absorb", [False, True])
+    async def test_cancelling_the_sub_agent_leaves_its_parent_running(self, service, absorb):
+        invoking, started = self.start_work(service, absorb)
+        await started.wait()
+
+        assert service.cancel_sub_agent("child-uuid") is True
+        assert await invoking == DEFAULT_SUMMARY_INTERRUPTED
+        assert self.events(service)[-1][1:] == ("idle", {"stop_reason": "cancelled", "error": None})
+        assert service.cancel_sub_agent("child-uuid") is False
+
+    @pytest.mark.parametrize("absorb", [False, True])
+    async def test_cancelling_the_parent_cancels_the_sub_agent_it_waits_for(self, service, absorb):
+        invoking, started = self.start_work(service, absorb)
+        await started.wait()
+
+        invoking.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await invoking
+        await asyncio.gather(service.sub_agents["child-uuid"].generate_task, return_exceptions=True)
+        assert self.events(service)[-1][1:] == ("idle", {"stop_reason": "cancelled", "error": None})
 
 
 # ================================================================== #

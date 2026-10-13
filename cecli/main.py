@@ -581,6 +581,21 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
 
     attach_debug_thread_monitor(argv)
 
+    if "--acp" in (sys.argv[1:] if argv is None else argv):
+        # From here on stdout carries the protocol. The client's first
+        # session/new picks the project, so move there before any setup runs.
+        import atexit
+
+        from cecli.helpers.server.acp.agent import get_agent
+
+        acp_agent = get_agent()
+        cwd = acp_agent.bootstrap()
+        if cwd is None:
+            return 0
+        os.chdir(cwd)
+        # Answer anything still waiting (e.g. a failed startup) on the way out
+        atexit.register(acp_agent.shutdown)
+
     # Tracks the coder instance from a ReloadProgramSignal so the new
     # main_async() can pass it as from_coder to Coder.create(), preserving
     # UUID, edit_format, and other state across the reload cycle.
@@ -721,6 +736,22 @@ async def main_async(
     loaded_dotenvs = load_dotenv_files(git_root, args.env_file, args.encoding)
     args, unknown = parser.parse_known_args(argv)
     os.unlink(_tmp_cfg)
+
+    if args.acp:
+        from cecli.helpers.server.acp.agent import get_agent
+
+        if not get_agent().launched:
+            # Set by a config file or CECLI_ACP, too late: the client's first
+            # session/new has to pick the project before any config is read
+            print("Ignoring the acp setting: pass --acp on the command line", file=sys.stderr)
+            args.acp = False
+
+    if args.acp:
+        # The ACP client owns stdin/stdout: plain linear output, no TUI or prompts
+        args.tui = False
+        args.linear_output = True
+        args.fancy_input = False
+        args.pretty = False
 
     if args.workspaces or args.workspace_name:
         from cecli.helpers.workspaces.config import (
@@ -867,8 +898,14 @@ async def main_async(
         args.yes_always = True
     editing_mode = "VI" if args.vim else "EMACS"
 
+    io_class = InputOutput
+    if args.acp:
+        from cecli.helpers.server.acp.agent.io import AcpInputOutput
+
+        io_class = AcpInputOutput
+
     def get_io(pretty):
-        return InputOutput(
+        return io_class(
             pretty,
             args.yes_always,
             args.input_history_file,
@@ -936,6 +973,10 @@ async def main_async(
                 raise err
             io = get_io(False)
             io.tool_warning("Terminal does not support pretty output (UnicodeDecodeError)")
+    if args.acp:
+        from cecli.helpers.server.acp.agent import get_agent
+
+        get_agent().start()
     if args.set_env:
         for env_setting in args.set_env:
             try:

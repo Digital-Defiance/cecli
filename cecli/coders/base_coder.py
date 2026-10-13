@@ -3284,6 +3284,7 @@ class Coder(metaclass=UsageMeta):
                     continue
 
                 tool_id_set.add(tool_call.id)
+                self.io.tool_call_event(tool_call.id, "in_progress")
 
                 try:
                     # Arguments can be a stream of JSON objects.
@@ -3490,6 +3491,11 @@ class Coder(metaclass=UsageMeta):
         for server, server_responses in tool_responses_by_server.items():
             for tool_response in server_responses:
                 tool_responses.append(tool_response)
+                self.io.tool_call_event(
+                    tool_response["tool_call_id"],
+                    "completed",
+                    result=tool_response.get("content"),
+                )
 
                 ConversationService.get_manager(self).add_message(
                     message_dict=tool_response,
@@ -3507,6 +3513,12 @@ class Coder(metaclass=UsageMeta):
 
         for server, tool_calls in server_tool_calls.items():
             for tool_call in tool_calls:
+                self.io.tool_call_event(
+                    tool_call.id,
+                    "pending",
+                    name=tool_call.function.name,
+                    arguments=tool_call.function.arguments,
+                )
                 try:
                     if ToolRegistry.get_tool(tool_call.function.name.lower()):
                         ToolRegistry.get_tool(tool_call.function.name.lower()).format_output(
@@ -4828,7 +4840,7 @@ class Coder(metaclass=UsageMeta):
         if self.tui and self.tui():
             self.tui().update_cost(self.usage_report.replace("\n", " "))
         else:
-            self.io.tool_output(self.usage_report)
+            self.io.tool_output(self.usage_report, type="usage-report")
             self.io.rule()
 
         self.message_cost = 0.0

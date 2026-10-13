@@ -40,6 +40,25 @@ MODEL_SENTINEL_CURRENT = "<current>"
 AGENT_INHERIT_PREFIXES = ("ws:", "wf:")
 
 
+def _subagent_event(coder: Any, agent_uuid: Any, event: str, **kwargs: Any) -> None:
+    """Report a sub-agent's lifecycle to the IO (see ``InputOutput.subagent_event``)."""
+    io = getattr(coder, "io", None)
+    if io is None:
+        return
+    try:
+        io.subagent_event(str(agent_uuid), event, **kwargs)
+    except Exception:
+        logger.warning("Failed to report sub-agent event %r", event, exc_info=True)
+
+
+def _was_cancelled(info: "SubAgentInfo") -> bool:
+    """Whether the current run was cancelled, even if the coder absorbed it as a ^C."""
+    if info.cancel_requested:
+        return True
+    cancelling = getattr(asyncio.current_task(), "cancelling", None)  # Python 3.11+
+    return bool(cancelling and cancelling())
+
+
 class SubAgentStatus(Enum):
     """Status of a sub-agent."""
 
@@ -65,6 +84,7 @@ class SubAgentInfo:
     auto_reap: bool = True  # If True, agent may be automatically reaped when FINISHED
     independent: bool = False
     detached: bool = False
+    cancel_requested: bool = False  # the current run was cancelled (see _was_cancelled)
 
 
 class AgentService:
@@ -502,6 +522,8 @@ class AgentService:
         except (AttributeError, RuntimeError):
             logger.warning("Failed to notify TUI to remove sub-agent container", exc_info=True)
 
+        _subagent_event(self.coder, info.coder.uuid, "removed")
+
         # Cancel any tracked generate task to avoid floating tasks
         if info.generate_task is not None and not info.generate_task.done():
             info.generate_task.cancel()
@@ -713,6 +735,16 @@ class AgentService:
         except Exception:
             logger.warning("Failed to notify TUI to create sub-agent container", exc_info=True)
 
+        _subagent_event(
+            parent_coder,
+            new_coder.uuid,
+            "created",
+            parent_uuid=str(parent_coder.uuid),
+            name=name,
+            description=metadata.get("description") if isinstance(metadata, dict) else None,
+            root=str(getattr(new_coder, "root", "") or ""),
+        )
+
         # Initialize system prompt from config
         system_prompt = getattr(config, "prompt", "")
         from cecli.helpers.conversation.service import ConversationService
@@ -787,8 +819,14 @@ class AgentService:
 
         async def _run_generate():
             info.status = SubAgentStatus.RUNNING
+            info.cancel_requested = False
+            _subagent_event(info.coder, info.coder.uuid, "running")
+            stop_reason, error = "end_turn", None
             try:
                 await info.coder.generate(user_message=user_message, preproc=True)
+                if _was_cancelled(info):
+                    stop_reason = "cancelled"
+                    info.summary = info.summary or DEFAULT_SUMMARY_INTERRUPTED
                 await self._inject_sub_agent_result(info)
                 if info.status == SubAgentStatus.RUNNING:
                     info.status = SubAgentStatus.FINISHED
@@ -811,12 +849,14 @@ class AgentService:
                     fire_and_forget(_cleanup())
 
             except asyncio.CancelledError:
+                stop_reason = "cancelled"
                 await self._inject_sub_agent_result(info)
                 info.status = SubAgentStatus.FINISHED
                 info.summary = info.summary or DEFAULT_SUMMARY_INTERRUPTED
                 logger.debug("Sub-agent %s generate cancelled (interrupted)", info.name)
                 raise
             except Exception as exc:
+                stop_reason, error = "error", str(exc) or exc.__class__.__name__
                 await self._inject_sub_agent_result(info)
                 info.status = SubAgentStatus.ERROR
                 info.error = str(exc)
@@ -829,6 +869,10 @@ class AgentService:
                 raise
             except SwitchCoderSignal:
                 raise
+            finally:
+                _subagent_event(
+                    info.coder, info.coder.uuid, "idle", stop_reason=stop_reason, error=error
+                )
 
         # Cancel any previous generate task to prevent duplicate concurrent generates
         if info.generate_task is not None and not info.generate_task.done():
@@ -966,6 +1010,10 @@ class AgentService:
                 force=True,
             )
 
+        _subagent_event(
+            parent_coder, parent_coder.uuid, "message", sender_uuid=coder_uuid, text=user_content
+        )
+
     async def invoke(
         self,
         name: str,
@@ -991,8 +1039,20 @@ class AgentService:
             return None
 
         # Blocking: run the sub-agent with the prompt using start_generate_task
+        sender = parent if parent is not None else self.coder
+        _subagent_event(
+            sender, new_coder.uuid, "message", sender_uuid=str(sender.uuid), text=prompt
+        )
         task = self.start_generate_task(info, prompt)
-        await task
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            if not task.done():
+                # The caller was cancelled: stop the sub-agent it was waiting for
+                info.cancel_requested = True
+                task.cancel()
+                raise
+            # Only the sub-agent was cancelled; its summary says it was interrupted
         return info.summary
 
     async def spawn(
@@ -1020,6 +1080,10 @@ class AgentService:
             name, auto_reap=auto_reap, parent=parent, independent=independent
         )
         if prompt:
+            sender = parent if parent is not None else self.coder
+            _subagent_event(
+                sender, new_coder.uuid, "message", sender_uuid=str(sender.uuid), text=prompt
+            )
             self.start_generate_task(info, prompt)
         return new_coder, info
 
@@ -1058,6 +1122,19 @@ class AgentService:
             await asyncio.gather(*tasks)
 
         return [info.summary for info in children]
+
+    def cancel_sub_agent(self, agent_uuid: str) -> bool:
+        """Stop a sub-agent's current work, leaving its parent running.
+
+        A parent waiting on it (a blocking delegation) gets the interrupted
+        summary. Returns False if the sub-agent was not working.
+        """
+        info = self.sub_agents.get(str(agent_uuid))
+        if info is None or info.generate_task is None or info.generate_task.done():
+            return False
+        info.cancel_requested = True
+        info.generate_task.cancel()
+        return True
 
     def get_active_agents(self) -> List[Dict[str, Any]]:
         """Return list of active sub-agents for display."""
