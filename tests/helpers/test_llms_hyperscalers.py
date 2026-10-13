@@ -163,9 +163,7 @@ def test_bedrock_endpoint_built_from_resolved_api_base(monkeypatch):
         "api_base": "https://bedrock.internal.example.com",
     }
     url = bedrock_endpoint(resolved)
-    assert url == (
-        "https://bedrock.internal.example.com/model/anthropic.claude-sonnet/converse"
-    )
+    assert url == ("https://bedrock.internal.example.com/model/anthropic.claude-sonnet/converse")
 
 
 # ---------------------------------------------------------------------------
