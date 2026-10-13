@@ -1,7 +1,7 @@
 ---
 parent: Configuration
 nav_order: 48
-description: The scheduler turns workflow schedule: entries into runs, coordinating any number of cecli instances through a shared SQLite database.
+description: The scheduler turns workflow schedule entries into runs, coordinating any number of cecli instances through a shared SQLite database.
 ---
 # Scheduler
 
