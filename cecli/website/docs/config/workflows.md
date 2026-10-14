@@ -17,13 +17,14 @@ Preferred: one YAML file per workflow in `~/.cecli/workflows/`:
     morning-triage.yml
 ```
 
-Also supported: a repo-local `.cecli/workflows/` directory (one YAML file per workflow), inline under a `workflows:` key in `.cecli.conf.yml`, or a repo-local `.cecli.workflows.yml`. Each source may hold a single workflow mapping, a `workflows: [...]` list, or a plain list of mappings. Resolution precedence (highest first):
+Also supported: a repo-local `.cecli/workflows/` or `.agents/workflows/` directory (one YAML file per workflow), inline under a `workflows:` key in `.cecli.conf.yml`, or a repo-local `.cecli.workflows.yml`. Each source may hold a single workflow mapping, a `workflows: [...]` list, or a plain list of mappings. Resolution precedence (highest first):
 
 1. **CLI argument** — an inline JSON/YAML string or a file path passed to `--workflows`.
 2. **Local file** — `.cecli.workflows.yml` / `.cecli.workflows.yaml` in the git root (or working directory).
 3. **Local directory** — `.cecli/workflows/*.yml` / `*.yaml` in the git root (or working directory), loaded in sorted order.
-4. **Merged config** — the `workflows:` key in `.cecli.conf.yml`.
-5. **Global files** — `~/.cecli/workflows/*.yml` / `*.yaml`, loaded in sorted order.
+4. **Standard local directory** — `.agents/workflows/*.yml` / `*.yaml` in the git root (or working directory), loaded in sorted order.
+5. **Merged config** — the `workflows:` key in `.cecli.conf.yml`.
+6. **Global files** — `~/.cecli/workflows/*.yml` / `*.yaml`, loaded in sorted order.
 
 On a duplicate `name`, the higher-precedence definition wins and the loser is skipped with a warning. A source that fails to parse is skipped with a warning as well — a malformed workflows file never crashes startup.
 

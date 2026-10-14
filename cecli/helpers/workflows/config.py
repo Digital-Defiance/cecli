@@ -11,8 +11,9 @@ Resolution order, highest precedence first:
    lower-precedence sources still load.
 2. ``<git_root or cwd>/.cecli.workflows.yml`` / ``.cecli.workflows.yaml``.
 3. ``<git_root or cwd>/.cecli/workflows/*.yml`` / ``*.yaml`` — globbed in stable sorted order.
-4. ``merged_config["workflows"]`` — the deep-merged ``.cecli.conf.yml`` value.
-5. ``~/.cecli/workflows/*.yml`` / ``*.yaml`` — globbed in stable sorted order.
+4. ``<git_root or cwd>/.agents/workflows/*.yml`` / ``*.yaml`` — globbed in stable sorted order.
+5. ``merged_config["workflows"]`` — the deep-merged ``.cecli.conf.yml`` value.
+6. ``~/.cecli/workflows/*.yml`` / ``*.yaml`` — globbed in stable sorted order.
 
 Each source may hold a single workflow mapping or a ``workflows: [...]`` list.
 On a duplicate ``name`` the higher-precedence definition wins and the loser is
@@ -41,6 +42,8 @@ logger = logging.getLogger(__name__)
 WORKFLOW_FILENAMES = (".cecli.workflows.yml", ".cecli.workflows.yaml")
 
 WORKFLOW_DIR = Path(".cecli") / "workflows"
+
+AGENTS_WORKFLOW_DIR = Path(".agents") / "workflows"
 
 # Values argparse/deep-merge normalization leaves behind when nothing was set.
 _ABSENT_STRINGS = ("", "{}", "[]", "null", "~")
@@ -95,6 +98,7 @@ def resolve_workflow_configs(
 
     ordered += _entries_from_local(git_root)
     ordered += _entries_from_local_dir(git_root)
+    ordered += _entries_from_local_agents_dir(git_root)
 
     if isinstance(merged_config, dict):
         ordered += _entries(merged_config.get("workflows"), None, _CONFIG_LABEL)
@@ -296,6 +300,13 @@ def _entries_from_local_dir(git_root: Optional[Any]) -> List[_Discovered]:
     base = Path(git_root).expanduser() if git_root else Path.cwd()
 
     return _entries_from_dir(base / WORKFLOW_DIR)
+
+
+def _entries_from_local_agents_dir(git_root: Optional[Any]) -> List[_Discovered]:
+    """Resolve a repo-local ``.agents/workflows/*.yml|*.yaml`` directory."""
+    base = Path(git_root).expanduser() if git_root else Path.cwd()
+
+    return _entries_from_dir(base / AGENTS_WORKFLOW_DIR)
 
 
 def _entries_from_home() -> List[_Discovered]:
