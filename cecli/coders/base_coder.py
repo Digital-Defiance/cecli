@@ -2253,6 +2253,31 @@ class Coder(metaclass=UsageMeta):
                 )
                 return
 
+        # Compaction can only shrink the conversation buckets counted above.
+        # If the fixed context (files added to the chat, repo map, system
+        # prompt, rules, tool schemas) already meets the limit on its own,
+        # summarizing cannot bring the context under the limit. Bail out with
+        # guidance instead of churning every turn, which is what a large file
+        # added to the chat otherwise causes.
+        non_compactable_tokens = all_tokens - compactable_tokens
+
+        if (
+            self.context_compaction_max_tokens
+            and non_compactable_tokens >= self.context_compaction_max_tokens
+        ):
+            if getattr(self, "_compaction_noop_warning_time", 0) + 300 < time.time():
+                self._compaction_noop_warning_time = time.time()
+                self.io.tool_warning(
+                    "Compaction cannot reduce the context: the fixed context (files in the"
+                    f" chat, repo map, prompts) is already ~{non_compactable_tokens:,}"
+                    f" tokens, at or above the ~{self.context_compaction_max_tokens:,} token"
+                    " compaction limit."
+                )
+                self.io.tool_output("- Use /drop to remove unneeded files from the chat")
+                self.io.tool_output("- Use /clear to clear the chat history")
+
+            return
+
         message_tokens = done_tokens + cur_tokens
         file_tokens = diff_tokens + file_context_tokens
         combined_tokens = done_tokens + cur_tokens + diff_tokens + file_context_tokens
