@@ -1,7 +1,9 @@
 """Main Textual application for cecli TUI."""
 
+import asyncio
 import concurrent.futures
 import json
+import logging
 import platform
 import queue
 import time
@@ -40,6 +42,8 @@ from .widgets.output import CostUpdate
 IS_WINDOWS = False
 if platform.system() == "Windows":
     IS_WINDOWS = True
+
+logger = logging.getLogger(__name__)
 
 
 class TUI(App):
@@ -1059,6 +1063,7 @@ class TUI(App):
             self._get_visible_container().add_output(
                 f"Prompt queued at position {position} (id: {item['id']})"
             )
+            self._schedule_idle_queue_drain(active_coder)
 
         elif cmd == "/list-queue":
             items = command_queue.list_queue(active_coder)
@@ -1097,6 +1102,7 @@ class TUI(App):
             self._get_visible_container().add_output(
                 f"Prompt inserted at position {index + 1} (id: {item['id']})"
             )
+            self._schedule_idle_queue_drain(active_coder)
 
         elif cmd == "/remove-queue":
             if not args:
@@ -1124,6 +1130,79 @@ class TUI(App):
             self._get_visible_container().add_output(
                 f"Removed queued prompt {index}: {removed['text'][:80]}"
             )
+
+    _queue_drain_task = None
+    _queue_drain_lock = None
+
+    def _schedule_idle_queue_drain(self, active_coder) -> None:
+        """Schedule immediate queue processing on the worker loop when idle.
+
+        The TUI runs on the textual thread, so coder coroutines must never be
+        awaited here; work is scheduled on the worker's event loop instead.
+
+        The first queued item is dequeued and processed through
+        ``coder.generate()`` — the same lifecycle as a user-typed prompt
+        (it sets ``run_one_completed``, clears the interrupt event, and its
+        trailing auto-drain in run_one() processes any remaining items).
+        Calling ``run_one()``/``process_prompt_queue()`` directly here would
+        run outside that lifecycle and stall silently (live bug 2026-10-15).
+
+        When a request is in flight or a drain is already running, do
+        nothing — the post-run_one auto-drain covers the queue.
+        """
+        from cecli.helpers import command_queue
+        from cecli.signals import SwitchCoderSignal
+
+        loop = self.worker.loop
+        if loop is None or loop.is_closed():
+            return
+        if not command_queue.idle_drain_needed(active_coder):
+            return
+
+        async def _drain():
+            # Serialize: a second scheduled drain must never run generate()
+            # concurrently with the first one. The lock is created lazily on
+            # the worker loop; the None check cannot interleave because the
+            # worker loop runs this task step atomically up to the acquire.
+            if self._queue_drain_lock is None:
+                self._queue_drain_lock = asyncio.Lock()
+            async with self._queue_drain_lock:
+                # Re-check just before draining: a generation cycle may have
+                # started between scheduling and execution.
+                if not command_queue.idle_drain_needed(active_coder):
+                    return
+                item = command_queue.dequeue_prompt(active_coder)
+                if item is None:
+                    return
+                try:
+                    await active_coder.generate(item["text"], True)
+                except (asyncio.CancelledError, KeyboardInterrupt):
+                    # The interrupted prompt is re-queued so nothing is lost;
+                    # tell the user how to resume. Swallow the interrupt here
+                    # so a bare task ending on KeyboardInterrupt cannot escape
+                    # into the worker loop and crash it.
+                    command_queue.insert_prompt(active_coder, item["text"], 0)
+                    remaining = command_queue.get_queue_length(active_coder)
+                    active_coder.io.tool_warning(
+                        f"Queue processing interrupted. {remaining} prompt(s) remain"
+                        " queued; use /run-queue to resume."
+                    )
+                except (SwitchCoderSignal, SystemExit):
+                    raise
+                except Exception as e:
+                    # Match process_prompt_queue per-item isolation: surface
+                    # the failure to the user instead of dying silently.
+                    active_coder.io.tool_warning(
+                        f"Error processing queued prompt (id: {item['id']}): {e}"
+                    )
+                    logger.warning("Idle queue drain failed", exc_info=True)
+
+        def _start():
+            # Keep a strong reference so the asyncio task is not garbage
+            # collected before it completes.
+            self._queue_drain_task = loop.create_task(_drain())
+
+        loop.call_soon_threadsafe(_start)
 
     def _handle_spawn_agent_command(self, user_input: str, stripped: str) -> None:
         """Dispatch /spawn-agent immediately without a full generation cycle.
@@ -1938,9 +2017,18 @@ class TUI(App):
                 else:
                     # Use standard command completions (no file fallback)
                     try:
-                        cmd_completions = commands.get_completions(
-                            cmd_name, args=arg_prefix, coder=active_coder
-                        )
+                        if cmd_name in commands.FULL_ARGS_COMPLETION_COMMANDS:
+                            # Nested-host commands receive the FULL text after
+                            # the command name so inner slash-command argument
+                            # completion works (e.g. "/queue /add <tab>").
+                            nested_text = text[len(cmd_name) :].lstrip()
+                            cmd_completions = commands.get_completions(
+                                cmd_name, args=nested_text, coder=active_coder
+                            )
+                        else:
+                            cmd_completions = commands.get_completions(
+                                cmd_name, args=arg_prefix, coder=active_coder
+                            )
                         if cmd_completions:
                             exempt_from_substring_matching = {
                                 "/model",

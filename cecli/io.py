@@ -265,7 +265,20 @@ class AutoCompleter(Completer):
             yield from raw_completer(document, complete_event)
             return
 
-        candidates = self.commands.get_completions(cmd, partial)
+        # Nested-host commands (/queue, /insert-queue) need the FULL text after
+        # the command name (trailing space preserved) so inner slash-command
+        # argument completion works (e.g. "/queue /add <tab>") - plan 9.13.
+        if cmd in self.commands.FULL_ARGS_COMPLETION_COMMANDS:
+            nested_text = text[len(words[0]) :].lstrip()
+            candidates = self.commands.get_completions(cmd, nested_text)
+            # The substring filter and start_position below operate on the last
+            # word; an empty/trailing-space nested text means "no partial yet".
+            if not nested_text or nested_text[-1].isspace():
+                partial = ""
+            else:
+                partial = nested_text.split()[-1].lower()
+        else:
+            candidates = self.commands.get_completions(cmd, partial)
 
         if candidates is None:
             return

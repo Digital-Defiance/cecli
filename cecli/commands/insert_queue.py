@@ -1,10 +1,12 @@
 """Insert-queue command for CLI-33: inserts a prompt at a specific queue position."""
 
+import asyncio
 from typing import List
 
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result
 from cecli.helpers import command_queue
+from cecli.signals import SwitchCoderSignal
 
 
 class InsertQueueCommand(BaseCommand):
@@ -60,6 +62,22 @@ class InsertQueueCommand(BaseCommand):
         try:
             item = command_queue.insert_prompt(coder, prompt_text, index)
             io.tool_output(f"Prompt inserted at position {index + 1} (id: {item['id']})")
+
+            # Idle-immediate: when no request is in flight there is nothing to
+            # wait for, so drain the queue right away. When a request IS in
+            # flight, the queue auto-drains when run_one() completes.
+            target = command_queue.get_active_coder(coder)
+            if command_queue.idle_drain_needed(target):
+                try:
+                    await target.process_prompt_queue()
+                except (KeyboardInterrupt, asyncio.CancelledError):
+                    # The interrupted item was re-queued; let the user know the queue paused.
+                    io.tool_output("Queue processing paused. Use /run-queue to resume.")
+                except (SwitchCoderSignal, SystemExit):
+                    raise
+                except Exception as e:
+                    return format_command_result(io, cls.NORM_NAME, "", error=str(e))
+
             return f"Successfully executed {cls.NORM_NAME}."
         except ValueError as e:
             return format_command_result(io, cls.NORM_NAME, "", error=str(e))
@@ -68,8 +86,20 @@ class InsertQueueCommand(BaseCommand):
 
     @classmethod
     def get_completions(cls, io, coder, args) -> List[str]:
-        """Get completion options for insert-queue command."""
-        return []
+        """Get completion options for insert-queue command.
+
+        Args are "<index> <prompt text>"; once the index token and a space
+        are present, mirror the nested prompt's completions (e.g. a nested
+        slash command delegates to the original command's completions).
+        """
+        text = args or ""
+        first_space = text.find(" ")
+        if first_space == -1:
+            # Still typing the index; suggest valid positions.
+            if not coder.commands:
+                return []
+            return [str(i) for i in range(1, command_queue.get_queue_length(coder) + 2)]
+        return command_queue.nested_command_completions(coder, text[first_space + 1 :])
 
     @classmethod
     def get_help(cls) -> str:
