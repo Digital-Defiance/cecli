@@ -73,6 +73,7 @@ from .report import ReportCommand
 from .reset import ResetCommand
 from .rules import RulesCommand
 from .run import RunCommand
+from .run_queue import RunQueueCommand
 from .save import SaveCommand
 from .save_session import SaveSessionCommand
 from .search_memory import SearchMemoryCommand
@@ -168,6 +169,7 @@ CommandRegistry.register(ReportCommand)
 CommandRegistry.register(ResetCommand)
 CommandRegistry.register(RulesCommand)
 CommandRegistry.register(RunCommand)
+CommandRegistry.register(RunQueueCommand)
 CommandRegistry.register(SaveCommand)
 CommandRegistry.register(SaveSessionCommand)
 CommandRegistry.register(SearchMemoryCommand)
@@ -263,6 +265,7 @@ __all__ = [
     "ResetCommand",
     "RulesCommand",
     "RunCommand",
+    "RunQueueCommand",
     "SaveCommand",
     "SaveSessionCommand",
     "SearchMemoryCommand",

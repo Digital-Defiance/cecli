@@ -2026,6 +2026,15 @@ class Coder(metaclass=UsageMeta):
         failing prompt does not abort the rest of the queue. An interrupt
         (Ctrl+C / cancellation) re-queues the in-flight item at the front and
         re-raises so the caller can resume later via /run-queue.
+
+        Each item runs through ``generate()`` rather than a bare ``run_one()``.
+        ``generate()`` owns the generation lifecycle: it clears the interrupt
+        event, sets ``run_one_completed`` False for the duration, drives the
+        spinner, and wires ``io.output_task``. A bare ``run_one()`` skips all
+        of that, so a drain that called it directly (e.g. the TUI idle drain on
+        the worker loop) started the turn but stalled silently. ``_processing_queue``
+        still guards against the nested drain that ``run_one()`` performs at its
+        end.
         """
         if self._processing_queue:
             return
@@ -2039,7 +2048,7 @@ class Coder(metaclass=UsageMeta):
 
                 self.io.tool_output(f"Processing queued prompt (id: {item['id']})...")
                 try:
-                    await self.run_one(item["text"], preproc)
+                    await self.generate(item["text"], preproc)
                 except (asyncio.CancelledError, KeyboardInterrupt):
                     # Put the in-flight prompt back at the front so it is not
                     # lost, then let the interrupt propagate to the caller.

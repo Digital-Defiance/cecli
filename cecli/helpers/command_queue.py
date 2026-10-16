@@ -151,6 +151,48 @@ def clear_queue(coder) -> list:
     return items
 
 
+def idle_drain_needed(coder) -> bool:
+    """True when the coder is idle and not already draining its queue.
+
+    Used by the command-side drains (queue.py / insert_queue.py) and the TUI
+    submit handler to decide whether an enqueue should trigger an immediate
+    drain. When a request is in flight (``run_one_completed`` False) or a
+    drain is already running (``_processing_queue`` True), the post-run_one
+    auto-drain covers the queue instead.
+    """
+    return bool(getattr(coder, "run_one_completed", True)) and not getattr(
+        coder, "_processing_queue", False
+    )
+
+
+def nested_command_completions(coder, text: str) -> list:
+    """Completions for a nested slash-command inside queued prompt text (CLI-33).
+
+    While the inner command is still being typed (no space yet), suggest
+    matching command names from the registry (e.g. "/sa" -> "/save-session").
+    Once the inner command is complete, delegate to the original command's
+    ``get_completions`` so ``/queue /add <tab>`` behaves exactly like ``/add <tab>``.
+    """
+    if not text or not text.startswith("/"):
+        return []
+
+    from cecli.commands.utils.registry import CommandRegistry
+
+    first_space = text.find(" ")
+    if first_space == -1:
+        prefix = text[1:].lower()
+        return sorted(
+            f"/{cmd}" for cmd in CommandRegistry.list_commands() if cmd.startswith(prefix)
+        )
+
+    inner_cmd = text[:first_space]
+    inner_args = text[first_space + 1 :]
+    try:
+        return list(coder.commands.get_completions(inner_cmd, inner_args, coder=coder))
+    except Exception:
+        return []
+
+
 def _get_lock(coder) -> threading.Lock:
     """Return the coder's queue lock, creating one if missing."""
     lock = getattr(coder, "_queue_lock", None)

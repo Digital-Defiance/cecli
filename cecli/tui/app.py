@@ -1132,7 +1132,6 @@ class TUI(App):
             )
 
     _queue_drain_task = None
-    _queue_drain_lock = None
 
     def _schedule_idle_queue_drain(self, active_coder) -> None:
         """Schedule immediate queue processing on the worker loop when idle.
@@ -1140,15 +1139,10 @@ class TUI(App):
         The TUI runs on the textual thread, so coder coroutines must never be
         awaited here; work is scheduled on the worker's event loop instead.
 
-        The first queued item is dequeued and processed through
-        ``coder.generate()`` — the same lifecycle as a user-typed prompt
-        (it sets ``run_one_completed``, clears the interrupt event, and its
-        trailing auto-drain in run_one() processes any remaining items).
-        Calling ``run_one()``/``process_prompt_queue()`` directly here would
-        run outside that lifecycle and stall silently (live bug 2026-10-15).
-
-        When a request is in flight or a drain is already running, do
-        nothing — the post-run_one auto-drain covers the queue.
+        Delegates to ``process_prompt_queue()``, which runs each queued item
+        through ``generate()`` (the same lifecycle as a user-typed prompt) and
+ows the re-entrancy guard, per-item isolation, and interrupt re-queueing.
+        Calling ``run_one()`` directly here would skip that lifecycle and stall.
         """
         from cecli.helpers import command_queue
         from cecli.signals import SwitchCoderSignal
@@ -1160,42 +1154,22 @@ class TUI(App):
             return
 
         async def _drain():
-            # Serialize: a second scheduled drain must never run generate()
-            # concurrently with the first one. The lock is created lazily on
-            # the worker loop; the None check cannot interleave because the
-            # worker loop runs this task step atomically up to the acquire.
-            if self._queue_drain_lock is None:
-                self._queue_drain_lock = asyncio.Lock()
-            async with self._queue_drain_lock:
-                # Re-check just before draining: a generation cycle may have
-                # started between scheduling and execution.
-                if not command_queue.idle_drain_needed(active_coder):
-                    return
-                item = command_queue.dequeue_prompt(active_coder)
-                if item is None:
-                    return
-                try:
-                    await active_coder.generate(item["text"], True)
-                except (asyncio.CancelledError, KeyboardInterrupt):
-                    # The interrupted prompt is re-queued so nothing is lost;
-                    # tell the user how to resume. Swallow the interrupt here
-                    # so a bare task ending on KeyboardInterrupt cannot escape
-                    # into the worker loop and crash it.
-                    command_queue.insert_prompt(active_coder, item["text"], 0)
-                    remaining = command_queue.get_queue_length(active_coder)
-                    active_coder.io.tool_warning(
-                        f"Queue processing interrupted. {remaining} prompt(s) remain"
-                        " queued; use /run-queue to resume."
-                    )
-                except (SwitchCoderSignal, SystemExit):
-                    raise
-                except Exception as e:
-                    # Match process_prompt_queue per-item isolation: surface
-                    # the failure to the user instead of dying silently.
-                    active_coder.io.tool_warning(
-                        f"Error processing queued prompt (id: {item['id']}): {e}"
-                    )
-                    logger.warning("Idle queue drain failed", exc_info=True)
+            # Re-check just before draining: a generation cycle may have
+            # started between scheduling and execution.
+            if not command_queue.idle_drain_needed(active_coder):
+                return
+            try:
+                await active_coder.process_prompt_queue()
+            except (asyncio.CancelledError, KeyboardInterrupt):
+                # process_prompt_queue already re-queued the in-flight prompt
+                # and told the user how to resume; swallow the interrupt here
+                # so a bare task ending on KeyboardInterrupt cannot escape into
+                # the worker loop and crash it.
+                logger.warning("Idle queue drain interrupted")
+            except (SwitchCoderSignal, SystemExit):
+                raise
+            except Exception:
+                logger.warning("Idle queue drain failed", exc_info=True)
 
         def _start():
             # Keep a strong reference so the asyncio task is not garbage
