@@ -173,7 +173,9 @@ class SchedulerService:
             renewal = asyncio.create_task(renewal)
 
         try:
-            result = await execute_workflow(self.coder, wf, source="scheduler")
+            result = await self._on_coder_loop(
+                lambda: execute_workflow(self.coder, wf, source="scheduler")
+            )
             await self.db.finish(lease, result)
             await self._log_tasks(lease, result)
         except asyncio.CancelledError:
@@ -190,6 +192,43 @@ class SchedulerService:
             held.pop(wf.name, None)
             nxt = self._successor(wf, slot, now, next_run)
             await self.db.advance(wf.name, nxt)
+
+    def _coder_loop(self) -> Optional[asyncio.AbstractEventLoop]:
+        """Best-effort discovery of the loop the interactive coder runs on.
+
+        In TUI mode the coder lives on a worker-thread loop while the scheduler
+        ticks on the main (Textual) loop, so the two differ. Returns ``None``
+        when the coder's loop cannot be determined (linear/one-shot sessions,
+        tests), in which case callers stay on the current loop.
+        """
+
+        tui_ref = getattr(self.coder, "tui", None)
+
+        try:
+            tui = tui_ref() if callable(tui_ref) else tui_ref
+        except Exception:
+            tui = None
+
+        worker = getattr(tui, "worker", None)
+        loop = getattr(worker, "loop", None)
+
+        return loop if isinstance(loop, asyncio.AbstractEventLoop) else None
+
+    async def _on_coder_loop(self, make_coro: Any) -> Any:
+        """Await ``make_coro()`` on the coder's own event loop.
+
+        A workflow run owns coder I/O (prompts, confirmations, tool output),
+        which is bound to the loop the coder actually runs on.
+        """
+
+        target = self._coder_loop()
+        running = asyncio.get_running_loop()
+
+        if target is None or target is running or target.is_closed():
+            return await make_coro()
+
+        future = asyncio.run_coroutine_threadsafe(make_coro(), target)
+        return await asyncio.wrap_future(future)
 
     async def _log_tasks(self, lease: Any, result: Any) -> None:
         """Mirror the runner's per-task outcomes into the DB ``task_log``."""

@@ -30,10 +30,6 @@ The `catch_up` pair controls what happens after downtime (e.g. a sleeping laptop
 
 An individual workflow may override the global setting with its own top-level `catch_up: true|false` key (see [Workflows](workflows.html)); unset means "follow the scheduler".
 
-A headless daemon mode (scheduling on a server with no interactive session) is planned but not yet available; today scheduled runs only fire while a cecli session is alive.
-
-In TUI mode the scheduler ticks and dispatches on the primary event loop while the interactive coder runs on the TUI worker-thread loop. Scheduled runs still get their own sub-agent pane: the container notifications handle being called from the app's own thread. Workflow dispatch itself is loop-safe (the DB is threaded, sub-agent spawning marshals through `AgentService`), but a run's worker conversation shares MCP connections across loops; prefer linear (non-TUI) sessions or a dedicated `--scheduler` instance for production schedules until a `run_coroutine_threadsafe` bridge lands.
-
 ## Multi-instance coordination
 
 You can safely run **many** cecli instances at once (same machine, or one shared `~/.cecli` on a network filesystem — see caveats). They cooperate through a global SQLite database:
@@ -65,3 +61,4 @@ Scheduler state is visible from any session with the [workflow commands](workflo
 
 - `--scheduler <json>`: Override scheduler configuration for this session (same object as the `scheduler:` config key).
 - `--workflows <json|yaml>`: Workflow definitions the scheduler will consider (see [Workflows](workflows.html)).
+- To disable the scheduler, pass `--scheduler '{"enabled": false}'` (or set `enabled: false` under the `scheduler:` config key).

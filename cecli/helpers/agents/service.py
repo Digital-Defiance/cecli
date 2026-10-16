@@ -1200,8 +1200,11 @@ def _tui_notify(tui, callback, *args):
     """Invoke *callback* on the TUI app, from either thread.
 
     ``call_from_thread`` only works when the caller is not the app's own
-    thread; scheduler dispatch runs on the primary (app) event loop, so fall
-    back to calling directly, which is correct when already on that thread.
+    thread. Scheduler-dispatched workflow runs now execute on the coder's own
+    loop (the TUI worker-thread loop — see ``SchedulerService._on_coder_loop``),
+    so notifications originate from the worker thread and ``call_from_thread``
+    applies; when we are already on the app thread (or the TUI is unavailable),
+    fall back to calling directly.
     """
 
     try:
