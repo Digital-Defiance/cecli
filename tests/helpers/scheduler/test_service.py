@@ -428,9 +428,7 @@ class TestCoderLoopBridge:
 
         try:
             assert started.wait(timeout=5)
-            service.coder.tui = lambda: SimpleNamespace(
-                worker=SimpleNamespace(loop=foreign)
-            )
+            service.coder.tui = lambda: SimpleNamespace(worker=SimpleNamespace(loop=foreign))
 
             assert service._coder_loop() is foreign
 
