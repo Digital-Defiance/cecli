@@ -2,6 +2,9 @@
 Tests for cecli/helpers/agents/service.py — AgentService.
 """
 
+import asyncio
+import threading
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -962,3 +965,108 @@ class TestAgentInheritPrefixes:
         merged = await self._create(service, "worker")
 
         assert merged == {"own": 2}
+
+
+# ================================================================== #
+# Cross-loop lock safety
+# ================================================================== #
+
+
+class TestCrossLoopLocks:
+    """Spawn/conversation locks must be usable from two different event loops.
+
+    ``asyncio.Lock`` binds to the loop of its first *waiting* acquirer and
+    raises ``RuntimeError`` ("... is bound to a different event loop") when
+    awaited from another loop. Spawn, reap and conversation writes reach the
+    same per-parent lock from both the TUI main (Textual) loop and the coder
+    worker-thread loop, so the pools use ``threading.Lock``; the guarded
+    sections are synchronous, so a blocked acquirer simply waits.
+    """
+
+    def setup_method(self):
+        """Isolate the lock pools (class-level, so they leak between tests)."""
+        AgentService._spawn_locks = {}
+        AgentService._conversation_locks = {}
+
+    def teardown_method(self):
+        AgentService._spawn_locks = {}
+        AgentService._conversation_locks = {}
+
+    def test_lock_pools_are_thread_locks(self):
+        """The pools hand out ``threading.Lock``, never ``asyncio.Lock``."""
+        lock = AgentService._get_lock(AgentService._spawn_locks, "parent-uuid")
+        assert isinstance(lock, type(threading.Lock()))
+        assert not isinstance(lock, asyncio.Lock)
+        # Created lazily, but stable per uuid.
+        assert AgentService._get_lock(AgentService._spawn_locks, "parent-uuid") is lock
+
+    def test_contended_lock_is_usable_across_event_loops(self):
+        """Two waiters on their own loops must block, never raise.
+
+        With ``asyncio.Lock`` the *second* waiter (different loop from the one
+        the lock bound to) raises ``RuntimeError``; with ``threading.Lock``
+        both simply wait for the holder to release.
+        """
+        lock = AgentService._get_lock(AgentService._spawn_locks, "parent-uuid")
+
+        entered = threading.Event()
+        release = threading.Event()
+        order = []
+        errors = []
+
+        def run_on_own_loop(coro_factory):
+            """Run the coroutine on a fresh event loop in this thread."""
+            loop = asyncio.new_event_loop()
+            try:
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(coro_factory())
+            except BaseException as exc:  # noqa: BLE001 - record, do not raise in thread
+                errors.append(exc)
+            finally:
+                asyncio.set_event_loop(None)
+                loop.close()
+
+        async def holds_lock():
+            with lock:
+                order.append("holder")
+                entered.set()
+                # Await *outside* the lock: guarded sections never await.
+                await asyncio.to_thread(release.wait, 5)
+            order.append("holder-released")
+
+        def contender_factory(tag):
+            async def contends():
+                with lock:
+                    order.append(tag)
+
+            return contends
+
+        holder = threading.Thread(target=run_on_own_loop, args=(holds_lock,))
+        holder.start()
+        first = second = None
+        try:
+            assert entered.wait(timeout=5), "holder never acquired the lock"
+
+            # Waiter #1 blocks on its own loop...
+            first = threading.Thread(target=run_on_own_loop, args=(contender_factory("c1"),))
+            first.start()
+            time.sleep(0.1)
+            # ...waiter #2 on a third loop must block too, not raise.
+            second = threading.Thread(target=run_on_own_loop, args=(contender_factory("c2"),))
+            second.start()
+            time.sleep(0.2)
+
+            assert errors == [], f"cross-loop lock acquisition raised: {errors}"
+            assert order == ["holder"]
+        finally:
+            release.set()
+            holder.join(timeout=5)
+
+        for thread in (first, second):
+            if thread is not None:
+                thread.join(timeout=5)
+
+        assert errors == []
+        assert "c1" in order
+        assert "c2" in order
+        assert "holder-released" in order
