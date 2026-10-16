@@ -1212,6 +1212,16 @@ async def main_async(
     lint_cmds = parse_lint_cmds(args.lint_cmd, io)
     if lint_cmds is None:
         return await graceful_exit(None, 1)
+
+    # Create/attach the git repo before the coder is built. The coder resolves
+    # its repo, root, and repo_map at construction; if the repo is created
+    # afterwards the coder keeps repo=None for the whole session and
+    # repo-backed tools (Grep, git_*, ...) fail with "Not in a git repository."
+    if args.git and not (suppress_pre_init or args.workspaces or args.workspace_name):
+        git_root = await setup_git(git_root, pre_init_io)
+        if args.gitignore:
+            await check_gitignore(git_root, pre_init_io)
+
     repo = None
     if args.git:
         try:
@@ -1382,10 +1392,6 @@ async def main_async(
                     pre_init_io.tool_output()
                 except KeyboardInterrupt:
                     return await graceful_exit(coder, 1)
-        if args.git and not (suppress_pre_init or args.workspaces or args.workspace_name):
-            git_root = await setup_git(git_root, pre_init_io)
-            if args.gitignore:
-                await check_gitignore(git_root, pre_init_io)
     except UnknownEditFormat as err:
         pre_init_io.tool_error(str(err))
         await pre_init_io.offer_url(
