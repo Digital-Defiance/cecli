@@ -759,9 +759,7 @@ class TestNestedCompletions:
         result = QueueCommand.get_completions(mock_io, coder, "/save-session ")
 
         assert result == session_names
-        coder.commands.get_completions.assert_called_once_with(
-            "/save-session", "", coder=coder
-        )
+        coder.commands.get_completions.assert_called_once_with("/save-session", "", coder=coder)
 
     def test_ntc_04_queue_plain_text_returns_empty(self, mock_io):
         """NTC-04: non-command queued text (and empty args) have no completions."""
@@ -790,9 +788,7 @@ class TestNestedCompletions:
         result = InsertQueueCommand.get_completions(mock_io, coder, "1 /save-session ")
 
         assert result == session_names
-        coder.commands.get_completions.assert_called_once_with(
-            "/save-session", "", coder=coder
-        )
+        coder.commands.get_completions.assert_called_once_with("/save-session", "", coder=coder)
 
     def test_ntc_07_insert_queue_index_only_suggests_positions(self, mock_io):
         """NTC-07: while typing the index, /insert-queue offers clamped positions."""
@@ -941,7 +937,6 @@ class TestRegression:
         command_queue.enqueue_prompt(coder, "item")
 
         assert isinstance(coder._queue_lock, type(threading.Lock()))
-
 
 
 # ============================================================================
@@ -1127,9 +1122,7 @@ class TestIdleDrainGate:
         coder.generate = fake_generate
         # Drive the real drain loop on the mock coder: it dequeues each item
         # and awaits coder.generate, which the fake above records.
-        coder.process_prompt_queue = lambda preproc=True: Coder.process_prompt_queue(
-            coder, preproc
-        )
+        coder.process_prompt_queue = lambda preproc=True: Coder.process_prompt_queue(coder, preproc)
 
         app = TUI.__new__(TUI)
         fake_worker = MagicMock()
@@ -1167,9 +1160,7 @@ class TestIdleDrainGate:
             drain_calls.append(text)
 
         coder.generate = fake_generate
-        coder.process_prompt_queue = lambda preproc=True: Coder.process_prompt_queue(
-            coder, preproc
-        )
+        coder.process_prompt_queue = lambda preproc=True: Coder.process_prompt_queue(coder, preproc)
 
         app = TUI.__new__(TUI)
         fake_worker = MagicMock()
@@ -1296,7 +1287,11 @@ class TestCompleterPlumbing:
         commands.FULL_ARGS_COMPLETION_COMMANDS = ("/queue", "/insert-queue")
         # Mirror Commands.matching_commands: match the input's first word.
         commands.matching_commands = lambda text: (
-            ["/queue"] if text.startswith("/queue") else (["/add"] if text.startswith("/add") else None),
+            (
+                ["/queue"]
+                if text.startswith("/queue")
+                else (["/add"] if text.startswith("/add") else None)
+            ),
             text.split()[0],
             "",
         )
@@ -1318,9 +1313,7 @@ class TestCompleterPlumbing:
 
         # Partial word: nested text is forwarded verbatim; partial is the word.
         results = list(
-            completer.get_command_completions(
-                None, None, "/queue /add s", ["/queue", "/add", "s"]
-            )
+            completer.get_command_completions(None, None, "/queue /add s", ["/queue", "/add", "s"])
         )
         assert captured[-1] == ("/queue", "/add s")
         assert all(c.start_position == -1 for c in results)

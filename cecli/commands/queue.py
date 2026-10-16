@@ -1,8 +1,7 @@
 """Queue command for CLI-33: adds a prompt to the processing queue."""
 
-from typing import List
-
 import asyncio
+from typing import List
 
 from cecli.commands.utils.base_command import BaseCommand
 from cecli.commands.utils.helpers import format_command_result

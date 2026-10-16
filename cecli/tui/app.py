@@ -1141,8 +1141,9 @@ class TUI(App):
 
         Delegates to ``process_prompt_queue()``, which runs each queued item
         through ``generate()`` (the same lifecycle as a user-typed prompt) and
-ows the re-entrancy guard, per-item isolation, and interrupt re-queueing.
-        Calling ``run_one()`` directly here would skip that lifecycle and stall.
+        follows the re-entrancy guard, per-item isolation, and interrupt
+        re-queueing. Calling ``run_one()`` directly here would skip that
+        lifecycle and stall.
         """
         from cecli.helpers import command_queue
         from cecli.signals import SwitchCoderSignal
