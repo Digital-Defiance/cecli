@@ -173,6 +173,7 @@ YAML_TO_JSON_ARG_KEYS = {
     "system_one": "system-one",
     "server_config": "server-config",
     "workflows": "workflows",
+    "scheduler": "scheduler",
 }
 
 
@@ -1545,17 +1546,17 @@ async def main_async(
     # --message/--exit paths above return before the scheduler can tick.
     # Auto mode turns it on iff at least one enabled scheduled workflow
     # exists, so nothing ever touches the coordination DB otherwise.
-    _scheduler_cfg = merged_config.get("scheduler") or {}
-    if _workflows and _scheduler_enabled(args, _scheduler_cfg, _workflows):
+    _scheduler_cfg = _scheduler_config(args)
+    if _workflows and _scheduler_enabled(_scheduler_cfg, _workflows):
         from cecli.helpers.scheduler import SchedulerService
 
         coder.scheduler = SchedulerService(
             coder,
             _workflows,
             io,
-            tick_seconds=_scheduler_cfg.get("tick_seconds", 60),
-            catch_up=_scheduler_cfg.get("catch_up", True),
-            max_catchup=_scheduler_cfg.get("max_catchup", 1),
+            tick_seconds=_scheduler_cfg["tick_seconds"],
+            catch_up=_scheduler_cfg["catch_up"],
+            max_catchup=_scheduler_cfg["max_catchup"],
         )
         await coder.scheduler.start()
 
@@ -1691,16 +1692,44 @@ async def main_async(
             raise
 
 
-def _scheduler_enabled(args, scheduler_cfg, workflows):
-    """Resolve whether the scheduler should run: CLI flag > config > auto."""
+def _scheduler_enabled(scheduler_cfg, workflows):
+    """Resolve whether the scheduler should run: explicit ``enabled`` > auto."""
 
-    if getattr(args, "scheduler", None) is not None:
-        return bool(args.scheduler)
-
-    if scheduler_cfg.get("enabled", None) is not None:
-        return bool(scheduler_cfg.get("enabled"))
+    if scheduler_cfg.get("enabled") is not None:
+        return bool(scheduler_cfg["enabled"])
 
     return any(getattr(wf, "schedule", None) and getattr(wf, "enabled", True) for wf in workflows)
+
+
+def _scheduler_config(args):
+    """Resolve the ``scheduler`` config object, defaults layered underneath.
+
+    ``args.scheduler`` is a JSON string (the CLI ``--scheduler`` value deep-merged
+    over the config-file object) or ``None`` when unset, in which case the
+    documented defaults apply and ``enabled`` stays ``None`` (auto).
+    """
+
+    defaults = {
+        "enabled": None,
+        "tick_seconds": 60,
+        "catch_up": True,
+        "max_catchup": 1,
+    }
+
+    raw = getattr(args, "scheduler", None)
+
+    if not raw:
+        return dict(defaults)
+
+    try:
+        parsed = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return dict(defaults)
+
+    if not isinstance(parsed, dict):
+        return dict(defaults)
+
+    return {**defaults, **parsed}
 
 
 async def _stop_scheduler_quietly(coder):

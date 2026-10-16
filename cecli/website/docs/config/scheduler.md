@@ -9,14 +9,7 @@ The [scheduler](workflows.html) is the component that turns a [workflow](workflo
 
 ## Running it
 
-The scheduler starts automatically in any interactive cecli session that has at least one enabled, scheduled workflow. Control it explicitly per session with:
-
-```bash
-cecli --scheduler       # force on for this session
-cecli --no-scheduler    # force off (workflows are still usable via /workflows run)
-```
-
-or persistently in `.cecli.conf.yml`:
+The scheduler starts automatically in any interactive cecli session that has at least one enabled, scheduled workflow. It is configured as an object in `.cecli.conf.yml`:
 
 ```yaml
 scheduler:
@@ -26,7 +19,9 @@ scheduler:
   max_catchup: 1              # how many missed slots to replay before skipping ahead
 ```
 
-Resolution order for whether it runs: the CLI flag (`--scheduler` / `--no-scheduler`) wins, then `scheduler.enabled` from config, then auto — on when any enabled workflow has a `schedule:`, off otherwise. Nothing touches the coordination database when no scheduled workflow exists, and one-shot (`--message`) runs return before the scheduler can tick.
+`--scheduler <json>` overrides it for a single session with the same object, e.g. `cecli --scheduler '{"enabled": false}'`. Disabling is always expressed through the object's `enabled` key — there is no separate off switch — and workflows remain usable manually via `/workflows run`.
+
+Resolution order for whether it runs: `enabled` (from the CLI `--scheduler <json>` deep-merged over the `scheduler:` config key) decides on/off; when `enabled` is omitted the mode is auto — on when any enabled workflow has a `schedule:`, off otherwise. Nothing touches the coordination database when no scheduled workflow exists, and one-shot (`--message`) runs return before the scheduler can tick.
 
 The `catch_up` pair controls what happens after downtime (e.g. a sleeping laptop):
 
@@ -68,5 +63,5 @@ Scheduler state is visible from any session with the [workflow commands](workflo
 
 ## Arguments
 
-- `--scheduler` / `--no-scheduler`: Force the workflow scheduler on or off for this session.
+- `--scheduler <json>`: Override scheduler configuration for this session (same object as the `scheduler:` config key).
 - `--workflows <json|yaml>`: Workflow definitions the scheduler will consider (see [Workflows](workflows.html)).
