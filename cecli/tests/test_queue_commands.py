@@ -1101,27 +1101,35 @@ class TestIdleDrainGate:
         assert command_queue.idle_drain_needed(coder) is False
 
     @pytest.mark.asyncio
-    async def test_idg_04_scheduled_drain_processes_idle_queue(self):
+    async def test_idg_04_scheduled_drain_processes_idle_queue(self, mock_io):
         """IDG-04: scheduling the drain for an idle coder drains its queue.
 
         Exercises the TUI scheduling helper against a fake worker whose
         ``loop`` is the running asyncio loop (the real TUI schedules the same
-        call on the worker loop).
+        call on the worker loop). Spies the ``generate`` seam (plan 9.14): the
+        real ``process_prompt_queue`` dequeues each item and runs it through
+        ``generate()``, so the fake only records the prompt text.
         """
         import asyncio
 
+        from cecli.coders.base_coder import Coder
         from cecli.tui.app import TUI
 
         coder = _make_coder_with_commands(items=("queued prompt",))
+        coder.io = mock_io
         coder.run_one_completed = True
         coder._processing_queue = False
         processed = []
 
-        async def fake_drain():
-            while coder.prompt_queue:
-                processed.append(command_queue.dequeue_prompt(coder)["text"])
+        async def fake_generate(text, preproc=True):
+            processed.append(text)
 
-        coder.process_prompt_queue = fake_drain
+        coder.generate = fake_generate
+        # Drive the real drain loop on the mock coder: it dequeues each item
+        # and awaits coder.generate, which the fake above records.
+        coder.process_prompt_queue = lambda preproc=True: Coder.process_prompt_queue(
+            coder, preproc
+        )
 
         app = TUI.__new__(TUI)
         fake_worker = MagicMock()
@@ -1138,20 +1146,30 @@ class TestIdleDrainGate:
         assert command_queue.get_queue_length(coder) == 0
 
     @pytest.mark.asyncio
-    async def test_idg_05_scheduled_drain_skips_when_busy(self):
-        """IDG-05: a busy coder is not drained by the scheduler."""
+    async def test_idg_05_scheduled_drain_skips_when_busy(self, mock_io):
+        """IDG-05: a busy coder is not drained by the scheduler.
+
+        Spies the same ``generate`` seam as IDG-04: with run_one_completed=False
+        the scheduler must return before touching the coder, so no generate call
+        is recorded and the queued prompt stays in place.
+        """
         import asyncio
 
+        from cecli.coders.base_coder import Coder
         from cecli.tui.app import TUI
 
         coder = _make_coder_with_commands(items=("queued prompt",))
+        coder.io = mock_io
         coder.run_one_completed = False
         drain_calls = []
 
-        async def fake_drain():
-            drain_calls.append(True)
+        async def fake_generate(text, preproc=True):
+            drain_calls.append(text)
 
-        coder.process_prompt_queue = fake_drain
+        coder.generate = fake_generate
+        coder.process_prompt_queue = lambda preproc=True: Coder.process_prompt_queue(
+            coder, preproc
+        )
 
         app = TUI.__new__(TUI)
         fake_worker = MagicMock()
