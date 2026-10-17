@@ -561,7 +561,7 @@ async def test_subagent_is_a_child_session(tmp_path):
     child_updates = [update for session_id, update in sent if session_id == child]
     assert texts(child_updates, "agent_message_chunk") == "On it."
     call = next(u for u in child_updates if u["sessionUpdate"] == "tool_call")
-    assert call["locations"] == [{"path": os.path.normpath("/w/a")}]
+    assert call["locations"] == [{"path": "/w/a"}]
     parent_updates = [update for session_id, update in sent if session_id == "s1"]
     assert texts(parent_updates, "agent_message_chunk") == "Meanwhile, the parent."
 

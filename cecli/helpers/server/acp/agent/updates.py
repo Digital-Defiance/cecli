@@ -389,7 +389,9 @@ class UpdateEmitter:
                 path = value.strip()
                 if not os.path.isabs(path):
                     path = os.path.join(self.root, path)
-                return [{"path": os.path.normpath(path)}]
+                # ACP paths are slash-separated on every platform; normpath()
+                # alone would emit backslashes on Windows.
+                return [{"path": os.path.normpath(path).replace(os.sep, "/")}]
         return []
 
     def _tool_output(self, tool_call_id: str, text: str) -> None:
