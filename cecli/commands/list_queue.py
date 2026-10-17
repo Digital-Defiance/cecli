@@ -66,5 +66,5 @@ class ListQueueCommand(BaseCommand):
         help_text += "  and the time it was queued.\n"
         help_text += "\nExamples:\n"
         help_text += "  /list-queue  # Shows all queued prompts\n"
-        help_text += "\nSee also: /queue, /remove-queue\n"
+        help_text += "\nSee also: /queue, /insert-queue, /remove-queue, /run-queue\n"
         return help_text

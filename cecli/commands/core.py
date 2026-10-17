@@ -14,10 +14,7 @@ from cecli.signals import SwitchCoderSignal
 class Commands:
     scraper = None
 
-    # Queue commands need the FULL text after the command name (including the
-    # trailing space) passed as completion args, so nested slash-command
-    # completion (e.g. "/queue /add <tab>") can see the inner command and its
-    # arguments (plan 9.13). Both completers (io.py, tui/app.py) consult this.
+    # Commands that receive their full argument text for nested completion.
     FULL_ARGS_COMPLETION_COMMANDS = ("/queue", "/insert-queue")
 
     def _get_coder(self):

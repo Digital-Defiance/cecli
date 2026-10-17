@@ -1,6 +1,5 @@
 """Main Textual application for cecli TUI."""
 
-import asyncio
 import concurrent.futures
 import json
 import logging
@@ -1063,7 +1062,6 @@ class TUI(App):
             self._get_visible_container().add_output(
                 f"Prompt queued at position {position} (id: {item['id']})"
             )
-            self._schedule_idle_queue_drain(active_coder)
 
         elif cmd == "/list-queue":
             items = command_queue.list_queue(active_coder)
@@ -1102,7 +1100,6 @@ class TUI(App):
             self._get_visible_container().add_output(
                 f"Prompt inserted at position {index + 1} (id: {item['id']})"
             )
-            self._schedule_idle_queue_drain(active_coder)
 
         elif cmd == "/remove-queue":
             if not args:
@@ -1130,54 +1127,6 @@ class TUI(App):
             self._get_visible_container().add_output(
                 f"Removed queued prompt {index}: {removed['text'][:80]}"
             )
-
-    _queue_drain_task = None
-
-    def _schedule_idle_queue_drain(self, active_coder) -> None:
-        """Schedule immediate queue processing on the worker loop when idle.
-
-        The TUI runs on the textual thread, so coder coroutines must never be
-        awaited here; work is scheduled on the worker's event loop instead.
-
-        Delegates to ``process_prompt_queue()``, which runs each queued item
-        through ``generate()`` (the same lifecycle as a user-typed prompt) and
-        follows the re-entrancy guard, per-item isolation, and interrupt
-        re-queueing. Calling ``run_one()`` directly here would skip that
-        lifecycle and stall.
-        """
-        from cecli.helpers import command_queue
-        from cecli.signals import SwitchCoderSignal
-
-        loop = self.worker.loop
-        if loop is None or loop.is_closed():
-            return
-        if not command_queue.idle_drain_needed(active_coder):
-            return
-
-        async def _drain():
-            # Re-check just before draining: a generation cycle may have
-            # started between scheduling and execution.
-            if not command_queue.idle_drain_needed(active_coder):
-                return
-            try:
-                await active_coder.process_prompt_queue()
-            except (asyncio.CancelledError, KeyboardInterrupt):
-                # process_prompt_queue already re-queued the in-flight prompt
-                # and told the user how to resume; swallow the interrupt here
-                # so a bare task ending on KeyboardInterrupt cannot escape into
-                # the worker loop and crash it.
-                logger.warning("Idle queue drain interrupted")
-            except (SwitchCoderSignal, SystemExit):
-                raise
-            except Exception:
-                logger.warning("Idle queue drain failed", exc_info=True)
-
-        def _start():
-            # Keep a strong reference so the asyncio task is not garbage
-            # collected before it completes.
-            self._queue_drain_task = loop.create_task(_drain())
-
-        loop.call_soon_threadsafe(_start)
 
     def _handle_spawn_agent_command(self, user_input: str, stripped: str) -> None:
         """Dispatch /spawn-agent immediately without a full generation cycle.
@@ -2037,27 +1986,22 @@ class TUI(App):
         """Calculate the new text after applying completion."""
         if current_text.startswith("/"):
             parts = current_text.rsplit(maxsplit=1)
+            commands = self.worker.coder.commands
+            host = current_text.split(maxsplit=1)[0]
+            is_nested_host = host in getattr(commands, "FULL_ARGS_COMPLETION_COMMANDS", ())
 
-            # Check if we have a command with trailing space
-            # This is when we want to insert argument completions after the space
+            if is_nested_host and current_text.endswith(" "):
+                return current_text + completion
             if len(parts) == 1 and current_text.endswith(" "):
-                # Command with trailing space, insert completion after space
                 return current_text + completion
             elif len(parts) == 1:
-                # Replace entire command (command name completion)
-                # Only add space if command takes arguments
-                commands = self.worker.coder.commands
                 try:
                     cmd_completions = commands.get_completions(completion)
                     has_completions = cmd_completions is not None
                 except Exception as e:
-                    # Check if it's a CommandCompletionException
                     if isinstance(e, CommandCompletionException):
-                        # For CommandCompletionException, treat it as having completions
-                        # so we add a space after the command
                         has_completions = True
                     else:
-                        # For other exceptions, assume no completions
                         has_completions = False
 
                 if has_completions:
@@ -2065,7 +2009,9 @@ class TUI(App):
                 else:
                     return completion
             else:
-                # Replace argument
+                if is_nested_host:
+                    prefix = current_text[: current_text.rfind(parts[-1])]
+                    return prefix + completion
                 return parts[0] + " " + completion
         elif "@" in current_text:
             # Replace from @ onwards with the symbol

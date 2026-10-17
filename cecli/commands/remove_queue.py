@@ -115,5 +115,5 @@ class RemoveQueueCommand(BaseCommand):
         help_text += "  /remove-queue 1   # Remove the first queued prompt\n"
         help_text += "  /remove-queue *   # Clear the entire queue\n"
         help_text += "  /remove-queue     # Interactive mode\n"
-        help_text += "\nSee also: /queue, /list-queue\n"
+        help_text += "\nSee also: /queue, /insert-queue, /list-queue, /run-queue\n"
         return help_text

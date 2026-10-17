@@ -75,5 +75,5 @@ class RunQueueCommand(BaseCommand):
         help_text += "  paused (e.g. after cancelling an in-flight response with Ctrl+C).\n"
         help_text += "\nExamples:\n"
         help_text += "  /run-queue  # Drains the queue, processing each prompt in order\n"
-        help_text += "\nSee also: /queue, /list-queue, /remove-queue\n"
+        help_text += "\nSee also: /queue, /insert-queue, /list-queue, /remove-queue\n"
         return help_text

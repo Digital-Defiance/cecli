@@ -291,7 +291,6 @@ class Coder(metaclass=UsageMeta):
     commit_language = None
     file_watcher = None
     mcp_manager = None
-    run_one_completed = True
     compact_context_completed = True
     suppress_announcements_for_next_prompt = False
     tool_reflection = False
@@ -684,6 +683,7 @@ class Coder(metaclass=UsageMeta):
         self._queue_counter = 0
         self._queue_lock = threading.Lock()
         self._processing_queue = False
+        self._active_queue_prompt = None
 
         self.data_cache = {
             "repo": {"last_key": "", "read_only_count": None},
@@ -1950,14 +1950,12 @@ class Coder(metaclass=UsageMeta):
                     await self.compact_context_if_needed()
                     self.compact_context_completed = True
 
-            self.run_one_completed = False
             await self.run_one(user_message, preproc)
             self.show_undo_hint()
         except asyncio.CancelledError:
             # Don't show undo hint if cancelled
             raise
         finally:
-            self.run_one_completed = True
             self.compact_context_completed = True
             self.io.stop_spinner()
             # Trim memory in the background so it doesn't stall the event loop
@@ -2017,9 +2015,6 @@ class Coder(metaclass=UsageMeta):
             try:
                 return await self.commands.run(inp, coder=self, **run_kwargs)
             finally:
-                # Dispatch can return early (unknown/ambiguous command) or
-                # raise without ever running a command; the gate must still be
-                # reopened or the input/output loops park forever.
                 self.commands.cmd_running_event.set()
 
         await self.check_for_file_mentions(inp)
@@ -2033,52 +2028,49 @@ class Coder(metaclass=UsageMeta):
     async def process_prompt_queue(self, preproc=True):
         """Drain the coder's prompt queue in FIFO order.
 
-        Re-entrancy safe: a nested call (e.g. a queued prompt that itself
-        triggers a drain) returns immediately. Each item is isolated so one
-        failing prompt does not abort the rest of the queue. An interrupt
-        (Ctrl+C / cancellation) re-queues the in-flight item at the front and
-        re-raises so the caller can resume later via /run-queue.
-
-        Each item runs through ``generate()`` rather than a bare ``run_one()``.
-        ``generate()`` owns the generation lifecycle: it clears the interrupt
-        event, sets ``run_one_completed`` False for the duration, drives the
-        spinner, and wires ``io.output_task``. A bare ``run_one()`` skips all
-        of that, so a drain that called it directly (e.g. the TUI idle drain on
-        the worker loop) started the turn but stalled silently. ``_processing_queue``
-        still guards against the nested drain that ``run_one()`` performs at its
-        end.
+        Re-entrant calls return immediately. Each item is activated before it
+        runs so an interrupt can put it back at the front of the queue, and
+        failures are isolated so one prompt does not abort the rest.
         """
         if self._processing_queue:
             return
 
+        def warn_paused():
+            remaining = command_queue.get_queue_length(self)
+            self.io.tool_warning(
+                f"Queue processing interrupted. {remaining} prompt(s) remain"
+                " queued; use /run-queue to resume."
+            )
+
         self._processing_queue = True
         try:
-            while self.prompt_queue:
-                item = command_queue.dequeue_prompt(self)
+            while True:
+                item = command_queue.dequeue_for_processing(self)
                 if item is None:
                     break
 
                 self.io.tool_output(f"Processing queued prompt (id: {item['id']})...")
                 try:
                     await self.generate(item["text"], preproc)
+                    interrupt_event = getattr(self, "interrupt_event", None)
+                    if interrupt_event is not None and interrupt_event.is_set() is True:
+                        command_queue.requeue_active_prompt(self)
+                        warn_paused()
+                        break
                 except (asyncio.CancelledError, KeyboardInterrupt):
-                    # Put the in-flight prompt back at the front so it is not
-                    # lost, then let the interrupt propagate to the caller.
-                    command_queue.insert_prompt(self, item["text"], 0)
-                    remaining = command_queue.get_queue_length(self)
-                    self.io.tool_warning(
-                        f"Queue processing interrupted. {remaining} prompt(s) remain"
-                        " queued; use /run-queue to resume."
-                    )
+                    command_queue.requeue_active_prompt(self)
+                    warn_paused()
                     raise
                 except (SwitchCoderSignal, SystemExit):
                     raise
                 except Exception as e:
-                    # Isolate failures: log and continue with the next item.
+                    command_queue.clear_active_prompt(self)
                     self.io.tool_error(f"Error processing queued prompt (id: {item['id']}): {e}")
                     continue
+
+                command_queue.clear_active_prompt(self)
         finally:
-            self._processing_queue = False
+            command_queue.finish_processing(self)
 
     async def run_one(self, user_message, preproc):
         self.init_before_message()
@@ -2095,10 +2087,8 @@ class Coder(metaclass=UsageMeta):
         if self.commands.is_command(user_message) and not self.commands.is_test_command(
             user_message
         ):
-            # Command path: may have queued prompts (e.g. /queue); drain so
-            # idle-queued prompts start immediately. The _processing_queue
-            # guard prevents double-drain when this runs inside a drain loop.
-            await self.process_prompt_queue(preproc)
+            if self._processing_queue:
+                await self.process_prompt_queue(preproc)
             return
 
         if not self.commands.is_command(user_message):
