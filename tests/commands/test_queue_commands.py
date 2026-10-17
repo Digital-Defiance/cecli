@@ -2,7 +2,7 @@
 
 import threading
 import time
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -811,6 +811,77 @@ class TestQueueRequeue:
         assert command_queue.get_active_prompt(coder) is None
         assert coder._processing_queue is False
         mock_io.tool_warning.assert_called_once()
+
+
+class TestSubAgentCoderSwitch:
+    """A sub-agent's queued command signal swaps coders instead of escaping."""
+
+    @pytest.mark.asyncio
+    async def test_process_prompt_queue_moves_queue_to_replacement_coder(self, mock_io):
+        """A SwitchCoderSignal from a queued command switches only the sub-agent."""
+        from cecli.coders.base_coder import Coder
+
+        coder = _make_coder_with_commands(("raises-switch", "second", "third"))
+        coder.uuid = "sub-uuid"
+        coder.parent_uuid = "primary-uuid"
+        coder.io = mock_io
+        coder.args = MagicMock()
+
+        async def signal_generate(text, preproc=True):
+            raise SwitchCoderSignal(edit_format="subagent", from_coder=coder)
+
+        coder.generate = AsyncMock(side_effect=signal_generate)
+
+        new_coder = MagicMock()
+        new_coder.uuid = "sub-uuid"
+        new_coder.process_prompt_queue = AsyncMock()
+
+        from cecli.helpers.agents.service import AgentService, SubAgentInfo
+
+        parent = MagicMock()
+        parent.uuid = "primary-uuid"
+        service = AgentService(parent)
+        info = SubAgentInfo(name="wf:storytime", coder=coder, parent_uuid="primary-uuid")
+        service.sub_agents["sub-uuid"] = info
+        service._sub_agent_order.append("sub-uuid")
+
+        with (
+            patch("cecli.coders.Coder.create", AsyncMock(return_value=new_coder)) as create,
+            patch("cecli.helpers.agents.service.AgentService.get_instance", return_value=service),
+        ):
+            await Coder.process_prompt_queue(coder)
+
+        assert [item["text"] for item in new_coder.prompt_queue] == ["second", "third"]
+        assert coder.prompt_queue == []
+        assert info.coder is new_coder
+        assert service.sub_agents["sub-uuid"] is info
+        assert coder._processing_queue is False
+        assert command_queue.get_active_prompt(coder) is None
+        new_coder.process_prompt_queue.assert_awaited_once_with(True)
+
+        create_kwargs = create.call_args.kwargs
+        assert create_kwargs["from_coder"] is coder
+
+    @pytest.mark.asyncio
+    async def test_process_prompt_queue_reraises_switch_for_primary(self, mock_io):
+        """A primary coder still propagates its own SwitchCoderSignal."""
+        from cecli.coders.base_coder import Coder
+
+        coder = _make_coder_with_commands(("raises-switch",))
+        coder.uuid = "primary-uuid"
+        coder.parent_uuid = ""
+        coder.io = mock_io
+        coder.args = MagicMock()
+
+        async def signal_generate(text, preproc=True):
+            raise SwitchCoderSignal(edit_format="agent", from_coder=coder)
+
+        coder.generate = AsyncMock(side_effect=signal_generate)
+
+        with pytest.raises(SwitchCoderSignal):
+            await Coder.process_prompt_queue(coder)
+
+        assert coder._processing_queue is False
 
 
 class TestTUICompletionApplication:

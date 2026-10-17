@@ -2044,6 +2044,8 @@ class Coder(metaclass=UsageMeta):
                 " queued; use /run-queue to resume."
             )
 
+        from cecli.helpers.agents.service import AgentService
+
         self._processing_queue = True
         try:
             while True:
@@ -2063,7 +2065,18 @@ class Coder(metaclass=UsageMeta):
                     command_queue.requeue_active_prompt(self)
                     warn_paused()
                     raise
-                except (SwitchCoderSignal, SystemExit):
+                except SwitchCoderSignal as switch:
+                    if not getattr(self, "parent_uuid", ""):
+                        raise
+
+                    service = AgentService.get_instance(self)
+                    info = service.sub_agents.get(self.uuid)
+                    if info is None:
+                        raise
+
+                    await service.switch_sub_agent_coder(info, switch, preproc)
+                    return
+                except SystemExit:
                     raise
                 except Exception as e:
                     command_queue.clear_active_prompt(self)

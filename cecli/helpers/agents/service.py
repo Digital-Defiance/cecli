@@ -806,6 +806,40 @@ class AgentService:
     # Public API
     # ------------------------------------------------------------------ #
 
+    async def switch_sub_agent_coder(self, info: SubAgentInfo, switch, preproc=True) -> Any:
+        """Atomically hand a sub-agent's remaining queue to a replacement coder.
+
+        Commands such as /add request a coder rebuild by raising SwitchCoderSignal.
+        A sub-agent must absorb that signal locally: letting it escape recreates the
+        primary coder from the sub-agent and leaves the main session in sub-agent
+        mode. The active prompt has already run, so only the remaining queue moves.
+        """
+        from cecli.coders import Coder
+        from cecli.helpers import command_queue
+
+        old_coder = info.coder
+        kwargs = dict(io=old_coder.io, from_coder=old_coder)
+        kwargs.update(switch.kwargs)
+        kwargs.pop("show_announcements", None)
+        kwargs["from_coder"] = old_coder
+        kwargs["args"] = old_coder.args
+        kwargs["summarize_from_coder"] = False
+
+        new_coder = await Coder.create(**kwargs)
+
+        new_coder.prompt_queue = list(old_coder.prompt_queue)
+        new_coder._queue_counter = old_coder._queue_counter
+        old_coder.prompt_queue.clear()
+
+        command_queue.clear_active_prompt(old_coder)
+
+        info.coder = new_coder
+        self.sub_agents[new_coder.uuid] = info
+        self._uuid_coder_map[new_coder.uuid] = weakref.ref(new_coder)
+
+        await new_coder.process_prompt_queue(preproc)
+        return new_coder
+
     def start_generate_task(self, info: SubAgentInfo, user_message: str) -> asyncio.Task:
         """Start a sub-agent's generate task in the background with status management.
 
