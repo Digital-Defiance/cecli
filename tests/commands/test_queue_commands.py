@@ -31,6 +31,7 @@ def _make_coder():
     coder._queue_lock = None
     coder._active_queue_prompt = None
     coder._processing_queue = False
+    coder._drain_queue_after_command = False
     return coder
 
 
@@ -707,6 +708,38 @@ class TestRunOneCommandPathDrain:
         assert calls == ["preproc", "drain"]
         assert processed == ["queued prompt", "another prompt"]
         assert command_queue.get_queue_length(coder) == 0
+
+    @pytest.mark.asyncio
+    async def test_itc_32_staged_workflow_command_drains_queue(self, mock_io):
+        """A workflow-staged command drains the tasks queued behind it."""
+        from cecli.coders.base_coder import Coder
+
+        coder = _make_coder_with_commands(("queued prompt",))
+        coder.io = mock_io
+        coder._processing_queue = False
+        coder._drain_queue_after_command = True
+
+        calls = []
+        processed = []
+
+        async def fake_preproc(inp):
+            calls.append("preproc")
+            return await coder.commands.run(inp, coder=coder)
+
+        async def fake_drain(preproc=True):
+            calls.append("drain")
+            while coder.prompt_queue:
+                item = command_queue.dequeue_prompt(coder)
+                processed.append(item["text"])
+
+        coder.preproc_user_input = fake_preproc
+        coder.process_prompt_queue = fake_drain
+
+        await Coder.run_one(coder, "/load-mcp github", preproc=True)
+
+        assert calls == ["preproc", "drain"]
+        assert processed == ["queued prompt"]
+        assert coder._drain_queue_after_command is False
 
 
 class TestQueueRequeue:

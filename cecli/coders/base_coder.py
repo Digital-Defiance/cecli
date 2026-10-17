@@ -292,6 +292,7 @@ class Coder(metaclass=UsageMeta):
     file_watcher = None
     mcp_manager = None
     compact_context_completed = True
+    _drain_queue_after_command = False
     suppress_announcements_for_next_prompt = False
     tool_reflection = False
     last_user_message = ""
@@ -684,6 +685,7 @@ class Coder(metaclass=UsageMeta):
         self._queue_lock = threading.Lock()
         self._processing_queue = False
         self._active_queue_prompt = None
+        self._drain_queue_after_command = False
 
         self.data_cache = {
             "repo": {"last_key": "", "read_only_count": None},
@@ -2070,6 +2072,7 @@ class Coder(metaclass=UsageMeta):
 
                 command_queue.clear_active_prompt(self)
         finally:
+            self._drain_queue_after_command = False
             command_queue.finish_processing(self)
 
     async def run_one(self, user_message, preproc):
@@ -2087,7 +2090,8 @@ class Coder(metaclass=UsageMeta):
         if self.commands.is_command(user_message) and not self.commands.is_test_command(
             user_message
         ):
-            if self._processing_queue:
+            if self._processing_queue or self._drain_queue_after_command:
+                self._drain_queue_after_command = False
                 await self.process_prompt_queue(preproc)
             return
 
