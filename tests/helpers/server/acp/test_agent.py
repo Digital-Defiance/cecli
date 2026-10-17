@@ -137,6 +137,18 @@ def test_finish_turn_fails_open_tools_when_cancelled():
     }
 
 
+def test_finish_turn_fails_skipped_tools():
+    emitter, updates = make_emitter()
+    emitter.tool_event("t1", "pending", name="Command", arguments="{}")
+    emitter.finish_turn()
+
+    assert updates[-1] == {
+        "sessionUpdate": "tool_call_update",
+        "toolCallId": "t1",
+        "status": "failed",
+    }
+
+
 def test_todo_list_becomes_plan_and_yield_summary_a_message():
     emitter, updates = make_emitter()
     tasks = [
@@ -553,8 +565,8 @@ async def test_subagent_is_a_child_session(tmp_path):
     parent_updates = [update for session_id, update in sent if session_id == "s1"]
     assert texts(parent_updates, "agent_message_chunk") == "Meanwhile, the parent."
 
-    # Going idle settles the child's tools, and the parent's roster shows its state
-    assert child_updates[-1]["status"] == "completed"
+    # Going idle settles the child's tools; this one was announced but never ran
+    assert child_updates[-1]["status"] == "failed"
     assert subagent_states(transport) == [
         ("s1", child, {"state": "running"}),
         ("s1", child, {"state": "idle", "stopReason": "end_turn"}),

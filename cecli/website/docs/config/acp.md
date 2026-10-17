@@ -1,6 +1,6 @@
 ---
 parent: Configuration
-nav_order: 41
+nav_order: 43
 description: Use cecli as an agent inside editors that speak the Agent Client Protocol, such as Zed.
 ---
 

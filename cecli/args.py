@@ -31,6 +31,7 @@ DEEP_MERGE_LIST_FIELDS: frozenset[str] = frozenset(
         "file",
         "read",
         "mcp_servers_files",
+        "acp_models",
         "set_env",
         "api_key",
         "alias",

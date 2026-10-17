@@ -1067,12 +1067,15 @@ class AgentService:
         try:
             await asyncio.shield(task)
         except asyncio.CancelledError:
-            if not task.done():
-                # The caller was cancelled: stop the sub-agent it was waiting for
-                info.cancel_requested = True
-                task.cancel()
-                raise
-            # Only the sub-agent was cancelled; its summary says it was interrupted
+            if info.cancel_requested or task.cancelled():
+                # The sub-agent was cancelled; wait for its interrupted summary
+                await asyncio.gather(task, return_exceptions=True)
+                return info.summary
+
+            # The caller was cancelled: stop the sub-agent it was waiting for
+            info.cancel_requested = True
+            task.cancel()
+            raise
         return info.summary
 
     async def spawn(

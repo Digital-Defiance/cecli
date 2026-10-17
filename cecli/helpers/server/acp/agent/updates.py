@@ -342,7 +342,10 @@ class UpdateEmitter:
         self._close_console()
         final_status = "failed" if cancelled else "completed"
         for tool in self._tools.values():
-            if tool.status not in ("completed", "failed"):
+            if tool.status == "pending":
+                # Announced but never started (the confirmation was skipped)
+                self._set_status(tool.id, "failed")
+            elif tool.status not in ("completed", "failed"):
                 self._set_status(tool.id, final_status)
         self.reset()
 
