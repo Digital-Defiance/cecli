@@ -31,6 +31,7 @@ DEEP_MERGE_LIST_FIELDS: frozenset[str] = frozenset(
         "file",
         "read",
         "mcp_servers_files",
+        "acp_models",
         "set_env",
         "api_key",
         "alias",
@@ -440,13 +441,9 @@ def get_parser(default_config_files, git_root):
     )
     group.add_argument(
         "--scheduler",
-        action=argparse.BooleanOptionalAction,
+        metavar="SCHEDULER_CONFIG_JSON",
+        help="Specify scheduler configuration as a JSON string",
         default=None,
-        help=(
-            "Force the workflow scheduler on (--scheduler) or off (--no-scheduler) for"
-            " this session. (default: auto, on when any enabled scheduled workflow"
-            " exists)"
-        ),
     )
     group.add_argument(
         "--system-one",
@@ -1316,6 +1313,24 @@ def get_parser(default_config_files, git_root):
         metavar="SERVER_CONFIG_JSON",
         help="Specify server configuration (WebSocket and headless) as a JSON/YAML string",
         default=None,
+    )
+    group.add_argument(
+        "--acp",
+        action="store_true",
+        default=False,
+        help=(
+            "Run as an Agent Client Protocol (ACP) agent over stdio, for editors such as Zed"
+            " (stdout carries the protocol)"
+        ),
+    )
+    group.add_argument(
+        "--acp-models",
+        action="append",
+        metavar="PATTERN",
+        help=(
+            "Limit the ACP model picker's provider lists to models matching this pattern,"
+            " matched like /models (can be used multiple times)"
+        ),
     )
 
     ##########

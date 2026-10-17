@@ -6,6 +6,7 @@ that tracks sub-agent info and handles invoke/spawn/wait lifecycle.
 
 import asyncio
 import logging
+import threading
 import time
 import weakref
 from dataclasses import dataclass
@@ -40,6 +41,25 @@ MODEL_SENTINEL_CURRENT = "<current>"
 AGENT_INHERIT_PREFIXES = ("ws:", "wf:")
 
 
+def _subagent_event(coder: Any, agent_uuid: Any, event: str, **kwargs: Any) -> None:
+    """Report a sub-agent's lifecycle to the IO (see ``InputOutput.subagent_event``)."""
+    io = getattr(coder, "io", None)
+    if io is None:
+        return
+    try:
+        io.subagent_event(str(agent_uuid), event, **kwargs)
+    except Exception:
+        logger.warning("Failed to report sub-agent event %r", event, exc_info=True)
+
+
+def _was_cancelled(info: "SubAgentInfo") -> bool:
+    """Whether the current run was cancelled, even if the coder absorbed it as a ^C."""
+    if info.cancel_requested:
+        return True
+    cancelling = getattr(asyncio.current_task(), "cancelling", None)  # Python 3.11+
+    return bool(cancelling and cancelling())
+
+
 class SubAgentStatus(Enum):
     """Status of a sub-agent."""
 
@@ -65,6 +85,7 @@ class SubAgentInfo:
     auto_reap: bool = True  # If True, agent may be automatically reaped when FINISHED
     independent: bool = False
     detached: bool = False
+    cancel_requested: bool = False  # the current run was cancelled (see _was_cancelled)
 
 
 class AgentService:
@@ -80,8 +101,22 @@ class AgentService:
     _uuid_coder_map: Dict[str, weakref.ref] = {}
     # Lock pools keyed by parent UUID — created lazily so only parents that
     # actually use them allocate a lock.
-    _spawn_locks: Dict[str, asyncio.Lock] = {}
-    _conversation_locks: Dict[str, asyncio.Lock] = {}
+    #
+    # Plain ``threading.Lock`` (not ``asyncio.Lock``): an ``asyncio.Lock`` binds
+    # itself to the event loop of its first *waiting* acquirer and raises
+    # ``RuntimeError('... is bound to a different event loop')`` when awaited
+    # from another loop. Spawn, reap and conversation writes all reach these
+    # pools from both the TUI main (Textual) loop and the coder worker-thread
+    # loop, and the pools are class-level, so a lock created before a hot reload
+    # outlives the loop it bound to. Every guarded section is fully synchronous,
+    # so a thread lock gives true cross-loop mutual exclusion with no loop
+    # affinity and is immune to task cancellation.
+    #
+    # Invariant: never hold one of these locks across an ``await`` — the guarded
+    # sections must stay synchronous, or the blocking acquire could stall the
+    # event loop.
+    _spawn_locks: Dict[str, threading.Lock] = {}
+    _conversation_locks: Dict[str, threading.Lock] = {}
     _primary_agent_uuid: str = None
 
     # ------------------------------------------------------------------ #
@@ -305,10 +340,15 @@ class AgentService:
     # ------------------------------------------------------------------ #
     # Internal helpers
     @classmethod
-    def _get_lock(cls, pool: Dict[str, asyncio.Lock], uuid: str) -> asyncio.Lock:
-        """Return a lock for *uuid* from *pool*, creating one if absent."""
+    def _get_lock(cls, pool: Dict[str, threading.Lock], uuid: str) -> threading.Lock:
+        """Return a lock for *uuid* from *pool*, creating one if absent.
+
+        Locks are ``threading.Lock`` rather than ``asyncio.Lock`` (see the pool
+        declarations): the guarded sections are synchronous and correct locking
+        must work from any event loop.
+        """
         if uuid not in pool:
-            pool[uuid] = asyncio.Lock()
+            pool[uuid] = threading.Lock()
         return pool[uuid]
 
     @staticmethod
@@ -444,7 +484,7 @@ class AgentService:
         # Acquire the spawn lock for the primary coder to serialise with
         # concurrent spawn operations that also hold this lock.
         parent_coder = parent if parent is not None else self.coder
-        async with self._get_lock(self._spawn_locks, parent_coder.uuid):
+        with self._get_lock(self._spawn_locks, parent_coder.uuid):
             for coder_uuid in list(self._sub_agent_order):
                 info = self.sub_agents.get(coder_uuid)
                 if (
@@ -501,6 +541,8 @@ class AgentService:
                 _tui_notify(tui, tui.remove_sub_agent_container, info.coder.uuid)
         except (AttributeError, RuntimeError):
             logger.warning("Failed to notify TUI to remove sub-agent container", exc_info=True)
+
+        _subagent_event(self.coder, info.coder.uuid, "removed")
 
         # Cancel any tracked generate task to avoid floating tasks
         if info.generate_task is not None and not info.generate_task.done():
@@ -593,7 +635,7 @@ class AgentService:
         # tried to acquire the same lock).
         parent_coder = parent if parent is not None else self.coder
 
-        async with self._get_lock(self._spawn_locks, parent_coder.uuid):
+        with self._get_lock(self._spawn_locks, parent_coder.uuid):
             self._check_max_sub_agents()
             new_uuid = str(uuid4()).split("-")[0]
 
@@ -686,7 +728,7 @@ class AgentService:
 
         # Re-acquire the lock to register — we must re-check max agents since
         # the lock was released and other spawns may have registered in between.
-        async with self._get_lock(self._spawn_locks, parent_coder.uuid):
+        with self._get_lock(self._spawn_locks, parent_coder.uuid):
             self._check_max_sub_agents()
 
             # Register in global coder lookup
@@ -712,6 +754,16 @@ class AgentService:
                 _tui_notify(tui, tui.create_sub_agent_container, new_uuid, name)
         except Exception:
             logger.warning("Failed to notify TUI to create sub-agent container", exc_info=True)
+
+        _subagent_event(
+            parent_coder,
+            new_coder.uuid,
+            "created",
+            parent_uuid=str(parent_coder.uuid),
+            name=name,
+            description=metadata.get("description") if isinstance(metadata, dict) else None,
+            root=str(getattr(new_coder, "root", "") or ""),
+        )
 
         # Initialize system prompt from config
         system_prompt = getattr(config, "prompt", "")
@@ -754,6 +806,40 @@ class AgentService:
     # Public API
     # ------------------------------------------------------------------ #
 
+    async def switch_sub_agent_coder(self, info: SubAgentInfo, switch, preproc=True) -> Any:
+        """Atomically hand a sub-agent's remaining queue to a replacement coder.
+
+        Commands such as /add request a coder rebuild by raising SwitchCoderSignal.
+        A sub-agent must absorb that signal locally: letting it escape recreates the
+        primary coder from the sub-agent and leaves the main session in sub-agent
+        mode. The active prompt has already run, so only the remaining queue moves.
+        """
+        from cecli.coders import Coder
+        from cecli.helpers import command_queue
+
+        old_coder = info.coder
+        kwargs = dict(io=old_coder.io, from_coder=old_coder)
+        kwargs.update(switch.kwargs)
+        kwargs.pop("show_announcements", None)
+        kwargs["from_coder"] = old_coder
+        kwargs["args"] = old_coder.args
+        kwargs["summarize_from_coder"] = False
+
+        new_coder = await Coder.create(**kwargs)
+
+        new_coder.prompt_queue = list(old_coder.prompt_queue)
+        new_coder._queue_counter = old_coder._queue_counter
+        old_coder.prompt_queue.clear()
+
+        command_queue.clear_active_prompt(old_coder)
+
+        info.coder = new_coder
+        self.sub_agents[new_coder.uuid] = info
+        self._uuid_coder_map[new_coder.uuid] = weakref.ref(new_coder)
+
+        await new_coder.process_prompt_queue(preproc)
+        return new_coder
+
     def start_generate_task(self, info: SubAgentInfo, user_message: str) -> asyncio.Task:
         """Start a sub-agent's generate task in the background with status management.
 
@@ -787,8 +873,14 @@ class AgentService:
 
         async def _run_generate():
             info.status = SubAgentStatus.RUNNING
+            info.cancel_requested = False
+            _subagent_event(info.coder, info.coder.uuid, "running")
+            stop_reason, error = "end_turn", None
             try:
                 await info.coder.generate(user_message=user_message, preproc=True)
+                if _was_cancelled(info):
+                    stop_reason = "cancelled"
+                    info.summary = info.summary or DEFAULT_SUMMARY_INTERRUPTED
                 await self._inject_sub_agent_result(info)
                 if info.status == SubAgentStatus.RUNNING:
                     info.status = SubAgentStatus.FINISHED
@@ -811,12 +903,14 @@ class AgentService:
                     fire_and_forget(_cleanup())
 
             except asyncio.CancelledError:
+                stop_reason = "cancelled"
                 await self._inject_sub_agent_result(info)
                 info.status = SubAgentStatus.FINISHED
                 info.summary = info.summary or DEFAULT_SUMMARY_INTERRUPTED
                 logger.debug("Sub-agent %s generate cancelled (interrupted)", info.name)
                 raise
             except Exception as exc:
+                stop_reason, error = "error", str(exc) or exc.__class__.__name__
                 await self._inject_sub_agent_result(info)
                 info.status = SubAgentStatus.ERROR
                 info.error = str(exc)
@@ -829,6 +923,10 @@ class AgentService:
                 raise
             except SwitchCoderSignal:
                 raise
+            finally:
+                _subagent_event(
+                    info.coder, info.coder.uuid, "idle", stop_reason=stop_reason, error=error
+                )
 
         # Cancel any previous generate task to prevent duplicate concurrent generates
         if info.generate_task is not None and not info.generate_task.done():
@@ -952,7 +1050,7 @@ class AgentService:
         else:
             return
 
-        async with self._get_lock(self._conversation_locks, info.parent_uuid):
+        with self._get_lock(self._conversation_locks, info.parent_uuid):
             ConversationService.get_manager(parent_coder).add_message(
                 message_dict={"role": "user", "content": user_content},
                 tag=MessageTag.CUR,
@@ -965,6 +1063,10 @@ class AgentService:
                 hash_key=("sub_agent_result", "assistant", coder_uuid, str(time.monotonic_ns())),
                 force=True,
             )
+
+        _subagent_event(
+            parent_coder, parent_coder.uuid, "message", sender_uuid=coder_uuid, text=user_content
+        )
 
     async def invoke(
         self,
@@ -991,8 +1093,23 @@ class AgentService:
             return None
 
         # Blocking: run the sub-agent with the prompt using start_generate_task
+        sender = parent if parent is not None else self.coder
+        _subagent_event(
+            sender, new_coder.uuid, "message", sender_uuid=str(sender.uuid), text=prompt
+        )
         task = self.start_generate_task(info, prompt)
-        await task
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            if info.cancel_requested or task.cancelled():
+                # The sub-agent was cancelled; wait for its interrupted summary
+                await asyncio.gather(task, return_exceptions=True)
+                return info.summary
+
+            # The caller was cancelled: stop the sub-agent it was waiting for
+            info.cancel_requested = True
+            task.cancel()
+            raise
         return info.summary
 
     async def spawn(
@@ -1020,6 +1137,10 @@ class AgentService:
             name, auto_reap=auto_reap, parent=parent, independent=independent
         )
         if prompt:
+            sender = parent if parent is not None else self.coder
+            _subagent_event(
+                sender, new_coder.uuid, "message", sender_uuid=str(sender.uuid), text=prompt
+            )
             self.start_generate_task(info, prompt)
         return new_coder, info
 
@@ -1058,6 +1179,19 @@ class AgentService:
             await asyncio.gather(*tasks)
 
         return [info.summary for info in children]
+
+    def cancel_sub_agent(self, agent_uuid: str) -> bool:
+        """Stop a sub-agent's current work, leaving its parent running.
+
+        A parent waiting on it (a blocking delegation) gets the interrupted
+        summary. Returns False if the sub-agent was not working.
+        """
+        info = self.sub_agents.get(str(agent_uuid))
+        if info is None or info.generate_task is None or info.generate_task.done():
+            return False
+        info.cancel_requested = True
+        info.generate_task.cancel()
+        return True
 
     def get_active_agents(self) -> List[Dict[str, Any]]:
         """Return list of active sub-agents for display."""
@@ -1200,8 +1334,11 @@ def _tui_notify(tui, callback, *args):
     """Invoke *callback* on the TUI app, from either thread.
 
     ``call_from_thread`` only works when the caller is not the app's own
-    thread; scheduler dispatch runs on the primary (app) event loop, so fall
-    back to calling directly, which is correct when already on that thread.
+    thread. Scheduler-dispatched workflow runs now execute on the coder's own
+    loop (the TUI worker-thread loop — see ``SchedulerService._on_coder_loop``),
+    so notifications originate from the worker thread and ``call_from_thread``
+    applies; when we are already on the app thread (or the TUI is unavailable),
+    fall back to calling directly.
     """
 
     try:

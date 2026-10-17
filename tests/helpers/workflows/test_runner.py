@@ -53,7 +53,14 @@ class FakeService:
 
     def start_generate_task(self, info, user_message):
         # snapshot of the queue at start proves enqueue-before-start ordering
-        self.calls.append(("start", user_message, command_queue.list_queue(info.coder)))
+        self.calls.append(
+            (
+                "start",
+                user_message,
+                command_queue.list_queue(info.coder),
+                info.coder._drain_queue_after_command,
+            )
+        )
         info.status = SubAgentStatus.RUNNING
 
         async def _run():
@@ -124,11 +131,32 @@ async def test_spawn_without_prompt_then_enqueue_then_start(coder):
     assert service.calls[0] == ("spawn", "wf:demo", None, coder, False, False)
 
     # tasks[1:] were enqueued (in order) BEFORE the first generate started
-    _, first_text, queue_at_start = service.calls[1]
+    _, first_text, queue_at_start, drain_after_command = service.calls[1]
     assert first_text == "first"
     assert [item["text"] for item in queue_at_start] == ["second", "third"]
+    assert drain_after_command is True
     assert result.status == "ok"
     assert [t.status for t in result.tasks] == ["ok", "ok", "ok"]
+
+
+@pytest.mark.asyncio
+async def test_command_first_task_drains_staged_queue(coder):
+    """A workflow whose first task is a slash command must drain the rest."""
+    worker = make_worker()
+    worker.received = []
+    service = FakeService(worker, _drain)
+    wf = _wf(
+        TaskConfig(prompt="/load-mcp github"),
+        TaskConfig(prompt="triage issues"),
+    )
+
+    result = await _execute(service, wf, coder)
+
+    _, first_text, queue_at_start, drain_after_command = service.calls[1]
+    assert first_text == "/load-mcp github"
+    assert [item["text"] for item in queue_at_start] == ["triage issues"]
+    assert drain_after_command is True
+    assert result.status == "ok"
 
 
 # ---------------------------------------------------------------- case 19 --

@@ -2,6 +2,7 @@
 
 import concurrent.futures
 import json
+import logging
 import platform
 import queue
 import time
@@ -40,6 +41,8 @@ from .widgets.output import CostUpdate
 IS_WINDOWS = False
 if platform.system() == "Windows":
     IS_WINDOWS = True
+
+logger = logging.getLogger(__name__)
 
 
 class TUI(App):
@@ -1938,9 +1941,18 @@ class TUI(App):
                 else:
                     # Use standard command completions (no file fallback)
                     try:
-                        cmd_completions = commands.get_completions(
-                            cmd_name, args=arg_prefix, coder=active_coder
-                        )
+                        if cmd_name in commands.FULL_ARGS_COMPLETION_COMMANDS:
+                            # Nested-host commands receive the FULL text after
+                            # the command name so inner slash-command argument
+                            # completion works (e.g. "/queue /add <tab>").
+                            nested_text = text[len(cmd_name) :].lstrip()
+                            cmd_completions = commands.get_completions(
+                                cmd_name, args=nested_text, coder=active_coder
+                            )
+                        else:
+                            cmd_completions = commands.get_completions(
+                                cmd_name, args=arg_prefix, coder=active_coder
+                            )
                         if cmd_completions:
                             exempt_from_substring_matching = {
                                 "/model",
@@ -1974,27 +1986,22 @@ class TUI(App):
         """Calculate the new text after applying completion."""
         if current_text.startswith("/"):
             parts = current_text.rsplit(maxsplit=1)
+            commands = self.worker.coder.commands
+            host = current_text.split(maxsplit=1)[0]
+            is_nested_host = host in getattr(commands, "FULL_ARGS_COMPLETION_COMMANDS", ())
 
-            # Check if we have a command with trailing space
-            # This is when we want to insert argument completions after the space
+            if is_nested_host and current_text.endswith(" "):
+                return current_text + completion
             if len(parts) == 1 and current_text.endswith(" "):
-                # Command with trailing space, insert completion after space
                 return current_text + completion
             elif len(parts) == 1:
-                # Replace entire command (command name completion)
-                # Only add space if command takes arguments
-                commands = self.worker.coder.commands
                 try:
                     cmd_completions = commands.get_completions(completion)
                     has_completions = cmd_completions is not None
                 except Exception as e:
-                    # Check if it's a CommandCompletionException
                     if isinstance(e, CommandCompletionException):
-                        # For CommandCompletionException, treat it as having completions
-                        # so we add a space after the command
                         has_completions = True
                     else:
-                        # For other exceptions, assume no completions
                         has_completions = False
 
                 if has_completions:
@@ -2002,7 +2009,9 @@ class TUI(App):
                 else:
                     return completion
             else:
-                # Replace argument
+                if is_nested_host:
+                    prefix = current_text[: current_text.rfind(parts[-1])]
+                    return prefix + completion
                 return parts[0] + " " + completion
         elif "@" in current_text:
             # Replace from @ onwards with the symbol

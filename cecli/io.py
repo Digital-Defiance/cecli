@@ -265,7 +265,17 @@ class AutoCompleter(Completer):
             yield from raw_completer(document, complete_event)
             return
 
-        candidates = self.commands.get_completions(cmd, partial)
+        if cmd in self.commands.FULL_ARGS_COMPLETION_COMMANDS:
+            nested_text = text[len(words[0]) :].lstrip()
+            candidates = self.commands.get_completions(cmd, nested_text)
+            # The substring filter and start_position below operate on the last
+            # word; an empty/trailing-space nested text means "no partial yet".
+            if not nested_text or nested_text[-1].isspace():
+                partial = ""
+            else:
+                partial = nested_text.split()[-1].lower()
+        else:
+            candidates = self.commands.get_completions(cmd, partial)
 
         if candidates is None:
             return
@@ -1568,6 +1578,29 @@ class InputOutput:
         style = RichStyle(**style)
 
         self.stream_print(*messages, style=style, **kwargs)
+
+    def tool_call_event(self, tool_call_id, status, **kwargs):
+        """Structured tool call progress, for front ends that render tool calls natively.
+
+        ``status`` is "pending" when a call is announced (with ``name`` and
+        ``arguments``), "in_progress" when it starts running, and "completed"
+        once its ``result`` is known. Terminal output already shows tool panels,
+        so this is a no-op here; the ACP adapter overrides it.
+        """
+        pass
+
+    def subagent_event(self, agent_uuid, event, **kwargs):
+        """Sub-agent lifecycle, for front ends that show each sub-agent separately.
+
+        ``event`` is "created" (with ``parent_uuid``, ``name``, ``description``
+        and ``root``), "running" when the sub-agent starts working, "idle" when
+        it stops (with ``stop_reason``: "end_turn", "cancelled" or "error", and
+        ``error``), "message" when an agent sends it a message (with
+        ``sender_uuid`` and ``text``), and "removed" once it is reaped. Output
+        already carries each agent's ``coder_uuid``, so this is a no-op here;
+        the ACP adapter overrides it.
+        """
+        pass
 
     def escape(self, text):
         """Formats valid Rich tags and prints invalid ones as literal text using a single regex pass."""

@@ -101,6 +101,14 @@ def test_main_with_empty_dir_no_files_on_command(dummy_io):
     main(["--no-git", "--exit", "--yes-always"], **dummy_io)
 
 
+def test_main_ignores_acp_outside_command_line(dummy_io, monkeypatch, capsys):
+    # ACP mode starts before config is read, so only the --acp flag can turn it on
+    monkeypatch.setenv("CECLI_ACP", "1")
+    coder = main(["--no-git", "--exit", "--yes-always"], **dummy_io, return_coder=True)
+    assert type(coder.io._target) is InputOutput
+    assert "pass --acp on the command line" in capsys.readouterr().err
+
+
 def test_main_with_empty_dir_new_file(dummy_io):
     main(["foo.txt", "--yes-always", "--no-git", "--exit"], **dummy_io)
     assert os.path.exists("foo.txt")
@@ -1050,8 +1058,17 @@ def test_main_exit_with_git_command_not_found(dummy_io, git_temp_dir, mocker):
 
 
 def test_reasoning_effort_option(dummy_io, git_temp_dir):
+    # Fix the model so the assertion does not depend on which provider keys are set.
     coder = main(
-        ["--reasoning-effort", "3", "--no-check-model-accepts-settings", "--yes-always", "--exit"],
+        [
+            "--model",
+            "gpt-3.5-turbo",
+            "--reasoning-effort",
+            "3",
+            "--no-check-model-accepts-settings",
+            "--yes-always",
+            "--exit",
+        ],
         **dummy_io,
         return_coder=True,
     )

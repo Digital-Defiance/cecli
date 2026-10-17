@@ -14,6 +14,9 @@ from cecli.signals import SwitchCoderSignal
 class Commands:
     scraper = None
 
+    # Commands that receive their full argument text for nested completion.
+    FULL_ARGS_COMPLETION_COMMANDS = ("/queue", "/insert-queue")
+
     def _get_coder(self):
         """Return coder via weak reference, or None if collected."""
         if self._coder_ref is not None:
@@ -90,7 +93,7 @@ class Commands:
         self.last_command_show_notification = True
 
         # Commands that should NOT trigger auto-processing of the queue
-        self._MANAGEMENT_COMMANDS = {"queue", "list-queue", "remove-queue"}
+        self._MANAGEMENT_COMMANDS = {"queue", "list-queue", "remove-queue", "run-queue"}
 
     def _load_custom_commands(self, custom_commands):
         """

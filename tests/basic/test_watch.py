@@ -248,6 +248,34 @@ def test_catch_up_scan_ignores_file_at_threshold(tmp_path):
     assert watcher.changed_files == set()
 
 
+def test_catch_up_scan_advances_past_file_mtime(tmp_path):
+    """A file whose mtime is ahead of the wall clock is not re-found.
+
+    On Windows the wall clock (``time.time()``) can be coarser than the
+    filesystem timestamp, so a file written just before a scan may report an
+    mtime slightly ahead of the time the scan started. The threshold must be
+    advanced using the filesystem timestamp so the file is not re-found.
+    """
+    io = InputOutput(pretty=False, fancy_input=False, yes=False)
+    coder = MinimalCoder(io)
+    watcher = FileWatcher(coder, root=tmp_path)
+    watcher.last_scan_time = 0
+
+    target = tmp_path / "a.py"
+    target.write_text("# ai!\n")
+
+    # Simulate the clock skew by giving the file an mtime in the future
+    # relative to the wall clock reading taken when the scan starts.
+    ahead = time.time() + 5
+    os.utime(target, (ahead, ahead))
+
+    assert watcher.catch_up_scan()
+    watcher.changed_files = set()
+
+    assert not watcher.catch_up_scan()
+    assert watcher.changed_files == set()
+
+
 def test_process_changes_consumes_catch_up(tmp_path):
     io = InputOutput(pretty=False, fancy_input=False, yes=False)
     coder = MinimalCoder(io)

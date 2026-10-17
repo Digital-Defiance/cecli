@@ -126,6 +126,12 @@ class IOProxy(Generic[T]):
             kwargs["coder_uuid"] = self._coder_uuid
         return self._target.assistant_output(message=message, pretty=pretty, **kwargs)
 
+    def tool_call_event(self, tool_call_id: str, status: str, **kwargs: Any) -> Any:
+        """Forward tool_call_event with coder_uuid injected."""
+        if "coder_uuid" not in kwargs:
+            kwargs["coder_uuid"] = self._coder_uuid
+        return self._target.tool_call_event(tool_call_id, status, **kwargs)
+
     def reset_streaming_response(self, **kwargs) -> Any:
         """Forward reset_streaming_response with coder_uuid injected."""
         if "coder_uuid" not in kwargs:
@@ -183,7 +189,28 @@ class IOProxy(Generic[T]):
 
     async def confirm_ask(self, *args, **kwargs):
         """Forward confirm_ask — per-coder queue iteration is handled by
-        TextualInputOutput which now iterates all per-coder queues."""
+        TextualInputOutput which now iterates all per-coder queues.
+
+        Coders configured with ``skip_cli_confirmations`` (unattended ``wf:``
+        workflow and ``ws:`` workspace workers) are auto-confirmed. They run
+        with nobody watching, and — more importantly — a blocking prompt has
+        to be awaited from whatever loop the coder happens to run on. A
+        scheduler-dispatched workflow runs on the main (Textual) loop, so
+        blocking there used to rebind ``queues``' global input-wake slot and
+        strand the primary coder's input pump.
+        """
+        coder_ref = getattr(self, "_coder", None)
+        coder = coder_ref() if coder_ref is not None else None
+
+        if coder is not None and getattr(coder, "skip_cli_confirmations", False):
+            question = args[0] if args else kwargs.get("question", "")
+            logger.debug(
+                "auto-confirming %r for unattended coder %s (skip_cli_confirmations)",
+                question,
+                self._coder_uuid,
+            )
+            return True
+
         if "coder_uuid" not in kwargs:
             kwargs["coder_uuid"] = self._coder_uuid
         return await self._target.confirm_ask(*args, **kwargs)

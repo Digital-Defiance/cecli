@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import os
 import re
 import warnings
@@ -1096,15 +1097,11 @@ class _LiteLLMFacade:
         """Estimate tokens for ``text`` without loading a BPE tokenizer.
 
         tiktoken's cl100k_base/o200k_base encodings cost ~30-95MB of RSS the
-        first time they are loaded, so we approximate instead: roughly one token
-        per four ASCII characters (the classic rule of thumb), plus one token per
-        non-ASCII character (CJK/emoji tokenize at about one token per char), and
-        never fewer tokens than there are whitespace-delimited word/punctuation
-        runs (dense code with short tokens is otherwise undercounted).
-
-        The estimate lands within ~±30% of cl100k_base on code and prose, which
-        is plenty for context-window checks, cost display, and file-size
-        warnings.
+        first time they are loaded, so we approximate instead with a regex
+        pre-tokenizer patterned on OpenAI's o200k_base (see
+        ``_estimate_token_count``). The estimate lands within ~±30% of
+        cl100k_base on code and prose, which is plenty for context-window
+        checks, cost display, and file-size warnings.
 
         Returns a ``range`` whose length is the estimated token count; the
         individual values are dummy ids (callers only use ``len()``/iteration).
@@ -1244,23 +1241,41 @@ __all__ = ["litellm"]
 # Token-count estimator (tiktoken-free)
 # ---------------------------------------------------------------------------
 
-_WORD_OR_PUNCT_RE = re.compile(r"\w+|[^\w\s]")
-_NON_ASCII_RE = re.compile(r"[^\x00-\x7f]")
+# Standard ``re`` approximation of OpenAI's o200k_base pre-tokenizer pattern.
+# The letter class is Unicode-aware (``[^\W\d_]``) so non-Latin scripts are
+# counted rather than dropped.
+_O200K_APPROX_PATTERN = re.compile(
+    r"""'(?:[sdmt]|ll|ve|re)| ?[^\W\d_]+| ?\d{1,3}| ?[^\s\w]+|\s+""", re.UNICODE
+)
+
+#: Bytes charged per token for chunks too long to be a single token, calibrated
+#: against o200k_base (~5 bytes/token on code, prose and JSON).
+_CHARS_PER_TOKEN = 5.0
 
 
 def _estimate_token_count(text: str) -> int:
     """Estimate the number of tokens in ``text`` without a BPE tokenizer.
 
-    Uses the classic ~4 chars/token rule of thumb, lifted for non-ASCII text
-    (CJK/emoji tokenize at roughly one token per character) and floored by the
-    number of word/punctuation runs so dense code with many short tokens isn't
-    undercounted.
+    Splits ``text`` with a regex approximation of OpenAI's o200k_base
+    pre-tokenizer, then accumulates a fractional token weight per chunk:
+    whitespace runs collapse to a single token, numbers and short chunks
+    (<= 4 bytes) count as one, and longer chunks are charged at roughly
+    ``_CHARS_PER_TOKEN`` bytes per token. The total is rounded up and floored
+    at one token for any non-empty input.
     """
 
     if not text:
         return 0
 
-    units = len(_WORD_OR_PUNCT_RE.findall(text))
-    non_ascii = len(_NON_ASCII_RE.findall(text))
+    tokens = 0.0
+    for chunk in _O200K_APPROX_PATTERN.findall(text):
+        byte_len = len(chunk.encode("utf-8"))
 
-    return max(1, len(text) // 4, units) + non_ascii
+        if chunk.isspace():
+            tokens += 1.0
+        elif chunk.strip().isdigit() or byte_len <= 4:
+            tokens += 1.0
+        else:
+            tokens += max(1.0, byte_len / _CHARS_PER_TOKEN)
+
+    return max(1, math.ceil(tokens - 1e-9))

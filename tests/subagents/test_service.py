@@ -2,11 +2,15 @@
 Tests for cecli/helpers/agents/service.py — AgentService.
 """
 
+import asyncio
+import threading
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from cecli.helpers.agents.service import (
+    DEFAULT_SUMMARY_INTERRUPTED,
     AgentService,
     SubAgentInfo,
     SubAgentStatus,
@@ -460,6 +464,95 @@ class TestInvoke:
         call_args = mock_tui.call_from_thread.call_args[0]
         assert call_args[1] is not None  # new_uuid
         assert call_args[2] == "reviewer"  # name
+
+
+def make_sub_coder(service, generate):
+    """A sub-agent coder sharing the parent's io, as IOProxy instances share their target."""
+    sub_coder = MagicMock()
+    sub_coder.tui = None
+    sub_coder.uuid = "child-uuid"
+    sub_coder.root = "/proj"
+    sub_coder.io = service.coder.io
+    sub_coder.generate = AsyncMock(side_effect=generate)
+    return sub_coder
+
+
+class TestSubAgentEvents:
+    """Sub-agent lifecycle reported through ``io.subagent_event``, and cancelling one."""
+
+    @pytest.fixture(autouse=True)
+    def patched_coders(self, service, registry):
+        # After ``service``, which empties the registry
+        with patch("cecli.coders.Coder") as MockCoder:
+            with patch("cecli.helpers.conversation.service.ConversationService"):
+                self.MockCoder = MockCoder
+                yield
+
+    def events(self, service):
+        return [
+            (call.args[0], call.args[1], call.kwargs)
+            for call in service.coder.io.subagent_event.call_args_list
+        ]
+
+    async def test_invoke_reports_the_lifecycle(self, service):
+        async def finish(user_message, **kwargs):
+            info = service.sub_agents["child-uuid"]
+            info.status, info.summary = SubAgentStatus.FINISHED, "all good"
+
+        self.MockCoder.create = AsyncMock(return_value=make_sub_coder(service, finish))
+        assert await service.invoke("reviewer", "review this") == "all good"
+
+        events = self.events(service)
+        assert [(uuid, event) for uuid, event, _ in events] == [
+            ("child-uuid", "created"),
+            ("child-uuid", "message"),
+            ("child-uuid", "running"),
+            ("parent-uuid", "message"),
+            ("child-uuid", "idle"),
+        ]
+        created, delegation, _, result, idle = (kwargs for _, _, kwargs in events)
+        assert created["parent_uuid"] == "parent-uuid"
+        assert created["name"] == "reviewer" and created["root"] == "/proj"
+        assert delegation == {"sender_uuid": "parent-uuid", "text": "review this"}
+        assert result["sender_uuid"] == "child-uuid" and "all good" in result["text"]
+        assert idle == {"stop_reason": "end_turn", "error": None}
+
+    def start_work(self, service, absorb):
+        """Invoke a sub-agent that works until cancelled; returns (invoking task, started)."""
+        started = asyncio.Event()
+
+        async def work(user_message, **kwargs):
+            started.set()
+            try:
+                await asyncio.sleep(3600)
+            except asyncio.CancelledError:
+                if not absorb:
+                    raise
+                # Streaming turns a cancellation into a ^C, and generate() returns
+
+        self.MockCoder.create = AsyncMock(return_value=make_sub_coder(service, work))
+        return asyncio.create_task(service.invoke("reviewer", "review this")), started
+
+    @pytest.mark.parametrize("absorb", [False, True])
+    async def test_cancelling_the_sub_agent_leaves_its_parent_running(self, service, absorb):
+        invoking, started = self.start_work(service, absorb)
+        await started.wait()
+
+        assert service.cancel_sub_agent("child-uuid") is True
+        assert await invoking == DEFAULT_SUMMARY_INTERRUPTED
+        assert self.events(service)[-1][1:] == ("idle", {"stop_reason": "cancelled", "error": None})
+        assert service.cancel_sub_agent("child-uuid") is False
+
+    @pytest.mark.parametrize("absorb", [False, True])
+    async def test_cancelling_the_parent_cancels_the_sub_agent_it_waits_for(self, service, absorb):
+        invoking, started = self.start_work(service, absorb)
+        await started.wait()
+
+        invoking.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await invoking
+        await asyncio.gather(service.sub_agents["child-uuid"].generate_task, return_exceptions=True)
+        assert self.events(service)[-1][1:] == ("idle", {"stop_reason": "cancelled", "error": None})
 
 
 # ================================================================== #
@@ -962,3 +1055,108 @@ class TestAgentInheritPrefixes:
         merged = await self._create(service, "worker")
 
         assert merged == {"own": 2}
+
+
+# ================================================================== #
+# Cross-loop lock safety
+# ================================================================== #
+
+
+class TestCrossLoopLocks:
+    """Spawn/conversation locks must be usable from two different event loops.
+
+    ``asyncio.Lock`` binds to the loop of its first *waiting* acquirer and
+    raises ``RuntimeError`` ("... is bound to a different event loop") when
+    awaited from another loop. Spawn, reap and conversation writes reach the
+    same per-parent lock from both the TUI main (Textual) loop and the coder
+    worker-thread loop, so the pools use ``threading.Lock``; the guarded
+    sections are synchronous, so a blocked acquirer simply waits.
+    """
+
+    def setup_method(self):
+        """Isolate the lock pools (class-level, so they leak between tests)."""
+        AgentService._spawn_locks = {}
+        AgentService._conversation_locks = {}
+
+    def teardown_method(self):
+        AgentService._spawn_locks = {}
+        AgentService._conversation_locks = {}
+
+    def test_lock_pools_are_thread_locks(self):
+        """The pools hand out ``threading.Lock``, never ``asyncio.Lock``."""
+        lock = AgentService._get_lock(AgentService._spawn_locks, "parent-uuid")
+        assert isinstance(lock, type(threading.Lock()))
+        assert not isinstance(lock, asyncio.Lock)
+        # Created lazily, but stable per uuid.
+        assert AgentService._get_lock(AgentService._spawn_locks, "parent-uuid") is lock
+
+    def test_contended_lock_is_usable_across_event_loops(self):
+        """Two waiters on their own loops must block, never raise.
+
+        With ``asyncio.Lock`` the *second* waiter (different loop from the one
+        the lock bound to) raises ``RuntimeError``; with ``threading.Lock``
+        both simply wait for the holder to release.
+        """
+        lock = AgentService._get_lock(AgentService._spawn_locks, "parent-uuid")
+
+        entered = threading.Event()
+        release = threading.Event()
+        order = []
+        errors = []
+
+        def run_on_own_loop(coro_factory):
+            """Run the coroutine on a fresh event loop in this thread."""
+            loop = asyncio.new_event_loop()
+            try:
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(coro_factory())
+            except BaseException as exc:  # noqa: BLE001 - record, do not raise in thread
+                errors.append(exc)
+            finally:
+                asyncio.set_event_loop(None)
+                loop.close()
+
+        async def holds_lock():
+            with lock:
+                order.append("holder")
+                entered.set()
+                # Await *outside* the lock: guarded sections never await.
+                await asyncio.to_thread(release.wait, 5)
+            order.append("holder-released")
+
+        def contender_factory(tag):
+            async def contends():
+                with lock:
+                    order.append(tag)
+
+            return contends
+
+        holder = threading.Thread(target=run_on_own_loop, args=(holds_lock,))
+        holder.start()
+        first = second = None
+        try:
+            assert entered.wait(timeout=5), "holder never acquired the lock"
+
+            # Waiter #1 blocks on its own loop...
+            first = threading.Thread(target=run_on_own_loop, args=(contender_factory("c1"),))
+            first.start()
+            time.sleep(0.1)
+            # ...waiter #2 on a third loop must block too, not raise.
+            second = threading.Thread(target=run_on_own_loop, args=(contender_factory("c2"),))
+            second.start()
+            time.sleep(0.2)
+
+            assert errors == [], f"cross-loop lock acquisition raised: {errors}"
+            assert order == ["holder"]
+        finally:
+            release.set()
+            holder.join(timeout=5)
+
+        for thread in (first, second):
+            if thread is not None:
+                thread.join(timeout=5)
+
+        assert errors == []
+        assert "c1" in order
+        assert "c2" in order
+        assert "holder-released" in order

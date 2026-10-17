@@ -81,6 +81,9 @@ async def execute_workflow(
         for text in texts[1:]:
             command_queue.enqueue_prompt(worker, text)
 
+        # The first task is started directly, so make sure a command task also
+        # drains the staged queue instead of stopping after the command.
+        worker._drain_queue_after_command = True
         service.start_generate_task(info, texts[0])
 
         outcome, detail = await _await_run(info)

@@ -322,6 +322,12 @@ class FileWatcher:
         # before this scan can share the threshold tick and must not be re-found.
         threshold = self.last_scan_time
         found = set()
+        # Track the newest filesystem mtime observed during this scan. On
+        # Windows the wall clock (time.time) is coarser than file mtimes, so a
+        # file written just before this scan can carry an mtime slightly ahead
+        # of scan_started; advancing the threshold from the filesystem clock
+        # instead of the wall clock keeps such a file from being re-found.
+        max_mtime = threshold
 
         for root in self.get_roots_to_watch():
             root_path = Path(root)
@@ -335,12 +341,15 @@ class FileWatcher:
 
             for path in candidates:
                 try:
+                    max_mtime = max(max_mtime, path.stat().st_mtime)
                     if self.filter_func(None, str(path)):
                         found.add(str(path.absolute()))
                 except Exception:
                     continue
 
-        self.last_scan_time = scan_started
+        # Advance to the newest filesystem timestamp we saw so the next scan's
+        # threshold is never behind a file's mtime (see note above).
+        self.last_scan_time = max(scan_started, max_mtime)
 
         if found:
             self.changed_files.update(found)
