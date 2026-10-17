@@ -1627,6 +1627,10 @@ class Coder(metaclass=UsageMeta):
         async for chunk in self.send_message(user_message):
             yield chunk
 
+        # Stream-driven interfaces bypass run_one(), so drain the queue here
+        # to keep queued prompts processing after the request completes.
+        await self.process_prompt_queue()
+
     def init_before_message(self):
         self.coder_edited_files = set()
         self.reflected_message = None
@@ -2026,6 +2030,56 @@ class Coder(metaclass=UsageMeta):
     def wrap_user_input(self, inp):
         return inp
 
+    async def process_prompt_queue(self, preproc=True):
+        """Drain the coder's prompt queue in FIFO order.
+
+        Re-entrancy safe: a nested call (e.g. a queued prompt that itself
+        triggers a drain) returns immediately. Each item is isolated so one
+        failing prompt does not abort the rest of the queue. An interrupt
+        (Ctrl+C / cancellation) re-queues the in-flight item at the front and
+        re-raises so the caller can resume later via /run-queue.
+
+        Each item runs through ``generate()`` rather than a bare ``run_one()``.
+        ``generate()`` owns the generation lifecycle: it clears the interrupt
+        event, sets ``run_one_completed`` False for the duration, drives the
+        spinner, and wires ``io.output_task``. A bare ``run_one()`` skips all
+        of that, so a drain that called it directly (e.g. the TUI idle drain on
+        the worker loop) started the turn but stalled silently. ``_processing_queue``
+        still guards against the nested drain that ``run_one()`` performs at its
+        end.
+        """
+        if self._processing_queue:
+            return
+
+        self._processing_queue = True
+        try:
+            while self.prompt_queue:
+                item = command_queue.dequeue_prompt(self)
+                if item is None:
+                    break
+
+                self.io.tool_output(f"Processing queued prompt (id: {item['id']})...")
+                try:
+                    await self.generate(item["text"], preproc)
+                except (asyncio.CancelledError, KeyboardInterrupt):
+                    # Put the in-flight prompt back at the front so it is not
+                    # lost, then let the interrupt propagate to the caller.
+                    command_queue.insert_prompt(self, item["text"], 0)
+                    remaining = command_queue.get_queue_length(self)
+                    self.io.tool_warning(
+                        f"Queue processing interrupted. {remaining} prompt(s) remain"
+                        " queued; use /run-queue to resume."
+                    )
+                    raise
+                except (SwitchCoderSignal, SystemExit):
+                    raise
+                except Exception as e:
+                    # Isolate failures: log and continue with the next item.
+                    self.io.tool_error(f"Error processing queued prompt (id: {item['id']}): {e}")
+                    continue
+        finally:
+            self._processing_queue = False
+
     async def run_one(self, user_message, preproc):
         self.init_before_message()
 
@@ -2041,6 +2095,10 @@ class Coder(metaclass=UsageMeta):
         if self.commands.is_command(user_message) and not self.commands.is_test_command(
             user_message
         ):
+            # Command path: may have queued prompts (e.g. /queue); drain so
+            # idle-queued prompts start immediately. The _processing_queue
+            # guard prevents double-drain when this runs inside a drain loop.
+            await self.process_prompt_queue(preproc)
             return
 
         if not self.commands.is_command(user_message):
@@ -2112,19 +2170,10 @@ class Coder(metaclass=UsageMeta):
 
             await self.auto_save_session(force=True)
 
-        # Move to the next queued prompt (CLI-33) only after the current message
-        # has fully completed, so the queue drains within run_one() instead of
+        # Drain any queued prompts (CLI-33) only after the current message has
+        # fully completed, so the queue is processed within run_one() instead of
         # being watched by the generation loops.
-        if self.prompt_queue and not self._processing_queue:
-            self._processing_queue = True
-            try:
-                item = command_queue.dequeue_prompt(self)
-            finally:
-                self._processing_queue = False
-
-            if item is not None:
-                self.io.tool_output(f"Processing queued prompt (id: {item['id']})...")
-                await self.run_one(item["text"], preproc)
+        await self.process_prompt_queue(preproc)
 
         if not await HookIntegration.call_end_hooks(self):
             self.io.tool_warning("Execution stopped by end hook")

@@ -11,7 +11,7 @@ Test categories:
 - UTC-01 through UTC-20: Unit tests for queue helpers
 - ITC-01 through ITC-20: Integration tests for commands
 - ETC-01 through ETC-10: E2E tests for full lifecycle
-- RTC-01 through RTC-05: Regression tests for existing functionality
+- RTC-01 through RTC-06: Regression tests for existing functionality
 - TDS-01 through TDS-04: Test data setup and fixtures
 """
 
@@ -23,9 +23,11 @@ import pytest
 
 # Import the actual classes to test
 from cecli.commands.core import Commands
+from cecli.commands.insert_queue import InsertQueueCommand
 from cecli.commands.list_queue import ListQueueCommand
 from cecli.commands.queue import QueueCommand
 from cecli.commands.remove_queue import RemoveQueueCommand
+from cecli.commands.run_queue import RunQueueCommand
 from cecli.commands.utils.registry import CommandRegistry
 from cecli.helpers import command_queue
 from cecli.signals import ReloadProgramSignal, SwitchCoderSignal
@@ -503,10 +505,300 @@ class TestRemoveQueueCommand:
         assert "*" in completions
 
     def test_itc_20_commands_registered_in_registry(self):
-        """ITC-20: All three commands are registered and discoverable via help/registry lookup."""
+        """ITC-20: All four queue commands are registered and discoverable via registry lookup."""
         assert CommandRegistry.get_command("queue") is not None
         assert CommandRegistry.get_command("list-queue") is not None
         assert CommandRegistry.get_command("remove-queue") is not None
+        assert CommandRegistry.get_command("run-queue") is not None
+
+
+class TestRunQueueCommand:
+    """Integration tests for RunQueueCommand."""
+
+    @pytest.mark.asyncio
+    async def test_itc_21_run_queue_drains_multiple_items_fifo(self, mock_io):
+        """ITC-21: /run-queue drains every queued item in FIFO order."""
+        coder = _make_coder_with_commands(("first", "second", "third"))
+        processed = []
+
+        async def fake_drain():
+            while coder.prompt_queue:
+                item = command_queue.dequeue_prompt(coder)
+                processed.append(item["text"])
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await RunQueueCommand.execute(mock_io, coder, "")
+
+        assert result == "Successfully executed run-queue."
+        assert processed == ["first", "second", "third"]
+        assert command_queue.get_queue_length(coder) == 0
+
+    @pytest.mark.asyncio
+    async def test_itc_22_run_queue_exception_returns_formatted_error(self, mock_io):
+        """ITC-22: An exception in process_prompt_queue returns a formatted error."""
+        coder = _make_coder_with_commands(("boom",))
+
+        async def failing_drain():
+            raise RuntimeError("drain exploded")
+
+        coder.process_prompt_queue = failing_drain
+
+        result = await RunQueueCommand.execute(mock_io, coder, "")
+
+        assert "Error" in result
+        assert "drain exploded" in result
+        mock_io.tool_error.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_itc_23_run_queue_empty_queue_informs_user(self, mock_io, mock_coder):
+        """ITC-23: /run-queue on an empty queue informs the user without error."""
+        result = await RunQueueCommand.execute(mock_io, mock_coder, "")
+
+        assert result == "Successfully executed run-queue."
+        calls = [str(call) for call in mock_io.tool_output.call_args_list]
+        assert any("Queue is empty" in call for call in calls)
+
+    @pytest.mark.asyncio
+    async def test_itc_24_run_queue_handles_coder_commands_none(
+        self, mock_io, mock_coder_no_commands
+    ):
+        """ITC-24: /run-queue handles coder.commands is None with error message."""
+        result = await RunQueueCommand.execute(mock_io, mock_coder_no_commands, "")
+
+        assert "Error" in result or "not available" in result.lower()
+
+
+class TestQueueIdleImmediate:
+    """Integration tests for idle-immediate queue draining (plan step 9.8)."""
+
+    @pytest.mark.asyncio
+    async def test_itc_25_queue_idle_triggers_immediate_processing(self, mock_io):
+        """ITC-25: /queue while idle (run_one_completed=True) drains the queue now."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = True
+        coder._processing_queue = False
+        processed = []
+
+        async def fake_drain():
+            while coder.prompt_queue:
+                item = command_queue.dequeue_prompt(coder)
+                processed.append(item["text"])
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await QueueCommand.execute(mock_io, coder, "idle prompt")
+
+        assert result == "Successfully executed queue."
+        assert processed == ["idle prompt"]
+        assert command_queue.get_queue_length(coder) == 0
+
+    @pytest.mark.asyncio
+    async def test_itc_26_queue_busy_does_not_trigger_processing(self, mock_io):
+        """ITC-26: /queue while a request is in flight defers to the auto-drain."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = False
+        coder._processing_queue = False
+        drain_calls = []
+
+        async def fake_drain():
+            drain_calls.append(True)
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await QueueCommand.execute(mock_io, coder, "busy prompt")
+
+        assert result == "Successfully executed queue."
+        assert drain_calls == []
+        assert command_queue.get_queue_length(coder) == 1
+        assert coder.prompt_queue[0]["text"] == "busy prompt"
+
+    @pytest.mark.asyncio
+    async def test_itc_27_queue_guard_prevents_double_drain(self, mock_io):
+        """ITC-27: _processing_queue=True suppresses the idle drain (re-entrancy guard)."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = True
+        coder._processing_queue = True
+        drain_calls = []
+
+        async def fake_drain():
+            drain_calls.append(True)
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await QueueCommand.execute(mock_io, coder, "guarded prompt")
+
+        assert result == "Successfully executed queue."
+        assert drain_calls == []
+        assert command_queue.get_queue_length(coder) == 1
+
+    @pytest.mark.asyncio
+    async def test_itc_28_insert_queue_idle_triggers_immediate_processing(self, mock_io):
+        """ITC-28: /insert-queue while idle drains the queue immediately."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = True
+        coder._processing_queue = False
+        processed = []
+
+        async def fake_drain():
+            while coder.prompt_queue:
+                item = command_queue.dequeue_prompt(coder)
+                processed.append(item["text"])
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await InsertQueueCommand.execute(mock_io, coder, "1 idle insert")
+
+        assert result == "Successfully executed insert-queue."
+        assert processed == ["idle insert"]
+        assert command_queue.get_queue_length(coder) == 0
+
+    @pytest.mark.asyncio
+    async def test_itc_29_insert_queue_busy_does_not_trigger_processing(self, mock_io):
+        """ITC-29: /insert-queue while a request is in flight defers to auto-drain."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = False
+        coder._processing_queue = False
+        drain_calls = []
+
+        async def fake_drain():
+            drain_calls.append(True)
+
+        coder.process_prompt_queue = fake_drain
+
+        result = await InsertQueueCommand.execute(mock_io, coder, "1 busy insert")
+
+        assert result == "Successfully executed insert-queue."
+        assert drain_calls == []
+        assert command_queue.get_queue_length(coder) == 1
+        assert coder.prompt_queue[0]["text"] == "busy insert"
+
+
+class TestRunOneCommandPathDrain:
+    """Regression tests for the run_one() command-path drain (plan step 9.9)."""
+
+    @pytest.mark.asyncio
+    async def test_itc_30_run_one_command_path_drains_idle_queue(self, mock_io):
+        """ITC-30: A user-typed /queue while idle drains via run_one()'s command
+        early return even though run_one_completed is False while the command
+        executes inside generate() (so the command-side idle drain is skipped).
+        """
+        from cecli.coders.base_coder import Coder
+
+        coder = _make_coder_with_commands()
+        coder.io = mock_io
+        # Bug scenario: the typed /queue runs inside generate(), which has
+        # already set run_one_completed=False, so the command-side idle drain
+        # in queue.py is skipped; only run_one()'s early return can drain.
+        coder.run_one_completed = False
+        coder._processing_queue = False
+
+        calls = []
+        processed = []
+
+        async def fake_preproc(inp):
+            calls.append("preproc")
+            return await coder.commands.run(inp, coder=coder)
+
+        async def fake_drain(preproc=True):
+            calls.append("drain")
+            while coder.prompt_queue:
+                item = command_queue.dequeue_prompt(coder)
+                processed.append(item["text"])
+
+        coder.preproc_user_input = fake_preproc
+        coder.process_prompt_queue = fake_drain
+
+        await Coder.run_one(coder, "/queue tell me the color of the sun", preproc=True)
+
+        # The command ran first, then exactly one drain fired from run_one()'s
+        # command early return. A command-side idle drain would have added a
+        # second "drain" entry while still inside "preproc".
+        assert calls == ["preproc", "drain"]
+        assert processed == ["tell me the color of the sun"]
+        assert command_queue.get_queue_length(coder) == 0
+
+
+# ============================================================================
+# Nested Completions Tests (Section 10.6, plan step 9.11)
+# ============================================================================
+
+
+class TestNestedCompletions:
+    """Unit tests for nested slash-command completions in /queue and /insert-queue."""
+
+    def test_ntc_01_queue_prefix_matches_registry_commands(self, mock_io):
+        """NTC-01: /queue /sa offers inner commands whose names start with "sa"."""
+        coder = _make_coder_with_commands()
+
+        result = QueueCommand.get_completions(mock_io, coder, "/sa")
+
+        assert "/save-session" in result
+        assert all(name.startswith("/sa") for name in result)
+        assert result == sorted(result)
+
+    def test_ntc_02_queue_full_inner_command_delegates_to_original(self, mock_io):
+        """NTC-02: /queue /add <tab> delegates to the original command via
+        Commands.get_completions so file names are offered like /add <tab>."""
+        coder = _make_coder_with_commands()
+        file_completions = ["file_a.py", "file_b.py"]
+        coder.commands.get_completions = MagicMock(return_value=file_completions)
+
+        result = QueueCommand.get_completions(mock_io, coder, "/add ")
+
+        assert result == file_completions
+        coder.commands.get_completions.assert_called_once_with("/add", "", coder=coder)
+
+    def test_ntc_03_queue_save_session_delegates_session_names(self, mock_io):
+        """NTC-03: /queue /save-session <tab> delegates to SaveSessionCommand so
+        existing session names are offered exactly like /save-session <tab>."""
+        coder = _make_coder_with_commands()
+        session_names = ["auto-save", "feature-x"]
+        coder.commands.get_completions = MagicMock(return_value=session_names)
+
+        result = QueueCommand.get_completions(mock_io, coder, "/save-session ")
+
+        assert result == session_names
+        coder.commands.get_completions.assert_called_once_with("/save-session", "", coder=coder)
+
+    def test_ntc_04_queue_plain_text_returns_empty(self, mock_io):
+        """NTC-04: non-command queued text (and empty args) have no completions."""
+        coder = _make_coder_with_commands()
+
+        assert QueueCommand.get_completions(mock_io, coder, "plain text") == []
+        assert QueueCommand.get_completions(mock_io, coder, "") == []
+
+    def test_ntc_05_queue_unknown_inner_command_returns_empty(self, mock_io):
+        """NTC-05: delegation errors (e.g. unknown inner command) degrade to []."""
+        coder = _make_coder_with_commands()
+
+        def boom(cmd, args="", coder=None):
+            raise RuntimeError("unknown command")
+
+        coder.commands.get_completions = boom
+
+        assert QueueCommand.get_completions(mock_io, coder, "/no-such-cmd arg ") == []
+
+    def test_ntc_06_insert_queue_delegates_after_index(self, mock_io):
+        """NTC-06: /insert-queue 1 /save-session <tab> delegates after the index."""
+        coder = _make_coder_with_commands()
+        session_names = ["auto-save"]
+        coder.commands.get_completions = MagicMock(return_value=session_names)
+
+        result = InsertQueueCommand.get_completions(mock_io, coder, "1 /save-session ")
+
+        assert result == session_names
+        coder.commands.get_completions.assert_called_once_with("/save-session", "", coder=coder)
+
+    def test_ntc_07_insert_queue_index_only_suggests_positions(self, mock_io):
+        """NTC-07: while typing the index, /insert-queue offers clamped positions."""
+        coder = _make_coder_with_commands()
+        command_queue.enqueue_prompt(coder, "only item")
+
+        result = InsertQueueCommand.get_completions(mock_io, coder, "1")
+
+        # Queue holds 1 item, so positions 1..2 (append at end) are valid.
+        assert result == ["1", "2"]
 
 
 # ============================================================================
@@ -550,7 +842,12 @@ class TestQueueLifecycle:
         self, mock_io, clean_commands
     ):
         """ETC-06: Management commands do not trigger auto-processing of queued items."""
-        assert clean_commands._MANAGEMENT_COMMANDS == {"queue", "list-queue", "remove-queue"}
+        assert clean_commands._MANAGEMENT_COMMANDS == {
+            "queue",
+            "list-queue",
+            "remove-queue",
+            "run-queue",
+        }
 
     @pytest.mark.asyncio
     async def test_etc_05_prevent_infinite_loop(self, populated_queue):
@@ -639,7 +936,7 @@ class TestRegression:
         coder = clean_commands.coder
         command_queue.enqueue_prompt(coder, "item")
 
-        assert isinstance(coder._queue_lock, threading.Lock)
+        assert isinstance(coder._queue_lock, type(threading.Lock()))
 
 
 # ============================================================================
@@ -691,6 +988,7 @@ class TestCommandRegistration:
         assert "queue" in commands
         assert "list-queue" in commands
         assert "remove-queue" in commands
+        assert "run-queue" in commands
 
     def test_command_classes_have_required_attributes(self):
         """Verify command classes have NORM_NAME and DESCRIPTION."""
@@ -703,6 +1001,9 @@ class TestCommandRegistration:
         assert RemoveQueueCommand.NORM_NAME == "remove-queue"
         assert RemoveQueueCommand.DESCRIPTION is not None
 
+        assert RunQueueCommand.NORM_NAME == "run-queue"
+        assert RunQueueCommand.DESCRIPTION is not None
+
     def test_command_classes_have_execute_method(self):
         """Verify command classes have async execute method."""
         assert hasattr(QueueCommand, "execute")
@@ -712,6 +1013,7 @@ class TestCommandRegistration:
         assert callable(QueueCommand.execute)
         assert callable(ListQueueCommand.execute)
         assert callable(RemoveQueueCommand.execute)
+        assert callable(RunQueueCommand.execute)
 
 
 # ============================================================================
@@ -759,6 +1061,268 @@ class TestSignals:
         signal = ReloadProgramSignal(message="Custom message")
 
         assert signal.message == "Custom message"
+
+
+# ============================================================================
+# Idle-drain gate and TUI scheduling (plan 10.8)
+# ============================================================================
+
+
+class TestIdleDrainGate:
+    """Tests for command_queue.idle_drain_needed and TUI drain scheduling."""
+
+    def test_idg_01_idle_drain_needed_true_when_idle(self):
+        """IDG-01: idle when run_one_completed=True and _processing_queue=False."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = True
+        coder._processing_queue = False
+
+        assert command_queue.idle_drain_needed(coder) is True
+
+    def test_idg_02_idle_drain_needed_false_when_busy(self):
+        """IDG-02: run_one_completed=False blocks the idle drain."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = False
+        coder._processing_queue = False
+
+        assert command_queue.idle_drain_needed(coder) is False
+
+    def test_idg_03_idle_drain_needed_false_when_draining(self):
+        """IDG-03: _processing_queue=True blocks the idle drain (re-entrancy)."""
+        coder = _make_coder_with_commands()
+        coder.run_one_completed = True
+        coder._processing_queue = True
+
+        assert command_queue.idle_drain_needed(coder) is False
+
+    @pytest.mark.asyncio
+    async def test_idg_04_scheduled_drain_processes_idle_queue(self, mock_io):
+        """IDG-04: scheduling the drain for an idle coder drains its queue.
+
+        Exercises the TUI scheduling helper against a fake worker whose
+        ``loop`` is the running asyncio loop (the real TUI schedules the same
+        call on the worker loop). Spies the ``generate`` seam (plan 9.14): the
+        real ``process_prompt_queue`` dequeues each item and runs it through
+        ``generate()``, so the fake only records the prompt text.
+        """
+        import asyncio
+
+        from cecli.coders.base_coder import Coder
+        from cecli.tui.app import TUI
+
+        coder = _make_coder_with_commands(items=("queued prompt",))
+        coder.io = mock_io
+        coder.run_one_completed = True
+        coder._processing_queue = False
+        processed = []
+
+        async def fake_generate(text, preproc=True):
+            processed.append(text)
+
+        coder.generate = fake_generate
+        # Drive the real drain loop on the mock coder: it dequeues each item
+        # and awaits coder.generate, which the fake above records.
+        coder.process_prompt_queue = lambda preproc=True: Coder.process_prompt_queue(coder, preproc)
+
+        app = TUI.__new__(TUI)
+        fake_worker = MagicMock()
+        fake_worker.loop = asyncio.get_running_loop()
+        app.worker = fake_worker
+
+        TUI._schedule_idle_queue_drain(app, coder)
+        # Let the scheduled callback run (1 tick) and the drain task finish
+        # (a second tick) before asserting.
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+        assert processed == ["queued prompt"]
+        assert command_queue.get_queue_length(coder) == 0
+
+    @pytest.mark.asyncio
+    async def test_idg_05_scheduled_drain_skips_when_busy(self, mock_io):
+        """IDG-05: a busy coder is not drained by the scheduler.
+
+        Spies the same ``generate`` seam as IDG-04: with run_one_completed=False
+        the scheduler must return before touching the coder, so no generate call
+        is recorded and the queued prompt stays in place.
+        """
+        import asyncio
+
+        from cecli.coders.base_coder import Coder
+        from cecli.tui.app import TUI
+
+        coder = _make_coder_with_commands(items=("queued prompt",))
+        coder.io = mock_io
+        coder.run_one_completed = False
+        drain_calls = []
+
+        async def fake_generate(text, preproc=True):
+            drain_calls.append(text)
+
+        coder.generate = fake_generate
+        coder.process_prompt_queue = lambda preproc=True: Coder.process_prompt_queue(coder, preproc)
+
+        app = TUI.__new__(TUI)
+        fake_worker = MagicMock()
+        fake_worker.loop = asyncio.get_running_loop()
+        app.worker = fake_worker
+
+        TUI._schedule_idle_queue_drain(app, coder)
+        await asyncio.sleep(0)
+
+        assert drain_calls == []
+        assert command_queue.get_queue_length(coder) == 1
+
+
+# ============================================================================
+# Completer plumbing - full-args semantics (plan 10.9)
+# ============================================================================
+
+
+class TestCompleterPlumbing:
+    """Plan 10.9: full-args completion plumbing through Commands.get_completions.
+
+    These assert the completer-level call path (``/queue`` receives the FULL
+    text after the command name), not just the inner command class (which is
+    already covered by TestNestedCompletions).
+    """
+
+    def test_tcp_01_queue_add_trailing_space_delegates_empty_inner_args(self, monkeypatch):
+        """TCP-01: /queue /add <tab> reaches AddCommand with "" (trailing space)."""
+        from cecli.commands.add import AddCommand
+
+        coder = _make_coder_with_commands()
+        seen = []
+
+        def spy(cls, io, coder_, args):
+            seen.append(args)
+            return ["file_a.py", "file_b.py"]
+
+        monkeypatch.setattr(AddCommand, "get_completions", classmethod(spy))
+
+        result = coder.commands.get_completions("/queue", args="/add ")
+
+        assert result == ["file_a.py", "file_b.py"]
+        assert seen == [""]
+
+    def test_tcp_02_queue_add_partial_word_delegates_partial(self, monkeypatch):
+        """TCP-02: /queue /add s reaches AddCommand with "s"."""
+        from cecli.commands.add import AddCommand
+
+        coder = _make_coder_with_commands()
+        seen = []
+
+        def spy(cls, io, coder_, args):
+            seen.append(args)
+            return ["src/"]
+
+        monkeypatch.setattr(AddCommand, "get_completions", classmethod(spy))
+
+        result = coder.commands.get_completions("/queue", args="/add s")
+
+        assert result == ["src/"]
+        assert seen == ["s"]
+
+    def test_tcp_03_queue_inner_command_names(self):
+        """TCP-03: /queue /sa surfaces matching inner command names."""
+        coder = _make_coder_with_commands()
+
+        result = coder.commands.get_completions("/queue", args="/sa")
+
+        assert "/save-session" in result
+        assert all(name.startswith("/sa") for name in result)
+
+    def test_tcp_04_queue_save_session_delegates_session_names(self, monkeypatch):
+        """TCP-04: /queue /save-session pre reaches SaveSessionCommand with "pre"."""
+        from cecli.commands.save_session import SaveSessionCommand
+
+        coder = _make_coder_with_commands()
+        seen = []
+
+        def spy(cls, io, coder_, args):
+            seen.append(args)
+            return ["presentation"]
+
+        monkeypatch.setattr(SaveSessionCommand, "get_completions", classmethod(spy))
+
+        result = coder.commands.get_completions("/queue", args="/save-session pre")
+
+        assert result == ["presentation"]
+        assert seen == ["pre"]
+
+    def test_tcp_05_queue_plain_text_returns_empty(self):
+        """TCP-05: /queue plain text has no completions."""
+        coder = _make_coder_with_commands()
+
+        assert coder.commands.get_completions("/queue", args="plain text") == []
+
+    def test_tcp_06_insert_queue_delegates_after_index(self, monkeypatch):
+        """TCP-06: /insert-queue 1 /add <tab> delegates to AddCommand after index."""
+        from cecli.commands.add import AddCommand
+
+        coder = _make_coder_with_commands()
+        seen = []
+
+        def spy(cls, io, coder_, args):
+            seen.append(args)
+            return ["file_a.py"]
+
+        monkeypatch.setattr(AddCommand, "get_completions", classmethod(spy))
+
+        result = coder.commands.get_completions("/insert-queue", args="1 /add ")
+
+        assert result == ["file_a.py"]
+        assert seen == [""]
+
+    def test_tcp_07_io_partial_derivation(self):
+        """TCP-07: io.get_command_completions derives the last-word partial from
+        the FULL nested text ("" after a trailing space, "s" for "/add s") and
+        forwards the full nested text (trailing space preserved) to the command.
+        """
+        from cecli.io import AutoCompleter
+
+        completer = AutoCompleter.__new__(AutoCompleter)
+        captured = []
+        commands = MagicMock()
+        commands.FULL_ARGS_COMPLETION_COMMANDS = ("/queue", "/insert-queue")
+        # Mirror Commands.matching_commands: match the input's first word.
+        commands.matching_commands = lambda text: (
+            (
+                ["/queue"]
+                if text.startswith("/queue")
+                else (["/add"] if text.startswith("/add") else None)
+            ),
+            text.split()[0],
+            "",
+        )
+        commands.get_raw_completions = lambda cmd: None
+
+        def fake_get_completions(cmd, args="", coder=None):
+            captured.append((cmd, args))
+            return ["file_a.py"]
+
+        commands.get_completions = fake_get_completions
+        completer.commands = commands
+
+        # Trailing space: nested text keeps the space; partial is empty.
+        results = list(
+            completer.get_command_completions(None, None, "/queue /add ", ["/queue", "/add"])
+        )
+        assert captured[-1] == ("/queue", "/add ")
+        assert all(c.start_position == 0 for c in results)
+
+        # Partial word: nested text is forwarded verbatim; partial is the word.
+        results = list(
+            completer.get_command_completions(None, None, "/queue /add s", ["/queue", "/add", "s"])
+        )
+        assert captured[-1] == ("/queue", "/add s")
+        assert all(c.start_position == -1 for c in results)
+
+        # Non-nested commands keep the legacy last-word partial.
+        commands.FULL_ARGS_COMPLETION_COMMANDS = ()
+        captured.clear()
+        list(completer.get_command_completions(None, None, "/add s", ["/add", "s"]))
+        assert captured[-1] == ("/add", "s")
 
 
 # ============================================================================
