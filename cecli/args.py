@@ -440,13 +440,9 @@ def get_parser(default_config_files, git_root):
     )
     group.add_argument(
         "--scheduler",
-        action=argparse.BooleanOptionalAction,
+        metavar="SCHEDULER_CONFIG_JSON",
+        help="Specify scheduler configuration as a JSON string",
         default=None,
-        help=(
-            "Force the workflow scheduler on (--scheduler) or off (--no-scheduler) for"
-            " this session. (default: auto, on when any enabled scheduled workflow"
-            " exists)"
-        ),
     )
     group.add_argument(
         "--system-one",

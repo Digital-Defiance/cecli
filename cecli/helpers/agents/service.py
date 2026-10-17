@@ -6,6 +6,7 @@ that tracks sub-agent info and handles invoke/spawn/wait lifecycle.
 
 import asyncio
 import logging
+import threading
 import time
 import weakref
 from dataclasses import dataclass
@@ -100,8 +101,22 @@ class AgentService:
     _uuid_coder_map: Dict[str, weakref.ref] = {}
     # Lock pools keyed by parent UUID — created lazily so only parents that
     # actually use them allocate a lock.
-    _spawn_locks: Dict[str, asyncio.Lock] = {}
-    _conversation_locks: Dict[str, asyncio.Lock] = {}
+    #
+    # Plain ``threading.Lock`` (not ``asyncio.Lock``): an ``asyncio.Lock`` binds
+    # itself to the event loop of its first *waiting* acquirer and raises
+    # ``RuntimeError('... is bound to a different event loop')`` when awaited
+    # from another loop. Spawn, reap and conversation writes all reach these
+    # pools from both the TUI main (Textual) loop and the coder worker-thread
+    # loop, and the pools are class-level, so a lock created before a hot reload
+    # outlives the loop it bound to. Every guarded section is fully synchronous,
+    # so a thread lock gives true cross-loop mutual exclusion with no loop
+    # affinity and is immune to task cancellation.
+    #
+    # Invariant: never hold one of these locks across an ``await`` — the guarded
+    # sections must stay synchronous, or the blocking acquire could stall the
+    # event loop.
+    _spawn_locks: Dict[str, threading.Lock] = {}
+    _conversation_locks: Dict[str, threading.Lock] = {}
     _primary_agent_uuid: str = None
 
     # ------------------------------------------------------------------ #
@@ -325,10 +340,15 @@ class AgentService:
     # ------------------------------------------------------------------ #
     # Internal helpers
     @classmethod
-    def _get_lock(cls, pool: Dict[str, asyncio.Lock], uuid: str) -> asyncio.Lock:
-        """Return a lock for *uuid* from *pool*, creating one if absent."""
+    def _get_lock(cls, pool: Dict[str, threading.Lock], uuid: str) -> threading.Lock:
+        """Return a lock for *uuid* from *pool*, creating one if absent.
+
+        Locks are ``threading.Lock`` rather than ``asyncio.Lock`` (see the pool
+        declarations): the guarded sections are synchronous and correct locking
+        must work from any event loop.
+        """
         if uuid not in pool:
-            pool[uuid] = asyncio.Lock()
+            pool[uuid] = threading.Lock()
         return pool[uuid]
 
     @staticmethod
@@ -464,7 +484,7 @@ class AgentService:
         # Acquire the spawn lock for the primary coder to serialise with
         # concurrent spawn operations that also hold this lock.
         parent_coder = parent if parent is not None else self.coder
-        async with self._get_lock(self._spawn_locks, parent_coder.uuid):
+        with self._get_lock(self._spawn_locks, parent_coder.uuid):
             for coder_uuid in list(self._sub_agent_order):
                 info = self.sub_agents.get(coder_uuid)
                 if (
@@ -615,7 +635,7 @@ class AgentService:
         # tried to acquire the same lock).
         parent_coder = parent if parent is not None else self.coder
 
-        async with self._get_lock(self._spawn_locks, parent_coder.uuid):
+        with self._get_lock(self._spawn_locks, parent_coder.uuid):
             self._check_max_sub_agents()
             new_uuid = str(uuid4()).split("-")[0]
 
@@ -708,7 +728,7 @@ class AgentService:
 
         # Re-acquire the lock to register — we must re-check max agents since
         # the lock was released and other spawns may have registered in between.
-        async with self._get_lock(self._spawn_locks, parent_coder.uuid):
+        with self._get_lock(self._spawn_locks, parent_coder.uuid):
             self._check_max_sub_agents()
 
             # Register in global coder lookup
@@ -996,7 +1016,7 @@ class AgentService:
         else:
             return
 
-        async with self._get_lock(self._conversation_locks, info.parent_uuid):
+        with self._get_lock(self._conversation_locks, info.parent_uuid):
             ConversationService.get_manager(parent_coder).add_message(
                 message_dict={"role": "user", "content": user_content},
                 tag=MessageTag.CUR,
@@ -1277,8 +1297,11 @@ def _tui_notify(tui, callback, *args):
     """Invoke *callback* on the TUI app, from either thread.
 
     ``call_from_thread`` only works when the caller is not the app's own
-    thread; scheduler dispatch runs on the primary (app) event loop, so fall
-    back to calling directly, which is correct when already on that thread.
+    thread. Scheduler-dispatched workflow runs now execute on the coder's own
+    loop (the TUI worker-thread loop — see ``SchedulerService._on_coder_loop``),
+    so notifications originate from the worker thread and ``call_from_thread``
+    applies; when we are already on the app thread (or the TUI is unavailable),
+    fall back to calling directly.
     """
 
     try:

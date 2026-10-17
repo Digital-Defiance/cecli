@@ -6,6 +6,7 @@ cecli/helpers/scheduler/service.py.
 """
 
 import asyncio
+import threading
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -385,3 +386,63 @@ class TestStop:
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
+
+
+class TestCoderLoopBridge:
+    """Scheduled runs must execute on the coder's own (worker) event loop."""
+
+    def test_coder_loop_is_none_without_tui(self):
+        """A coder with no resolvable worker loop (linear/test) bridges to the current loop."""
+        service = _service([make_wf()])
+
+        assert service._coder_loop() is None
+
+    @pytest.mark.asyncio
+    async def test_on_coder_loop_awaits_directly_without_tui(self):
+        service = _service([make_wf()])
+        seen = []
+
+        async def make_coro():
+            seen.append(asyncio.get_running_loop())
+            return "ok"
+
+        result = await asyncio.wait_for(service._on_coder_loop(make_coro), timeout=5)
+
+        assert result == "ok"
+        assert seen == [asyncio.get_running_loop()]
+
+    @pytest.mark.asyncio
+    async def test_on_coder_loop_bridges_to_worker_loop(self):
+        """A scheduled dispatch must be awaited on the coder's worker-thread loop."""
+        service = _service([make_wf()])
+        foreign = asyncio.new_event_loop()
+        started = threading.Event()
+
+        def run_foreign():
+            asyncio.set_event_loop(foreign)
+            foreign.call_soon(started.set)
+            foreign.run_forever()
+
+        thread = threading.Thread(target=run_foreign, daemon=True)
+        thread.start()
+
+        try:
+            assert started.wait(timeout=5)
+            service.coder.tui = lambda: SimpleNamespace(worker=SimpleNamespace(loop=foreign))
+
+            assert service._coder_loop() is foreign
+
+            seen = []
+
+            async def make_coro():
+                seen.append(asyncio.get_running_loop())
+                return "bridged"
+
+            result = await asyncio.wait_for(service._on_coder_loop(make_coro), timeout=5)
+
+            assert result == "bridged"
+            assert seen == [foreign]
+        finally:
+            foreign.call_soon_threadsafe(foreign.stop)
+            thread.join(timeout=5)
+            foreign.close()

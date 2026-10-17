@@ -154,4 +154,4 @@ tasks:
 ## Arguments
 
 - `--workflows <json|yaml>`: Provide an inline workflows configuration or a path to a workflows file, overriding all file-based sources.
-- `--scheduler` / `--no-scheduler`: Force the [scheduler](scheduler.html) on or off for this session.
+- `--scheduler <json>`: Override [scheduler](scheduler.html) configuration for this session (same object as the `scheduler:` config key).
