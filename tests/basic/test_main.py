@@ -1058,8 +1058,17 @@ def test_main_exit_with_git_command_not_found(dummy_io, git_temp_dir, mocker):
 
 
 def test_reasoning_effort_option(dummy_io, git_temp_dir):
+    # Fix the model so the assertion does not depend on which provider keys are set.
     coder = main(
-        ["--reasoning-effort", "3", "--no-check-model-accepts-settings", "--yes-always", "--exit"],
+        [
+            "--model",
+            "gpt-3.5-turbo",
+            "--reasoning-effort",
+            "3",
+            "--no-check-model-accepts-settings",
+            "--yes-always",
+            "--exit",
+        ],
         **dummy_io,
         return_coder=True,
     )
