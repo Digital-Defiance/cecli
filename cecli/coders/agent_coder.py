@@ -842,6 +842,7 @@ class AgentCoder(Coder):
         for tool_call in tool_calls_list:
             tool_name = tool_call.function.name
             result_message = ""
+            self.io.tool_call_event(tool_call.id, "in_progress")
             try:
                 if responses.unprefix_tool_name(tool_name)[1].lower() in self.write_tools:
                     used_write_tool = True

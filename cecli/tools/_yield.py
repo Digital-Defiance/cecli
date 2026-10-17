@@ -153,7 +153,8 @@ class Tool(BaseTool):
                         # Retrieve exceptions from completed sub-agent tasks so they
                         # are not silently lost.
                         for t in done:
-                            if t is not interrupt_task:
+                            # A cancelled sub-agent has no exception, and asking raises
+                            if t is not interrupt_task and not t.cancelled():
                                 exc = t.exception()
                                 if exc:
                                     logger.warning("Sub-agent task raised an exception: %s", exc)

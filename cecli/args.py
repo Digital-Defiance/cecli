@@ -1313,6 +1313,24 @@ def get_parser(default_config_files, git_root):
         help="Specify server configuration (WebSocket and headless) as a JSON/YAML string",
         default=None,
     )
+    group.add_argument(
+        "--acp",
+        action="store_true",
+        default=False,
+        help=(
+            "Run as an Agent Client Protocol (ACP) agent over stdio, for editors such as Zed"
+            " (stdout carries the protocol)"
+        ),
+    )
+    group.add_argument(
+        "--acp-models",
+        action="append",
+        metavar="PATTERN",
+        help=(
+            "Limit the ACP model picker's provider lists to models matching this pattern,"
+            " matched like /models (can be used multiple times)"
+        ),
+    )
 
     ##########
     group = parser.add_argument_group("Deprecated model settings")
