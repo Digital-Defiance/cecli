@@ -1033,10 +1033,6 @@ class Coder(metaclass=UsageMeta):
                 refresh = self.repo_map.refresh
                 env_items.append(f"map ({map_tokens} tokens, {refresh} refresh)")
                 repo_map_tokens = map_tokens
-            else:
-                env_items.append("repo-map disabled")
-        else:
-            env_items.append("repo-map disabled")
 
         sections["Environment"] = {"items": env_items}
         # --- CAPABILITIES ---
