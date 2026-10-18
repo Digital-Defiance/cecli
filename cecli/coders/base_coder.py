@@ -998,12 +998,12 @@ class Coder(metaclass=UsageMeta):
             settings_items.append(f"reasoning {reasoning_effort}")
 
         # Prompt cache
-        if self.add_cache_headers or main_model.caches_by_default:
-            settings_items.append("prompt cache")
+        # if self.add_cache_headers or main_model.caches_by_default:
+        #   settings_items.append("prompt cache")
 
         # Infinite output
-        if main_model.info.get("supports_assistant_prefill") and self.verbose:
-            settings_items.append("infinite output")
+        # if main_model.info.get("supports_assistant_prefill") and self.verbose:
+        #    settings_items.append("infinite output")
 
         # Copy/paste mode
         if self.copy_paste_mode:
