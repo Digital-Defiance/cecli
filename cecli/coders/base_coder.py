@@ -1072,7 +1072,7 @@ class Coder(metaclass=UsageMeta):
             if mcp_servers:
                 capabilities["Servers"] = mcp_servers
 
-        if capabilities:
+        if capabilities and not getattr(self.args, "tui", False):
             # sections["Extensions"] = {"subsections": capabilities}
             sections["Environment"]["subsections"] = capabilities
 
