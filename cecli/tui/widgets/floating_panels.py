@@ -1,11 +1,9 @@
 """Extensions box showing sub-agents, skills, and MCP servers."""
 
-from textual.containers import Horizontal, HorizontalScroll, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Static
-
-from .thin_scrollbar import ThinScrollBarRenderer
 
 
 class StatusItemClicked(Message):
@@ -38,8 +36,8 @@ class StatusItem(Static):
         event.stop()
 
 
-class StatusRow(Horizontal):
-    """A reactive horizontal row of clickable status items."""
+class StatusColumn(Vertical):
+    """A reactive vertical column of clickable status items."""
 
     items = reactive([], recompose=True)
 
@@ -60,61 +58,56 @@ class FloatingPanels(Vertical):
     """Single box showing sub-agents, skills, and MCP servers.
 
     Every item is clickable: sub-agents spawn, skills load/unload, and MCP
-    servers load/unload. Labels stay fixed while the three rows scroll
-    horizontally together.
+    servers load/unload. The three categories sit in equal-width columns
+    beneath labels embedded in the top border, and share one scroll area.
     """
 
-    MAX_NAME_WIDTH = 20
+    MAX_NAME_WIDTH = 10
 
     DEFAULT_CSS = """
     FloatingPanels {
         height: auto;
         width: 42;
         border: round $accent 50%;
-        border-title-align: right;
+        border-title-align: center;
+        border-title-color: $accent 50%;
+        border-title-style: bold;
         padding: 0 1;
         background: $surface;
     }
 
     FloatingPanels > .status-body {
-        height: auto;
+        height: 100%;
         width: 100%;
     }
 
-    FloatingPanels .status-labels {
-        width: 11;
-        height: auto;
-    }
-
-    FloatingPanels .status-label {
-        height: 1;
-        color: $accent;
-        text-style: bold;
-    }
-
     FloatingPanels .status-scroll {
-        width: 1fr;
-        height: auto;
-        overflow-x: auto;
-        overflow-y: hidden;
+        width: 100%;
+        height: 1fr;
+        overflow-x: hidden;
+        overflow-y: auto;
         scrollbar-size: 0 0;
         scrollbar-visibility: hidden;
     }
 
     FloatingPanels .status-items {
-        width: auto;
+        width: 100%;
         height: auto;
     }
 
-    FloatingPanels .status-row {
-        width: auto;
+    FloatingPanels .status-column {
+        width: 1fr;
+        height: auto;
+    }
+
+    FloatingPanels .status-spacer {
+        width: 1;
         height: 1;
     }
 
     FloatingPanels .status-item {
-        width: auto;
+        width: 100%;
         height: 1;
-        margin: 0 1 0 0;
         color: $accent;
     }
 
@@ -132,27 +125,23 @@ class FloatingPanels(Vertical):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.border_title = "extensions"
+        self.border_title = "agents ───── skills ───── servers"
         self._synced_height = None
         self._synced_column_height = None
         self._command_running = False
 
     def compose(self):
-        with Horizontal(classes="status-body"):
-            with Vertical(classes="status-labels"):
-                yield Static("Subagents:", classes="status-label")
-                yield Static("Skills:", classes="status-label")
-                yield Static("Servers:", classes="status-label")
-            with HorizontalScroll(classes="status-scroll"):
-                with Vertical(classes="status-items"):
-                    yield StatusRow("subagents", id="subagents-row", classes="status-row")
-                    yield StatusRow("skills", id="skills-row", classes="status-row")
-                    yield StatusRow("servers", id="servers-row", classes="status-row")
+        with Vertical(classes="status-body"):
+            with VerticalScroll(classes="status-scroll", id="status-scroll"):
+                with Horizontal(classes="status-items"):
+                    yield StatusColumn("subagents", id="subagents-column", classes="status-column")
+                    yield Static("", classes="status-spacer")
+                    yield StatusColumn("skills", id="skills-column", classes="status-column")
+                    yield Static("", classes="status-spacer")
+                    yield StatusColumn("servers", id="servers-column", classes="status-column")
 
     def on_mount(self):
-        """Start periodic refreshes and use the thin scrollbar renderer."""
-        scroll = self.query_one(".status-scroll", HorizontalScroll)
-        scroll.horizontal_scrollbar.renderer = ThinScrollBarRenderer
+        """Start periodic height sync and data refreshes."""
         self.call_after_refresh(self._sync_height)
         self.set_interval(0.25, self._sync_height)
         self.set_interval(1.0, self.refresh_data)
@@ -161,6 +150,8 @@ class FloatingPanels(Vertical):
     def on_status_item_clicked(self, event: StatusItemClicked):
         """Route an item click to the matching coder command."""
         self._run_coder_command(event.category, event.name, event.active)
+        self._scroll_to_top()
+        self.app.call_after_refresh(self._focus_input)
 
     def _sync_height(self):
         """Match the box height to the input container's current height."""
@@ -201,33 +192,47 @@ class FloatingPanels(Vertical):
             self.refresh_data()
 
     def refresh_data(self):
-        """Refresh the extensions rows from the active coder's state."""
+        """Refresh the extensions columns from the active coder's state."""
         coder = self._get_active_coder()
         if coder is None:
-            self._set_row("#subagents-row", [])
-            self._set_row("#skills-row", [])
-            self._set_row("#servers-row", [])
+            self._set_column("#subagents-column", [])
+            self._set_column("#skills-column", [])
+            self._set_column("#servers-column", [])
             return
 
-        self._set_row("#subagents-row", self._collect_agents())
-        self._set_row("#skills-row", self._collect_skills(coder))
-        self._set_row("#servers-row", self._collect_mcp(coder))
+        self._set_column("#subagents-column", self._collect_agents())
+        self._set_column("#skills-column", self._collect_skills(coder))
+        self._set_column("#servers-column", self._collect_mcp(coder))
 
-    def _set_row(self, selector, entries):
-        """Replace one row's clickable items, skipping unchanged data."""
+    def _focus_input(self):
+        """Return keyboard focus to the prompt input."""
         try:
-            row = self.query_one(selector, StatusRow)
+            self.app.query_one("#input").focus()
+        except Exception:
+            pass
+
+    def _scroll_to_top(self):
+        """Return the shared list to the top after an item click."""
+        try:
+            self.query_one("#status-scroll", VerticalScroll).scroll_to(y=0, animate=False)
+        except Exception:
+            pass
+
+    def _set_column(self, selector, entries):
+        """Replace one column's clickable items, skipping unchanged data."""
+        try:
+            column = self.query_one(selector, StatusColumn)
         except Exception:
             return
 
         ordered = sorted(entries, key=lambda item: (not item[1], item[0].lower()))
         items = [(self._format_name(name), name, active) for name, active in ordered]
         signature = tuple(items)
-        if signature == getattr(row, "_last_signature", None):
+        if signature == getattr(column, "_last_signature", None):
             return
 
-        row._last_signature = signature
-        row.items = items
+        column._last_signature = signature
+        column.items = items
 
     def _run_coder_command(self, category, name, active):
         """Schedule the click's coder command on the worker loop."""

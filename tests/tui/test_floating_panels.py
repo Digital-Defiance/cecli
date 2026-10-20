@@ -4,16 +4,15 @@ from unittest.mock import patch
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, HorizontalScroll, Vertical
-from textual.widgets import Static
+from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.widgets import Input, Static
 
 from cecli.tui.widgets.floating_panels import (
     FloatingPanels,
+    StatusColumn,
     StatusItem,
     StatusItemClicked,
-    StatusRow,
 )
-from cecli.tui.widgets.thin_scrollbar import ThinScrollBarRenderer
 
 
 class FakeSkill:
@@ -65,7 +64,8 @@ class _PanelApp(App):
     def compose(self) -> ComposeResult:
         with Horizontal(id="input-row"):
             with Vertical(id="input-column"):
-                yield Static("input", id="input-container")
+                with Vertical(id="input-container"):
+                    yield Input(id="input")
                 yield Static("hints", id="key-hints")
             with Vertical(id="extensions-column"):
                 yield FloatingPanels(id="floating-panels")
@@ -75,9 +75,9 @@ class _PanelApp(App):
         self.query_one(FloatingPanels).toggle_visible()
 
 
-def _row_text(panels: FloatingPanels, row_id: str) -> str:
-    row = panels.query_one(f"#{row_id}", StatusRow)
-    return " ".join(str(item.render()) for item in row.query(StatusItem))
+def _column_text(panels: FloatingPanels, column_id: str) -> str:
+    column = panels.query_one(f"#{column_id}", StatusColumn)
+    return " ".join(str(item.render()) for item in column.query(StatusItem))
 
 
 async def _run_panel_checks():
@@ -87,6 +87,7 @@ async def _run_panel_checks():
         input_container = app.query_one("#input-container")
         extensions_column = app.query_one("#extensions-column")
         input_column = app.query_one("#input-column")
+        input_area = app.query_one("#input", Input)
         panels.refresh_data()
         await pilot.pause()
         await asyncio.sleep(0.1)
@@ -94,28 +95,42 @@ async def _run_panel_checks():
 
         visible_input_width = input_container.region.width
 
-        assert panels.border_title == "extensions"
+        assert panels.border_title == "agents ───── skills ───── servers"
         assert panels.region.x >= input_container.region.right
         assert panels.region.bottom == input_container.region.bottom
         assert panels.region.height == input_container.region.height
 
-        labels = [str(label.render()) for label in panels.query(".status-label")]
-        assert labels == ["Subagents:", "Skills:", "Servers:"]
+        columns = list(panels.query(".status-column"))
+        assert len(columns) == 3
+        column_widths = [column.region.width for column in columns]
+        assert len(set(column_widths)) == 1
+        assert columns[0].region.x < columns[1].region.x < columns[2].region.x
+        assert columns[1].region.x - columns[0].region.right == 1
+        assert columns[2].region.x - columns[1].region.right == 1
+        assert len({column.region.y for column in columns}) == 1
 
-        assert _row_text(panels, "subagents-row") == "● worker ○ tester"
-        assert _row_text(panels, "skills-row") == "● pdf ○ docx ○ spark"
-        assert _row_text(panels, "servers-row") == "● local ○ github"
+        assert _column_text(panels, "subagents-column") == "● worker ○ tester"
+        assert _column_text(panels, "skills-column") == "● pdf ○ docx ○ spark"
+        assert _column_text(panels, "servers-column") == "● local ○ github"
+
+        long_name = "a-very-long-skill-name-that-keeps-going"
+        formatted = FloatingPanels._format_name(long_name)
+        assert len(formatted) == FloatingPanels.MAX_NAME_WIDTH
+        assert formatted.endswith("…")
 
         captured = []
         panels._run_coder_command = lambda category, name, active: captured.append(
             (category, name, active)
         )
-        skill_items = list(panels.query_one("#skills-row", StatusRow).query(StatusItem))
+        skill_items = list(panels.query_one("#skills-column", StatusColumn).query(StatusItem))
+        input_area.blur()
+        await pilot.pause()
         await pilot.click(skill_items[0])
         await pilot.pause()
         await pilot.click(skill_items[1])
         await pilot.pause()
         assert captured == [("skills", "pdf", True), ("skills", "docx", False)]
+        assert app.focused is input_area
 
         panels.on_status_item_clicked(StatusItemClicked("subagents", "worker", False))
         panels.on_status_item_clicked(StatusItemClicked("servers", "github", False))
@@ -130,21 +145,30 @@ async def _run_panel_checks():
         assert panels._command_class("servers", True).__name__ == "RemoveMcpCommand"
         assert panels._command_class("servers", False).__name__ == "LoadMcpCommand"
 
-        panels._set_row("#skills-row", [("z", True), ("a", True), ("b", False)])
+        panels._collect_skills = lambda coder: [("z", True), ("a", True), ("b", False)]
+        panels.refresh_data()
         await pilot.pause()
-        assert _row_text(panels, "skills-row") == "● a ● z ○ b"
+        assert _column_text(panels, "skills-column") == "● a ● z ○ b"
 
-        panels._set_row("#skills-row", [(f"skill-{i}", True) for i in range(20)])
+        panels._collect_skills = lambda coder: [(f"skill-{i}", True) for i in range(20)]
+        panels.refresh_data()
         await pilot.pause()
         await asyncio.sleep(0.1)
         await pilot.pause()
 
-        scroll = panels.query_one(".status-scroll", HorizontalScroll)
-        assert scroll.max_scroll_x > 0
+        scroll = panels.query_one("#status-scroll", VerticalScroll)
+        assert scroll.max_scroll_y > 0
         assert scroll.styles.scrollbar_visibility == "hidden"
-        assert scroll.horizontal_scrollbar.renderer is ThinScrollBarRenderer
-        assert "skill-19" in _row_text(panels, "skills-row")
+        assert "skill-19" in _column_text(panels, "skills-column")
         assert panels.region.height == input_container.region.height
+
+        scroll.scroll_to(y=5, animate=False)
+        await pilot.pause()
+        assert scroll.scroll_y > 0
+
+        panels.on_status_item_clicked(StatusItemClicked("skills", "skill-19", True))
+        await pilot.pause()
+        assert scroll.scroll_y == 0
 
         input_container.styles.height = 8
         await pilot.pause()
