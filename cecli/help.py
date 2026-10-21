@@ -1,4 +1,6 @@
 import os
+import re
+import threading
 import warnings
 from pathlib import Path
 
@@ -13,6 +15,16 @@ os.environ["TQDM_DISABLE"] = "1"
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 os.environ["HF_DATASETS_DISABLE_PROGRESS_BARS"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
+
+_HELP_INDEX_SCHEMA = "chunks-v1"
+_HELP_INDEX_LOCK = threading.Lock()
+_help_index_cache = {}
+_CHUNK_CHARS = 1000
+_MAX_RESULTS = 20
+_MAX_CONTEXT_CHARS = 24000
+
+_HEADING_RE = re.compile(r"^#{1,6}\s")
+_FENCE_RE = re.compile(r"^\s*(```+|~~~+)")
 
 
 async def install_help_extra(io):
@@ -84,38 +96,52 @@ def fname_to_url(filepath):
 def get_index(coder=None):
     """Build a local chromadb vector index over the bundled help docs.
 
-    Chroma's default ONNX embedding needs no ``sentence_transformers`` or
-    ``datasets``, so it avoids the WSL2 + OpenSSL 3.5 + Python 3.14 lazy-init
-    flake and the ``datasets`` circular import that broke ``/help <question>``.
-    Returns the chromadb collection ready for text queries.
+    Docs are split into heading-aligned chunks so the default ONNX embedding
+    can represent each retrieved section instead of only the first few hundred
+    tokens of an entire page. The collection is cached per process so repeated
+    ``/help`` questions do not rebuild the client or reload the embedding model.
     """
     import chromadb
     from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 
-    dname = Path.home() / ".cecli" / "caches" / ("help." + __version__)
+    dname = Path.home() / ".cecli" / "caches" / f"help.{__version__}.{_HELP_INDEX_SCHEMA}"
     dname.parent.mkdir(parents=True, exist_ok=True)
 
-    client = chromadb.PersistentClient(path=str(dname))
-    collection = client.get_or_create_collection(
-        "help", embedding_function=DefaultEmbeddingFunction()
-    )
+    cache_key = str(dname)
 
-    if collection.count() == 0:
-        documents = []
-        ids = []
-        metadatas = []
-        for fname in get_package_files():
-            fname = Path(fname)
-            if any(fname.match(pat) for pat in exclude_website_pats):
-                continue
-            documents.append(fname.read_text(encoding="utf-8"))
-            ids.append(str(fname))
-            metadatas.append(dict(filename=fname.name, url=fname_to_url(str(fname))))
+    with _HELP_INDEX_LOCK:
+        cached = _help_index_cache.get(cache_key)
+        if cached is not None:
+            return cached
 
-        if documents:
-            collection.add(ids=ids, documents=documents, metadatas=metadatas)
+        client = chromadb.PersistentClient(path=cache_key)
+        collection = client.get_or_create_collection(
+            "help", embedding_function=DefaultEmbeddingFunction()
+        )
 
-    return collection
+        if collection.count() == 0:
+            documents = []
+            ids = []
+            metadatas = []
+
+            for fname in get_package_files():
+                fname = Path(fname)
+                if any(fname.match(pat) for pat in exclude_website_pats):
+                    continue
+
+                text = fname.read_text(encoding="utf-8")
+                url = fname_to_url(str(fname))
+
+                for chunk_index, chunk in enumerate(_chunk_document(text)):
+                    documents.append(chunk)
+                    ids.append(f"{fname}#{chunk_index}")
+                    metadatas.append(dict(filename=fname.name, url=url, chunk=chunk_index))
+
+            if documents:
+                collection.add(ids=ids, documents=documents, metadatas=metadatas)
+
+        _help_index_cache[cache_key] = collection
+        return collection
 
 
 class Help:
@@ -125,23 +151,144 @@ class Help:
         self.collection = get_index(coder=coder)
 
     def ask(self, question):
+        if not self.collection.count():
+            return f"# Question: {question}\n\n# Relevant docs:\n\n"
+
         results = self.collection.query(
             query_texts=[question],
-            n_results=20,
+            n_results=_MAX_RESULTS,
             include=["documents", "metadatas"],
         )
         documents = results.get("documents", [[]])[0]
         metadatas = results.get("metadatas", [[]])[0]
 
         context = f"# Question: {question}\n\n# Relevant docs:\n\n"
+        seen_urls = set()
+        used_chars = 0
+
         for doc, meta in zip(documents, metadatas):
+            if not doc:
+                continue
+
+            if used_chars and used_chars + len(doc) > _MAX_CONTEXT_CHARS:
+                break
+
             url = (meta or {}).get("url", "")
-            if url:
-                url = f' from_url="{url}"'
-            context += f"<doc{url}>\n"
+            url_attr = ""
+            if url and url not in seen_urls:
+                url_attr = f' from_url="{url}"'
+                seen_urls.add(url)
+
+            context += f"<doc{url_attr}>\n"
             context += doc
             context += "\n</doc>\n\n"
+            used_chars += len(doc)
+
         return context
+
+
+def _chunk_document(text, max_chars=_CHUNK_CHARS):
+    """Split markdown into heading-aligned chunks that fit the embedder."""
+    chunks = []
+    current = ""
+
+    for section in _split_markdown_sections(text):
+        if len(section) > max_chars:
+            if current.strip():
+                chunks.append(current.strip())
+
+            current = ""
+            chunks.extend(chunk.strip() for chunk in _split_long_section(section, max_chars))
+        elif current and len(current) + len(section) > max_chars:
+            chunks.append(current.strip())
+            current = section
+        else:
+            current += section
+
+    if current.strip():
+        chunks.append(current.strip())
+
+    return [chunk for chunk in chunks if chunk]
+
+
+def _split_markdown_sections(text):
+    """Split on headings without breaking fenced code blocks."""
+    sections = []
+    current = []
+    fence = None
+
+    for line in text.splitlines(keepends=True):
+        was_in_fence = fence is not None
+        fence = _toggle_fence(line, fence)
+
+        if not was_in_fence and _HEADING_RE.match(line) and current:
+            sections.append("".join(current))
+            current = []
+
+        current.append(line)
+
+    if current:
+        sections.append("".join(current))
+
+    return sections
+
+
+def _split_long_section(section, max_chars):
+    """Split an oversized section at paragraph boundaries when possible."""
+    chunks = []
+    current = []
+    size = 0
+    fence = None
+
+    for line in section.splitlines(keepends=True):
+        was_in_fence = fence is not None
+        fence = _toggle_fence(line, fence)
+        can_split = not (was_in_fence and fence is None)
+
+        if current and size + len(line) > max_chars and can_split:
+            split_at = None if was_in_fence else _last_blank_line(current)
+
+            if split_at is None:
+                chunks.append("".join(current))
+                current = []
+            else:
+                chunks.append("".join(current[:split_at]))
+                current = current[split_at:]
+
+            size = sum(len(item) for item in current)
+
+        current.append(line)
+        size += len(line)
+
+    if current:
+        chunks.append("".join(current))
+
+    return chunks
+
+
+def _toggle_fence(line, fence):
+    match = _FENCE_RE.match(line)
+
+    if not match:
+        return fence
+
+    marker = match.group(1)[0]
+
+    if fence is None:
+        return marker
+
+    if fence == marker:
+        return None
+
+    return fence
+
+
+def _last_blank_line(lines):
+    for index in range(len(lines) - 1, -1, -1):
+        if not lines[index].strip():
+            return index + 1
+
+    return None
 
 
 def _strip_doc_suffix(url_path, index, md):
