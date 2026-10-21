@@ -947,6 +947,12 @@ class TUI(App):
             self._handle_spawn_agent_command(user_input, stripped)
             return
 
+        # Intercept /creator to spawn the creator sub-agent immediately, even
+        # while the primary coder is generating.
+        if stripped == "/creator" or stripped.startswith("/creator "):
+            self._handle_creator_command(user_input, stripped)
+            return
+
         # Intercept /workspace <ws:name> to open an already-registered workspace
         # sub-agent immediately, mirroring /spawn-agent.
         if stripped == "/workspace" or stripped.startswith("/workspace "):
@@ -1178,6 +1184,29 @@ class TUI(App):
             await SpawnAgentCommand.execute(coder.io, coder, spawn_args)
 
         self.worker.loop.call_soon_threadsafe(lambda: self.worker.loop.create_task(_run_spawn()))
+
+    def _handle_creator_command(self, user_input: str, stripped: str) -> None:
+        """Dispatch /creator immediately without a full generation cycle."""
+        from cecli.commands.creator import CreatorCommand
+
+        parts = stripped.split(maxsplit=1)
+        creator_args = parts[1].strip() if len(parts) > 1 else ""
+
+        input_area = self.query_one("#input", InputArea)
+        input_area.value = ""
+
+        input_area.save_to_history(user_input)
+        self.add_user_message(user_input)
+
+        coder = self.worker.coder
+        if self.worker.loop is None:
+            self.show_error("Worker loop not available. Cannot spawn creator sub-agent.")
+            return
+
+        async def _run_creator():
+            await CreatorCommand.execute(coder.io, coder, creator_args)
+
+        self.worker.loop.call_soon_threadsafe(lambda: self.worker.loop.create_task(_run_creator()))
 
     def _handle_workspace_command(self, user_input: str, stripped: str) -> None:
         """Dispatch /workspace <ws:name> immediately without a full generation cycle.

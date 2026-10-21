@@ -682,6 +682,9 @@ class AgentCoder(Coder):
 
         ConversationService.get_manager(self).flush_queue()
 
+        # Inject newly retrieved documentation for the creator sub-agent only.
+        ConversationService.get_chunks(self).add_creator_docs_context()
+
         # Add post-message context blocks (priority 250 - between CUR and REMINDER)
         ConversationService.get_chunks(self).add_post_message_context_blocks()
 

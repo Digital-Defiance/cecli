@@ -1,7 +1,7 @@
 import os
 
 from cecli.tools.utils.base_tool import BaseTool
-from cecli.tools.utils.helpers import ToolError
+from cecli.tools.utils.helpers import ToolError, is_creator_coder, is_path_within_root
 from cecli.tools.utils.output import color_markers, tool_footer, tool_header
 from cecli.tools.utils.responses import ToolResponse
 from cecli.tools.validations import ToolValidations
@@ -47,10 +47,17 @@ class Tool(BaseTool):
 
         try:
             # Create an absolute path from the provided relative path
-            abs_path = os.path.abspath(os.path.join(coder.root, dir_path))
+            external_paths_allowed = is_creator_coder(coder)
+            expanded_path = os.path.expanduser(dir_path)
+            if os.path.isabs(expanded_path):
+                abs_path = os.path.abspath(expanded_path)
+            else:
+                abs_path = os.path.abspath(os.path.join(coder.root, expanded_path))
 
             # Security check: ensure the resolved path is within the project root
-            if not abs_path.startswith(os.path.abspath(coder.root)):
+            # unless this is a creator agent, which may inspect config and
+            # extension directories anywhere on disk.
+            if not external_paths_allowed and not is_path_within_root(abs_path, coder.root):
                 coder.io.tool_error(
                     f"Error: Path '{dir_path}' attempts to access files outside the project root."
                 )
@@ -70,7 +77,7 @@ class Tool(BaseTool):
                 try:
                     with os.scandir(abs_path) as entries:
                         for entry in entries:
-                            if not entry.name.startswith("."):
+                            if external_paths_allowed or not entry.name.startswith("."):
                                 contents.append(safe_relpath(entry.path, coder.root))
                 except OSError as e:
                     coder.io.tool_error(f"Error listing directory '{dir_path}': {e}")

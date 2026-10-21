@@ -2,6 +2,7 @@ import os
 import re
 import threading
 import warnings
+from collections import Counter
 from pathlib import Path
 
 import importlib_resources
@@ -23,8 +24,18 @@ _CHUNK_CHARS = 1000
 _MAX_RESULTS = 20
 _MAX_CONTEXT_CHARS = 24000
 
+_KEYWORD_INDEX_LOCK = threading.Lock()
+_keyword_index_cache = None
+_KEYWORD_RESULTS = 3
+_KEYWORD_STOPWORDS = frozenset(
+    "a an and are as at be been by can could did do does for from had has have how "
+    "i if in into is it its me my no not of on or our should so than that the then "
+    "this to us was we were what when where which who why will with would you your".split()
+)
+
 _HEADING_RE = re.compile(r"^#{1,6}\s")
 _FENCE_RE = re.compile(r"^\s*(```+|~~~+)")
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
 async def install_help_extra(io):
@@ -144,45 +155,142 @@ def get_index(coder=None):
         return collection
 
 
+def keyword_retrieve(question, exclude_ids=None, n_results=_KEYWORD_RESULTS):
+    """Retrieve help docs with a dependency-free keyword scorer.
+
+    This is the fallback when chromadb or its ONNX embedder cannot be loaded.
+    Chunks use the same ``<path>#<chunk_index>`` ids as the vector index so
+    callers can keep debouncing already-seen docs. Results have the same shape
+    as :meth:`Help.retrieve`.
+    """
+    query_tokens = _tokenize(question or "")
+    if not query_tokens:
+        return []
+
+    tokens = list(dict.fromkeys(query_tokens))
+    phrase = " ".join(query_tokens)
+    exclude = set(exclude_ids or ())
+    n_results = max(1, int(n_results))
+
+    scored = []
+    for entry in _keyword_index():
+        if entry["id"] in exclude:
+            continue
+
+        score = _keyword_score(entry, tokens, phrase)
+        if score > 0:
+            scored.append((score, entry))
+
+    scored.sort(key=lambda item: (-item[0], item[1]["id"]))
+
+    docs = []
+    seen_sources = set()
+    for score, entry in scored:
+        source = entry["id"].rsplit("#", 1)[0]
+        if source in seen_sources:
+            continue
+
+        seen_sources.add(source)
+        docs.append(
+            dict(
+                id=entry["id"],
+                url=entry["url"],
+                document=entry["document"],
+                metadata=dict(entry["metadata"]),
+                distance=round(1.0 / (1.0 + score), 6),
+            )
+        )
+
+        if len(docs) >= n_results:
+            break
+
+    return docs
+
+
 class Help:
     """Vector retriever over the bundled help docs using a local chromadb store."""
 
     def __init__(self, coder=None):
         self.collection = get_index(coder=coder)
 
-    def ask(self, question):
-        if not self.collection.count():
-            return f"# Question: {question}\n\n# Relevant docs:\n\n"
+    def retrieve(self, question, exclude_ids=None, n_results=_MAX_RESULTS):
+        """Return ranked help chunks as structured dictionaries.
+
+        ``exclude_ids`` skips chunks already injected in earlier turns, so a
+        caller can over-fetch and still receive up to ``n_results`` unseen
+        chunks.  Each dictionary contains ``id``, ``url``, ``document``,
+        ``metadata``, and ``distance``.
+        """
+        total = self.collection.count()
+        if not total:
+            return []
+
+        n_results = max(1, int(n_results))
+        exclude = set(exclude_ids or ())
+        fetch = min(total, n_results + len(exclude))
 
         results = self.collection.query(
             query_texts=[question],
-            n_results=_MAX_RESULTS,
-            include=["documents", "metadatas"],
+            n_results=fetch,
+            include=["documents", "metadatas", "ids", "distances"],
         )
+
+        ids = results.get("ids", [[]])[0]
         documents = results.get("documents", [[]])[0]
         metadatas = results.get("metadatas", [[]])[0]
+        distances = results.get("distances", [[]])[0]
+
+        docs = []
+        seen = set(exclude)
+        for chunk_id, document, metadata, distance in zip(ids, documents, metadatas, distances):
+            if not document or chunk_id in seen:
+                continue
+
+            seen.add(chunk_id)
+            metadata = metadata or {}
+            docs.append(
+                dict(
+                    id=chunk_id,
+                    url=metadata.get("url", ""),
+                    document=document,
+                    metadata=metadata,
+                    distance=distance,
+                )
+            )
+
+            if len(docs) >= n_results:
+                break
+
+        return docs
+
+    def ask(self, question, exclude_ids=None):
+        if not self.collection.count():
+            return f"# Question: {question}\n\n# Relevant docs:\n\n"
+
+        documents = self.retrieve(question, exclude_ids=exclude_ids)
 
         context = f"# Question: {question}\n\n# Relevant docs:\n\n"
         seen_urls = set()
         used_chars = 0
 
-        for doc, meta in zip(documents, metadatas):
-            if not doc:
+        for doc in documents:
+            text = doc["document"]
+            if not text:
                 continue
 
-            if used_chars and used_chars + len(doc) > _MAX_CONTEXT_CHARS:
+            if used_chars and used_chars + len(text) > _MAX_CONTEXT_CHARS:
                 break
 
-            url = (meta or {}).get("url", "")
+            url = doc.get("url", "")
             url_attr = ""
             if url and url not in seen_urls:
                 url_attr = f' from_url="{url}"'
                 seen_urls.add(url)
 
             context += f"<doc{url_attr}>\n"
-            context += doc
+            context += text
             context += "\n</doc>\n\n"
-            used_chars += len(doc)
+            used_chars += len(text)
 
         return context
 
@@ -308,3 +416,89 @@ def _format_docs_url(url_path):
         return "https://cecli.dev/docs/"
 
     return f"https://cecli.dev/docs/{url_path}/"
+
+
+def _tokenize(text):
+    """Split text into lowercase search tokens, dropping stopwords."""
+    return [
+        token
+        for token in _TOKEN_RE.findall((text or "").lower())
+        if len(token) > 1 and token not in _KEYWORD_STOPWORDS
+    ]
+
+
+def _keyword_index():
+    """Build and cache chunk entries for the dependency-free fallback."""
+    global _keyword_index_cache
+
+    with _KEYWORD_INDEX_LOCK:
+        if _keyword_index_cache is not None:
+            return _keyword_index_cache
+
+        entries = []
+
+        for fname in get_package_files():
+            fname = Path(fname)
+            if any(fname.match(pat) for pat in exclude_website_pats):
+                continue
+
+            try:
+                text = fname.read_text(encoding="utf-8")
+            except OSError:
+                continue
+
+            url = fname_to_url(str(fname))
+            filename_tokens = set(_tokenize(f"{fname.parent.name} {fname.stem}"))
+
+            for chunk_index, chunk in enumerate(_chunk_document(text)):
+                heading_tokens = set()
+                for line in chunk.splitlines():
+                    if _HEADING_RE.match(line):
+                        heading_tokens.update(_tokenize(line))
+
+                entries.append(
+                    dict(
+                        id=f"{fname}#{chunk_index}",
+                        url=url,
+                        document=chunk,
+                        document_lower=chunk.lower(),
+                        metadata=dict(filename=fname.name, url=url, chunk=chunk_index),
+                        filename_tokens=filename_tokens,
+                        heading_tokens=heading_tokens,
+                        body_tokens=Counter(_tokenize(chunk)),
+                    )
+                )
+
+        _keyword_index_cache = entries
+        return entries
+
+
+def _keyword_score(entry, tokens, phrase):
+    """Score a chunk using filename, heading, and body keyword overlap."""
+    score = 0.0
+    matched = 0
+
+    for token in tokens:
+        token_score = 0.0
+
+        if token in entry["filename_tokens"]:
+            token_score += 8.0
+
+        if token in entry["heading_tokens"]:
+            token_score += 5.0
+
+        count = entry["body_tokens"].get(token, 0)
+        if count:
+            token_score += min(count, 5)
+
+        if token_score:
+            matched += 1
+            score += token_score
+
+    if matched and len(tokens) > 1 and phrase in entry["document_lower"]:
+        score += 6.0
+
+    if matched:
+        score += 10.0 * matched / len(tokens)
+
+    return score
