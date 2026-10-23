@@ -2774,7 +2774,7 @@ class Coder(metaclass=UsageMeta):
     async def check_tokens(self, messages):
         """Check if the messages will fit within the model's token limits."""
         input_tokens = self.get_active_model().token_count(messages)
-        max_input_tokens = self.get_active_model().info.get("max_input_tokens") or 128000
+        max_input_tokens = self.get_active_model().info.get("max_input_tokens") or 256000
 
         if max_input_tokens and input_tokens >= max_input_tokens:
             if (
