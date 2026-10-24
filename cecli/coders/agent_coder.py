@@ -65,10 +65,8 @@ class AgentCoder(Coder):
         self.read_tools = {
             "command",
             "explorecode",
-            "ls",
             "readfile",
             "grep",
-            "thinking",
             "updatetodolist",
             "searchfacts",
         }
