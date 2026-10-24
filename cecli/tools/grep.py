@@ -6,6 +6,8 @@ from pathlib import Path
 
 import oslex
 
+from cecli.helpers.file_exclusions import DEFAULT_EXCLUDE_DIRS as SHARED_EXCLUDE_DIRS
+from cecli.helpers.file_exclusions import GREP_EXTRA_EXCLUDE_DIRS
 from cecli.helpers.hashline import strip_hashline
 from cecli.run_cmd import run_cmd_subprocess
 from cecli.tools.utils.base_tool import BaseTool
@@ -15,42 +17,9 @@ from cecli.tools.utils.responses import ToolResponse
 from cecli.tools.validations import ToolValidations
 from cecli.utils import safe_relpath
 
-# Default directories to exclude from search results across various languages
-DEFAULT_EXCLUDE_DIRS = [
-    ".git",
-    ".cecli",
-    ".venv",
-    "venv",
-    "env",
-    ".env",
-    "__pycache__",
-    "*.pyc",
-    "node_modules",
-    "bower_components",
-    ".next",
-    "dist",
-    "build",
-    "target",  # Rust / Java / Kotlin
-    "bin",
-    "obj",  # C# / .NET
-    ".gradle",  # Java/Kotlin
-    ".mvn",
-    "vendor",  # Go / PHP
-    ".bundle",
-    ".tox",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".eggs",
-    "eggs",
-    "lib",
-    "lib64",
-    ".dub",  # D
-    "dub.selections.json",
-    "Pods",  # CocoaPods
-    ".build",  # Swift
-    ".cargo",  # Rust
-]
+# Default directories to exclude from search results across various languages.
+# The canonical noise list is shared; grep additionally hides source-like dirs.
+DEFAULT_EXCLUDE_DIRS = [*sorted(SHARED_EXCLUDE_DIRS), *GREP_EXTRA_EXCLUDE_DIRS]
 
 
 # Default files to exclude from search results (e.g. past agent conversations).
