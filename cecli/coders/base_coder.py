@@ -42,7 +42,11 @@ from cecli.helpers import command_parser, command_queue, coroutines, nested, res
 from cecli.helpers.conversation import ConversationService, MessageTag
 from cecli.helpers.file_system import FileSystemService
 from cecli.helpers.io_proxy import IOProxy
-from cecli.helpers.loop_detect import LoopDetectedError, LoopDetector
+from cecli.helpers.loop_detect import (
+    LoopDetectedError,
+    LoopDetector,
+    LoopThresholdTracker,
+)
 from cecli.helpers.memory_control import trim_memory
 from cecli.helpers.observations.service import ObservationService
 from cecli.helpers.profiler import TokenProfiler
@@ -882,6 +886,13 @@ class Coder(metaclass=UsageMeta):
             pass
 
         self.custom = customizations
+
+        # Owns the loop-detection settings and how much repetition is currently
+        # allowed; handed to every stream's detectors.
+        self.repetition_penalties = LoopThresholdTracker(
+            config=nested.getter(self.custom, "repetition_penalties", None)
+        )
+
         self.file_diffs = nested.getter(self.args, "file_diffs", True)
 
         if nested.getter(self.custom, "prompt_map.all", None):
@@ -4114,8 +4125,8 @@ class Coder(metaclass=UsageMeta):
     async def show_send_output_stream(self, completion):
         received_content = False
         chunk_index = 0
-        content_detector = LoopDetector()
-        tool_detector = LoopDetector()
+        content_detector = LoopDetector(self.repetition_penalties)
+        tool_detector = LoopDetector(self.repetition_penalties)
         loop_detected = False
 
         stream = coroutines.interruptible_async_generator(completion, self.interrupt_event)
@@ -4254,6 +4265,7 @@ class Coder(metaclass=UsageMeta):
         except LoopDetectedError as e:
             self._output_loop_detected = True
             self._output_loop_message = str(e)
+            self.repetition_penalties.record_loop(e.level)
             loop_detected = True
 
         if loop_detected:
@@ -4284,6 +4296,10 @@ class Coder(metaclass=UsageMeta):
             self.partial_response_content += f"\n\n</{self.reasoning_tag_name}>\n\n"
             content_to_show = self.live_incremental_response(False)
             self.stream_wrapper(content_to_show, final=False)
+
+        # The stream ran to completion without tripping the detector, so bleed the
+        # relaxations back toward the configured limits.
+        self.repetition_penalties.record_clean_turn()
 
         # The Part Doing the Heavy Lifting Now
         self.consolidate_chunks()
@@ -4430,7 +4446,7 @@ class Coder(metaclass=UsageMeta):
         if self._output_loop_detected:
             # A repeating output loop was caught while streaming; turn it into an
             # assistant message so the model can adjust and drop any tool calls.
-            marker = "\n\n[SYSTEM CANCEL: OUTPUT LOOP DETECTED]\n"
+            marker = f"\n\n{LoopDetector.INTERJECTION}\n"
             self.partial_response_content += marker
             self.partial_response_tool_calls = []
             self.partial_response_function_call = dict()

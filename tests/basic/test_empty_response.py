@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import pytest
 
 from cecli.coders.base_coder import Coder, _is_meaningful_reasoning
+from cecli.helpers.loop_detect import LoopThresholdTracker
 from cecli.helpers.threading import ThreadSafeEvent
 from cecli.llm import litellm
 
@@ -92,6 +93,7 @@ def _make_coder(stream=False):
     coder.token_profiler = _FakeTokenProfiler()
     coder._output_loop_detected = False
     coder._output_loop_message = ""
+    coder.repetition_penalties = LoopThresholdTracker()
     coder._has_empty_reflected = False
     coder.edit_format = "code"
     return coder
