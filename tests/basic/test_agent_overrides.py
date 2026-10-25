@@ -127,6 +127,8 @@ def test_global_is_merged_under_local(tmp_path, monkeypatch):
     home = tmp_path / "home"
     project = tmp_path / "project"
     monkeypatch.setenv("HOME", str(home))
+    # Windows ignores HOME for ~ expansion (ntpath uses USERPROFILE)
+    monkeypatch.setenv("USERPROFILE", str(home))
 
     _write_yml(
         home / ".cecli" / "creator.yml",
@@ -159,6 +161,8 @@ def test_global_is_merged_under_local(tmp_path, monkeypatch):
 
 def test_missing_files_yield_empty_map(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    # Windows ignores HOME for ~ expansion (ntpath uses USERPROFILE)
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
 
     assert load_agent_overrides(str(tmp_path / "project")) == {}
 
@@ -166,6 +170,8 @@ def test_missing_files_yield_empty_map(tmp_path, monkeypatch):
 def test_prompt_file_is_resolved_against_declaring_file(tmp_path, monkeypatch):
     home = tmp_path / "home"
     monkeypatch.setenv("HOME", str(home))
+    # Windows ignores HOME for ~ expansion (ntpath uses USERPROFILE)
+    monkeypatch.setenv("USERPROFILE", str(home))
     _write_yml(
         home / ".cecli" / "creator.yml",
         {"agents": {"writer": {"prompt_file": "prompts/writer.md"}}},
@@ -360,6 +366,8 @@ def test_refresh_installs_map_and_tracks_definitions(service, tmp_path, monkeypa
     home = tmp_path / "home"
     project = tmp_path / "project"
     monkeypatch.setenv("HOME", str(home))
+    # Windows ignores HOME for ~ expansion (ntpath uses USERPROFILE)
+    monkeypatch.setenv("USERPROFILE", str(home))
     _write_yml(
         project / ".cecli" / "creator.yml",
         {
