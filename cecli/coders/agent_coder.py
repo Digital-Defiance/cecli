@@ -234,6 +234,7 @@ class AgentCoder(Coder):
             config,
             ["tools_excludelist", "tools_blacklist"],
             [
+                "create",
                 "gitbranch",
                 "gitdiff",
                 "gitlog",
@@ -241,6 +242,7 @@ class AgentCoder(Coder):
                 "gitshow",
                 "gitstatus",
                 "searchfacts",
+                "searchdocs",
                 "replacefacts",
             ],
         )
@@ -292,6 +294,12 @@ class AgentCoder(Coder):
                 self.allowed_context_blocks.remove(context_block)
             except KeyError:
                 pass
+
+        if config.get("creator_mode") or config.get("allow_external_paths"):
+            if "searchdocs" in config["tools_excludelist"]:
+                config["tools_excludelist"].remove("searchdocs")
+            if "creator_requirements" not in config["exclude_context_blocks"]:
+                config["include_context_blocks"].add("creator_requirements")
 
         if "skills" in self.allowed_context_blocks:
             config["skills_paths"] = nested.getter(config, "skills_paths", [])
@@ -495,6 +503,7 @@ class AgentCoder(Coder):
                 "servers",
                 "sub_agents",
                 "orchestration",
+                "creator_requirements",
             ]
             for block_type in block_types:
                 if block_type in self.allowed_context_blocks:
@@ -523,6 +532,8 @@ class AgentCoder(Coder):
             content = self.get_context_symbol_outline()
         elif block_name == "context_summary":
             content = self.get_context_summary()
+        elif block_name == "creator_requirements":
+            content = self.get_creator_requirements_context()
         elif block_name == "todo_list":
             content = self.get_todo_list()
         elif block_name == "skills":
@@ -679,9 +690,6 @@ class AgentCoder(Coder):
         ConversationService.get_chunks(self).add_chat_files_messages()
 
         ConversationService.get_manager(self).flush_queue()
-
-        # Inject newly retrieved documentation for the creator sub-agent only.
-        ConversationService.get_chunks(self).add_creator_docs_context()
 
         # Add post-message context blocks (priority 250 - between CUR and REMINDER)
         ConversationService.get_chunks(self).add_post_message_context_blocks()
@@ -1632,6 +1640,41 @@ Todo list does not exist. Please update it with the `UpdateTodoList` tool.</cont
         except Exception as e:
             self.io.tool_error(f"Error generating todo list context: {str(e)}")
             return None
+
+    def get_creator_requirements_context(self):
+        """List importable packages for creator-written tools and commands.
+
+        Only emitted for creator-mode agents. Lists top-level modules from the
+        Python environment that is actually running cecli, regardless of the
+        project's requirements files.
+        """
+        from cecli.helpers.creator import requirements
+
+        if not self.use_enhanced_context:
+            return None
+
+        config = getattr(self, "agent_config", {}) or {}
+        if not (config.get("creator_mode") or config.get("allow_external_paths")):
+            return None
+
+        discovery = requirements.packages_context()
+        if not discovery:
+            return None
+
+        environment, packages = discovery
+
+        result = '<context name="creator_requirements" from="agent">\n'
+        result += "## Available Python Packages\n\n"
+        result += (
+            f"Top-level modules installed in the {environment} environment running cecli "
+            "are importable by custom tools and custom commands. Distribution names may "
+            "differ from import names:\n\n"
+        )
+        for start in range(0, len(packages), 8):
+            result += "- " + ", ".join(packages[start : start + 8]) + "\n"
+        result += "</context>"
+
+        return result
 
     def get_skills_context(self):
         """

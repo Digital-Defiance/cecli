@@ -5,6 +5,7 @@ from . import (
     _yield,
     broadcast,
     command,
+    create,
     delegate,
     edit_file,
     explore_code,
@@ -19,6 +20,7 @@ from . import (
     read_file,
     replace_facts,
     resource_manager,
+    search_docs,
     search_facts,
     undo_change,
     update_todo_list,
@@ -27,6 +29,7 @@ from . import (
 # List of all available tool modules for dynamic discovery
 TOOL_MODULES = [
     command,
+    create,
     delegate,
     edit_file,
     explore_code,
@@ -43,6 +46,7 @@ TOOL_MODULES = [
     read_file,
     replace_facts,
     resource_manager,
+    search_docs,
     search_facts,
     undo_change,
     update_todo_list,

@@ -69,6 +69,10 @@
           "path": "/config/custom-commands/"
         },
         {
+          "title": "Creator Mode",
+          "path": "/config/creator/"
+        },
+        {
           "title": "Custom System Prompts",
           "path": "/config/custom-system-prompts/"
         },

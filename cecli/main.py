@@ -660,6 +660,7 @@ async def main_async(
     from cecli.deprecated_args import handle_deprecated_model_args
     from cecli.format_settings import format_settings, scrub_sensitive_info
     from cecli.helpers import config_utils
+    from cecli.helpers.agents.overrides import refresh_agent_overrides
     from cecli.helpers.conversation import ConversationService, MessageTag
     from cecli.helpers.copypaste import ClipboardWatcher
     from cecli.helpers.file_searcher import handle_core_files
@@ -702,19 +703,37 @@ async def main_async(
             all_config_paths.append(cfg_env)
     if git_root:
         git_conf = str(Path(git_root) / ".cecli.conf.yml")
+
         if git_conf not in all_config_paths:
             all_config_paths.append(git_conf)
+
+    # ── creator.yml files: highest config-file precedence (still below CLI) ──
+    # Global ~/.cecli/creator.yml first, then the project-local
+    # <git_root or cwd>/.cecli/creator.yml on top (local wins).
+    if git_root:
+        creator_local = str(Path(git_root) / ".cecli" / "creator.yml")
+
+    else:
+        creator_local = str(Path(".cecli/creator.yml"))
+
+    creator_yml_files = [str(Path.home() / ".cecli" / "creator.yml"), creator_local]
+
+    for path in creator_yml_files:
+        if path not in all_config_paths:
+            all_config_paths.append(path)
 
     conf_yml_files = [
         p for p in all_config_paths if p.endswith("conf.yml") and not p.endswith(".cecli.conf.yml")
     ]
+
     cecli_conf_yml_files = [p for p in all_config_paths if p.endswith(".cecli.conf.yml")]
 
-    # ── Read and merge ALL config files as YAML upfront ─────────────────
+    # ── Read and merge ALL config files as YAML upfront ──────────────────
     # Decode all files as YAML, shallow-merge .cecli/conf.yml, then
-    # deep-merge .cecli.conf.yml on top for a fully resolved config dict.
+    # deep-merge .cecli.conf.yml and creator.yml on top for a fully
+    # resolved config dict.
     merged_config = config_utils.read_and_merge_all_configs(
-        all_config_paths, conf_yml_files, cecli_conf_yml_files
+        all_config_paths, conf_yml_files, cecli_conf_yml_files, creator_yml_files
     )
 
     # Write merged config to a temp YAML file so configargparse can
@@ -1469,6 +1488,14 @@ async def main_async(
             register_workflow_subagents(_workflows)
         except Exception:
             logging.exception("workflow sub-agent registration failed")
+
+    # Creator ``agents:`` map: re-read it so the spawn-time override index is
+    # fresh, then register definition entries as dynamic ``creator:<name>``
+    # sub-agents. The map never flows through agent_config.
+    try:
+        refresh_agent_overrides(git_root)
+    except Exception:
+        logging.exception("creator agent registration failed")
 
     if return_coder:
         return coder

@@ -97,6 +97,9 @@ class AgentService:
 
     _instances: Dict[str, "AgentService"] = {}
     _global_registry: Dict[str, Any] = {}  # name -> SubAgentConfig (from .md files)
+    # creator.yml ``agents:`` map: name/pattern -> override entry (see
+    # cecli.helpers.agents.overrides). Applied at spawn, never to the primary.
+    _agent_overrides: Dict[str, Any] = {}
     # UUID -> weakref of coder instance for convenient lookup
     _uuid_coder_map: Dict[str, weakref.ref] = {}
     # Lock pools keyed by parent UUID — created lazily so only parents that
@@ -209,6 +212,27 @@ class AgentService:
     def unregister_subagent(cls, name: str) -> None:
         """Remove a sub-agent from the global registry."""
         cls._global_registry.pop(name, None)
+
+    @classmethod
+    def set_agent_overrides(cls, overrides: Optional[Dict[str, Any]]) -> None:
+        """Replace the creator.yml per-agent override index.
+
+        The mapping is keyed by agent name or fnmatch pattern and is resolved
+        to a concrete override when a sub-agent is spawned.
+        """
+        cls._agent_overrides = dict(overrides) if isinstance(overrides, dict) else {}
+
+    @classmethod
+    def get_agent_overrides(cls) -> Dict[str, Any]:
+        """Return the creator.yml per-agent override index."""
+        return cls._agent_overrides
+
+    @classmethod
+    def _resolve_agent_overrides(cls, name: str) -> Dict[str, Any]:
+        """Collapse the pattern overrides matching *name* into one entry."""
+        from .overrides import resolve_agent_overrides
+
+        return resolve_agent_overrides(name, cls._agent_overrides)
 
     @classmethod
     def mark_sub_agent_finished(
@@ -616,15 +640,25 @@ class AgentService:
             ValueError: If the named sub-agent is not registered.
             RuntimeError: If the maximum number of sub-agents is reached.
         """
+        from cecli.helpers.agents.overrides import (
+            apply_agent_override,
+            apply_hooks_override,
+        )
+
         config = self._global_registry.get(name)
         if not config:
             raise ValueError(
                 f"Unknown sub-agent '{name}'. " f"Available: {list(self._global_registry.keys())}"
             )
 
-        # Resolve auto_reap: None means defer to sub-agent config, then default to True
+        override = self._resolve_agent_overrides(name)
+
+        # Resolve auto_reap: explicit argument, then creator override, then the
+        # sub-agent config, then the default.
         if auto_reap is None:
-            auto_reap = getattr(config, "auto_reap", None)
+            auto_reap = override.get("auto_reap")
+            if auto_reap is None:
+                auto_reap = getattr(config, "auto_reap", None)
             if auto_reap is None:
                 auto_reap = True
 
@@ -663,6 +697,18 @@ class AgentService:
             else:
                 inherited.setdefault("allow_nested_delegation", True)
             agent_config = inherited
+
+        # The creator's per-agent override is the local user's explicit intent,
+        # so it merges on top of the agent's own front matter and any inherited
+        # parent config. The wf: Local-server invariant below still runs after
+        # this merge so an allowlist override cannot hide the file/exec tools.
+        if override:
+            agent_config = apply_agent_override(agent_config, override.get("agent-config"))
+            configured_root = override.get("root") or configured_root
+            if override.get("description") is not None:
+                metadata["description"] = override["description"]
+            if "detached" in override:
+                agent_config["detached"] = bool(override["detached"])
 
         # Workflow agents always keep the Local server available: its tools are
         # the file/exec primitives a worker needs, and an explicit ``servers:``
@@ -718,7 +764,7 @@ class AgentService:
                 )
             )
 
-        model_override = getattr(config, "model", None)
+        model_override = override.get("model") or getattr(config, "model", None)
         if model_override:
             # Resolve model sentinels (e.g. "<weak_model>", "<agent_model>")
             resolved = self._resolve_model_sentinel(model_override, parent_coder)
@@ -775,13 +821,14 @@ class AgentService:
         )
 
         # Initialize system prompt from config
-        system_prompt = getattr(config, "prompt", "")
+        system_prompt = override.get("prompt") or getattr(config, "prompt", "")
         from cecli.helpers.conversation.service import ConversationService
 
         ConversationService.get_chunks(new_coder).add_system_message(system_prompt)
 
         # Initialize hooks from sub-agent config if defined
-        hooks_config = getattr(config, "hooks", {})
+        hooks_override = override.get("hooks") if isinstance(override, dict) else None
+        hooks_config = apply_hooks_override(getattr(config, "hooks", {}), hooks_override)
         if hooks_config:
             import tempfile
             from pathlib import Path

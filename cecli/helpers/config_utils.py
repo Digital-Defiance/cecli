@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import yaml
 
@@ -182,6 +182,7 @@ def read_and_merge_all_configs(
     all_config_paths: List[str],
     conf_yml_paths: List[str],
     cecli_conf_yml_paths: List[str],
+    creator_conf_yml_paths: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Read all config files as YAML, shallow-merge .cecli/conf.yml files
@@ -195,6 +196,8 @@ def read_and_merge_all_configs(
       1. .cecli/conf.yml files (shallow-merged, later files win)
       2. .cecli.conf.yml files (deep-merged on top, nested dicts merged,
          arrays concatenated and deduplicated)
+      3. creator.yml files (deep-merged on top of everything; global first,
+         then local — highest config-file precedence)
     """
     config_dicts: Dict[str, Dict[str, Any]] = {}
 
@@ -222,6 +225,12 @@ def read_and_merge_all_configs(
 
     if cecli_dicts:
         merged = deep_merge_config_dicts([merged] + cecli_dicts)
+
+    # Step 3: Deep-merge creator.yml files on top (global first, local wins)
+    creator_dicts = [config_dicts[p] for p in creator_conf_yml_paths or [] if p in config_dicts]
+
+    if creator_dicts:
+        merged = deep_merge_config_dicts([merged] + creator_dicts)
 
     return merged
 

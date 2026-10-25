@@ -243,7 +243,7 @@ class Tool(BaseTool):
                         )
 
                         for message in await reload_creator_extensions(coder):
-                            coder.io.tool_output(message)
+                            coder.io.tool_output(message, type="tool-result")
                 except Exception as e:
                     logger.warning("Failed to reload creator extensions: %s", e)
 

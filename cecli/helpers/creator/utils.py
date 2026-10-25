@@ -26,7 +26,8 @@ def resolve_config_paths(coder):
     """Return the config paths used by the current session.
 
     The result mirrors ``main.main_async``: global ``conf.yml`` files are
-    shallow-merged and ``.cecli.conf.yml`` files are deep-merged.
+    shallow-merged, ``.cecli.conf.yml`` files are deep-merged, and
+    ``creator.yml`` files are deep-merged last (highest config precedence).
     """
     home = Path.home()
     cwd = Path.cwd()
@@ -44,13 +45,27 @@ def resolve_config_paths(coder):
     if env_path:
         paths.append(env_path)
 
-    paths = list(dict.fromkeys(paths))
+    creator_paths = list(creator_yml_paths(root))
+    paths = list(dict.fromkeys(paths + creator_paths))
     conf_yml_paths = [
         p for p in paths if p.endswith("conf.yml") and not p.endswith(".cecli.conf.yml")
     ]
     cecli_conf_paths = [p for p in paths if p.endswith(".cecli.conf.yml")]
 
-    return paths, conf_yml_paths, cecli_conf_paths
+    return paths, conf_yml_paths, cecli_conf_paths, creator_paths
+
+
+def creator_yml_paths(root=None) -> tuple:
+    """Return (global_path, local_path) for creator.yml config files.
+
+    global: ~/.cecli/creator.yml ; local: <root or cwd>/.cecli/creator.yml
+    """
+    base = Path(root) if root else Path.cwd()
+
+    return (
+        str(Path.home() / ".cecli" / "creator.yml"),
+        str(base / ".cecli" / "creator.yml"),
+    )
 
 
 def read_merged_config(coder) -> dict:
@@ -58,8 +73,10 @@ def read_merged_config(coder) -> dict:
     try:
         from cecli.helpers import config_utils
 
-        paths, conf_yml_paths, cecli_conf_paths = resolve_config_paths(coder)
-        return config_utils.read_and_merge_all_configs(paths, conf_yml_paths, cecli_conf_paths)
+        paths, conf_yml_paths, cecli_conf_paths, creator_paths = resolve_config_paths(coder)
+        return config_utils.read_and_merge_all_configs(
+            paths, conf_yml_paths, cecli_conf_paths, creator_paths
+        )
     except Exception:
         return {}
 
@@ -75,7 +92,8 @@ def reload_skills(coder, config=None) -> list:
         "skills_init",
     )
     coders = _iter_coders(coder)
-    _apply_agent_config(coders, agent_config, skill_keys)
+    overrides = _extract_agent_overrides(config)
+    _apply_agent_config(coder, coders, agent_config, skill_keys, overrides)
 
     try:
         from cecli.helpers.skills import _skill_state_store
@@ -187,7 +205,8 @@ async def reload_custom_tools(coder, config=None) -> list:
     agent_config = _extract_agent_config(config)
     tool_keys = ("tools_paths", "tools_includelist", "tools_excludelist")
     coders = _iter_coders(coder)
-    _apply_agent_config(coders, agent_config, tool_keys)
+    overrides = _extract_agent_overrides(config)
+    _apply_agent_config(coder, coders, agent_config, tool_keys, overrides)
 
     try:
         from cecli.tools.utils.registry import ToolRegistry
@@ -373,8 +392,47 @@ def _extract_agent_config(config) -> dict:
     return raw if isinstance(raw, dict) else {}
 
 
-def _apply_agent_config(coders, agent_config, keys) -> None:
-    """Copy selected ``agent-config`` keys onto each coder."""
+def _extract_agent_overrides(config) -> dict:
+    """Return the per-agent ``agents:`` map from a merged config dict."""
+    raw = config.get("agents") if isinstance(config, dict) else None
+
+    return raw if isinstance(raw, dict) else {}
+
+
+def _override_agent_config_for(name, overrides) -> dict:
+    """Return the merged ``agent-config`` a coder named *name* overrides."""
+    if not name or not isinstance(overrides, dict):
+        return {}
+
+    try:
+        from cecli.helpers.agents.overrides import resolve_agent_overrides
+
+        resolved = resolve_agent_overrides(name, overrides)
+    except Exception:
+        return {}
+
+    config = resolved.get("agent-config") if isinstance(resolved, dict) else None
+
+    return config if isinstance(config, dict) else {}
+
+
+def _agent_name(coder) -> str:
+    """Return *coder*'s sub-agent name, or '' for the primary."""
+    try:
+        from cecli.helpers.agents.service import AgentService
+
+        return AgentService.get_instance(coder).get_agent_name(coder) or ""
+    except Exception:
+        return ""
+
+
+def _apply_agent_config(coder, coders, agent_config, keys, overrides=None) -> None:
+    """Copy selected shared ``agent-config`` keys onto each coder.
+
+    Per-agent overrides win: a key declared under ``agents.<name>`` is left
+    untouched so the reload does not stamp the shared value back over it. When
+    no ``agents:`` map exists every key is applied, matching the old behavior.
+    """
     if not agent_config:
         return
 
@@ -383,8 +441,9 @@ def _apply_agent_config(coders, agent_config, keys) -> None:
         if not isinstance(config, dict):
             continue
 
+        override_config = _override_agent_config_for(_agent_name(item), overrides)
         for key in keys:
-            if key in agent_config:
+            if key in agent_config and key not in override_config:
                 config[key] = agent_config[key]
 
 

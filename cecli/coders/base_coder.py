@@ -2347,7 +2347,6 @@ class Coder(metaclass=UsageMeta):
             ConversationService.get_files(self).clear_file_cache()
             ConversationService.get_chunks(self).flush_removals()
             ConversationService.get_chunks(self).reset_clear_count()
-            ConversationService.get_chunks(self).clear_creator_docs_seen(remove_messages=True)
             ObservationService.get_instance(self).reset_index()
 
         if not force and combined_tokens < self.context_compaction_max_tokens:
@@ -2459,7 +2458,6 @@ class Coder(metaclass=UsageMeta):
             ConversationService.get_files(self).clear_file_cache()
             ConversationService.get_chunks(self).flush_removals()
             ConversationService.get_chunks(self).reset_clear_count()
-            ConversationService.get_chunks(self).clear_creator_docs_seen(remove_messages=True)
             ObservationService.get_instance(self).reset_index()
             self.format_chat_chunks()
 
@@ -2704,9 +2702,6 @@ class Coder(metaclass=UsageMeta):
         ConversationService.get_chunks(self).add_chat_files_messages()
 
         ConversationService.get_manager(self).flush_queue()
-
-        # Inject newly retrieved documentation for the creator sub-agent only.
-        ConversationService.get_chunks(self).add_creator_docs_context()
 
         # Return formatted messages for LLM
         return ConversationService.get_manager(self).get_messages_dict()

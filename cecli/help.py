@@ -232,7 +232,7 @@ class Help:
         results = self.collection.query(
             query_texts=[question],
             n_results=fetch,
-            include=["documents", "metadatas", "ids", "distances"],
+            include=["documents", "metadatas", "distances"],
         )
 
         ids = results.get("ids", [[]])[0]
