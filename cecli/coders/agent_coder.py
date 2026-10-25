@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import json
-import locale
 import logging
 import os
 import platform
@@ -805,7 +804,7 @@ class AgentCoder(Coder):
         try:
             current_date = datetime.now().strftime("%Y-%m-%d")
             platform_info = platform.platform()
-            language = self.chat_language or locale.getlocale()[0] or "en-US"
+            language = self.get_user_language() or "English"
             result = '<context name="environment_info" from="agent">\n'
             result += "## Environment Information\n\n"
             result += f"- Working directory: {self.root}\n"

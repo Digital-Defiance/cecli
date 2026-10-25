@@ -2656,7 +2656,7 @@ class Coder(metaclass=UsageMeta):
             language = user_lang
         else:
             # Default if no specific lang detected
-            language = "the same language they are using"
+            language = "the user's most recently used language"
 
         if self.fence[0] == "`" * 4:
             quad_backtick_reminder = (
