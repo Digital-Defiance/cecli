@@ -22,7 +22,8 @@ _KEY_LIKE_RE = re.compile(r"[A-Za-z0-9\-_.]{24,}")
 _ENV_REF_RE = re.compile(r"^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$")
 
 # Name words that mark a value as a credential, and take precedence over
-# BENIGN_NAME_WORDS. "pwd" is deliberately absent: PWD holds the working dir.
+# BENIGN_NAME_WORDS. "pwd" is deliberately absent: PWD holds the working dir,
+# the rest are matched as substrings instead (see SECRET_NAME_SUBSTRINGS).
 SECRET_NAME_WORDS = {
     "apikey",
     "credential",
@@ -36,6 +37,10 @@ SECRET_NAME_WORDS = {
     "token",
     "tokens",
 }
+
+# Fragments that mark a name as credential-named wherever they appear in it, so
+# names whose credential word is not separated by punctuation ("MYTOKEN").
+SECRET_NAME_SUBSTRINGS = ("token", "passwd", "password")
 
 # Name words that mark a value as an identifier (paths, models, session ids,
 # hostnames). These are never scanned for key-like tokens: config/env entries
@@ -102,8 +107,8 @@ def detect_api_keys(
 
     Every value is classified by the name it is stored under:
 
-      - credential-named (contains "key", "token", "secret", ...): the whole
-        value is taken as a candidate, since such values may contain
+      - credential-named (contains "key", "token", "password", "secret", ...):
+        the whole value is taken as a candidate, since such values may contain
         punctuation that a key-like token regex cannot span.
       - identifier-named (see BENIGN_NAME_WORDS): skipped, because these
         legitimately hold long non-secret strings.
@@ -259,9 +264,12 @@ def _register_secret_value(value: str, found: Set[str]) -> None:
 
 def _is_secret_name(name: Any) -> bool:
     """True if the name itself says this value is a credential."""
-    words = _name_words(name)
+    lowered = str(name).lower()
 
-    return "key" in str(name).lower() or bool(words & SECRET_NAME_WORDS)
+    if "key" in lowered or any(word in lowered for word in SECRET_NAME_SUBSTRINGS):
+        return True
+
+    return bool(_name_words(name) & SECRET_NAME_WORDS)
 
 
 def _is_benign_name(name: Any) -> bool:

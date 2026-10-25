@@ -34,6 +34,21 @@ def test_detects_value_of_env_var_named_with_key():
     assert f"Bearer {FAKE_TOKEN}" in key_detection.detect_api_keys(environ=environ)
 
 
+def test_detects_values_of_env_vars_named_with_token_or_password():
+    environ = {"GH_TOKEN": FAKE_TOKEN, "DB_PASSWORD": f"pa:ss{FAKE_KEY}"}
+
+    assert FAKE_TOKEN in key_detection.detect_api_keys(environ=environ)
+    # Passwords carry punctuation the token regex cannot span, so the name has
+    # to carry the decision.
+    assert f"pa:ss{FAKE_KEY}" in key_detection.detect_api_keys(environ=environ)
+
+
+def test_detects_credential_words_that_are_not_separate_name_words():
+    environ = {"MYTOKEN": FAKE_TOKEN, "SERVICE_PASSWD": FAKE_TOKEN}
+
+    assert key_detection.detect_api_keys(environ=environ) == [FAKE_TOKEN]
+
+
 def test_ignores_short_values_of_key_named_env_vars():
     environ = {"SOME_FLAG_KEY": "true"}
 
