@@ -61,6 +61,7 @@ Use the tool installation so cecli doesn't interfere with your development envir
 * [MCP Configuration](https://github.com/cecli-dev/cecli/blob/main/cecli/website/docs/config/mcp.md)
 * [Skills](https://github.com/cecli-dev/cecli/blob/main/cecli/website/docs/config/skills.md)
 * [Subagents](https://github.com/cecli-dev/cecli/blob/main/cecli/website/docs/config/subagents.md)
+* [Creator Mode](https://github.com/cecli-dev/cecli/blob/main/cecli/website/docs/config/creator.md)
 * [Persistent Memory](https://github.com/cecli-dev/cecli/blob/main/cecli/website/docs/config/persistent-memory.md)
 * [Session Management](https://github.com/cecli-dev/cecli/blob/main/cecli/website/docs/sessions.md)
 * [Hooks](https://github.com/cecli-dev/cecli/blob/main/cecli/website/docs/config/hooks.md)
