@@ -141,9 +141,8 @@ class FloatingPanels(Vertical):
                     yield StatusColumn("servers", id="servers-column", classes="status-column")
 
     def on_mount(self):
-        """Start periodic height sync and data refreshes."""
+        """Sync height once, then start periodic data refreshes."""
         self.call_after_refresh(self._sync_height)
-        self.set_interval(0.25, self._sync_height)
         self.set_interval(1.0, self.refresh_data)
         self.refresh_data()
 

@@ -13,6 +13,7 @@ from cecli.tui.widgets.floating_panels import (
     StatusItem,
     StatusItemClicked,
 )
+from cecli.tui.widgets.input_container import InputContainer
 
 
 class FakeSkill:
@@ -64,7 +65,7 @@ class _PanelApp(App):
     def compose(self) -> ComposeResult:
         with Horizontal(id="input-row"):
             with Vertical(id="input-column"):
-                with Vertical(id="input-container"):
+                with InputContainer(id="input-container"):
                     yield Input(id="input")
                 yield Static("hints", id="key-hints")
             with Vertical(id="extensions-column"):

@@ -569,13 +569,49 @@ class TUI(App):
                     footer.update_git("No Repo")
 
     def check_output_queue(self):
-        """Process messages from coder worker."""
+        """Drain and process messages from the coder worker."""
+        messages = []
         try:
             while True:
-                msg = self.output_queue.get_nowait()
-                self.handle_output_message(msg)
+                messages.append(self.output_queue.get_nowait())
         except queue.Empty:
             pass
+
+        for msg in self._coalesce_stream_chunks(messages):
+            self.handle_output_message(msg)
+
+    @staticmethod
+    def _coalesce_stream_chunks(messages: list) -> list:
+        """Merge contiguous stream chunks belonging to the same container.
+
+        Coalescing a tick's worth of chunks avoids scheduling a worker per
+        chunk while preserving the original message order.
+        """
+        coalesced = []
+        pending = None
+
+        for msg in messages:
+            if msg.get("type") == "stream_chunk":
+                if pending is not None and pending.get("coder_uuid") == msg.get("coder_uuid"):
+                    pending["text"] += msg["text"]
+                    continue
+
+                if pending is not None:
+                    coalesced.append(pending)
+
+                pending = dict(msg)
+                continue
+
+            if pending is not None:
+                coalesced.append(pending)
+                pending = None
+
+            coalesced.append(msg)
+
+        if pending is not None:
+            coalesced.append(pending)
+
+        return coalesced
 
     def handle_output_message(self, msg):
         msg_type = msg["type"]
