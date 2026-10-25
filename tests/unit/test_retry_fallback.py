@@ -121,6 +121,9 @@ class TestModelFallback:
                 "fallbacks": {"models": {"model": ["gpt-4o-mini"]}},
             },
         )
+        # Otherwise the opportunistic cache-warm sleep lands in slept[0] on
+        # ~25% of runs and masks the retry delay under test.
+        model.caches_by_default = False
         seen = []
 
         async def fake_acompletion(**kwargs):
