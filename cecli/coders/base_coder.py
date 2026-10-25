@@ -42,7 +42,11 @@ from cecli.helpers import command_parser, command_queue, coroutines, nested, res
 from cecli.helpers.conversation import ConversationService, MessageTag
 from cecli.helpers.file_system import FileSystemService
 from cecli.helpers.io_proxy import IOProxy
-from cecli.helpers.loop_detect import LoopDetectedError, LoopDetector
+from cecli.helpers.loop_detect import (
+    LoopDetectedError,
+    LoopDetector,
+    LoopThresholdTracker,
+)
 from cecli.helpers.memory_control import trim_memory
 from cecli.helpers.observations.service import ObservationService
 from cecli.helpers.profiler import TokenProfiler
@@ -882,6 +886,13 @@ class Coder(metaclass=UsageMeta):
             pass
 
         self.custom = customizations
+
+        # Owns the loop-detection settings and how much repetition is currently
+        # allowed; handed to every stream's detectors.
+        self.repetition_penalties = LoopThresholdTracker(
+            config=nested.getter(self.custom, "repetition_penalties", None)
+        )
+
         self.file_diffs = nested.getter(self.args, "file_diffs", True)
 
         if nested.getter(self.custom, "prompt_map.all", None):
@@ -998,12 +1009,12 @@ class Coder(metaclass=UsageMeta):
             settings_items.append(f"reasoning {reasoning_effort}")
 
         # Prompt cache
-        if self.add_cache_headers or main_model.caches_by_default:
-            settings_items.append("prompt cache")
+        # if self.add_cache_headers or main_model.caches_by_default:
+        #   settings_items.append("prompt cache")
 
         # Infinite output
-        if main_model.info.get("supports_assistant_prefill") and self.verbose:
-            settings_items.append("infinite output")
+        # if main_model.info.get("supports_assistant_prefill") and self.verbose:
+        #    settings_items.append("infinite output")
 
         # Copy/paste mode
         if self.copy_paste_mode:
@@ -1033,10 +1044,6 @@ class Coder(metaclass=UsageMeta):
                 refresh = self.repo_map.refresh
                 env_items.append(f"map ({map_tokens} tokens, {refresh} refresh)")
                 repo_map_tokens = map_tokens
-            else:
-                env_items.append("repo-map disabled")
-        else:
-            env_items.append("repo-map disabled")
 
         sections["Environment"] = {"items": env_items}
         # --- CAPABILITIES ---
@@ -1076,7 +1083,7 @@ class Coder(metaclass=UsageMeta):
             if mcp_servers:
                 capabilities["Servers"] = mcp_servers
 
-        if capabilities:
+        if capabilities and not getattr(self.args, "tui", False):
             # sections["Extensions"] = {"subsections": capabilities}
             sections["Environment"]["subsections"] = capabilities
 
@@ -2649,7 +2656,7 @@ class Coder(metaclass=UsageMeta):
             language = user_lang
         else:
             # Default if no specific lang detected
-            language = "the same language they are using"
+            language = "the user's most recently used language"
 
         if self.fence[0] == "`" * 4:
             quad_backtick_reminder = (
@@ -2773,7 +2780,7 @@ class Coder(metaclass=UsageMeta):
     async def check_tokens(self, messages):
         """Check if the messages will fit within the model's token limits."""
         input_tokens = self.get_active_model().token_count(messages)
-        max_input_tokens = self.get_active_model().info.get("max_input_tokens") or 128000
+        max_input_tokens = self.get_active_model().info.get("max_input_tokens") or 256000
 
         if max_input_tokens and input_tokens >= max_input_tokens:
             if (
@@ -4118,8 +4125,8 @@ class Coder(metaclass=UsageMeta):
     async def show_send_output_stream(self, completion):
         received_content = False
         chunk_index = 0
-        content_detector = LoopDetector()
-        tool_detector = LoopDetector()
+        content_detector = LoopDetector(self.repetition_penalties)
+        tool_detector = LoopDetector(self.repetition_penalties)
         loop_detected = False
 
         stream = coroutines.interruptible_async_generator(completion, self.interrupt_event)
@@ -4258,6 +4265,7 @@ class Coder(metaclass=UsageMeta):
         except LoopDetectedError as e:
             self._output_loop_detected = True
             self._output_loop_message = str(e)
+            self.repetition_penalties.record_loop(e.level)
             loop_detected = True
 
         if loop_detected:
@@ -4288,6 +4296,10 @@ class Coder(metaclass=UsageMeta):
             self.partial_response_content += f"\n\n</{self.reasoning_tag_name}>\n\n"
             content_to_show = self.live_incremental_response(False)
             self.stream_wrapper(content_to_show, final=False)
+
+        # The stream ran to completion without tripping the detector, so bleed the
+        # relaxations back toward the configured limits.
+        self.repetition_penalties.record_clean_turn()
 
         # The Part Doing the Heavy Lifting Now
         self.consolidate_chunks()
@@ -4434,7 +4446,7 @@ class Coder(metaclass=UsageMeta):
         if self._output_loop_detected:
             # A repeating output loop was caught while streaming; turn it into an
             # assistant message so the model can adjust and drop any tool calls.
-            marker = "\n\n[SYSTEM CANCEL: OUTPUT LOOP DETECTED]\n"
+            marker = f"\n\n{LoopDetector.INTERJECTION}\n"
             self.partial_response_content += marker
             self.partial_response_tool_calls = []
             self.partial_response_function_call = dict()

@@ -660,9 +660,11 @@ async def main_async(
     from cecli.deprecated_args import handle_deprecated_model_args
     from cecli.format_settings import format_settings, scrub_sensitive_info
     from cecli.helpers import config_utils
+    from cecli.helpers.agents.overrides import refresh_agent_overrides
     from cecli.helpers.conversation import ConversationService, MessageTag
     from cecli.helpers.copypaste import ClipboardWatcher
     from cecli.helpers.file_searcher import handle_core_files
+    from cecli.helpers.key_detection import detect_api_keys, register_api_keys
     from cecli.history import ChatSummary
     from cecli.hooks import HookService
     from cecli.io import InputOutput
@@ -702,19 +704,37 @@ async def main_async(
             all_config_paths.append(cfg_env)
     if git_root:
         git_conf = str(Path(git_root) / ".cecli.conf.yml")
+
         if git_conf not in all_config_paths:
             all_config_paths.append(git_conf)
+
+    # ── creator.yml files: highest config-file precedence (still below CLI) ──
+    # Global ~/.cecli/creator.yml first, then the project-local
+    # <git_root or cwd>/.cecli/creator.yml on top (local wins).
+    if git_root:
+        creator_local = str(Path(git_root) / ".cecli" / "creator.yml")
+
+    else:
+        creator_local = str(Path(".cecli/creator.yml"))
+
+    creator_yml_files = [str(Path.home() / ".cecli" / "creator.yml"), creator_local]
+
+    for path in creator_yml_files:
+        if path not in all_config_paths:
+            all_config_paths.append(path)
 
     conf_yml_files = [
         p for p in all_config_paths if p.endswith("conf.yml") and not p.endswith(".cecli.conf.yml")
     ]
+
     cecli_conf_yml_files = [p for p in all_config_paths if p.endswith(".cecli.conf.yml")]
 
-    # ── Read and merge ALL config files as YAML upfront ─────────────────
+    # ── Read and merge ALL config files as YAML upfront ──────────────────
     # Decode all files as YAML, shallow-merge .cecli/conf.yml, then
-    # deep-merge .cecli.conf.yml on top for a fully resolved config dict.
+    # deep-merge .cecli.conf.yml and creator.yml on top for a fully
+    # resolved config dict.
     merged_config = config_utils.read_and_merge_all_configs(
-        all_config_paths, conf_yml_files, cecli_conf_yml_files
+        all_config_paths, conf_yml_files, cecli_conf_yml_files, creator_yml_files
     )
 
     # Write merged config to a temp YAML file so configargparse can
@@ -1017,6 +1037,16 @@ async def main_async(
             "--openai-organization-id is deprecated, use --set-env OPENAI_ORGANIZATION=<value>"
         )
         os.environ["OPENAI_ORGANIZATION"] = args.openai_organization_id
+
+    # ── Secret registry ────────────────────────────────────────────────
+    # Everything the LLM is sent goes through BaseMessage.to_dict(), which
+    # blanks any string registered here. Both the merged config (including
+    # $VAR references it resolves against the environment) and the now fully
+    # populated environment are scanned at this point.
+    registered_secrets = register_api_keys(detect_api_keys(merged_config))
+
+    if args.verbose and registered_secrets:
+        io.tool_output(f"Registered {len(registered_secrets)} secret(s) for redaction")
     if args.verbose:
         for fname in loaded_dotenvs:
             io.tool_output(f"Loaded {fname}")
@@ -1154,6 +1184,7 @@ async def main_async(
         weak_model_obj = models.Model(
             args.weak_model,
             weak_model=False,
+            role="weak",
             verbose=args.verbose,
             io=io,
             retries=args.retries,
@@ -1165,6 +1196,7 @@ async def main_async(
         editor_model_obj = models.Model(
             args.editor_model,
             editor_model=False,
+            role="editor",
             verbose=args.verbose,
             io=io,
             retries=args.retries,
@@ -1176,6 +1208,7 @@ async def main_async(
         agent_model_obj = models.Model(
             args.agent_model,
             agent_model=False,
+            role="agent",
             verbose=args.verbose,
             io=io,
             retries=args.retries,
@@ -1190,6 +1223,8 @@ async def main_async(
         if await offer_openrouter_oauth(io):
             if os.environ.get("OPENROUTER_API_KEY"):
                 io.tool_output("OpenRouter successfully connected.")
+                # The oauth flow mints a key after the startup scan ran.
+                register_api_keys(detect_api_keys(merged_config))
             else:
                 io.tool_error(
                     "OpenRouter authentication seemed successful, but the key is still missing."
@@ -1356,7 +1391,9 @@ async def main_async(
         coder = await Coder.create(
             from_coder=from_coder,
             main_model=main_model,
-            edit_format=args.edit_format,
+            # Agent mode is the startup default; an explicit flag/config/env value
+            # still wins, and reloads keep the session's current mode.
+            edit_format=args.edit_format or "agent",
             io=io,
             args=args,
             repo=repo,
@@ -1467,6 +1504,14 @@ async def main_async(
             register_workflow_subagents(_workflows)
         except Exception:
             logging.exception("workflow sub-agent registration failed")
+
+    # Creator ``agents:`` map: re-read it so the spawn-time override index is
+    # fresh, then register definition entries as dynamic ``creator:<name>``
+    # sub-agents. The map never flows through agent_config.
+    try:
+        refresh_agent_overrides(git_root)
+    except Exception:
+        logging.exception("creator agent registration failed")
 
     if return_coder:
         return coder

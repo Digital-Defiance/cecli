@@ -253,7 +253,7 @@ def get_parser(default_config_files, git_root):
         metavar="EDIT_FORMAT",
         choices=edit_format_choices,
         default=None,
-        help="Specify what edit format the LLM should use (default depends on model)",
+        help="Specify what edit format the LLM should use (default: agent)",
     )
     group.add_argument(
         "--ask",
@@ -363,7 +363,9 @@ def get_parser(default_config_files, git_root):
         metavar="RETRIES_JSON",
         help=(
             'Specify LLM retry configuration as a JSON/YAML string (e.g., \'{"retry_on_empty": '
-            'true, "retry-on-unauthorized": false}\')'
+            'true, "retry-on-unauthorized": false, "fallbacks": {"models": {"model": '
+            '["backup-model"]}, "keys": {"openai": ["OPENAI_API_KEY", '
+            '"OPENAI_API_KEY_2"]}}}\')'
         ),
         default=None,
     )

@@ -20,6 +20,7 @@ Cecli supports commands from within the chat, which all start with `/`.
 | **/context** | Enter context mode to see surrounding code context. If no prompt provided, switches to context mode. |
 | **/copy** | Copy the last assistant message to the clipboard |
 | **/copy-context** | Copy the current chat context as markdown, suitable to paste into a web UI |
+| **/creator** | Start creator mode to add skills, MCP servers, hooks, tools, commands, workflows, or settings |
 | **/diff** | Display the diff of changes since the last message |
 | **/drop** | Remove files from the chat session to free up context space |
 | **/edit** | Alias for /editor: Open an editor to write a prompt |
