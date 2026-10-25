@@ -664,6 +664,7 @@ async def main_async(
     from cecli.helpers.conversation import ConversationService, MessageTag
     from cecli.helpers.copypaste import ClipboardWatcher
     from cecli.helpers.file_searcher import handle_core_files
+    from cecli.helpers.key_detection import detect_api_keys, register_api_keys
     from cecli.history import ChatSummary
     from cecli.hooks import HookService
     from cecli.io import InputOutput
@@ -1036,6 +1037,16 @@ async def main_async(
             "--openai-organization-id is deprecated, use --set-env OPENAI_ORGANIZATION=<value>"
         )
         os.environ["OPENAI_ORGANIZATION"] = args.openai_organization_id
+
+    # ── Secret registry ────────────────────────────────────────────────
+    # Everything the LLM is sent goes through BaseMessage.to_dict(), which
+    # blanks any string registered here. Both the merged config (including
+    # $VAR references it resolves against the environment) and the now fully
+    # populated environment are scanned at this point.
+    registered_secrets = register_api_keys(detect_api_keys(merged_config))
+
+    if args.verbose and registered_secrets:
+        io.tool_output(f"Registered {len(registered_secrets)} secret(s) for redaction")
     if args.verbose:
         for fname in loaded_dotenvs:
             io.tool_output(f"Loaded {fname}")
@@ -1212,6 +1223,8 @@ async def main_async(
         if await offer_openrouter_oauth(io):
             if os.environ.get("OPENROUTER_API_KEY"):
                 io.tool_output("OpenRouter successfully connected.")
+                # The oauth flow mints a key after the startup scan ran.
+                register_api_keys(detect_api_keys(merged_config))
             else:
                 io.tool_error(
                     "OpenRouter authentication seemed successful, but the key is still missing."
