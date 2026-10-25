@@ -1173,6 +1173,7 @@ async def main_async(
         weak_model_obj = models.Model(
             args.weak_model,
             weak_model=False,
+            role="weak",
             verbose=args.verbose,
             io=io,
             retries=args.retries,
@@ -1184,6 +1185,7 @@ async def main_async(
         editor_model_obj = models.Model(
             args.editor_model,
             editor_model=False,
+            role="editor",
             verbose=args.verbose,
             io=io,
             retries=args.retries,
@@ -1195,6 +1197,7 @@ async def main_async(
         agent_model_obj = models.Model(
             args.agent_model,
             agent_model=False,
+            role="agent",
             verbose=args.verbose,
             io=io,
             retries=args.retries,
