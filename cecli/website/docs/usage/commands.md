@@ -90,25 +90,25 @@ If a response is interrupted (for example with Ctrl+C), the in-flight prompt is 
 
 **Usage:** `/insert-queue <index> <prompt text>`
 
-**Description:** Inserts a prompt at a specific 0-based position in the queue. Existing items shift down, and the index is clamped to the queue bounds.
+**Description:** Inserts a prompt at a specific 1-based position in the queue. Existing items shift down, and the index is clamped to the queue bounds.
 
 **Examples:**
 ```bash
-/insert-queue 0 "add tests for login"
-/insert-queue 2 "refactor database layer"
+/insert-queue 1 "add tests for login"
+/insert-queue 3 "refactor database layer"
 ```
 
 ### `/list-queue` Command
 
 **Usage:** `/list-queue`
 
-**Description:** Lists all queued prompts with their 0-based index and queue time.
+**Description:** Lists all queued prompts with their position and queue time.
 
 ### `/remove-queue` Command
 
 **Usage:** `/remove-queue <index>`, `/remove-queue *`
 
-**Description:** Removes the prompt at the given 0-based index, or clears the entire queue when `*` is used.
+**Description:** Removes the prompt at the given 1-based position, or clears the entire queue when `*` is used.
 
 ### `/run-queue` Command
 

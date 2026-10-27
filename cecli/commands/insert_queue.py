@@ -59,7 +59,7 @@ class InsertQueueCommand(BaseCommand):
         # Happy path: insert the prompt
         try:
             item = command_queue.insert_prompt(coder, prompt_text, index)
-            io.tool_output(f"Prompt inserted at position {index} (id: {item['id']})")
+            io.tool_output(f"Prompt inserted at position {index + 1} (id: {item['id']})")
 
             return f"Successfully executed {cls.NORM_NAME}."
         except ValueError as e:
@@ -81,7 +81,7 @@ class InsertQueueCommand(BaseCommand):
             # Still typing the index; suggest valid positions.
             if not coder.commands:
                 return []
-            return [str(i) for i in range(command_queue.get_queue_length(coder) + 1)]
+            return [str(i) for i in range(1, command_queue.get_queue_length(coder) + 2)]
         return command_queue.nested_command_completions(coder, text[first_space + 1 :])
 
     @classmethod
@@ -91,10 +91,10 @@ class InsertQueueCommand(BaseCommand):
         help_text += "\nUsage:\n"
         help_text += "  /insert-queue <index> <prompt text>  # Insert at a specific position\n"
         help_text += "\nDescription:\n"
-        help_text += "  Inserts a prompt into the queue at the given 0-based position.\n"
+        help_text += "  Inserts a prompt into the queue at the given 1-based position.\n"
         help_text += "  Existing items shift down. Index is clamped to the queue bounds.\n"
         help_text += "\nExamples:\n"
-        help_text += "  /insert-queue 0 Review the changes in src/main.py\n"
-        help_text += "  /insert-queue 2 Write unit tests for the new feature\n"
+        help_text += "  /insert-queue 1 Review the changes in src/main.py\n"
+        help_text += "  /insert-queue 3 Write unit tests for the new feature\n"
         help_text += "\nSee also: /queue, /list-queue, /remove-queue, /run-queue\n"
         return help_text

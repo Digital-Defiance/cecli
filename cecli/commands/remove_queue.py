@@ -49,7 +49,7 @@ class RemoveQueueCommand(BaseCommand):
         # Handle specific index
         if args and args.strip():
             try:
-                index = int(args.strip())  # 0-based index
+                index = int(args.strip()) - 1  # Convert to 0-based
             except ValueError:
                 return format_command_result(
                     io,
@@ -74,7 +74,7 @@ class RemoveQueueCommand(BaseCommand):
         # Interactive mode: no args provided
         queue = command_queue.list_queue(coder)
         io.tool_output("Queued prompts:")
-        for i, item in enumerate(queue):
+        for i, item in enumerate(queue, 1):
             text = item["text"][:80]
             if len(item["text"]) > 80:
                 text += "..."
@@ -93,7 +93,7 @@ class RemoveQueueCommand(BaseCommand):
             return []
 
         queue_len = command_queue.get_queue_length(coder)
-        completions = [str(i) for i in range(queue_len)]
+        completions = [str(i) for i in range(1, queue_len + 1)]
         completions.append("*")
         return completions
 
@@ -106,13 +106,13 @@ class RemoveQueueCommand(BaseCommand):
         help_text += "  /remove-queue *        # Clear the entire queue\n"
         help_text += "  /remove-queue          # Interactive mode (shows list, prompts for index)\n"
         help_text += "\nDescription:\n"
-        help_text += "  Removes a prompt from the in-memory queue by its 0-based index.\n"
+        help_text += "  Removes a prompt from the in-memory queue by its index number.\n"
         help_text += "  Use '*' to clear all queued prompts at once.\n"
         help_text += (
             "  Without arguments, displays the queue and prompts for interactive selection.\n"
         )
         help_text += "\nExamples:\n"
-        help_text += "  /remove-queue 0   # Remove the first queued prompt\n"
+        help_text += "  /remove-queue 1   # Remove the first queued prompt\n"
         help_text += "  /remove-queue *   # Clear the entire queue\n"
         help_text += "  /remove-queue     # Interactive mode\n"
         help_text += "\nSee also: /queue, /insert-queue, /list-queue, /run-queue\n"

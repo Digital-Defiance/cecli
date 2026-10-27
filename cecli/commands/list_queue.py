@@ -40,7 +40,7 @@ class ListQueueCommand(BaseCommand):
 
         # Happy path: display numbered list
         lines = []
-        for i, item in enumerate(queue):
+        for i, item in enumerate(queue, start=1):
             text = item["text"]
             display_text = text[:80] + "..." if len(text) > 80 else text
             ts = datetime.datetime.fromtimestamp(item["timestamp"]).strftime("%H:%M:%S")
@@ -62,7 +62,7 @@ class ListQueueCommand(BaseCommand):
         help_text += "  /list-queue  # Display all queued prompts\n"
         help_text += "\nDescription:\n"
         help_text += "  Displays a numbered list of all prompts currently in the queue,\n"
-        help_text += "  showing each prompt's 0-based index, text (truncated to 80 chars),\n"
+        help_text += "  showing each prompt's position, text (truncated to 80 chars),\n"
         help_text += "  and the time it was queued.\n"
         help_text += "\nExamples:\n"
         help_text += "  /list-queue  # Shows all queued prompts\n"
