@@ -578,6 +578,9 @@ def custom_tracer(frame, event, arg):
 
 
 def main(argv=None, input=None, output=None, force_git_root=None, return_coder=False):
+    # Keep git from launching a pager that waits for input nobody can provide.
+    os.environ["GIT_PAGER"] = "cat"
+
     from cecli.signals import ReloadProgramSignal
 
     attach_debug_thread_monitor(argv)
