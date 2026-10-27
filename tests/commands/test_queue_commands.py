@@ -378,7 +378,7 @@ class TestListQueueCommand:
         mock_io.tool_output.assert_called()
         calls = [str(call) for call in mock_io.tool_output.call_args_list]
         output_text = " ".join(calls)
-        assert "[1]" in output_text or "alpha" in output_text
+        assert "[0]" in output_text or "alpha" in output_text
 
     @pytest.mark.asyncio
     async def test_itc_08_list_queue_empty_shows_message(self, mock_io, mock_coder):
@@ -415,10 +415,11 @@ class TestRemoveQueueCommand:
     @pytest.mark.asyncio
     async def test_itc_11_remove_by_index(self, mock_io, populated_queue):
         """ITC-11: /remove-queue <index> removes exact item and confirms removal."""
-        result = await RemoveQueueCommand.execute(mock_io, populated_queue, "2")
+        result = await RemoveQueueCommand.execute(mock_io, populated_queue, "0")
 
         assert result == "Successfully executed remove-queue."
         assert len(populated_queue.prompt_queue) == 2
+        assert populated_queue.prompt_queue[0]["text"] == "beta"
         mock_io.tool_output.assert_called()
 
     @pytest.mark.asyncio
@@ -481,9 +482,9 @@ class TestRemoveQueueCommand:
         """ITC-19: RemoveQueueCommand.get_completions() returns valid index completions and '*'."""
         completions = RemoveQueueCommand.get_completions(None, populated_queue, "")
 
+        assert "0" in completions
         assert "1" in completions
         assert "2" in completions
-        assert "3" in completions
         assert "*" in completions
 
     def test_itc_20_commands_registered_in_registry(self):
@@ -622,7 +623,7 @@ class TestQueueIdleNoAutoDrain:
 
         coder.process_prompt_queue = fake_drain
 
-        result = await InsertQueueCommand.execute(mock_io, coder, "1 idle insert")
+        result = await InsertQueueCommand.execute(mock_io, coder, "0 idle insert")
 
         assert result == "Successfully executed insert-queue."
         assert drain_calls == []
@@ -641,7 +642,7 @@ class TestQueueIdleNoAutoDrain:
 
         coder.process_prompt_queue = fake_drain
 
-        result = await InsertQueueCommand.execute(mock_io, coder, "1 busy insert")
+        result = await InsertQueueCommand.execute(mock_io, coder, "0 busy insert")
 
         assert result == "Successfully executed insert-queue."
         assert drain_calls == []
@@ -996,8 +997,8 @@ class TestNestedCompletions:
 
         result = InsertQueueCommand.get_completions(mock_io, coder, "1")
 
-        # Queue holds 1 item, so positions 1..2 (append at end) are valid.
-        assert result == ["1", "2"]
+        # Queue holds 1 item, so 0-based positions 0..1 (append at end) are valid.
+        assert result == ["0", "1"]
 
 
 # Lifecycle tests

@@ -1135,7 +1135,7 @@ class TUI(App):
                 text = item["text"]
                 preview = text[:80] + ("..." if len(text) > 80 else "")
                 stamp = time.strftime("%H:%M:%S", time.localtime(item["timestamp"]))
-                lines.append(f"[{index + 1}] {preview} ({stamp})")
+                lines.append(f"[{index}] {preview} ({stamp})")
 
             self._get_visible_container().add_output("\n".join(lines))
 
@@ -1159,7 +1159,7 @@ class TUI(App):
                 return
 
             self._get_visible_container().add_output(
-                f"Prompt inserted at position {index + 1} (id: {item['id']})"
+                f"Prompt inserted at position {index} (id: {item['id']})"
             )
 
         elif cmd == "/remove-queue":
@@ -1180,7 +1180,7 @@ class TUI(App):
                 self.show_error("Usage: /remove-queue <index|*>")
                 return
 
-            removed = command_queue.remove_from_queue(active_coder, index - 1)
+            removed = command_queue.remove_from_queue(active_coder, index)
             if removed is None:
                 self.show_error(f"No queued prompt at index {index}.")
                 return
