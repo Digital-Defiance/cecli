@@ -419,7 +419,7 @@ Below is a sample of the YAML config file, which you can also [download from Git
 #add-gitignore-files: false
 
 ## Specify the cecli ignore file (default: .cecli.ignore in git root)
-#cecliignore: .cecli.ignore
+#cecli-ignore: .cecli.ignore
 
 ## Only consider files in the current subtree of the git repository
 #subtree-only: false

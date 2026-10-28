@@ -167,7 +167,7 @@ When using Agent Mode, security configuration works alongside other security fea
 ```yaml
 agent: true
 agent-config:
-  tools_excludelist: ["command", "commandinteractive"]
+  tools_excludelist: ["command"]
 security-config:
   allowed-domains:
     - github.com

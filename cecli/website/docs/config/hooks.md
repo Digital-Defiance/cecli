@@ -1,7 +1,7 @@
 ---
 parent: Configuration
 nav_order: 35
-description: Create and use custom commands to extend cecli's functionality.
+description: Extend cecli with command and Python hooks that run at specific points in the agent's workflow.
 ---
 
 # Hooks
