@@ -668,6 +668,12 @@ async def main_async(
     from cecli.helpers.copypaste import ClipboardWatcher
     from cecli.helpers.file_searcher import handle_core_files
     from cecli.helpers.key_detection import detect_api_keys, register_api_keys
+    from cecli.helpers.workspaces.config import (
+        find_active_workspace_name,
+        load_workspace_config,
+        resolve_workspace_config,
+        workspace_layout,
+    )
     from cecli.history import ChatSummary
     from cecli.hooks import HookService
     from cecli.io import InputOutput
@@ -777,20 +783,21 @@ async def main_async(
         args.fancy_input = False
         args.pretty = False
 
-    if args.workspaces or args.workspace_name:
-        from cecli.helpers.workspaces.config import (
-            find_active_workspace_name,
-            load_workspace_config,
-            workspace_layout,
-        )
+    if args.workspaces:
+        # Interpolate environment variables in the workspaces argument
+        args.workspaces = interpolate_env_vars(args.workspaces)
+
+    ws_config_arg = convert_yaml_to_json_string(args.workspaces) if args.workspaces else None
+
+    # Workspaces can also be defined by the local ``.cecli.workspaces.yml`` or
+    # global ``~/.cecli/workspaces.yml`` files, without any workspace flags.
+    workspace_conf = resolve_workspace_config(ws_config_arg)
+    workspace_configured = bool(args.workspaces or args.workspace_name or workspace_conf)
+
+    if workspace_configured:
         from cecli.helpers.workspaces.subagents import register_workspace_subagents
         from cecli.helpers.workspaces.workspace import WorkspaceManager
 
-        # Interpolate environment variables in the workspaces argument
-        if args.workspaces:
-            args.workspaces = interpolate_env_vars(args.workspaces)
-
-        ws_config_arg = convert_yaml_to_json_string(args.workspaces) if args.workspaces else None
         ws_name = args.workspace_name or find_active_workspace_name(ws_config_arg)
         if ws_name:
             config = load_workspace_config(ws_config_arg, name=ws_name)
@@ -1297,7 +1304,7 @@ async def main_async(
     # its repo, root, and repo_map at construction; if the repo is created
     # afterwards the coder keeps repo=None for the whole session and
     # repo-backed tools (Grep, git_*, ...) fail with "Not in a git repository."
-    if args.git and not (suppress_pre_init or args.workspaces or args.workspace_name):
+    if args.git and not (suppress_pre_init or workspace_configured):
         git_root = await setup_git(git_root, pre_init_io)
         if args.gitignore:
             await check_gitignore(git_root, pre_init_io)

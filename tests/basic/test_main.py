@@ -195,6 +195,26 @@ def test_main_with_git_config_yml(dummy_io, mock_coder, git_temp_dir):
     assert kwargs["auto_commits"] is True
 
 
+def test_main_loads_single_workspace_from_local_file(dummy_io, git_temp_dir):
+    from cecli.helpers.agents.service import AgentService
+
+    project_dir = Path(git_temp_dir) / "app"
+    make_repo(str(project_dir))
+    Path(".cecli.workspaces.yml").write_text(
+        f"name: file-workspace\nprojects:\n  - name: app\n    path: {project_dir}\n"
+    )
+
+    registry = AgentService.get_registry()
+    previous_registry = dict(registry)
+
+    try:
+        main(["--no-git", "--exit", "--yes-always"], **dummy_io)
+        assert "ws:app" in AgentService.get_registry()
+    finally:
+        registry.clear()
+        registry.update(previous_registry)
+
+
 def test_main_with_empty_git_dir_new_subdir_file(dummy_io, git_temp_dir):
     make_repo()
     subdir = Path("subdir")
