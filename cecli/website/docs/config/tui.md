@@ -69,7 +69,9 @@ tui-config:
     quit: "ctrl+q"
     next_agent: "alt+ctrl+right"
     prev_agent: "alt+ctrl+left"
-    main_agent: "alt+ctrl+up"
+    main_agent: "alt+ctrl+home"
+    panel_up: "alt+ctrl+up"
+    panel_down: "alt+ctrl+down"
 
 ```
 
@@ -98,7 +100,9 @@ The TUI provides customizable key bindings for all major actions. The default ke
 | Quit | `ctrl+q` | Exit the TUI |
 | Next Agent | `alt+ctrl+right` | Switch to the next agent (sub-agent or primary), wrapping around |
 | Previous Agent | `alt+ctrl+left` | Switch to the previous agent (sub-agent or primary), wrapping around |
-| Main Agent | `alt+ctrl+up` | Switch back to the main (primary) agent |
+| Main Agent | `alt+ctrl+home` | Switch back to the main (primary) agent |
+| Panels Up | `alt+ctrl+up` | Scroll the floating status panels up one line |
+| Panels Down | `alt+ctrl+down` | Scroll the floating status panels down one line |
 
 #### Customizing Key Bindings
 

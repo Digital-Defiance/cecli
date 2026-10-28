@@ -190,6 +190,14 @@ class FloatingPanels(Vertical):
         if target.display:
             self.refresh_data()
 
+    def scroll_by(self, offset: int) -> None:
+        """Scroll the shared item list by a number of lines."""
+        try:
+            scroll = self.query_one("#status-scroll", VerticalScroll)
+            scroll.scroll_relative(y=offset, animate=False, immediate=True)
+        except Exception:
+            pass
+
     def refresh_data(self):
         """Refresh the extensions columns from the active coder's state."""
         coder = self._get_active_coder()
