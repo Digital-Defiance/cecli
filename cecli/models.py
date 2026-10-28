@@ -2308,11 +2308,16 @@ async def sanity_check_model(io, model):
     await check_for_dependencies(io, model.name)
     if not (model.info.get("max_input_tokens") or model.info.get("max_tokens")):
         show = True
-        io.tool_warning(
-            f"Warning for {model}: Unknown context window size and costs, using sane defaults."
-        )
         possible_matches = fuzzy_match_models(model.name)
-        if possible_matches:
+        # A known model can still lack token limits and costs, so the usual
+        # "did you mean" suggestions would just be confusing.
+        model_name_lower = model.name.lower()
+        is_known_model = any(match.lower() == model_name_lower for match in possible_matches)
+        io.tool_warning(
+            f"Warning for {model}: The context window size and/or costs are unknown"
+            " for this model, using sane defaults."
+        )
+        if not is_known_model and possible_matches:
             io.tool_output("Did you mean one of these?")
             for match in possible_matches:
                 io.tool_output(f"- {match}")
