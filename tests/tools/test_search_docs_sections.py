@@ -82,13 +82,13 @@ async def test_section_read_accepts_url_anchors():
 
 @pytest.mark.asyncio
 async def test_unknown_heading_fails_with_suggestions():
-    response = await search_docs.Tool.execute(_coder(), path=f"{CONF_PATH}#Merge Precedence")
+    response = await search_docs.Tool.execute(_coder(), path=f"{CONF_PATH}#Merge Precedance")
 
     data = _result(response)
     assert data["result"] == []
 
     error = data["errors"][0]
-    assert 'No heading or key matched "Merge Precedence"' in error
+    assert 'No heading or key matched "Merge Precedance"' in error
     assert CONF_SECTION in error
     assert "13 headings" in error
 
