@@ -14,8 +14,9 @@ from cecli.signals import SwitchCoderSignal
 class Commands:
     scraper = None
 
-    # Commands that receive their full argument text for nested completion.
-    FULL_ARGS_COMPLETION_COMMANDS = ("/queue", "/insert-queue")
+    # Commands that receive their full argument text for completion (nested
+    # hosts and subcommand commands whose names take an argument).
+    FULL_ARGS_COMPLETION_COMMANDS = ("/queue", "/insert-queue", "/workflows")
 
     def _get_coder(self):
         """Return coder via weak reference, or None if collected."""

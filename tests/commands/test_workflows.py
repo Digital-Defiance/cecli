@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from cecli.commands import CommandRegistry
+from cecli.commands import CommandRegistry, Commands
 from cecli.commands.workflows import WorkflowCommand
 from cecli.helpers.workflows.models import TaskConfig, WorkflowConfig
 
@@ -353,8 +353,27 @@ def test_completions(mock_coder):
 
     assert WorkflowCommand.get_completions(None, mock_coder, "ru") == ["run"]
 
-    names = WorkflowCommand.get_completions(None, mock_coder, "run de")
-    assert names == ["demo", "dep-check"]
+    for sub in ("run", "show", "status"):
+        names = WorkflowCommand.get_completions(None, mock_coder, f"{sub} de")
+        assert names == ["demo", "dep-check"]
+
+    # A trailing space means the subcommand is settled with no name prefix
+    # yet, so all workflow names are offered immediately.
+    for sub in ("run", "show", "status"):
+        assert WorkflowCommand.get_completions(None, mock_coder, f"{sub} ") == [
+            "demo",
+            "dep-check",
+        ]
+        assert WorkflowCommand.get_completions(None, mock_coder, f"{sub} d") == [
+            "demo",
+            "dep-check",
+        ]
+
+    assert WorkflowCommand.get_completions(None, mock_coder, "list ") == []
+
+    # Subcommand commands need the full argument text so the name is not
+    # mistaken for a subcommand prefix by the completer.
+    assert "/workflows" in Commands.FULL_ARGS_COMPLETION_COMMANDS
 
     assert WorkflowCommand.get_completions(None, mock_coder, "list something") == []
 
