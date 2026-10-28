@@ -1100,6 +1100,33 @@ class ConversationChunks:
         except Exception:
             return []
 
+    def retrieve_creator_doc_addresses(self, coder, query, n_results=5) -> dict:
+        """Return feed-back-able docs addresses ranked by query-term coverage."""
+        try:
+            from cecli.help import rank_doc_addresses
+
+            return rank_doc_addresses(query, max_results=n_results)
+        except Exception:
+            return dict(addresses=[], total=0, query=query)
+
+    def retrieve_creator_doc_navigation(self, coder, query, n_files=5, n_sections=10) -> dict:
+        """Return files and heading sections ranked by query-term coverage."""
+        try:
+            from cecli.help import navigate_docs
+
+            return navigate_docs(query, n_files=n_files, n_sections=n_sections)
+        except Exception:
+            return dict(files=[], sections=[])
+
+    def retrieve_creator_doc(self, coder, path, n_results=20) -> dict:
+        """Return a whole doc file, or matching paths for a directory or glob."""
+        try:
+            from cecli.help import get_doc
+
+            return get_doc(path, max_results=n_results)
+        except Exception:
+            return dict(file=None, files=[], dirs=[], suggestions=[], total=0, path="")
+
     def defer_removal(self, file_path: str):
         self._deferred_removals.add(file_path)
 

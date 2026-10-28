@@ -78,9 +78,19 @@ class WorkflowCommand(BaseCommand):
     @classmethod
     def get_completions(cls, io, coder, args) -> list:
         """Complete subcommands, then workflow names for the name-taking ones."""
-        partial = (args or "").strip()
+        raw = args or ""
+        partial = raw.strip()
 
         if " " not in partial:
+            # A trailing space means the subcommand is settled and the caller
+            # is now completing its argument, so offer the workflow names
+            # (when the subcommand takes one) instead of the subcommand list.
+            if raw and raw[-1].isspace():
+                if partial.lower() in cls.NAME_SUBCOMMANDS:
+                    return sorted(wf.name for wf in cls._workflows(coder))
+
+                return []
+
             return [s for s in cls.SUBCOMMANDS if s.startswith(partial)] or list(cls.SUBCOMMANDS)
 
         sub, _, rest = partial.partition(" ")

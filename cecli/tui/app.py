@@ -162,6 +162,18 @@ class TUI(App):
             show=True,
         )
         self.bind(
+            self._encode_keys(self.get_keys_for("panel_up")),
+            "scroll_panel_up",
+            description="Scroll Panels Up",
+            show=False,
+        )
+        self.bind(
+            self._encode_keys(self.get_keys_for("panel_down")),
+            "scroll_panel_down",
+            description="Scroll Panels Down",
+            show=False,
+        )
+        self.bind(
             self._encode_keys(self.get_keys_for("cancel")),
             "interrupt",
             description="Cancel",
@@ -299,7 +311,9 @@ class TUI(App):
             "output_down": "shift+pagedown",
             "next_agent": "alt+ctrl+right",
             "prev_agent": "alt+ctrl+left",
-            "main_agent": "alt+ctrl+up",
+            "main_agent": "alt+ctrl+home",
+            "panel_up": "alt+ctrl+up",
+            "panel_down": "alt+ctrl+down",
             "editor": "ctrl+o",
             "history": "alt+shift+h",
             "voice": "ctrl+r",
@@ -1361,6 +1375,24 @@ class TUI(App):
         """Show or hide the floating status panels."""
         try:
             self.query_one(FloatingPanels).toggle_visible()
+        except Exception:
+            pass
+
+    def action_scroll_panel_up(self):
+        """Scroll the floating status panels up one line."""
+        self._scroll_floating_panels(-1)
+
+    def action_scroll_panel_down(self):
+        """Scroll the floating status panels down one line."""
+        self._scroll_floating_panels(1)
+
+    def _scroll_floating_panels(self, offset: int):
+        """Scroll the floating status panels by a number of lines."""
+        try:
+            panels = self.query_one(FloatingPanels)
+            if not panels.visible:
+                return
+            panels.scroll_by(offset)
         except Exception:
             pass
 

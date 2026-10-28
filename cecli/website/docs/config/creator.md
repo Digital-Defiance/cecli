@@ -30,7 +30,7 @@ With a prompt, the creator starts working immediately. Without one, it waits for
 
 The creator is a separate agent, so it does not automatically see your current conversation. Briefly include the goal and any constraints in your request.
 
-The creator looks documentation up on demand with its `SearchDocs` tool; cecli does not inject documentation into the creator's context automatically.
+The creator looks up documentation on demand with its `SearchDocs` tool. `SearchDocs(query=...)` returns ranked, feed-back-able addresses of the form `path#heading-slug`, at most one per file; pass an address straight back as `SearchDocs(path=...)` to read it. `path` also accepts a whole file (`config/hooks.md`), one section (`config/hooks.md#configuration-options`), one config key from a sample block (`config/conf.md#dark-mode`), a directory or glob (`config/`, `config/*.md`), `/` for the docs root, and `file.md#` for that file's table of contents. `SearchDocs(query=..., mode="content")` returns chunk text instead of addresses; each chunk carries its docs path, heading, and line range, and navigation hints include copy-paste addresses. cecli does not inject documentation into the creator's context automatically.
 
 When building custom tools or commands, the creator sees a `creator_requirements` context block listing the top-level modules installed in the Python environment running cecli (whether managed by pip, uv, or another installer). It uses that list to decide what can be imported; if a dependency is missing, it should tell you what to install instead of generating an extension that cannot import.
 

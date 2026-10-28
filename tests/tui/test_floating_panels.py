@@ -167,6 +167,14 @@ async def _run_panel_checks():
         await pilot.pause()
         assert scroll.scroll_y > 0
 
+        panels.scroll_by(-1)
+        await pilot.pause()
+        assert scroll.scroll_y == 4
+
+        panels.scroll_by(1)
+        await pilot.pause()
+        assert scroll.scroll_y == 5
+
         panels.on_status_item_clicked(StatusItemClicked("skills", "skill-19", True))
         await pilot.pause()
         assert scroll.scroll_y == 0
@@ -220,4 +228,9 @@ def test_floating_panels_key_registration():
     config = tui._get_config()
 
     assert config["key_bindings"]["panels"] == "alt+p"
+    assert config["key_bindings"]["panel_up"] == "alt+ctrl+up"
+    assert config["key_bindings"]["panel_down"] == "alt+ctrl+down"
+    assert config["key_bindings"]["main_agent"] == "alt+ctrl+home"
     assert hasattr(TUI, "action_toggle_floating_panels")
+    assert hasattr(TUI, "action_scroll_panel_up")
+    assert hasattr(TUI, "action_scroll_panel_down")
